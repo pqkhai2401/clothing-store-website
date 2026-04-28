@@ -1,8 +1,16 @@
+#Chạy Lệnh
+composer i
+
+#Lệnh chạy lại migration
+php artisan migrate:fresh --seed
+
 # tạo passport client password
 php artisan passport:client --password --name="Login Client" --provider=users -n
+
 
 # tạo symlink cho storage
 php artisan storage:link
 
 # generate swagger
 php artisan l5-swagger:generate
+
