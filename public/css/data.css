@@ -1,0 +1,43 @@
+.btn-check:checked + .btn-outline-secondary {
+  background-color: #303d37 !important;
+  border-color: #34483f !important;
+  color: white !important;
+}
+
+.btn-outline-secondary:hover {
+  background-color: #ebedec !important;
+  border-color: #44524c !important;
+  color: #3c4a43 !important;
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+}
+
+.hover-translate:hover {
+  transform: translateX(5px);
+  border-color: #0d6efd !important;
+}
+
+.hover-shadow:hover {
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075) !important;
+  color: #0d6efd;
+}
+
+.border-dashed {
+  border-style: dashed !important;
+}
+
+.hover-effect-modal:hover {
+  background-color: #d1e7dd !important;
+}
+
+.font-monospace {
+  font-family: "Courier New", Courier, monospace;
+  letter-spacing: -0.5px;
+}

@@ -1,0 +1,261 @@
+/*Custom Select dropdown in Modal filter Styling */
+.custom-select-container {
+    position: relative;
+    user-select: none;
+}
+.custom-select-wrapper {
+    position: relative;
+    display: block;
+    width: 100%;
+}
+.custom-select {
+    position: relative;
+    background: #fff;
+    border-radius: 4px;
+    cursor: pointer;
+}
+.custom-select-trigger {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 12px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    background: #fff;
+    width: 100%;
+    cursor: pointer;
+    font-size: 0.875rem;
+}
+.custom-select.opened .custom-select-trigger {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+}
+.arrow {
+    position: relative;
+    width: 10px;
+    height: 10px;
+    margin-left: 10px;
+}
+.arrow:before,
+.arrow:after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    width: 0;
+    height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 6px solid #6c757d;
+    transition: all 0.3s;
+}
+.custom-select.opened .arrow:before,
+.custom-select.opened .arrow:after {
+    transform: rotate(180deg);
+}
+.custom-options {
+    position: absolute;
+    display: none;
+    top: 100%;
+    right: 0;
+    left: 0;
+    max-height: 146px;
+    overflow-y: auto;
+    background: #fff;
+    border: 1px solid #ced4da;
+    border-top: none;
+    border-bottom-left-radius: 4px;
+    border-bottom-right-radius: 4px;
+    box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    margin: 0;
+    padding: 0;
+}
+/* Higher z-index for modal context */
+.modal .custom-options {
+    z-index: 1060;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border: 2px solid #e9ecef;
+}
+/* Enhanced styling for modal custom options */
+#filterModal .custom-option {
+    padding: 12px 15px;
+    font-size: 0.9rem;
+    border-bottom: 1px solid #f8f9fa;
+}
+#filterModal .custom-option:last-child {
+    border-bottom: none;
+}
+#filterModal .custom-option:hover {
+    background: #f1f3f5;
+    color: #495057;
+}
+#filterModal .custom-option.selected {
+    background-color: #e3f2fd;
+    color: #1976d2;
+    font-weight: 600;
+    border-left: 3px solid #2196f3;
+}
+#filterModal .custom-option.selected:hover {
+    background-color: #bbdefb;
+}
+.custom-select.opened .custom-options {
+    display: block;
+    /* max-height: 130px; */
+}
+.custom-option {
+    position: relative;
+    padding: 10px 12px;
+    transition: background 0.3s;
+}
+.custom-option:hover {
+    background: #f8f9fa;
+}
+.custom-option.selected {
+    background-color: #e9ecef;
+    color: #000;
+    font-weight: 500;
+}
+/* Improved scrollbar styling */
+.custom-options {
+    scrollbar-width: thin;
+    scrollbar-color: #6c757d #f8f9fa;
+}
+.custom-options::-webkit-scrollbar {
+    width: 6px;
+}
+.custom-options::-webkit-scrollbar-track {
+    background: #f8f9fa;
+}
+.custom-options::-webkit-scrollbar-thumb {
+    background-color: #6c757d;
+    border-radius: 3px;
+}
+/* Apply Filters Button */
+#apply-filters-btn {
+    padding: 6px 12px;
+    font-size: 0.875rem;
+}
+/* Modal specific styling */
+#filterModal .modal-content {
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+    border: none;
+}
+#filterModal .modal-header {
+    border-bottom: 1px solid #e9ecef;
+    background-color: #f8f9fa;
+    border-radius: 12px 12px 0 0;
+}
+#filterModal .modal-body {
+    background-color: #ffffff;
+}
+#filterModal .form-label {
+    color: #495057;
+    font-size: 0.95rem;
+}
+#filterModal .custom-select-trigger {
+    min-height: 45px;
+    padding: 10px 15px;
+    font-size: 0.9rem;
+    border: 2px solid #e9ecef;
+    transition: border-color 0.3s ease;
+}
+#filterModal .custom-select-trigger:hover {
+    border-color: #ced4da;
+}
+#filterModal .custom-select.opened .custom-select-trigger {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+#filterModal .btn {
+    font-weight: 500;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+}
+#filterModal .btn-primary {
+    background-color: #007bff;
+    border-color: #007bff;
+    box-shadow: 0 2px 4px rgba(0, 123, 255, 0.3);
+}
+#filterModal .btn-primary:hover {
+    background-color: #0056b3;
+    border-color: #0056b3;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 123, 255, 0.4);
+}
+#filterModal .btn-secondary {
+    background-color: #6c757d;
+    border-color: #6c757d;
+}
+#filterModal .btn-secondary:hover {
+    background-color: #545b62;
+    border-color: #545b62;
+    transform: translateY(-1px);
+}
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .d-flex.gap-3 {
+        flex-direction: column;
+        gap: 1rem !important;
+    }
+    .custom-select-trigger {
+        min-width: 100% !important;
+    }
+    .position-relative {
+        width: 100%;
+    }
+    #filterModal .modal-dialog {
+        margin: 1rem;
+        max-width: calc(100% - 2rem);
+    }
+    #filterModal .modal-body {
+        padding: 1.5rem !important;
+    }
+    #filterModal .row.g-4 {
+        --bs-gutter-x: 1rem;
+    }
+    #filterModal .col-md-6 {
+        margin-bottom: 1.5rem;
+    }
+    #filterModal .btn {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+    #filterModal .text-end {
+        text-align: center !important;
+    }
+}
+@media (max-width: 576px) {
+    #filterModal .modal-content {
+        min-height: 350px;
+    }
+    #filterModal .modal-body {
+        min-height: 250px;
+        padding: 1rem !important;
+    }
+}
+
+/*Reset form*/
+form {
+    margin-bottom: 0;
+}
+
+/*date input section
+*/
+#filterModal .form-control.date-input-match {
+    min-height: 45px;
+    padding: 10px 15px;
+    font-size: 0.9rem;
+    border: 2px solid #e9ecef;
+    transition: border-color 0.3s ease;
+}
+
+#filterModal .form-control.date-input-match:hover {
+    border-color: #ced4da;
+}
+
+#filterModal .form-control.date-input-match:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}

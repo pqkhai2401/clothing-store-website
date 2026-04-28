@@ -1,0 +1,127 @@
+.crm-ts-wrapper .crm-ts-control {
+	border-radius: 10px;
+	border: 1px solid #cbd5e1;
+	font-size: 14px;
+	font-weight: 500;
+	letter-spacing: 0.2px;
+	line-height: 1.2;
+	color: #0f172a;
+	background-color: #ffffff;
+	box-shadow: none;
+	cursor: pointer;
+}
+
+.crm-ts-wrapper.single .crm-ts-control {
+	min-height: 41px;
+	max-height: 41px;
+	padding: 6px 36px 6px 8px;
+	display: flex;
+	align-items: center;
+	position: relative;
+}
+
+.crm-ts-wrapper.multi .crm-ts-control {
+	min-height: 41px;
+	max-height: 41px;
+	padding: 6px 36px 6px 8px;
+	overflow-y: auto;
+	overflow-x: hidden;
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 4px;
+	position: relative;
+}
+
+.crm-ts-wrapper.single .crm-ts-control::after,
+.crm-ts-wrapper.multi .crm-ts-control::after {
+	content: "";
+	position: absolute;
+	right: 12px;
+	top: 50%;
+	width: 0;
+	height: 0;
+	border-left: 5px solid transparent;
+	border-right: 5px solid transparent;
+	border-top: 6px solid #6c757d;
+	transform: translateY(-50%);
+	pointer-events: none;
+	transition: transform 0.2s ease;
+}
+
+.crm-ts-wrapper.dropdown-active.single .crm-ts-control::after,
+.crm-ts-wrapper.dropdown-active.multi .crm-ts-control::after {
+	transform: translateY(-50%) rotate(180deg);
+}
+
+.crm-ts-wrapper .crm-ts-control input {
+	font-size: 14px;
+	line-height: 1.2;
+}
+
+.crm-ts-wrapper.multi .crm-ts-control > .item {
+	background: #ffffff;
+	border: 1px solid #dee2e6;
+	border-radius: 6px;
+	font-size: 13px;
+	letter-spacing: 0.2px;
+	color: #0f172a;
+	padding: 0px 8px;
+	/* margin: 0; */
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.crm-ts-wrapper.plugin-remove_button .item .remove {
+	color: #dc3545;
+	/* margin-right: 4px; */
+	padding: 0.3rem !important;
+	/* border-right: 1px solid #dee2e6; */
+	/* font-weight: bold; */
+	cursor: pointer;
+}
+
+.crm-ts-dropdown {
+	border: 1px solid #ced4da;
+	border-radius: 4px;
+	margin-top: 4px;
+}
+
+.crm-ts-dropdown .dropdown-input-wrap {
+	display: block !important;
+	padding: 8px;
+	background: #f8f9fa;
+	border-bottom: 1px solid #dee2e6;
+}
+
+.crm-ts-dropdown .dropdown-input {
+	width: 100% !important;
+	padding: 8px 12px !important;
+	border: 1px solid #ced4da !important;
+	border-radius: 4px !important;
+	font-size: 14px !important;
+	box-sizing: border-box !important;
+}
+
+.crm-ts-dropdown .dropdown-input:focus {
+	outline: none !important;
+	border-color: #80bdff !important;
+	box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25) !important;
+}
+
+.crm-ts-dropdown .ts-dropdown-content {
+	max-height: 300px;
+	overflow-y: auto;
+}
+
+.crm-ts-dropdown .option,
+.crm-ts-dropdown .no-results {
+	font-size: 14px;
+}
+
+.crm-ts-wrapper.focus .crm-ts-control,
+.crm-ts-wrapper.dropdown-active .crm-ts-control {
+	border-color: #0284c7;
+	box-shadow: 0 0 0 0.15rem rgba(14, 165, 233, 0.2);
+}

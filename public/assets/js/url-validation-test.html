@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URL Validation Test</title>
+    <meta name="csrf-token" content="test-token">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .test-result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 3px;
+        }
+        .pass {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .fail {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 3px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .url-input {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+        }
+        .console-output {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 3px;
+            padding: 10px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>URL Validation Test Page</h1>
+    
+    <div class="test-section">
+        <h2>Manual URL Testing</h2>
+        <p>Enter a URL to test validation:</p>
+        <input type="text" id="urlInput" class="url-input" placeholder="Enter URL (e.g., ?id=123&page=1)" value="?id=123&page=1">
+        <br>
+        <button onclick="testSingleUrl()">Test URL</button>
+        <button onclick="testCurrentUrl()">Test Current URL</button>
+        <div id="manualTestResult"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Automated Test Suite</h2>
+        <button onclick="runAutomatedTests()">Run All Tests</button>
+        <div id="automatedTestResults"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>URL Sanitization Test</h2>
+        <input type="text" id="sanitizeInput" class="url-input" placeholder="Enter URL to sanitize" value="?id=123&invalid=abc&page=1">
+        <br>
+        <button onclick="testSanitization()">Sanitize URL</button>
+        <div id="sanitizeResult"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Console Output</h2>
+        <button onclick="clearConsole()">Clear Console</button>
+        <div id="consoleOutput" class="console-output"></div>
+    </div>
+
+    <!-- Include jQuery for compatibility -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    
+    <!-- Mock functions for testing -->
+    <script>
+        // Mock functions that might not be available in test environment
+        window.__ = function(key) { return key; };
+        window.navigateAjax = function(url) { 
+            console.log('Mock AJAX navigation to:', url); 
+        };
+        
+        // Capture console output
+        const originalConsoleLog = console.log;
+        const originalConsoleWarn = console.warn;
+        const originalConsoleError = console.error;
+        
+        function logToPage(message, type = 'log') {
+            const output = document.getElementById('consoleOutput');
+            const timestamp = new Date().toLocaleTimeString();
+            output.textContent += `[${timestamp}] ${type.toUpperCase()}: ${message}\n`;
+            output.scrollTop = output.scrollHeight;
+        }
+        
+        console.log = function(...args) {
+            originalConsoleLog.apply(console, args);
+            logToPage(args.join(' '), 'log');
+        };
+        
+        console.warn = function(...args) {
+            originalConsoleWarn.apply(console, args);
+            logToPage(args.join(' '), 'warn');
+        };
+        
+        console.error = function(...args) {
+            originalConsoleError.apply(console, args);
+            logToPage(args.join(' '), 'error');
+        };
+    </script>
+    
+    <!-- Include the notifications.js file -->
+    <script src="notifications.js"></script>
+    
+    <script>
+        // Test functions
+        function testSingleUrl() {
+            const url = document.getElementById('urlInput').value;
+            const result = window.validateUrl(url);
+            const resultDiv = document.getElementById('manualTestResult');
+            
+            resultDiv.innerHTML = `
+                <div class="test-result ${result ? 'pass' : 'fail'}">
+                    <strong>URL:</strong> ${url}<br>
+                    <strong>Valid:</strong> ${result ? 'Yes ✅' : 'No ❌'}
+                </div>
+            `;
+        }
+        
+        function testCurrentUrl() {
+            const result = window.validateUrl();
+            const resultDiv = document.getElementById('manualTestResult');
+            
+            resultDiv.innerHTML = `
+                <div class="test-result ${result ? 'pass' : 'fail'}">
+                    <strong>Current URL:</strong> ${window.location.href}<br>
+                    <strong>Valid:</strong> ${result ? 'Yes ✅' : 'No ❌'}
+                </div>
+            `;
+        }
+        
+        function runAutomatedTests() {
+            const resultDiv = document.getElementById('automatedTestResults');
+            resultDiv.innerHTML = '<p>Running tests...</p>';
+            
+            // Run the built-in test function
+            if (typeof window.testUrlValidation === 'function') {
+                window.testUrlValidation();
+                resultDiv.innerHTML = '<p>Tests completed. Check console output below for detailed results.</p>';
+            } else {
+                resultDiv.innerHTML = '<p class="fail">Test function not available.</p>';
+            }
+        }
+        
+        function testSanitization() {
+            const url = document.getElementById('sanitizeInput').value;
+            const sanitized = window.sanitizeUrl(url);
+            const resultDiv = document.getElementById('sanitizeResult');
+            
+            resultDiv.innerHTML = `
+                <div class="test-result">
+                    <strong>Original URL:</strong> ${url}<br>
+                    <strong>Sanitized URL:</strong> ${sanitized}
+                </div>
+            `;
+        }
+        
+        function clearConsole() {
+            document.getElementById('consoleOutput').textContent = '';
+        }
+        
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('URL Validation Test Page loaded');
+            console.log('Current URL:', window.location.href);
+            
+            // Test if validation functions are available
+            if (typeof window.validateUrl === 'function') {
+                console.log('✅ window.validateUrl is available');
+            } else {
+                console.error('❌ window.validateUrl is not available');
+            }
+            
+            if (typeof window.sanitizeUrl === 'function') {
+                console.log('✅ window.sanitizeUrl is available');
+            } else {
+                console.error('❌ window.sanitizeUrl is not available');
+            }
+            
+            if (typeof window.safeNavigate === 'function') {
+                console.log('✅ window.safeNavigate is available');
+            } else {
+                console.error('❌ window.safeNavigate is not available');
+            }
+        });
+    </script>
+</body>
+</html>

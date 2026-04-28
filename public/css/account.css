@@ -1,0 +1,71 @@
+.info-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 480px;
+  height: 100%;
+  background: #fff;
+  z-index: 1060;
+  display: flex;
+  flex-direction: column;
+}
+
+.info-panel {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+
+  width: 500px;
+  height: 85%;
+  background: #fff;
+  z-index: 1060;
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3) !important;
+}
+
+.panel-body {
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.panel-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.panel-body::-webkit-scrollbar-thumb {
+  background-color: #dee2e6;
+  border-radius: 10px;
+}
+
+.table-blur {
+  filter: blur(4px);
+  opacity: 0.3;
+  pointer-events: none;
+  transition: all 0.4s ease;
+}
+
+.animate__slideInRight {
+  animation-duration: 0.5s;
+}
+
+.animate__slideOutRight {
+  animation-duration: 0.4s;
+}
+
+.readonly-visual {
+  pointer-events: none;
+  user-select: none;
+}
+
+.readonly-visual .form-check-input {
+  opacity: 1;
+  border-color: #0d6efd;
+}
+
+.readonly-visual .form-check-input:checked {
+  background-color: #0d6efd;
+  border-color: #0d6efd;
+}

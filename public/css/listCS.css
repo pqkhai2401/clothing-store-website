@@ -1,0 +1,64 @@
+.nav-tabs::-webkit-scrollbar {
+	display: none;
+}
+.nav-tabs {
+	-ms-overflow-style: none;
+	scrollbar-width: none;
+}
+
+.custom-modern-tabs .nav-link {
+	color: #494949;
+	font-weight: 400;
+	font-size: 0.95rem;
+	border: none;
+	padding: 12px 24px;
+	background: transparent;
+	position: relative;
+	transition:
+		color 0.3s ease,
+		text-shadow 0.3s ease;
+	white-space: nowrap;
+}
+
+.custom-modern-tabs .nav-link::after {
+	content: "";
+	position: absolute;
+	bottom: 0;
+	left: 50%;
+	width: 0;
+	height: 2px;
+	background: #3498db;
+	transition:
+		width 0.3s ease,
+		transform 0.3s ease;
+	transform: translateX(-50%);
+	border-radius: 10px 10px 0 0;
+}
+
+.custom-modern-tabs .nav-link:hover,
+.custom-modern-tabs .nav-link.active {
+	color: #494949 !important;
+	font-weight: 500 !important;
+	background: transparent !important;
+}
+
+.custom-modern-tabs .nav-link:hover::after,
+.custom-modern-tabs .nav-link.active::after {
+	width: 100%;
+}
+
+.tab-pane.fade {
+	transition:
+		opacity 0.2s linear,
+		transform 0.2s ease-out;
+	transform: translateY(5px);
+}
+.tab-pane.fade.show {
+	transform: translateY(0);
+}
+
+.bg-primary-subtle {
+	background-color: rgb(224, 242, 254) !important;
+	width: 40px;
+	height: 40px;
+}

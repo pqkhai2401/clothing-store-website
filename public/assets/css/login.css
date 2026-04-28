@@ -1,0 +1,230 @@
+body {
+    background-color: #f8f9fa;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.container {
+    max-width: 600px;
+}
+
+.card {
+    border: none;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    background-color: #fff;
+}
+
+.card-header {
+    background-color: #fff;
+    border-bottom: 1px solid #e0e0e0;
+    padding: 15px;
+    text-align: center;
+}
+
+.card-header h4 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #000;
+}
+
+.card-body {
+    padding: 20px;
+}
+
+.form-label {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #333;
+    margin-bottom: 8px;
+}
+
+.form-control {
+    border: 1px solid #d0d0d0;
+    border-radius: 6px;
+    padding: 10px;
+    font-size: 0.9rem;
+    color: #333;
+    transition: border-color 0.3s ease;
+}
+
+.form-control:focus {
+    border-color: #666;
+    box-shadow: none;
+    outline: none;
+}
+
+.form-control::placeholder {
+    color: #999;
+}
+
+.btn-dark {
+    background-color: #000;
+    border: none;
+    border-radius: 6px;
+    padding: 10px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #fff;
+    transition: background-color 0.3s ease;
+}
+
+.btn-dark:hover {
+    background-color: #333;
+}
+
+.d-grid {
+    margin-top: 20px;
+}
+
+.text-center a {
+    color: #333;
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.text-center a:hover {
+    color: #000;
+}
+
+.container-notification-log {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+    width: 300px;
+}
+
+.alert {
+    margin: 20px 0 0;
+    padding: 10px;
+    font-size: 0.85rem;
+    border-radius: 6px;
+}
+
+.alert-success {
+    background-color: #e6f4ea;
+    border-color: #c3e6cb;
+    color: #155724;
+}
+
+.alert-danger {
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+    color: #721c24;
+}
+
+.alert .btn-close {
+    padding: 15px;
+}
+
+/* Logo styling */
+.logo {
+    max-width: 120px;
+    height: auto;
+    margin-bottom: 20px;
+}
+
+/* Header text styling */
+.header p {
+    color: #666;
+    margin-bottom: 20px;
+}
+
+/* Password strength indicator */
+.password-strength {
+    margin-top: 10px;
+}
+
+.password-strength .progress {
+    height: 5px;
+    background-color: #e9ecef;
+    border-radius: 3px;
+}
+
+.password-strength .progress-bar {
+    transition: width 0.3s ease;
+}
+
+.password-requirements {
+    margin-top: 10px;
+}
+
+.password-requirements ul {
+    margin: 5px 0 0 0;
+    padding-left: 0;
+}
+
+.password-requirements li {
+    margin-bottom: 3px;
+    font-size: 0.8rem;
+}
+
+.password-requirements li i {
+    width: 12px;
+    margin-right: 8px;
+}
+
+/* Position relative for password toggle buttons */
+.position-relative {
+    position: relative;
+}
+
+.position-absolute {
+    position: absolute;
+}
+
+/* Password toggle button styling */
+.btn-outline-secondary {
+    background: none;
+    border: none;
+    color: #6c757d;
+    padding: 0.375rem 0.5rem;
+}
+
+.btn-outline-secondary:hover {
+    color: #495057;
+    background: none;
+    border: none;
+}
+
+.btn-outline-secondary:focus {
+    box-shadow: none;
+    border: none;
+}
+
+/* Spinner styling */
+.spinner-border-sm {
+    width: 1rem;
+    height: 1rem;
+}
+
+/* Notification container */
+.container-notification {
+    margin-bottom: 20px;
+}
+
+@media (max-width: 576px) {
+    .container {
+        padding: 15px;
+    }
+
+    .card {
+        width: 100%;
+    }
+
+    .form-control {
+        width: 100%;
+    }
+
+    .logo {
+        max-width: 100px;
+    }
+}
