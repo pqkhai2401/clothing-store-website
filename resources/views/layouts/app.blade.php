@@ -1,25 +1,39 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
 
-@include('layouts.partial.css')
-@yield('css')
+    <title>@yield('title', config('app.name', 'NOIR | Premium Fashion Store'))</title>
 
-<body class="layout-fixed sidebar-expand-lg">
-    <div class="app-wrapper">
-        @include('layouts.partial.header')
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    
+    <!-- Custom Ecommerce CSS -->
+    <link href="{{ asset('css/ecommerce.css') }}" rel="stylesheet">
 
-        @include('layouts.partial.sidebar')
+    @yield('css')
+</head>
+<body>
 
-        <main class="app-main">
-            @yield('content')
-        </main>
+    @include('partials.header')
 
-        @include('layouts.partial.footer')
-    </div>
+    <!-- Main Content Area -->
+    <main>
+        @include('partials.flash-message')
+        @yield('content')
+    </main>
 
-    @include('layouts.partial.js')
+    @include('partials.newsletter')
+    @include('partials.footer')
+
+    <!-- Bootstrap JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+
     @stack('scripts')
-    @stack('modals')
 </body>
-
 </html>

@@ -1,18 +1,35 @@
 <?php
 
-use App\Http\Controllers\ImageController;
+use App\Http\Controllers\Api\ImageController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\AuthController;
+use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\DashboardController;
 
 Route::get('/', function () {
-    return view('welcome');
+    return view('home.index');
 });
 
 Route::name('404-not-found')->get('404-not-found', function () {
     return view('404');
 });
+
+Route::get('/products', function () {
+    return view('products.index');
+});
+
+Route::get('/products/premium-oversized-trench', function () {
+    return view('products.show');
+});
+
+Route::get('/cart', function () {
+    return view('cart.index');
+});
+
+Route::get('/checkout', function () {
+    return view('checkout.index');
+});
+
 
 // Auth
 Route::get('/login', [AuthController::class, 'index'])->name(name: 'auth.loginpage')->middleware('redirect.authenticated');

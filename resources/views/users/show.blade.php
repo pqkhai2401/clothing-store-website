@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.admin')
 @section('title', "Danh sách ảnh bệnh nhân")
 @section('content')
     <main class="app-main container">
