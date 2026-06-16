@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Enums;
 
-enum UserRole: string
+enum PaymentStatus: string
 {
-    case ADMIN = 'admin';
-    case CUSTOMER = 'customer';
+    case UNPAID = 'unpaid';
+    case PAID = 'paid';
 
     /**
      * Get all raw values.
@@ -27,8 +27,8 @@ enum UserRole: string
     public static function labels(): array
     {
         return [
-            self::ADMIN->value => 'Administrator',
-            self::CUSTOMER->value => 'Customer',
+            self::UNPAID->value => 'Unpaid',
+            self::PAID->value => 'Paid',
         ];
     }
 }

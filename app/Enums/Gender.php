@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace App\Enums;
 
-enum UserRole: string
+enum Gender: string
 {
-    case ADMIN = 'admin';
-    case CUSTOMER = 'customer';
+    case MEN = 'men';
+    case WOMEN = 'women';
+    case UNISEX = 'unisex';
 
     /**
      * Get all raw values.
@@ -27,8 +28,9 @@ enum UserRole: string
     public static function labels(): array
     {
         return [
-            self::ADMIN->value => 'Administrator',
-            self::CUSTOMER->value => 'Customer',
+            self::MEN->value => 'Men',
+            self::WOMEN->value => 'Women',
+            self::UNISEX->value => 'Unisex',
         ];
     }
 }
