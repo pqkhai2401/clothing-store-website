@@ -1,5 +1,5 @@
 @php
-    $rAuthor = is_object($review) ? $review->user->name : ($review['author'] ?? 'Anonymous');
+    $rAuthor = is_object($review) ? $review->user->username : ($review['author'] ?? 'Anonymous');
     $rAvatar = is_object($review) ? ($review->user->avatar_url ?? null) : ($review['avatar'] ?? null);
     $rRating = is_object($review) ? $review->rating : ($review['rating'] ?? 5);
     $rComment = is_object($review) ? $review->comment : ($review['comment'] ?? '');

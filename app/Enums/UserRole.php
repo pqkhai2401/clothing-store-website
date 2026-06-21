@@ -7,6 +7,7 @@ namespace App\Enums;
 enum UserRole: string
 {
     case ADMIN = 'admin';
+    case STAFF = 'staff';
     case CUSTOMER = 'customer';
 
     /**
@@ -28,6 +29,7 @@ enum UserRole: string
     {
         return [
             self::ADMIN->value => 'Administrator',
+            self::STAFF->value => 'Staff',
             self::CUSTOMER->value => 'Customer',
         ];
     }

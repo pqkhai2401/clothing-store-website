@@ -67,7 +67,7 @@
                             <li><a class="dropdown-item" href="{{ url('/profile') }}">My Profile</a></li>
                             <li><a class="dropdown-item" href="{{ url('/orders') }}">My Orders</a></li>
                             @if(auth()->user()->isAdmin())
-                                <li><a class="dropdown-item text-primary" href="{{ url('/dashboard') }}">Admin Dashboard</a></li>
+                                <li><a class="dropdown-item text-primary" href="{{ route('admin.dashboard') }}">Admin Dashboard</a></li>
                             @endif
                             <li><hr class="dropdown-divider"></li>
                             <li>

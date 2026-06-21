@@ -28,7 +28,7 @@ $activeSortDir = request('sort_dir');
                     <input type="hidden" name="per_page" value="{{ request('per_page') }}">
                     <input type="hidden" name="id" value="{{ request('id') }}">
                     <input type="hidden" name="name" value="{{ request('name') }}">
-                    <input type="hidden" name="user_name" value="{{ request('user_name') }}">
+                    <input type="hidden" name="email" value="{{ request('email') }}">
                     <input type="hidden" name="sort_by" value="{{ request('sort_by') }}">
                     <input type="hidden" name="sort_dir" value="{{ request('sort_dir') }}">
                     <input type="hidden" name="keyword" value="{{ request('keyword') }}">
@@ -44,7 +44,7 @@ $activeSortDir = request('sort_dir');
                     <i class="fa-solid fa-plus me-1"></i> Tạo
                 </a>
 
-                @include('users.filter')
+                @include('admin.users.filter')
             </div>
         </div>
 
@@ -76,14 +76,14 @@ $activeSortDir = request('sort_dir');
                                     </span>
                                 </span>
                             </th>
-                            <th class="py-3 fw-bold border-bottom-0 sortable-col" width="22%" data-sort="user_name">
+                            <th class="py-3 fw-bold border-bottom-0 sortable-col" width="22%" data-sort="email">
                                 <span class="table-sort-content">
-                                    <span>Tên đăng nhập</span>
+                                    <span>Email</span>
                                     <span class="table-sort-icons">
                                         <i
-                                            class="fa-solid fa-caret-up {{ $activeSortBy === 'user_name' && $activeSortDir === 'asc' ? 'sort-state-active' : 'sort-state-inactive' }}"></i>
+                                            class="fa-solid fa-caret-up {{ $activeSortBy === 'email' && $activeSortDir === 'asc' ? 'sort-state-active' : 'sort-state-inactive' }}"></i>
                                         <i
-                                            class="fa-solid fa-caret-down {{ $activeSortBy === 'user_name' && $activeSortDir === 'desc' ? 'sort-state-active' : 'sort-state-inactive' }}"></i>
+                                            class="fa-solid fa-caret-down {{ $activeSortBy === 'email' && $activeSortDir === 'desc' ? 'sort-state-active' : 'sort-state-inactive' }}"></i>
                                     </span>
                                 </span>
                             </th>
@@ -106,14 +106,33 @@ $activeSortDir = request('sort_dir');
                                     {{ $user->name }}
                                 </td>
                                 <td class="py-3 text-muted fw-bold text-start">
-                                    {{ $user->user_name }}
+                                    {{ $user->email }}
                                 </td>
                                 <td class="py-3 text-muted fw-bold text-start">
-                                    {{ $user->role }}
+                                    {{ $user->role?->name ?? 'Chưa có vai trò' }}
                                 </td>
                                 <!-- Thao tác -->
                                 <td class="text-center">
-                                    <div class="btn-group dropdown" data-bs-auto-close="outside">
+                                    <div class="d-inline-flex align-items-center justify-content-center gap-2 flex-wrap">
+                                        <a class="btn btn-sm btn-outline-info fw-semibold"
+                                            href="{{ route('admin.users.show', $user->id) }}">
+                                            <i class="fas fa-eye me-1"></i> Xem
+                                        </a>
+
+                                        <a class="btn btn-sm btn-outline-warning fw-semibold"
+                                            href="{{ route('admin.users.edit', $user->id) }}">
+                                            <i class="fas fa-edit me-1"></i> Sửa
+                                        </a>
+
+                                        <button type="button" class="btn btn-sm btn-outline-danger fw-semibold"
+                                            data-delete-url="{{ route('admin.users.destroy', $user->id) }}"
+                                            data-delete-name="{{ $user->name }}"
+                                            data-delete-type="người dùng">
+                                            <i class="fas fa-trash me-1"></i> Xóa
+                                        </button>
+                                    </div>
+
+                                    <div class="btn-group dropdown d-none" data-bs-auto-close="outside">
                                         <button type="button"
                                             class="border-0 p-2 action-dropdown-toggle table-action-toggle"
                                             data-bs-toggle="dropdown" aria-expanded="false">

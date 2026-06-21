@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\API;
+namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\AppBaseController;
 use App\Models\User;
@@ -24,6 +24,53 @@ use OpenApi\Attributes as OA;
 )]
 class AuthController extends AppBaseController
 {
+    public function index()
+    {
+        return view('auth.login');
+    }
+
+    public function webLogin(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email',
+            'password' => 'required|string',
+        ], [
+            'email.required' => 'Vui lòng nhập email.',
+            'email.email' => 'Vui lòng nhập địa chỉ email hợp lệ.',
+            'password.required' => 'Vui lòng nhập mật khẩu.',
+        ]);
+
+        if ($validator->fails()) {
+            return back()
+                ->withErrors($validator)
+                ->withInput($request->only('email'));
+        }
+
+        if (! Auth::attempt($request->only('email', 'password'), $request->boolean('remember'))) {
+            return back()
+                ->withInput($request->only('email'))
+                ->with('error', 'Email và mật khẩu không chính xác! Vui lòng thử lại.');
+        }
+
+        $request->session()->regenerate();
+
+        return redirect()
+            ->intended($request->user()->isAdmin() ? route('admin.dashboard') : url('/'))
+            ->with('success', 'Đăng nhập thành công.');
+    }
+
+    public function webLogout(Request $request)
+    {
+        Auth::logout();
+
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return redirect()
+            ->route('auth.loginpage')
+            ->with('success', 'Đăng xuất thành công.');
+    }
+
     #[OA\Post(
         path: "/api/auth/login",
         summary: "Đăng nhập",
