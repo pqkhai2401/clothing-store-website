@@ -36,6 +36,53 @@ class AuthController extends AppBaseController
         return view('auth.login');
     }
 
+    public function registerPage()
+    {
+        return view('auth.register');
+    }
+
+    public function webRegister(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'display_name' => 'required|string|min:2|max:255',
+            'phone_number' => 'required|string|max:20|unique:users,phone_number',
+            'email'        => 'required|email|max:255|unique:users,email',
+            'password'     => 'required|string|min:6|confirmed',
+        ], [
+            'display_name.required' => 'Vui lòng nhập họ và tên.',
+            'display_name.min'      => 'Họ và tên phải có ít nhất 2 ký tự.',
+            'phone_number.required' => 'Vui lòng nhập số điện thoại.',
+            'phone_number.unique'   => 'Số điện thoại đã được sử dụng.',
+            'email.required'        => 'Vui lòng nhập email.',
+            'email.email'           => 'Email không hợp lệ.',
+            'email.unique'          => 'Email đã được sử dụng.',
+            'password.required'     => 'Vui lòng nhập mật khẩu.',
+            'password.min'          => 'Mật khẩu phải có ít nhất 6 ký tự.',
+            'password.confirmed'    => 'Mật khẩu xác nhận không khớp.',
+        ]);
+
+        if ($validator->fails()) {
+            return back()->withErrors($validator)->withInput($request->except('password', 'password_confirmation'));
+        }
+
+        $customerRole = Role::firstOrCreate(['name' => UserRole::CUSTOMER->value]);
+
+        $user = User::create([
+            'username'     => $this->makeUniqueUsername($request->email, $request->display_name),
+            'display_name' => $request->display_name,
+            'phone_number' => $request->phone_number,
+            'email'        => $request->email,
+            'password'     => Hash::make($request->password),
+            'role_id'      => $customerRole->id,
+            'is_active'    => true,
+        ]);
+
+        Auth::login($user);
+        $request->session()->regenerate();
+
+        return redirect()->intended(url('/'))->with('success', 'Đăng ký tài khoản thành công!');
+    }
+
     public function webLogin(Request $request)
     {
         $validator = Validator::make($request->all(), [
