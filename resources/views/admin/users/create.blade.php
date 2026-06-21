@@ -75,13 +75,13 @@
                 <div class="card-body p-4">
                     <div class="row g-4">
                         <div class="col-md-6">
-                            <label for="name" class="form-label fw-semibold">
-                                Họ và tên <span class="text-danger">*</span>
+                            <label for="username" class="form-label fw-semibold">
+                                Username <span class="text-danger">*</span>
                             </label>
-                            <input type="text" name="name" id="name"
-                                class="form-control @error('name') is-invalid @enderror"
-                                value="{{ old('name') }}" placeholder="Ví dụ: Nguyễn Văn A" required>
-                            @error('name')
+                            <input type="text" name="username" id="username"
+                                class="form-control @error('username') is-invalid @enderror"
+                                value="{{ old('username') }}" placeholder="Ví dụ: sales_staff" required>
+                            @error('username')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
