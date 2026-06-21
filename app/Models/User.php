@@ -17,7 +17,7 @@ class User extends Authenticatable
     use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
 
     protected $fillable = [
-        'name',
+        'username',
         'email',
         'password',
         'google_id',
@@ -52,6 +52,22 @@ class User extends Authenticatable
     public function isCustomer(): bool
     {
         return $this->role?->name === UserRole::CUSTOMER->value;
+    }
+
+    /**
+     * Check if the user has the Staff role.
+     */
+    public function isStaff(): bool
+    {
+        return $this->role?->name === UserRole::STAFF->value;
+    }
+
+    /**
+     * Find the user instance for Passport password grant authentication.
+     */
+    public function findForPassport(string $username): ?self
+    {
+        return $this->where('username', $username)->first();
     }
 
     /**

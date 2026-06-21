@@ -19,7 +19,7 @@
         </div>
 
         <div class="app-content">
-            @include('users.list')
+            @include('admin.users.list')
         </div>
     </main>
 @endsection

@@ -8,7 +8,7 @@
 					<div class="col-sm-12">
 						<div class="d-flex align-items-center justify-content-between">
 							<div class="d-flex align-items-center">
-								<h3 class="mb-0 fw-bold text-uppercase" style="color: black;">DASHBOARD</h3>
+								<h3 class="mb-0 fw-bold text-uppercase" style="color: blue;">DASHBOARD</h3>
 							</div>
 						</div>
 					</div>
