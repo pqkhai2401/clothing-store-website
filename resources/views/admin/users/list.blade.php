@@ -58,77 +58,62 @@ $activeSortDir = request('sort_dir');
                 <table class="table table-hover align-middle mb-0 data-table js-ajax-table">
                     <thead class="table-light">
                         <tr class="text-secondary text-uppercase table-head-row">
-                            <th class="text-center py-3 ps-4 fw-bold border-bottom-0 sortable-col" width="10%"
-                                data-sort="id">
+                            <th class="text-center py-3 ps-4 fw-bold border-bottom-0 sortable-col" data-sort="id">
                                 <span class="table-sort-content">
                                     <span>ID</span>
                                     <span class="table-sort-icons">
-                                        <i
-                                            class="fa-solid fa-caret-up {{ $activeSortBy === 'id' && $activeSortDir === 'asc' ? 'sort-state-active' : 'sort-state-inactive' }}"></i>
-                                        <i
-                                            class="fa-solid fa-caret-down {{ $activeSortBy === 'id' && $activeSortDir === 'desc' ? 'sort-state-active' : 'sort-state-inactive' }}"></i>
+                                        <i class="fa-solid fa-caret-up {{ $activeSortBy === 'id' && $activeSortDir === 'asc' ? 'sort-state-active' : 'sort-state-inactive' }}"></i>
+                                        <i class="fa-solid fa-caret-down {{ $activeSortBy === 'id' && $activeSortDir === 'desc' ? 'sort-state-active' : 'sort-state-inactive' }}"></i>
                                     </span>
                                 </span>
                             </th>
-                            <th class="py-3 fw-bold border-bottom-0 sortable-col" width="15%" data-sort="username">
+                            <th class="py-3 fw-bold border-bottom-0 sortable-col" data-sort="username">
                                 <span class="table-sort-content">
                                     <span>Username</span>
                                     <span class="table-sort-icons">
-                                        <i
-                                            class="fa-solid fa-caret-up {{ $activeSortBy === 'username' && $activeSortDir === 'asc' ? 'sort-state-active' : 'sort-state-inactive' }}"></i>
-                                        <i
-                                            class="fa-solid fa-caret-down {{ $activeSortBy === 'username' && $activeSortDir === 'desc' ? 'sort-state-active' : 'sort-state-inactive' }}"></i>
+                                        <i class="fa-solid fa-caret-up {{ $activeSortBy === 'username' && $activeSortDir === 'asc' ? 'sort-state-active' : 'sort-state-inactive' }}"></i>
+                                        <i class="fa-solid fa-caret-down {{ $activeSortBy === 'username' && $activeSortDir === 'desc' ? 'sort-state-active' : 'sort-state-inactive' }}"></i>
                                     </span>
                                 </span>
                             </th>
-                            <th class="py-3 fw-bold border-bottom-0 sortable-col" width="22%" data-sort="email">
+                            <th class="py-3 fw-bold border-bottom-0 sortable-col d-none d-lg-table-cell" data-sort="email">
                                 <span class="table-sort-content">
                                     <span>Email</span>
                                     <span class="table-sort-icons">
-                                        <i
-                                            class="fa-solid fa-caret-up {{ $activeSortBy === 'email' && $activeSortDir === 'asc' ? 'sort-state-active' : 'sort-state-inactive' }}"></i>
-                                        <i
-                                            class="fa-solid fa-caret-down {{ $activeSortBy === 'email' && $activeSortDir === 'desc' ? 'sort-state-active' : 'sort-state-inactive' }}"></i>
+                                        <i class="fa-solid fa-caret-up {{ $activeSortBy === 'email' && $activeSortDir === 'asc' ? 'sort-state-active' : 'sort-state-inactive' }}"></i>
+                                        <i class="fa-solid fa-caret-down {{ $activeSortBy === 'email' && $activeSortDir === 'desc' ? 'sort-state-active' : 'sort-state-inactive' }}"></i>
                                     </span>
                                 </span>
                             </th>
-                            <th class="py-3 fw-bold border-bottom-0" width="16%">
+                            <th class="py-3 fw-bold border-bottom-0 d-none d-md-table-cell">
                                 <span>Vai trò</span>
                             </th>
-                            <th class="text-center py-3 fw-bold border-bottom-0" width="15%">
+                            <th class="text-center py-3 fw-bold border-bottom-0">
                                 <span>Thao tác</span>
                             </th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse ($data as $user)
-                            {{--
-                            <pre>{{ json_encode($user, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
-                            --}}
                             <tr class="transition-base cursor-pointer">
                                 <td class="py-3 text-muted fw-bold text-center">{{ $user->id }}</td>
-                                <td class="py-3 text-muted fw-bold text-start">
-                                    {{ $user->username }}
-                                </td>
-                                <td class="py-3 text-muted fw-bold text-start">
-                                    {{ $user->email }}
-                                </td>
-                                <td class="py-3 text-muted fw-bold text-start">
+                                <td class="py-3 text-muted fw-bold text-start">{{ $user->username }}</td>
+                                <td class="py-3 text-muted fw-bold text-start d-none d-lg-table-cell">{{ $user->email }}</td>
+                                <td class="py-3 text-muted fw-bold text-start d-none d-md-table-cell">
                                     {{ $user->role?->name ?? 'Chưa có vai trò' }}
                                 </td>
                                 <!-- Thao tác -->
-                                <td class="text-center">
-                                    <div class="d-inline-flex align-items-center justify-content-center gap-2 flex-wrap">
+                                <td class="text-center py-3" style="white-space: nowrap;">
+                                    {{-- Inline buttons: chỉ hiện từ xl trở lên --}}
+                                    <div class="d-none d-xl-inline-flex align-items-center gap-2">
                                         <a class="btn btn-sm btn-outline-info fw-semibold"
                                             href="{{ route('admin.users.show', $user->id) }}">
                                             <i class="fas fa-eye me-1"></i> Xem
                                         </a>
-
                                         <a class="btn btn-sm btn-outline-warning fw-semibold"
                                             href="{{ route('admin.users.edit', $user->id) }}">
                                             <i class="fas fa-edit me-1"></i> Sửa
                                         </a>
-
                                         <button type="button" class="btn btn-sm btn-outline-danger fw-semibold"
                                             data-delete-url="{{ route('admin.users.destroy', $user->id) }}"
                                             data-delete-name="{{ $user->username }}"
@@ -137,43 +122,37 @@ $activeSortDir = request('sort_dir');
                                         </button>
                                     </div>
 
-                                    <div class="btn-group dropdown d-none" data-bs-auto-close="outside">
+                                    {{-- Dropdown: hiện khi màn hình < xl --}}
+                                    <div class="btn-group d-xl-none" data-bs-auto-close="outside">
                                         <button type="button"
-                                            class="border-0 p-2 action-dropdown-toggle table-action-toggle"
-                                            data-bs-toggle="dropdown" aria-expanded="false">
-                                            <i class="fas fa-ellipsis-vertical text-secondary"></i>
+                                            class="btn btn-sm btn-outline-secondary border-0 px-2"
+                                            data-bs-toggle="dropdown" aria-expanded="false"
+                                            title="Thao tác">
+                                            <i class="fas fa-ellipsis-vertical"></i>
                                         </button>
-
                                         <ul class="dropdown-menu dropdown-menu-end border-0 shadow-lg rounded-3">
-                                            <!-- view -->
                                             <li>
-                                                <a class="dropdown-item text-info py-2" href="#">
-                                                    <div class="d-flex align-items-center">
-                                                        <i class="fas fa-eye me-2 text-center" style="width: 20px;"></i>
-                                                        <span class="fw-medium">Xem chi tiết</span>
-                                                    </div>
+                                                <a class="dropdown-item text-info py-2"
+                                                    href="{{ route('admin.users.show', $user->id) }}">
+                                                    <i class="fas fa-eye me-2" style="width:16px;"></i>
+                                                    <span class="fw-medium">Xem chi tiết</span>
                                                 </a>
                                             </li>
-
-                                            <!-- edit -->
                                             <li>
-                                                <a class="dropdown-item text-warning py-2" href="{{ route('admin.users.edit', $user->id) }}">
-                                                    <div class="d-flex align-items-center">
-                                                        <i class="fas fa-edit me-2 text-center" style="width: 20px;"></i>
-                                                        <span class="fw-medium">Chỉnh sửa</span>
-                                                    </div>
+                                                <a class="dropdown-item text-warning py-2"
+                                                    href="{{ route('admin.users.edit', $user->id) }}">
+                                                    <i class="fas fa-edit me-2" style="width:16px;"></i>
+                                                    <span class="fw-medium">Chỉnh sửa</span>
                                                 </a>
                                             </li>
-
-                                            <!-- delete -->
+                                            <li><hr class="dropdown-divider my-1"></li>
                                             <li>
-                                                <button type="button" class="dropdown-item text-danger py-2 m-0"
-                                                    data-delete-url="{{ route('admin.users.destroy', $user->id) }}" data-delete-name="{{ $user->username }}"
+                                                <button type="button" class="dropdown-item text-danger py-2"
+                                                    data-delete-url="{{ route('admin.users.destroy', $user->id) }}"
+                                                    data-delete-name="{{ $user->username }}"
                                                     data-delete-type="người dùng">
-                                                    <div class="d-flex align-items-center">
-                                                        <i class="fas fa-trash me-2 text-center" style="width: 20px;"></i>
-                                                        <span class="fw-medium">Xoá</span>
-                                                    </div>
+                                                    <i class="fas fa-trash me-2" style="width:16px;"></i>
+                                                    <span class="fw-medium">Xóa</span>
                                                 </button>
                                             </li>
                                         </ul>
