@@ -1,5 +1,7 @@
 @extends('layouts.admin')
-@section('title', "Thùng rác người dùng")
+
+@section('title', 'Thùng rác người dùng')
+
 @section('content')
     <main class="app-main container">
         <div class="app-content-header">
