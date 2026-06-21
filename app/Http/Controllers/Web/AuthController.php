@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\API;
+namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\AppBaseController;
 use App\Models\User;
@@ -24,17 +24,64 @@ use OpenApi\Attributes as OA;
 )]
 class AuthController extends AppBaseController
 {
+    public function index()
+    {
+        return view('auth.login');
+    }
+
+    public function webLogin(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email',
+            'password' => 'required|string',
+        ], [
+            'email.required' => 'Vui lòng nhập email.',
+            'email.email' => 'Vui lòng nhập địa chỉ email hợp lệ.',
+            'password.required' => 'Vui lòng nhập mật khẩu.',
+        ]);
+
+        if ($validator->fails()) {
+            return back()
+                ->withErrors($validator)
+                ->withInput($request->only('email'));
+        }
+
+        if (! Auth::attempt($request->only('email', 'password'), $request->boolean('remember'))) {
+            return back()
+                ->withInput($request->only('email'))
+                ->with('error', 'Email và mật khẩu không chính xác! Vui lòng thử lại.');
+        }
+
+        $request->session()->regenerate();
+
+        return redirect()
+            ->intended($request->user()->isAdmin() ? route('admin.dashboard') : url('/'))
+            ->with('success', 'Đăng nhập thành công.');
+    }
+
+    public function webLogout(Request $request)
+    {
+        Auth::logout();
+
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return redirect()
+            ->route('auth.loginpage')
+            ->with('success', 'Đăng xuất thành công.');
+    }
+
     #[OA\Post(
         path: "/api/auth/login",
         summary: "Đăng nhập",
-        description: "Đăng nhập bằng user_name và password để nhận access token",
+        description: "Đăng nhập bằng username và password để nhận access token",
         tags: ["Auth"],
         requestBody: new OA\RequestBody(
             required: true,
             content: new OA\JsonContent(
-                required: ["user_name", "password"],
+                required: ["username", "password"],
                 properties: [
-                    new OA\Property(property: "user_name", type: "string", example: "admin123"),
+                    new OA\Property(property: "username", type: "string", example: "admin"),
                     new OA\Property(property: "password", type: "string", format: "password", example: "Admin@123")
                 ]
             )
@@ -51,8 +98,7 @@ class AuthController extends AppBaseController
                             property: "data",
                             properties: [
                                 new OA\Property(property: "id", type: "integer", example: 1),
-                                new OA\Property(property: "name", type: "string", example: "Admin"),
-                                new OA\Property(property: "user_name", type: "string", example: "admin123"),
+                                new OA\Property(property: "username", type: "string", example: "admin"),
                                 new OA\Property(property: "role", type: "string", example: "admin"),
                                 new OA\Property(property: "token_type", type: "string", example: "Bearer"),
                                 new OA\Property(property: "expires_in", type: "integer", example: 86400),
@@ -82,7 +128,7 @@ class AuthController extends AppBaseController
                 content: new OA\JsonContent(
                     properties: [
                         new OA\Property(property: "success", type: "boolean", example: false),
-                        new OA\Property(property: "message", type: "string", example: "Vui lòng nhập user_name!")
+                        new OA\Property(property: "message", type: "string", example: "Vui lòng nhập username!")
                     ],
                     type: "object"
                 )
@@ -103,10 +149,10 @@ class AuthController extends AppBaseController
     public function login(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'user_name' => 'required',
+            'username' => 'required',
             'password' => 'required',
         ], [
-            'user_name.required' => "Vui lòng nhập user_name!",
+            'username.required' => "Vui lòng nhập username!",
             'password.required' => "Vui lòng nhập mật khẩu",
         ]);
 
@@ -115,11 +161,11 @@ class AuthController extends AppBaseController
         }
 
         $credentials = [
-            'user_name' => $request->input('user_name'),
+            'username' => $request->input('username'),
             'password' => $request->input('password'),
         ];
 
-        $user = User::where('user_name', $request->input('user_name'))->first();
+        $user = User::where('username', $request->input('username'))->first();
 
         if (! $user) {
             return $this->sendError('User không tồn tại trong hệ thống!', 422);
@@ -167,7 +213,7 @@ class AuthController extends AppBaseController
         }
 
         $tokenData = [
-            'username' => $user->user_name,
+            'username' => $user->username,
             'password' => $request->password,
             'grant_type' => 'password',
             'client_id' => $oclient->id,
@@ -402,14 +448,14 @@ class AuthController extends AppBaseController
     #[OA\Post(
         path: "/api/auth/request-forgot-password",
         summary: "Yêu cầu đổi mật khẩu",
-        description: "Đặt lại mật khẩu mới thông qua user_name của người dùng",
+        description: "Đặt lại mật khẩu mới thông qua username của người dùng",
         tags: ["Auth"],
         requestBody: new OA\RequestBody(
             required: true,
             content: new OA\JsonContent(
-                required: ["user_name", "new_password"],
+                required: ["username", "new_password"],
                 properties: [
-                    new OA\Property(property: "user_name", type: "string", example: "admin123"),
+                    new OA\Property(property: "username", type: "string", example: "admin"),
                     new OA\Property(property: "new_password", type: "string", format: "password", example: "newpassword123")
                 ]
             )
@@ -455,17 +501,17 @@ class AuthController extends AppBaseController
         try {
 
             $validator = Validator::make($request->all(), [
-                'user_name' => 'required|user_name|exists:users,user_name',
+                'username' => 'required|string|exists:users,username',
                 'new_password' => 'required|min:6'
             ], [
-                'user_name.exists' => 'User này không tồn tại trong hệ thống.'
+                'username.exists' => 'User này không tồn tại trong hệ thống.'
             ]);
 
             if ($validator->fails()) {
                 return response()->json(["success" => false, "message" => $validator->errors()->first()], 422);
             }
 
-            $targetUser = User::where('user_name', $request->user_name)->first();
+            $targetUser = User::where('username', $request->username)->first();
 
             User::where('id', $targetUser->id)->update([
                 'password' => Hash::make($request->new_password)

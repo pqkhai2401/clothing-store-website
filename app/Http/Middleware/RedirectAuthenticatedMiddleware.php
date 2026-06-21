@@ -11,12 +11,11 @@ class RedirectAuthenticatedMiddleware
     public function handle(Request $request, Closure $next)
     {
         if (Auth::check()) {
-            switch (Auth::user()->role) {
-                case 'admin':
-                    return redirect()->route('admin.dashboard')->with('success', 'Đăng nhập thành công!');
-                default:
-                    return redirect()->route('404-not-found');
+            if (Auth::user()->isAdmin()) {
+                return redirect()->route('admin.dashboard')->with('success', 'Signed in successfully.');
             }
+
+            return redirect('/');
         }
 
         return $next($request);
