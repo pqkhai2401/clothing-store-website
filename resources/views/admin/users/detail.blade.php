@@ -42,6 +42,10 @@
                             <div class="fw-semibold">{{ $user->username }}</div>
                         </div>
                         <div class="col-md-6">
+                            <div class="text-muted small text-uppercase fw-semibold mb-1">Tên hiển thị</div>
+                            <div class="fw-semibold">{{ $user->display_name ?? 'Chưa cập nhật' }}</div>
+                        </div>
+                        <div class="col-md-6">
                             <div class="text-muted small text-uppercase fw-semibold mb-1">Email</div>
                             <div class="fw-semibold">{{ $user->email }}</div>
                         </div>

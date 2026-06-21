@@ -31,4 +31,13 @@ Route::get('/checkout', function () {
 // Auth
 Route::get('/login', [AuthController::class, 'index'])->name(name: 'auth.loginpage')->middleware('redirect.authenticated');
 Route::post('/login', [AuthController::class, 'webLogin'])->name(name: 'auth.login');
+Route::get('/register', [AuthController::class, 'registerPage'])->name('auth.registerpage')->middleware('redirect.authenticated');
+Route::post('/register', [AuthController::class, 'webRegister'])->name('auth.register');
+Route::get('/auth/google/redirect', [AuthController::class, 'redirectToGoogle'])
+    ->name('auth.google.redirect')
+    ->middleware('redirect.authenticated');
+Route::get('/auth/google/callback', [AuthController::class, 'handleGoogleCallback'])->name('auth.google.callback');
+Route::view('/forgot-password', 'auth.forgot-password')
+    ->name('auth.password.request')
+    ->middleware('redirect.authenticated');
 Route::get('/logout', action: [AuthController::class, 'webLogout'])->name('auth.logout');

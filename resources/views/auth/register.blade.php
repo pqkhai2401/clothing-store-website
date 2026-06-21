@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Đăng nhập | HK Store')
+@section('title', 'Đăng ký | HK Store')
 
 @section('css')
 <style>
@@ -75,7 +75,7 @@
         line-height: 1.2;
     }
 
-  /* ── Section label ── */
+    /* ── Section label ── */
     .auth-section-label {
         display: flex;
         align-items: left;
@@ -103,15 +103,24 @@
         margin-bottom: 14px;
     }
 
+    .auth-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-bottom: 14px;
+    }
+
+    .auth-row .auth-field { margin-bottom: 0; }
+
     .auth-input {
         width: 100%;
-        height: 54px;
-        padding: 0 24px;
+        height: 52px;
+        padding: 0 22px;
         color: #111111;
         background: #f0f0f0;
         border: 1.5px solid transparent;
         border-radius: 999px;
-        font-size: 17px;
+        font-size: 16px;
         font-weight: 600;
         outline: none;
         box-shadow: none;
@@ -137,9 +146,9 @@
     .password-toggle {
         position: absolute;
         top: 50%;
-        right: 18px;
-        width: 36px;
-        height: 36px;
+        right: 16px;
+        width: 34px;
+        height: 34px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -151,7 +160,7 @@
     }
 
     .password-toggle:hover { color: #2554d9; }
-    .password-field .auth-input { padding-right: 58px; }
+    .password-field .auth-input { padding-right: 54px; }
 
     /* ── Submit ── */
     .auth-submit {
@@ -162,10 +171,10 @@
         background: #000000;
         border: 1px solid #000000;
         border-radius: 999px;
-        font-size: 17px;
+        font-size: 16px;
         font-weight: 800;
-        letter-spacing: .04em;
         text-transform: uppercase;
+        letter-spacing: .04em;
         cursor: pointer;
         transition: background .15s;
     }
@@ -231,7 +240,7 @@
     .google-icon { width: 22px; height: 22px; flex: 0 0 auto; }
 
     .invalid-feedback {
-        margin: 5px 0 0 20px;
+        margin: 5px 0 0 18px;
         font-size: 13px;
         font-weight: 600;
         color: #dc3545;
@@ -239,9 +248,10 @@
     }
 
     @media (max-width: 575.98px) {
-        .auth-section { min-height: auto; padding: 24px 16px 48px; }
+        .auth-section { min-height: auto; padding: 22px 16px 48px; }
         .auth-title { font-size: 28px; }
         .auth-benefits { grid-template-columns: 1fr; }
+        .auth-row { grid-template-columns: 1fr; }
         .auth-benefit-card span { font-size: 16px; }
         .auth-links { flex-direction: column; gap: 10px; }
     }
@@ -251,7 +261,7 @@
 @section('content')
 <section class="auth-section">
     <div class="auth-panel">
-        <div class="auth-logo-slot" aria-label="Vị trí đặt logo"></div>
+        <div class="auth-logo-slot" aria-label="Logo"></div>
 
         {{-- FIXED TOP --}}
         <h1 class="auth-title">Rất nhiều đặc quyền và quyền lợi mua sắm đang chờ bạn</h1>
@@ -268,35 +278,59 @@
             </div>
         </div>
 
-        {{-- FORM ĐĂNG NHẬP --}}
+     
+        {{-- FORM ĐĂNG KÝ --}}
         @if (session('error'))
             <div class="alert alert-danger mb-3" style="border-radius: 12px; font-size: 14px;">{{ session('error') }}</div>
         @endif
 
-        <form action="{{ route('auth.login') }}" method="POST">
+        <form action="{{ route('auth.register') }}" method="POST">
             @csrf
 
+            <div class="auth-row">
+                <div class="auth-field">
+                    <label for="display_name" class="visually-hidden">Họ và tên</label>
+                    <input type="text" name="display_name" id="display_name"
+                        class="auth-input @error('display_name') is-invalid @enderror"
+                        value="{{ old('display_name') }}"
+                        placeholder="Họ và tên"
+                        autocomplete="name" autofocus>
+                    @error('display_name')
+                        <span class="invalid-feedback">{{ $message }}</span>
+                    @enderror
+                </div>
+                <div class="auth-field">
+                    <label for="phone_number" class="visually-hidden">Số điện thoại</label>
+                    <input type="tel" name="phone_number" id="phone_number"
+                        class="auth-input @error('phone_number') is-invalid @enderror"
+                        value="{{ old('phone_number') }}"
+                        placeholder="Số điện thoại"
+                        autocomplete="tel">
+                    @error('phone_number')
+                        <span class="invalid-feedback">{{ $message }}</span>
+                    @enderror
+                </div>
+            </div>
+
             <div class="auth-field">
-                <label for="login" class="visually-hidden">Email hoặc số điện thoại</label>
-                <input type="text" name="login" id="login"
-                    class="auth-input @error('login') is-invalid @enderror"
-                    value="{{ old('login') }}"
-                    placeholder="Email/SĐT của bạn"
-                    autocomplete="username"
-                    required autofocus>
-                @error('login')
+                <label for="reg_email" class="visually-hidden">Email</label>
+                <input type="email" name="email" id="reg_email"
+                    class="auth-input @error('email') is-invalid @enderror"
+                    value="{{ old('email') }}"
+                    placeholder="Email"
+                    autocomplete="email">
+                @error('email')
                     <span class="invalid-feedback">{{ $message }}</span>
                 @enderror
             </div>
 
             <div class="auth-field password-field">
-                <label for="password" class="visually-hidden">Mật khẩu</label>
-                <input type="password" name="password" id="password"
+                <label for="reg_password" class="visually-hidden">Mật khẩu</label>
+                <input type="password" name="password" id="reg_password"
                     class="auth-input @error('password') is-invalid @enderror"
                     placeholder="Mật khẩu"
-                    autocomplete="current-password"
-                    required>
-                <button type="button" class="password-toggle" data-toggle-password="password" aria-label="Hiện mật khẩu">
+                    autocomplete="new-password">
+                <button type="button" class="password-toggle" data-toggle-password="reg_password" aria-label="Hiện mật khẩu">
                     <i class="bi bi-eye"></i>
                 </button>
                 @error('password')
@@ -304,22 +338,21 @@
                 @enderror
             </div>
 
-            <button type="submit" class="btn auth-submit">Đăng nhập</button>
+            <button type="submit" class="btn auth-submit">Đăng ký tài khoản</button>
 
             <div class="auth-links">
-                <a href="{{ route('auth.registerpage') }}" class="auth-link">Đăng ký tài khoản mới</a>
+                <a href="{{ route('auth.loginpage') }}" class="auth-link">Đăng nhập</a>
                 <a href="{{ route('auth.password.request') }}" class="auth-link">Quên mật khẩu?</a>
             </div>
         </form>
 
         {{-- FIXED BOTTOM --}}
         <div class="auth-divider">Hoặc</div>
-
-         {{-- SECTION LABEL --}}
+        
+        {{-- SECTION LABEL --}}
         <div class="auth-section-label">
             <span>Đăng nhập hoặc đăng ký (miễn phí)</span>
         </div>
-
 
         <a href="{{ route('auth.google.redirect') }}" class="google-login-btn">
             <svg class="google-icon" viewBox="0 0 18 18" aria-hidden="true">
