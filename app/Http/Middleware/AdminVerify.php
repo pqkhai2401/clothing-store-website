@@ -19,8 +19,10 @@ class AdminVerify
     public function handle(Request $request, Closure $next)
     {
         if (Auth::check()) {
-            if (Auth::user()->role == 'admin')
+            if (Auth::user()->isAdmin()) {
                 return $next($request);
+            }
+
             return redirect()->route('404-not-found');
         }
 

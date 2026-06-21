@@ -2,50 +2,135 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
-use Database\Factories\UserFactory;
-use Illuminate\Database\Eloquent\Attributes\Fillable;
-use Illuminate\Database\Eloquent\Attributes\Hidden;
+use App\Enums\UserRole;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Support\Facades\Schema;
 use Laravel\Passport\HasApiTokens;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
-#[Fillable(['name', 'user_name', 'password', 'role'])]
-#[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
-    /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable, HasApiTokens, SoftDeletes;
+    use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
+
+    protected $fillable = [
+        'username',
+        'email',
+        'password',
+        'google_id',
+        'phone_number',
+        'role_id',
+        'is_active',
+        'email_verified_at',
+    ];
+
+    protected $hidden = [
+        'password',
+        'remember_token',
+    ];
+
+    protected $casts = [
+        'email_verified_at' => 'datetime',
+        'password' => 'hashed',
+        'is_active' => 'boolean',
+    ];
 
     /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
+     * Check if the user has the Admin role.
      */
-    protected function casts(): array
+    public function isAdmin(): bool
     {
-        return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-        ];
+        return $this->role?->name === UserRole::ADMIN->value;
     }
 
+    /**
+     * Check if the user has the Customer role.
+     */
+    public function isCustomer(): bool
+    {
+        return $this->role?->name === UserRole::CUSTOMER->value;
+    }
+
+    /**
+     * Check if the user has the Staff role.
+     */
+    public function isStaff(): bool
+    {
+        return $this->role?->name === UserRole::STAFF->value;
+    }
+
+    /**
+     * Find the user instance for Passport password grant authentication.
+     */
     public function findForPassport(string $username): ?self
     {
-        $query = $this->newQuery()->where('user_name', $username);
-
-        if (Schema::hasColumn($this->getTable(), 'email')) {
-            $query->orWhere('email', $username);
-        }
-
-        return $query->first();
+        return $this->where('username', $username)->first();
     }
 
-    public function images()
+    /**
+     * Get the role associated with the user.
+     */
+    public function role(): BelongsTo
     {
-        return $this->hasMany(Image::class, 'created_by', 'id');
+        return $this->belongsTo(Role::class);
+    }
+
+    /**
+     * Get the addresses for the user.
+     */
+    public function addresses(): HasMany
+    {
+        return $this->hasMany(Address::class);
+    }
+
+    /**
+     * Get the orders for the user.
+     */
+    public function orders(): HasMany
+    {
+        return $this->hasMany(Order::class);
+    }
+
+    /**
+     * Get the reviews for the user.
+     */
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(Review::class);
+    }
+
+    /**
+     * Get the wishlists for the user.
+     */
+    public function wishlists(): HasMany
+    {
+        return $this->hasMany(Wishlist::class);
+    }
+
+    /**
+     * Get the cart associated with the user.
+     */
+    public function cart(): HasOne
+    {
+        return $this->hasOne(Cart::class);
+    }
+
+    /**
+     * Get the product views (browsing history) for the user.
+     */
+    public function productViews(): HasMany
+    {
+        return $this->hasMany(ProductView::class);
+    }
+
+    /**
+     * Get the search history for the user.
+     */
+    public function searchHistories(): HasMany
+    {
+        return $this->hasMany(SearchHistory::class);
     }
 }

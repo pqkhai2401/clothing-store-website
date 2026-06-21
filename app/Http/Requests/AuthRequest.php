@@ -22,17 +22,16 @@ class AuthRequest extends FormRequest
     public function rules(): array
     {
         return [
-            //
-            'user_name' => 'required',
+            'username' => 'required',
             'password' => 'required',
         ];
     }
+
     public function messages(): array
     {
         return [
-            //
-            'user_name.required' => 'Vui lòng nhập username',
-            'password.required' => 'Vui lòng nhập mật khẩu'
+            'username.required' => 'Vui lòng nhập username',
+            'password.required' => 'Vui lòng nhập mật khẩu',
         ];
     }
 }
