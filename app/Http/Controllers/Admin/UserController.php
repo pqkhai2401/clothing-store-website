@@ -12,7 +12,7 @@ use Illuminate\Validation\Rule;
 class UserController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * Display a listing of users.
      */
     public function index(Request $request)
     {
@@ -22,23 +22,13 @@ class UserController extends Controller
 
         $query = User::with('role');
 
-        $allowedDirs = ['asc', 'desc'];
-
-        if (in_array($sortDir, $allowedDirs, true) && ! empty($sortBy)) {
-            switch ($sortBy) {
-                case 'id':
-                    $query->orderBy('id', $sortDir);
-                    break;
-                case 'name':
-                    $query->orderBy('name', $sortDir);
-                    break;
-                case 'email':
-                    $query->orderBy('email', $sortDir);
-                    break;
-                default:
-                    $query->orderBy('id', 'desc');
-                    break;
-            }
+        if (in_array($sortDir, ['asc', 'desc'], true)) {
+            match ($sortBy) {
+                'id' => $query->orderBy('id', $sortDir),
+                'username' => $query->orderBy('username', $sortDir),
+                'email' => $query->orderBy('email', $sortDir),
+                default => $query->orderBy('id', 'desc'),
+            };
         } else {
             $query->orderBy('id', 'desc');
         }
@@ -49,7 +39,7 @@ class UserController extends Controller
     }
 
     /**
-     * Show the form for creating a new resource.
+     * Show the form for creating a new user.
      */
     public function create()
     {
@@ -59,12 +49,12 @@ class UserController extends Controller
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Store a newly created user.
      */
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name' => ['required', 'string', 'min:2', 'max:255'],
+            'username' => ['required', 'string', 'min:3', 'max:50', 'regex:/^[a-zA-Z0-9_]+$/', 'unique:users,username'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'phone_number' => ['nullable', 'string', 'max:20'],
             'role_id' => ['required', 'integer', 'exists:roles,id'],
@@ -73,7 +63,7 @@ class UserController extends Controller
         ], $this->validationMessages());
 
         User::create([
-            'name' => $validated['name'],
+            'username' => $validated['username'],
             'email' => $validated['email'],
             'phone_number' => $validated['phone_number'] ?? null,
             'role_id' => $validated['role_id'],
@@ -85,7 +75,7 @@ class UserController extends Controller
     }
 
     /**
-     * Display the specified resource.
+     * Display the specified user.
      */
     public function show(string $id)
     {
@@ -95,7 +85,7 @@ class UserController extends Controller
     }
 
     /**
-     * Show the form for editing the specified resource.
+     * Show the form for editing the specified user.
      */
     public function edit(string $id)
     {
@@ -106,14 +96,21 @@ class UserController extends Controller
     }
 
     /**
-     * Update the specified resource in storage.
+     * Update the specified user.
      */
     public function update(Request $request, string $id)
     {
         $user = User::findOrFail($id);
 
         $validated = $request->validate([
-            'name' => ['required', 'string', 'min:2', 'max:255'],
+            'username' => [
+                'required',
+                'string',
+                'min:3',
+                'max:50',
+                'regex:/^[a-zA-Z0-9_]+$/',
+                Rule::unique('users', 'username')->ignore($user->id),
+            ],
             'email' => [
                 'required',
                 'string',
@@ -128,7 +125,7 @@ class UserController extends Controller
         ], $this->validationMessages());
 
         $updateData = [
-            'name' => $validated['name'],
+            'username' => $validated['username'],
             'email' => $validated['email'],
             'phone_number' => $validated['phone_number'] ?? null,
             'role_id' => $validated['role_id'],
@@ -145,7 +142,7 @@ class UserController extends Controller
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Soft delete the specified user.
      */
     public function destroy(string $id)
     {
@@ -156,13 +153,49 @@ class UserController extends Controller
     }
 
     /**
-     * Get validation messages for create and update forms.
+     * Display soft deleted users.
      */
+    public function trash(Request $request)
+    {
+        $perPage = $request->input('per_page', 10);
+        $data = User::onlyTrashed()->with('role')->orderBy('deleted_at', 'desc')->paginate($perPage);
+
+        if ($request->ajax()) {
+            return view('admin.users.trash_list', compact('data'));
+        }
+
+        return view('admin.users.trash_show', compact('data'));
+    }
+
+    /**
+     * Restore a soft deleted user.
+     */
+    public function restore(string $id)
+    {
+        $user = User::onlyTrashed()->findOrFail($id);
+        $user->restore();
+
+        return redirect()->route('admin.users.trash')->with('success', 'Khôi phục người dùng thành công');
+    }
+
+    /**
+     * Permanently delete a soft deleted user.
+     */
+    public function forceDelete(string $id)
+    {
+        $user = User::onlyTrashed()->findOrFail($id);
+        $user->forceDelete();
+
+        return redirect()->route('admin.users.trash')->with('success', 'Xóa vĩnh viễn người dùng thành công');
+    }
+
     private function validationMessages(): array
     {
         return [
-            'name.required' => 'Vui lòng nhập họ và tên',
-            'name.min' => 'Họ và tên phải có ít nhất 2 ký tự',
+            'username.required' => 'Vui lòng nhập username',
+            'username.min' => 'Username phải có ít nhất 3 ký tự',
+            'username.unique' => 'Username đã tồn tại',
+            'username.regex' => 'Username chỉ chứa chữ cái, số và dấu gạch dưới',
             'email.required' => 'Vui lòng nhập email',
             'email.email' => 'Email không đúng định dạng',
             'email.unique' => 'Email đã tồn tại',

@@ -1,6 +1,6 @@
 @php
     $currentUser = auth()->user();
-    $displayName = $currentUser?->name ?: 'Admin';
+    $displayName = $currentUser?->username ?: 'admin';
     $displayEmail = $currentUser?->email ?: 'admin@example.com';
     $userInitial = \Illuminate\Support\Str::of($displayName)->trim()->substr(0, 1)->upper();
     $roleLabel = $currentUser?->role?->name === 'admin' ? 'Quản trị viên' : 'Nhân viên';

@@ -28,7 +28,7 @@
         <div class="app-content">
             <div class="card shadow-sm border">
                 <div class="card-header bg-white py-3">
-                    <h6 class="fw-bold text-dark mb-0 text-uppercase">{{ $user->name }}</h6>
+                    <h6 class="fw-bold text-dark mb-0 text-uppercase">{{ $user->username }}</h6>
                 </div>
 
                 <div class="card-body">
@@ -38,8 +38,8 @@
                             <div class="fw-semibold">{{ $user->id }}</div>
                         </div>
                         <div class="col-md-6">
-                            <div class="text-muted small text-uppercase fw-semibold mb-1">Họ tên</div>
-                            <div class="fw-semibold">{{ $user->name }}</div>
+                            <div class="text-muted small text-uppercase fw-semibold mb-1">Username</div>
+                            <div class="fw-semibold">{{ $user->username }}</div>
                         </div>
                         <div class="col-md-6">
                             <div class="text-muted small text-uppercase fw-semibold mb-1">Email</div>
