@@ -31,6 +31,8 @@ Route::get('/checkout', function () {
 // Auth
 Route::get('/login', [AuthController::class, 'index'])->name(name: 'auth.loginpage')->middleware('redirect.authenticated');
 Route::post('/login', [AuthController::class, 'webLogin'])->name(name: 'auth.login');
+Route::get('/register', [AuthController::class, 'registerPage'])->name('auth.registerpage')->middleware('redirect.authenticated');
+Route::post('/register', [AuthController::class, 'webRegister'])->name('auth.register');
 Route::get('/auth/google/redirect', [AuthController::class, 'redirectToGoogle'])
     ->name('auth.google.redirect')
     ->middleware('redirect.authenticated');
