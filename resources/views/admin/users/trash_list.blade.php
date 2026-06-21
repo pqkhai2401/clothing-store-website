@@ -8,8 +8,7 @@
                     <i class="fa-solid fa-trash text-danger table-header-icon"></i>
                 </div>
                 <h6 class="fw-bold text-dark mb-0 fs-6 text-uppercase table-heading">
-                    Thùng rác người dùng
-                    ({{ $data->total() }})
+                    Thùng rác người dùng ({{ $data->total() }})
                 </h6>
             </div>
 
@@ -27,8 +26,8 @@
                     <thead class="table-light">
                         <tr class="text-secondary text-uppercase table-head-row">
                             <th class="text-center py-3 ps-4 fw-bold border-bottom-0" width="10%">ID</th>
-                            <th class="py-3 fw-bold border-bottom-0" width="20%">Tên người dùng</th>
-                            <th class="py-3 fw-bold border-bottom-0" width="25%">Tên đăng nhập</th>
+                            <th class="py-3 fw-bold border-bottom-0" width="20%">Username</th>
+                            <th class="py-3 fw-bold border-bottom-0" width="25%">Email</th>
                             <th class="py-3 fw-bold border-bottom-0" width="15%">Vai trò</th>
                             <th class="py-3 fw-bold border-bottom-0" width="15%">Ngày xóa</th>
                             <th class="text-center py-3 fw-bold border-bottom-0" width="15%">Thao tác</th>
@@ -38,9 +37,9 @@
                         @forelse ($data as $user)
                             <tr class="transition-base">
                                 <td class="py-3 text-muted fw-bold text-center">{{ $user->id }}</td>
-                                <td class="py-3 text-muted fw-bold">{{ $user->name }}</td>
-                                <td class="py-3 text-muted fw-bold">{{ $user->user_name }}</td>
-                                <td class="py-3 text-muted fw-bold">{{ $user->role }}</td>
+                                <td class="py-3 text-muted fw-bold">{{ $user->username }}</td>
+                                <td class="py-3 text-muted fw-bold">{{ $user->email }}</td>
+                                <td class="py-3 text-muted fw-bold">{{ $user->role?->name ?? 'Chưa có vai trò' }}</td>
                                 <td class="py-3 text-muted fw-bold">
                                     {{ $user->deleted_at->format('d/m/Y H:i') }}
                                 </td>

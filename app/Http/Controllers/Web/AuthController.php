@@ -2,15 +2,22 @@
 
 namespace App\Http\Controllers\Web;
 
+use App\Enums\UserRole;
 use App\Http\Controllers\AppBaseController;
-use App\Models\User;
 use App\Models\Audit;
+use App\Models\Role;
+use App\Models\User;
+use GuzzleHttp\Client;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Laravel\Passport\Client as OClient;
+use Laravel\Socialite\Facades\Socialite;
 use Illuminate\Support\Facades\Validator;
 use OpenApi\Attributes as OA;
+use Throwable;
 
 #[OA\Info(
     version: "1.0.0",
@@ -32,30 +39,36 @@ class AuthController extends AppBaseController
     public function webLogin(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'email' => 'required|email',
+            'login' => 'required|string',
             'password' => 'required|string',
         ], [
-            'email.required' => 'Vui lòng nhập email.',
-            'email.email' => 'Vui lòng nhập địa chỉ email hợp lệ.',
+            'login.required' => 'Vui lòng nhập email hoặc số điện thoại.',
             'password.required' => 'Vui lòng nhập mật khẩu.',
         ]);
 
         if ($validator->fails()) {
             return back()
                 ->withErrors($validator)
-                ->withInput($request->only('email'));
+                ->withInput($request->only('login'));
         }
 
-        if (! Auth::attempt($request->only('email', 'password'), $request->boolean('remember'))) {
+        $login = trim((string) $request->input('login'));
+        $user = User::where('email', $login)
+            ->orWhere('phone_number', $login)
+            ->orWhere('username', $login)
+            ->first();
+
+        if (! $user || ! Hash::check($request->input('password'), $user->password)) {
             return back()
-                ->withInput($request->only('email'))
-                ->with('error', 'Email và mật khẩu không chính xác! Vui lòng thử lại.');
+                ->withInput($request->only('login'))
+                ->with('error', 'Email/SĐT hoặc mật khẩu không chính xác! Vui lòng thử lại.');
         }
 
+        Auth::login($user, $request->boolean('remember'));
         $request->session()->regenerate();
 
         return redirect()
-            ->intended($request->user()->isAdmin() ? route('admin.dashboard') : url('/'))
+            ->intended($user->isAdmin() ? route('admin.dashboard') : url('/'))
             ->with('success', 'Đăng nhập thành công.');
     }
 
@@ -69,6 +82,123 @@ class AuthController extends AppBaseController
         return redirect()
             ->route('auth.loginpage')
             ->with('success', 'Đăng xuất thành công.');
+    }
+
+    public function redirectToGoogle()
+    {
+        if (empty(config('services.google.client_id')) || empty(config('services.google.client_secret'))) {
+            return redirect()
+                ->route('auth.loginpage')
+                ->with('error', 'Google OAuth chưa được cấu hình. Vui lòng điền GOOGLE_CLIENT_ID và GOOGLE_CLIENT_SECRET trong file .env.');
+        }
+
+        return $this->googleProvider()
+            ->scopes(['openid', 'profile', 'email'])
+            ->with(['prompt' => 'select_account'])
+            ->redirect();
+    }
+
+    public function handleGoogleCallback(Request $request)
+    {
+        try {
+            $googleUser = $this->googleProvider()->user();
+        } catch (Throwable $e) {
+            Log::warning('Google OAuth callback failed', [
+                'exception' => $e::class,
+                'message' => $e->getMessage(),
+            ]);
+
+            return redirect()
+                ->route('auth.loginpage')
+                ->with('error', config('app.debug')
+                    ? 'Không thể đăng nhập bằng Google: '.$e->getMessage()
+                    : 'Không thể đăng nhập bằng Google. Vui lòng thử lại.');
+        }
+
+        $email = $googleUser->getEmail();
+
+        if (! $email) {
+            return redirect()
+                ->route('auth.loginpage')
+                ->with('error', 'Tài khoản Google chưa cung cấp email.');
+        }
+
+        $rawGoogleUser = $googleUser->user ?? [];
+
+        if (array_key_exists('email_verified', $rawGoogleUser) && ! filter_var($rawGoogleUser['email_verified'], FILTER_VALIDATE_BOOLEAN)) {
+            return redirect()
+                ->route('auth.loginpage')
+                ->with('error', 'Email Google chưa được xác thực.');
+        }
+
+        $user = User::withTrashed()->where('email', $email)->first();
+
+        if ($user?->trashed()) {
+            $user->restore();
+        }
+
+        if (! $user) {
+            $customerRole = Role::firstOrCreate(['name' => UserRole::CUSTOMER->value]);
+
+            $user = User::create([
+                'username' => $this->makeUniqueUsername($email, $googleUser->getName()),
+                'display_name' => $googleUser->getName(),
+                'email' => $email,
+                'password' => Hash::make(Str::random(40)),
+                'google_id' => $googleUser->getId(),
+                'avatar_url' => $googleUser->getAvatar(),
+                'role_id' => $customerRole->id,
+                'is_active' => true,
+                'email_verified_at' => now(),
+            ]);
+        } else {
+            $user->forceFill([
+                'google_id' => $googleUser->getId() ?: $user->google_id,
+                'display_name' => $googleUser->getName() ?: $user->display_name,
+                'avatar_url' => $googleUser->getAvatar() ?: $user->avatar_url,
+                'email_verified_at' => $user->email_verified_at ?: now(),
+            ])->save();
+        }
+
+        Auth::login($user, true);
+        $request->session()->regenerate();
+
+        return redirect()
+            ->intended($user->isAdmin() ? route('admin.dashboard') : url('/'))
+            ->with('success', 'Đăng nhập bằng Google thành công.');
+    }
+
+    private function makeUniqueUsername(string $email, ?string $displayName = null): string
+    {
+        $baseSource = $displayName ?: Str::before($email, '@');
+        $base = Str::lower(Str::ascii($baseSource));
+        $base = preg_replace('/[^a-z0-9_]+/', '_', $base) ?: 'user';
+        $base = trim($base, '_') ?: 'user';
+        $base = substr($base, 0, 40);
+
+        $username = $base;
+        $counter = 1;
+
+        while (User::withTrashed()->where('username', $username)->exists()) {
+            $suffix = '_'.$counter++;
+            $username = substr($base, 0, 50 - strlen($suffix)).$suffix;
+        }
+
+        return $username;
+    }
+
+    private function googleProvider()
+    {
+        $provider = Socialite::driver('google')->stateless();
+        $caBundle = storage_path('certs/cacert.pem');
+
+        if (is_file($caBundle)) {
+            $provider->setHttpClient(new Client([
+                'verify' => $caBundle,
+            ]));
+        }
+
+        return $provider;
     }
 
     #[OA\Post(
@@ -527,3 +657,4 @@ class AuthController extends AppBaseController
         }
     }
 }
+

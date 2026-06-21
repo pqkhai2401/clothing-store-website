@@ -1,66 +1,261 @@
 @extends('layouts.app')
 
-@section('title', 'Sign In | HK Store')
+@section('title', 'Đăng nhập | HK Store')
 
 @section('css')
 <style>
     .auth-section {
-        min-height: 68vh;
+        min-height: 78vh;
         display: flex;
-        align-items: center;
-        padding: 72px 0;
-        background: #f7f7f5;
+        justify-content: center;
+        padding: 28px 16px 72px;
+        background: #ffffff;
     }
 
     .auth-panel {
         width: 100%;
-        max-width: 460px;
+        max-width: 580px;
         margin: 0 auto;
-        padding: 40px;
-        background: #ffffff;
-        border: 1px solid var(--border-color);
+    }
+
+    .auth-logo-slot {
+        width: 172px;
+        height: 38px;
+        margin-bottom: 14px;
     }
 
     .auth-title {
-        margin-bottom: 8px;
-        font-family: var(--font-serif);
-        font-size: 34px;
-        font-weight: 400;
-        text-transform: uppercase;
+        margin: 0 0 20px;
+        color: #000000;
+        font-size: 36px;
+        font-weight: 800;
+        line-height: 1.12;
+        letter-spacing: 0;
     }
 
-    .auth-subtitle {
-        margin-bottom: 32px;
-        color: var(--muted-text);
-        font-size: 13px;
-        letter-spacing: 1px;
-        text-transform: uppercase;
+    .auth-benefit-label,
+    .auth-social-label {
+        margin: 0 0 8px;
+        color: #000000;
+        font-size: 14px;
+        font-weight: 700;
+        line-height: 1.4;
     }
 
-    .auth-panel .form-label {
-        font-size: 12px;
+    .auth-benefits {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        margin-bottom: 22px;
+    }
+
+    .auth-benefit-card {
+        min-height: 72px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 12px 16px;
+        color: #000000;
+        background: #ffffff;
+        border: 1px solid #dedede;
+        border-radius: 8px;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, .08);
+    }
+
+    .auth-benefit-card i {
+        width: 30px;
+        color: #111111;
+        font-size: 26px;
+        text-align: center;
+    }
+
+    .auth-benefit-card span {
+        display: block;
+        font-size: 18px;
+        font-weight: 800;
+        line-height: 1.2;
+    }
+
+    .auth-field {
+        position: relative;
+        margin-bottom: 18px;
+    }
+
+    .auth-input {
+        width: 100%;
+        height: 56px;
+        padding: 0 28px;
+        color: #111111;
+        background: #ffffff;
+        border: 1px solid #d1d1d1;
+        border-radius: 999px;
+        font-size: 18px;
         font-weight: 600;
-        letter-spacing: 1px;
+        line-height: 56px;
+        box-shadow: none;
+        outline: none;
+    }
+
+    .auth-input::placeholder {
+        color: #c5c8cc;
+        font-weight: 700;
+    }
+
+    .auth-input:focus {
+        border-color: #111111;
+        box-shadow: 0 0 0 3px rgba(0, 0, 0, .08);
+    }
+
+    .auth-input.is-invalid {
+        border-color: #dc3545;
+    }
+
+    .password-toggle {
+        position: absolute;
+        top: 50%;
+        right: 18px;
+        width: 36px;
+        height: 36px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #111111;
+        background: transparent;
+        border: 0;
+        transform: translateY(-50%);
+    }
+
+    .password-toggle:hover {
+        color: #2554d9;
+    }
+
+    .password-field .auth-input {
+        padding-right: 58px;
+    }
+
+    .auth-submit {
+        width: 100%;
+        min-height: 48px;
+        margin-top: 2px;
+        color: #ffffff;
+        background: #000000;
+        border: 1px solid #000000;
+        border-radius: 999px;
+        font-size: 18px;
+        font-weight: 800;
+        letter-spacing: 0;
         text-transform: uppercase;
     }
 
-    .auth-panel .form-control {
-        min-height: 48px;
-        border-radius: 0;
+    .auth-submit:hover,
+    .auth-submit:focus {
+        color: #ffffff;
+        background: #222222;
+        border-color: #222222;
     }
 
-    .auth-panel .form-check-label {
-        color: var(--muted-text);
+    .auth-links {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin: 22px 0 30px;
+    }
+
+    .auth-link {
+        color: #123bdc;
+        font-size: 14px;
+        font-weight: 800;
+        text-decoration: none;
+    }
+
+    .auth-link:hover {
+        color: #000000;
+        text-decoration: underline;
+    }
+
+    .auth-divider {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 0 0 22px;
+        color: #111111;
+        font-size: 14px;
+        font-weight: 700;
+        line-height: 1;
+    }
+
+    .auth-divider::before,
+    .auth-divider::after {
+        content: "";
+        flex: 1;
+        height: 1px;
+        background: #d8d8d8;
+    }
+
+    .google-login-btn {
+        width: 100%;
+        min-height: 52px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        color: #1f1f1f;
+        background: #ffffff;
+        border: 1px solid #d8d8d8;
+        border-radius: 999px;
+        font-size: 15px;
+        font-weight: 800;
+        text-decoration: none;
+    }
+
+    .google-login-btn:hover {
+        color: #000000;
+        background: #f8f8f8;
+        border-color: #bfbfbf;
+    }
+
+    .google-icon {
+        width: 22px;
+        height: 22px;
+        flex: 0 0 auto;
+    }
+
+    .invalid-feedback {
+        margin: 6px 0 0 20px;
         font-size: 13px;
+        font-weight: 600;
     }
 
     @media (max-width: 575.98px) {
         .auth-section {
-            padding: 48px 16px;
+            min-height: auto;
+            padding: 24px 16px 48px;
         }
 
-        .auth-panel {
-            padding: 28px 22px;
+        .auth-title {
+            font-size: 30px;
+        }
+
+        .auth-benefits {
+            grid-template-columns: 1fr;
+        }
+
+        .auth-benefit-card span {
+            font-size: 16px;
+        }
+
+        .auth-input {
+            height: 52px;
+            padding-left: 22px;
+            font-size: 16px;
+            line-height: 52px;
+        }
+
+        .auth-links {
+            align-items: flex-start;
+            flex-direction: column;
+            gap: 10px;
         }
     }
 </style>
@@ -68,54 +263,105 @@
 
 @section('content')
 <section class="auth-section">
-    <div class="container">
-        <div class="auth-panel">
-            <h1 class="auth-title">Đăng nhập</h1>
-            <div class="auth-subtitle">Đăng nhập bằng tài khoản HK store của bạn</div>
+    <div class="auth-panel">
+        <div class="auth-logo-slot" aria-label="Vị trí đặt logo"></div>
 
-            <form action="{{ route('auth.login') }}" method="POST">
-                @csrf
+        <h1 class="auth-title">Rất nhiều đặc quyền và quyền lợi mua sắm đang chờ bạn</h1>
 
-                <div class="mb-3">
-                    <label for="email" class="form-label">Email</label>
-                    <input
-                        type="email"
-                        name="email"
-                        id="email"
-                        class="form-control @error('email') is-invalid @enderror"
-                        value="{{ old('email') }}"
-                        autocomplete="email"
-                        required
-                        autofocus
-                    >
-                    @error('email')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
-                </div>
-
-                <div class="mb-3">
-                    <label for="password" class="form-label">Password</label>
-                    <input
-                        type="password"
-                        name="password"
-                        id="password"
-                        class="form-control @error('password') is-invalid @enderror"
-                        autocomplete="current-password"
-                        required
-                    >
-                    @error('password')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
-                </div>
-
-                <div class="form-check mb-4">
-                    <input class="form-check-input" type="checkbox" name="remember" id="remember" value="1">
-                    <label class="form-check-label" for="remember">Quên mật khẩu</label>
-                </div>
-
-                <button type="submit" class="btn btn-black w-100">Đăng nhập</button>
-            </form>
+        <p class="auth-benefit-label">Quyền lợi dành riêng cho bạn khi tham gia HK Store</p>
+        <div class="auth-benefits">
+            <div class="auth-benefit-card">
+                <i class="bi bi-percent" aria-hidden="true"></i>
+                <span>Voucher<br>ưu đãi</span>
+            </div>
+            <div class="auth-benefit-card">
+                <i class="bi bi-gift" aria-hidden="true"></i>
+                <span>Quà tặng<br>độc quyền</span>
+            </div>
         </div>
+
+        <p class="auth-social-label">Đăng nhập hoặc đăng ký miễn phí</p>
+
+        <form action="{{ route('auth.login') }}" method="POST">
+            @csrf
+
+            <div class="auth-field">
+                <label for="login" class="visually-hidden">Email hoặc số điện thoại</label>
+                <input
+                    type="text"
+                    name="login"
+                    id="login"
+                    class="auth-input @error('login') is-invalid @enderror"
+                    value="{{ old('login') }}"
+                    placeholder="Email/SĐT của bạn"
+                    autocomplete="username"
+                    required
+                    autofocus
+                >
+                @error('login')
+                    <div class="invalid-feedback d-block">{{ $message }}</div>
+                @enderror
+            </div>
+
+            <div class="auth-field password-field">
+                <label for="password" class="visually-hidden">Mật khẩu</label>
+                <input
+                    type="password"
+                    name="password"
+                    id="password"
+                    class="auth-input @error('password') is-invalid @enderror"
+                    placeholder="Mật khẩu"
+                    autocomplete="current-password"
+                    required
+                >
+                <button type="button" class="password-toggle" data-toggle-password="password" aria-label="Hiện mật khẩu">
+                    <i class="bi bi-eye"></i>
+                </button>
+                @error('password')
+                    <div class="invalid-feedback d-block">{{ $message }}</div>
+                @enderror
+            </div>
+
+            <button type="submit" class="btn auth-submit">Đăng nhập</button>
+
+            <div class="auth-links">
+                <a href="{{ Route::has('auth.registerpage') ? route('auth.registerpage') : '#' }}" class="auth-link">Đăng ký tài khoản mới</a>
+                <a href="{{ route('auth.password.request') }}" class="auth-link">Quên mật khẩu</a>
+            </div>
+        </form>
+
+        <div class="auth-divider">Hoặc</div>
+
+        <a href="{{ route('auth.google.redirect') }}" class="google-login-btn">
+            <svg class="google-icon" viewBox="0 0 18 18" aria-hidden="true">
+                <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z"/>
+                <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.8.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.34A9 9 0 0 0 9 18z"/>
+                <path fill="#FBBC05" d="M3.97 10.72A5.41 5.41 0 0 1 3.69 9c0-.6.1-1.18.28-1.72V4.94H.96A9 9 0 0 0 0 9c0 1.45.35 2.82.96 4.06l3.01-2.34z"/>
+                <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.9 11.43 0 9 0A9 9 0 0 0 .96 4.94l3.01 2.34C4.68 5.16 6.66 3.58 9 3.58z"/>
+            </svg>
+            <span>Đăng nhập bằng Google</span>
+        </a>
     </div>
 </section>
 @endsection
+
+@push('scripts')
+<script>
+    document.querySelectorAll('[data-toggle-password]').forEach(function (button) {
+        button.addEventListener('click', function () {
+            const input = document.getElementById(button.dataset.togglePassword);
+            const icon = button.querySelector('i');
+
+            if (!input || !icon) {
+                return;
+            }
+
+            const hidden = input.type === 'password';
+            input.type = hidden ? 'text' : 'password';
+            icon.classList.toggle('bi-eye', !hidden);
+            icon.classList.toggle('bi-eye-slash', hidden);
+            button.setAttribute('aria-label', hidden ? 'Ẩn mật khẩu' : 'Hiện mật khẩu');
+        });
+    });
+</script>
+@endpush
