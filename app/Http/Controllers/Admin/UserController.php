@@ -89,6 +89,7 @@ class UserController extends Controller
             'district' => ['nullable', 'string', 'max:255'],
             'ward' => ['nullable', 'string', 'max:255'],
             'apartment_number' => ['nullable', 'string', 'max:255'],
+            'lock_reason' => ['nullable', 'string', 'max:255'],
         ], $this->validationMessages());
 
         $user = User::create([
@@ -117,7 +118,10 @@ class UserController extends Controller
      */
     public function show(string $id)
     {
-        $user = User::with('role')->findOrFail($id);
+        $user = User::with([
+            'role',
+            'addresses' => fn ($query) => $query->latest('id'),
+        ])->findOrFail($id);
         $context = $this->resolveContext(request(), $user);
         $this->authorizeContext(request(), $context['type'], $user);
 
@@ -132,7 +136,10 @@ class UserController extends Controller
      */
     public function edit(string $id)
     {
-        $user = User::with('role')->findOrFail($id);
+        $user = User::with([
+            'role',
+            'addresses' => fn ($query) => $query->latest('id'),
+        ])->findOrFail($id);
         $context = $this->resolveContext(request(), $user);
         $this->authorizeContext(request(), $context['type'], $user);
         $roles = $this->rolesForContext($context['type']);
@@ -153,6 +160,12 @@ class UserController extends Controller
         $context = $this->resolveContext($request, $user);
         $this->authorizeContext($request, $context['type'], $user);
 
+        $passwordRules = ['nullable', 'string', 'min:6', 'max:255'];
+
+        if ($context['type'] !== 'staff') {
+            $passwordRules[] = 'confirmed';
+        }
+
         $validated = $request->validate([
             'username' => [
                 'required',
@@ -169,7 +182,12 @@ class UserController extends Controller
             'phone_number' => ['nullable', 'string', 'max:20'],
             'role_id' => [$context['type'] === 'all' ? 'required' : 'nullable', 'integer', 'exists:roles,id'],
             'is_active' => ['required', 'boolean'],
-            'password' => ['nullable', 'string', 'min:6', 'max:255', 'confirmed'],
+            'password' => $passwordRules,
+            'city' => ['nullable', 'string', 'max:255'],
+            'district' => ['nullable', 'string', 'max:255'],
+            'ward' => ['nullable', 'string', 'max:255'],
+            'apartment_number' => ['nullable', 'string', 'max:255'],
+            'lock_reason' => ['nullable', 'string', 'max:255'],
         ], $this->validationMessages());
 
         $updateData = [
@@ -178,6 +196,7 @@ class UserController extends Controller
             'phone_number' => $validated['phone_number'] ?? null,
             'role_id' => $this->roleIdForContext($context['type'], $validated['role_id'] ?? $user->role_id, $user),
             'is_active' => (bool) $validated['is_active'],
+            'lock_reason' => (bool) $validated['is_active'] ? null : ($validated['lock_reason'] ?? null),
         ];
 
         if (! empty($validated['password'])) {
@@ -185,6 +204,23 @@ class UserController extends Controller
         }
 
         $user->update($updateData);
+
+        if ($context['type'] === 'staff' && ($this->hasAddressInput($validated) || $user->addresses()->exists())) {
+            $addressData = [
+                'city' => $validated['city'] ?? '',
+                'district' => $validated['district'] ?? '',
+                'ward' => $validated['ward'] ?? '',
+                'apartment_number' => $validated['apartment_number'] ?? '',
+            ];
+
+            $address = $user->addresses()->latest('id')->first();
+
+            if ($address) {
+                $address->update($addressData);
+            } else {
+                $user->addresses()->create($addressData);
+            }
+        }
 
         return redirect()->route($context['routePrefix'].'.list')->with('success', 'Cập nhật '.$context['itemLabelLower'].' thành công');
     }
@@ -425,6 +461,7 @@ class UserController extends Controller
             'district.max' => 'Quận, huyện không được vượt quá 255 ký tự',
             'ward.max' => 'Phường, xã không được vượt quá 255 ký tự',
             'apartment_number.max' => 'Số nhà không được vượt quá 255 ký tự',
+            'lock_reason.max' => 'Lý do khóa tài khoản không được vượt quá 255 ký tự',
         ];
     }
 }
