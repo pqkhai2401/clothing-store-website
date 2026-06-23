@@ -52,6 +52,10 @@
         border-radius: 4px;
     }
 
+    .account-modal .modal-content > form {
+        display: contents;
+    }
+
     .account-modal .modal-header {
         background: #ffffff;
         border-bottom: 1px solid #d8dee6;

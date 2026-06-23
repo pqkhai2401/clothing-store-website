@@ -116,9 +116,10 @@
             return labels[value] || value;
         }
 
-        function readonlyRow(label, value) {
+        function readonlyRow(label, value, muted = false) {
+            const style = muted ? ' style="opacity:0.45"' : '';
             return `
-                <div class="account-modal-readonly">
+                <div class="account-modal-readonly"${style}>
                     <div class="account-modal-readonly-label">${escapeHtml(label)}</div>
                     <div class="account-modal-readonly-value">${escapeHtml(text(value))}</div>
                 </div>
@@ -127,7 +128,7 @@
 
         function renderDetail(user) {
             const rows = [
-                readonlyRow('ID', user.id),
+                readonlyRow('ID', user.id, true),
                 readonlyRow('Họ và tên', user.username),
                 readonlyRow('Email', user.email),
                 readonlyRow('Số điện thoại', user.phone_number),
