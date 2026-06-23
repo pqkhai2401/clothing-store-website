@@ -55,11 +55,34 @@
         .account-modal .modal-content {
             border: 1px solid #d8dee6;
             border-radius: 4px;
+            max-height: calc(100dvh - 3.5rem);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .account-modal .modal-content > form {
+            display: flex;
+            flex-direction: column;
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .account-modal .modal-body {
+            overflow-y: auto;
+            flex: 1 1 auto;
+            min-height: 0;
         }
 
         .account-modal .modal-header {
             background: #ffffff;
             border-bottom: 1px solid #d8dee6;
+            flex-shrink: 0;
+        }
+
+        .account-modal .modal-footer {
+            flex-shrink: 0;
         }
 
         .account-modal .modal-title {
