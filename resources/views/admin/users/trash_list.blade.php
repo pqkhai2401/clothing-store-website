@@ -1,86 +1,88 @@
 <x-notification />
 
-<div class="js-ajax-table-container ajax-table-container">
-    <div class="card shadow-sm border table-page-card">
-        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-wrap border-bottom">
-            <div class="d-flex align-items-center">
-                <div class="bg-danger-subtle rounded-2 p-1 me-2 d-flex align-items-center justify-content-center">
-                    <i class="fa-solid fa-trash text-danger table-header-icon"></i>
-                </div>
-                <h6 class="fw-bold text-dark mb-0 fs-6 text-uppercase table-heading">
-                    Thùng rác người dùng ({{ $data->total() }})
-                </h6>
-            </div>
+@php
+    $showRoleColumn = in_array(($type ?? 'all'), ['all', 'staff'], true);
+    $emptyColspan = $showRoleColumn ? 6 : 5;
+@endphp
 
-            <div class="d-flex gap-2 align-items-center ms-auto flex-wrap">
-                <a href="{{ route('admin.users.list') }}"
-                    class="btn btn-outline-secondary shadow-sm fw-bold d-flex align-items-center">
-                    <i class="fa-solid fa-arrow-left me-1"></i> Quay lại
-                </a>
-            </div>
-        </div>
+<div class="card border shadow-sm">
+    <div class="card-header bg-white py-3">
+        <h2 class="h5 fw-bold mb-0">Thùng rác {{ $itemLabelLower ?? 'tài khoản' }} ({{ $data->total() }})</h2>
+    </div>
 
-        <div class="card-body">
-            <div class="table-responsive js-ajax-table-wrapper">
-                <table class="table table-hover align-middle mb-0 data-table js-ajax-table">
-                    <thead class="table-light">
-                        <tr class="text-secondary text-uppercase table-head-row">
-                            <th class="text-center py-3 ps-4 fw-bold border-bottom-0" width="10%">ID</th>
-                            <th class="py-3 fw-bold border-bottom-0" width="20%">Username</th>
-                            <th class="py-3 fw-bold border-bottom-0" width="25%">Email</th>
-                            <th class="py-3 fw-bold border-bottom-0" width="15%">Vai trò</th>
-                            <th class="py-3 fw-bold border-bottom-0" width="15%">Ngày xóa</th>
-                            <th class="text-center py-3 fw-bold border-bottom-0" width="15%">Thao tác</th>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr class="text-uppercase text-muted small">
+                        <th class="text-center ps-4">ID</th>
+                        <th>Tài khoản</th>
+                        <th>Email</th>
+                        @if($showRoleColumn)
+                            <th>Vai trò</th>
+                        @endif
+                        <th>Ngày xóa</th>
+                        <th class="text-end pe-4">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse ($data as $user)
+                        @if($showRoleColumn)
+                            @php
+                                $roleLabel = match ($user->role?->name) {
+                                    'admin' => 'Quản trị viên',
+                                    'staff' => 'Nhân viên',
+                                    'customer' => 'Khách hàng',
+                                    default => 'Chưa có vai trò',
+                                };
+                            @endphp
+                        @endif
+                        <tr>
+                            <td class="text-center ps-4 fw-semibold text-muted">{{ $user->id }}</td>
+                            <td>
+                                <div class="fw-bold">{{ $user->display_name ?: $user->username }}</div>
+                                <div class="text-muted small">{{ $user->username }}</div>
+                            </td>
+                            <td>{{ $user->email }}</td>
+                            @if($showRoleColumn)
+                                <td><span class="badge text-bg-light border">{{ $roleLabel }}</span></td>
+                            @endif
+                            <td>{{ optional($user->deleted_at)->format('d/m/Y H:i') }}</td>
+                            <td class="text-end pe-4">
+                                <div class="d-inline-flex gap-2">
+                                    <form method="POST" action="{{ route(($routePrefix ?? 'admin.users').'.restore', $user->id) }}">
+                                        @csrf
+                                        @method('PATCH')
+                                        <button type="submit" class="btn btn-sm btn-outline-success fw-semibold">
+                                            <i class="fa-solid fa-rotate-left me-1"></i> Khôi phục
+                                        </button>
+                                    </form>
+
+                                    <form method="POST" action="{{ route(($routePrefix ?? 'admin.users').'.forceDelete', $user->id) }}"
+                                        onsubmit="return confirm('Xóa vĩnh viễn {{ $itemLabelLower ?? 'tài khoản' }} này? Hành động này không thể hoàn tác.')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-sm btn-outline-danger fw-semibold">
+                                            <i class="fa-solid fa-trash me-1"></i> Xóa vĩnh viễn
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        @forelse ($data as $user)
-                            <tr class="transition-base">
-                                <td class="py-3 text-muted fw-bold text-center">{{ $user->id }}</td>
-                                <td class="py-3 text-muted fw-bold">{{ $user->username }}</td>
-                                <td class="py-3 text-muted fw-bold">{{ $user->email }}</td>
-                                <td class="py-3 text-muted fw-bold">{{ $user->role?->name ?? 'Chưa có vai trò' }}</td>
-                                <td class="py-3 text-muted fw-bold">
-                                    {{ $user->deleted_at->format('d/m/Y H:i') }}
-                                </td>
-                                <td class="text-center">
-                                    <div class="d-flex justify-content-center gap-2">
-                                        <form method="POST" action="{{ route('admin.users.restore', $user->id) }}">
-                                            @csrf
-                                            @method('PATCH')
-                                            <button type="submit"
-                                                class="btn btn-sm btn-outline-success fw-bold d-flex align-items-center">
-                                                <i class="fa-solid fa-rotate-left me-1"></i> Khôi phục
-                                            </button>
-                                        </form>
-
-                                        <form method="POST" action="{{ route('admin.users.forceDelete', $user->id) }}"
-                                            onsubmit="return confirm('Xóa vĩnh viễn người dùng này? Hành động này không thể hoàn tác.')">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit"
-                                                class="btn btn-sm btn-outline-danger fw-bold d-flex align-items-center">
-                                                <i class="fa-solid fa-trash me-1"></i> Xóa vĩnh viễn
-                                            </button>
-                                        </form>
-                                    </div>
-                                </td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="6" class="text-center py-5 border-bottom-0">
-                                    <div class="d-flex flex-column align-items-center justify-content-center table-empty-state">
-                                        <i class="fa-solid fa-inbox text-muted mb-3 table-empty-icon"></i>
-                                        <h5 class="text-muted mb-2">Thùng rác trống</h5>
-                                    </div>
-                                </td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-
-                @include('layouts.components.pagination', ['paginator' => $data])
-            </div>
+                    @empty
+                        <tr>
+                            <td colspan="{{ $emptyColspan }}" class="text-center py-5">
+                                <i class="fa-solid fa-inbox text-muted mb-3" style="font-size: 42px;"></i>
+                                <div class="fw-semibold text-muted">Thùng rác trống</div>
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
         </div>
+    </div>
+
+    <div class="card-footer bg-white">
+        @include('layouts.components.pagination', ['paginator' => $data])
     </div>
 </div>

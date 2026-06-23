@@ -4,12 +4,13 @@
     $displayEmail = $currentUser?->email ?: 'admin@example.com';
     $userInitial = \Illuminate\Support\Str::of($displayName)->trim()->substr(0, 1)->upper();
     $roleLabel = $currentUser?->role?->name === 'admin' ? 'Quản trị viên' : 'Nhân viên';
-    $profileUrl = $currentUser ? route('admin.users.edit', $currentUser->id) : '#';
+    $profileUrl = $currentUser?->isAdmin() ? route('admin.users.edit', $currentUser->id) : '#';
+    $brandUrl = $currentUser?->isAdmin() ? route('admin.dashboard') : route('admin.customers.list');
 @endphp
 
 <aside class="app-sidebar admin-sidebar">
     <div class="sidebar-brand admin-sidebar-brand">
-        <a href="{{ route('admin.dashboard') }}" class="brand-link admin-brand-link">
+        <a href="{{ $brandUrl }}" class="brand-link admin-brand-link">
             <span class="admin-brand-mark">
                 {{ $userInitial }}
             </span>

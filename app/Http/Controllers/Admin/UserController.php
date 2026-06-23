@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class UserController extends Controller
@@ -16,16 +18,30 @@ class UserController extends Controller
      */
     public function index(Request $request)
     {
+        $context = $this->resolveContext($request);
+        $this->authorizeContext($request, $context['type']);
+
         $perPage = $request->input('per_page', 10);
         $sortBy = $request->input('sort_by', 'id');
         $sortDir = $request->input('sort_dir', 'desc');
 
         $query = User::with('role');
+        $this->applyTypeFilter($query, $context['type']);
+
+        if ($keyword = trim((string) $request->input('keyword'))) {
+            $query->where(function ($subQuery) use ($keyword) {
+                $subQuery->where('username', 'like', "%{$keyword}%")
+                    ->orWhere('display_name', 'like', "%{$keyword}%")
+                    ->orWhere('email', 'like', "%{$keyword}%")
+                    ->orWhere('phone_number', 'like', "%{$keyword}%");
+            });
+        }
 
         if (in_array($sortDir, ['asc', 'desc'], true)) {
             match ($sortBy) {
                 'id' => $query->orderBy('id', $sortDir),
                 'username' => $query->orderBy('username', $sortDir),
+                'display_name' => $query->orderBy('display_name', $sortDir),
                 'email' => $query->orderBy('email', $sortDir),
                 default => $query->orderBy('id', 'desc'),
             };
@@ -35,7 +51,10 @@ class UserController extends Controller
 
         $data = $query->paginate($perPage);
 
-        return view('admin.users.show', compact('data'));
+        return view('admin.users.show', [
+            'data' => $data,
+            ...$context,
+        ]);
     }
 
     /**
@@ -43,9 +62,15 @@ class UserController extends Controller
      */
     public function create()
     {
-        $roles = Role::orderBy('name')->get();
+        $request = request();
+        $context = $this->resolveContext($request);
+        $this->authorizeContext($request, $context['type']);
+        $roles = $this->rolesForContext($context['type']);
 
-        return view('admin.users.create', compact('roles'));
+        return view('admin.users.create', [
+            'roles' => $roles,
+            ...$context,
+        ]);
     }
 
     /**
@@ -53,25 +78,42 @@ class UserController extends Controller
      */
     public function store(Request $request)
     {
+        $context = $this->resolveContext($request);
+        $this->authorizeContext($request, $context['type']);
+
         $validated = $request->validate([
-            'username' => ['required', 'string', 'min:3', 'max:50', 'regex:/^[a-zA-Z0-9_]+$/', 'unique:users,username'],
+            'display_name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'phone_number' => ['nullable', 'string', 'max:20'],
-            'role_id' => ['required', 'integer', 'exists:roles,id'],
+            'role_id' => [$context['type'] === 'all' ? 'required' : 'nullable', 'integer', 'exists:roles,id'],
             'is_active' => ['required', 'boolean'],
-            'password' => ['required', 'string', 'min:6', 'max:255', 'confirmed'],
+            'password' => ['required', 'string', 'min:6', 'max:255'],
+            'city' => ['nullable', 'string', 'max:255'],
+            'district' => ['nullable', 'string', 'max:255'],
+            'ward' => ['nullable', 'string', 'max:255'],
+            'apartment_number' => ['nullable', 'string', 'max:255'],
         ], $this->validationMessages());
 
-        User::create([
-            'username' => $validated['username'],
+        $user = User::create([
+            'username' => $this->makeUniqueUsername($validated['display_name'], $validated['email']),
+            'display_name' => $validated['display_name'],
             'email' => $validated['email'],
             'phone_number' => $validated['phone_number'] ?? null,
-            'role_id' => $validated['role_id'],
+            'role_id' => $this->roleIdForContext($context['type'], $validated['role_id'] ?? null),
             'is_active' => (bool) $validated['is_active'],
             'password' => Hash::make($validated['password']),
         ]);
 
-        return redirect()->route('admin.users.list')->with('success', 'Tạo người dùng thành công');
+        if ($this->hasAddressInput($validated)) {
+            $user->addresses()->create([
+                'city' => $validated['city'] ?? '',
+                'district' => $validated['district'] ?? '',
+                'ward' => $validated['ward'] ?? '',
+                'apartment_number' => $validated['apartment_number'] ?? '',
+            ]);
+        }
+
+        return redirect()->route($context['routePrefix'].'.list')->with('success', 'Tạo '.$context['itemLabelLower'].' thành công');
     }
 
     /**
@@ -80,8 +122,13 @@ class UserController extends Controller
     public function show(string $id)
     {
         $user = User::with('role')->findOrFail($id);
+        $context = $this->resolveContext(request(), $user);
+        $this->authorizeContext(request(), $context['type'], $user);
 
-        return view('admin.users.detail', compact('user'));
+        return view('admin.users.detail', [
+            'user' => $user,
+            ...$context,
+        ]);
     }
 
     /**
@@ -90,9 +137,15 @@ class UserController extends Controller
     public function edit(string $id)
     {
         $user = User::with('role')->findOrFail($id);
-        $roles = Role::orderBy('name')->get();
+        $context = $this->resolveContext(request(), $user);
+        $this->authorizeContext(request(), $context['type'], $user);
+        $roles = $this->rolesForContext($context['type']);
 
-        return view('admin.users.edit', compact('user', 'roles'));
+        return view('admin.users.edit', [
+            'user' => $user,
+            'roles' => $roles,
+            ...$context,
+        ]);
     }
 
     /**
@@ -101,6 +154,8 @@ class UserController extends Controller
     public function update(Request $request, string $id)
     {
         $user = User::findOrFail($id);
+        $context = $this->resolveContext($request, $user);
+        $this->authorizeContext($request, $context['type'], $user);
 
         $validated = $request->validate([
             'username' => [
@@ -111,6 +166,7 @@ class UserController extends Controller
                 'regex:/^[a-zA-Z0-9_]+$/',
                 Rule::unique('users', 'username')->ignore($user->id),
             ],
+            'display_name' => ['nullable', 'string', 'max:255'],
             'email' => [
                 'required',
                 'string',
@@ -119,16 +175,17 @@ class UserController extends Controller
                 Rule::unique('users', 'email')->ignore($user->id),
             ],
             'phone_number' => ['nullable', 'string', 'max:20'],
-            'role_id' => ['required', 'integer', 'exists:roles,id'],
+            'role_id' => [$context['type'] === 'all' ? 'required' : 'nullable', 'integer', 'exists:roles,id'],
             'is_active' => ['required', 'boolean'],
             'password' => ['nullable', 'string', 'min:6', 'max:255', 'confirmed'],
         ], $this->validationMessages());
 
         $updateData = [
             'username' => $validated['username'],
+            'display_name' => $validated['display_name'] ?? null,
             'email' => $validated['email'],
             'phone_number' => $validated['phone_number'] ?? null,
-            'role_id' => $validated['role_id'],
+            'role_id' => $this->roleIdForContext($context['type'], $validated['role_id'] ?? $user->role_id, $user),
             'is_active' => (bool) $validated['is_active'],
         ];
 
@@ -138,7 +195,7 @@ class UserController extends Controller
 
         $user->update($updateData);
 
-        return redirect()->route('admin.users.list')->with('success', 'Cập nhật người dùng thành công');
+        return redirect()->route($context['routePrefix'].'.list')->with('success', 'Cập nhật '.$context['itemLabelLower'].' thành công');
     }
 
     /**
@@ -147,9 +204,11 @@ class UserController extends Controller
     public function destroy(string $id)
     {
         $user = User::findOrFail($id);
+        $context = $this->resolveContext(request(), $user);
+        $this->authorizeContext(request(), $context['type'], $user);
         $user->delete();
 
-        return redirect()->route('admin.users.list')->with('success', 'Xóa người dùng thành công');
+        return redirect()->route($context['routePrefix'].'.list')->with('success', 'Xóa '.$context['itemLabelLower'].' thành công');
     }
 
     /**
@@ -157,14 +216,25 @@ class UserController extends Controller
      */
     public function trash(Request $request)
     {
+        $context = $this->resolveContext($request);
+        $this->authorizeContext($request, $context['type']);
+
         $perPage = $request->input('per_page', 10);
-        $data = User::onlyTrashed()->with('role')->orderBy('deleted_at', 'desc')->paginate($perPage);
+        $query = User::onlyTrashed()->with('role')->orderBy('deleted_at', 'desc');
+        $this->applyTypeFilter($query, $context['type']);
+        $data = $query->paginate($perPage);
 
         if ($request->ajax()) {
-            return view('admin.users.trash_list', compact('data'));
+            return view('admin.users.trash_list', [
+                'data' => $data,
+                ...$context,
+            ]);
         }
 
-        return view('admin.users.trash_show', compact('data'));
+        return view('admin.users.trash_show', [
+            'data' => $data,
+            ...$context,
+        ]);
     }
 
     /**
@@ -173,9 +243,11 @@ class UserController extends Controller
     public function restore(string $id)
     {
         $user = User::onlyTrashed()->findOrFail($id);
+        $context = $this->resolveContext(request(), $user);
+        $this->authorizeContext(request(), $context['type'], $user);
         $user->restore();
 
-        return redirect()->route('admin.users.trash')->with('success', 'Khôi phục người dùng thành công');
+        return redirect()->route($context['routePrefix'].'.trash')->with('success', 'Khôi phục '.$context['itemLabelLower'].' thành công');
     }
 
     /**
@@ -184,9 +256,162 @@ class UserController extends Controller
     public function forceDelete(string $id)
     {
         $user = User::onlyTrashed()->findOrFail($id);
+        $context = $this->resolveContext(request(), $user);
+        $this->authorizeContext(request(), $context['type'], $user);
         $user->forceDelete();
 
-        return redirect()->route('admin.users.trash')->with('success', 'Xóa vĩnh viễn người dùng thành công');
+        return redirect()->route($context['routePrefix'].'.trash')->with('success', 'Xóa vĩnh viễn '.$context['itemLabelLower'].' thành công');
+    }
+
+    private function resolveContext(Request $request, ?User $user = null): array
+    {
+        $type = $request->route('account_type') ?: $request->query('type');
+
+        if (! $type && $user?->role?->name === UserRole::STAFF->value) {
+            $type = 'staff';
+        }
+
+        if (! $type && $user?->role?->name === UserRole::CUSTOMER->value) {
+            $type = 'customer';
+        }
+
+        $type = in_array($type, ['staff', 'customer', 'all'], true) ? $type : 'all';
+
+        return match ($type) {
+            'staff' => [
+                'type' => 'staff',
+                'pageTitle' => 'Quản lý nhân sự',
+                'pageDescription' => 'Quản trị viên có thể thêm, sửa hoặc xóa tài khoản nhân viên.',
+                'sectionTitle' => 'Quản lý tài khoản nhân viên',
+                'listTitle' => 'Danh sách nhân sự',
+                'itemLabel' => 'Nhân viên',
+                'itemLabelLower' => 'nhân viên',
+                'createLabel' => 'Thêm nhân viên',
+                'routePrefix' => 'admin.staff',
+            ],
+            'customer' => [
+                'type' => 'customer',
+                'pageTitle' => 'Quản lý khách hàng',
+                'pageDescription' => 'Nhân viên và quản trị viên có thể thêm, sửa hoặc xóa tài khoản khách hàng.',
+                'sectionTitle' => 'Quản lý tài khoản khách hàng',
+                'listTitle' => 'Danh sách khách hàng',
+                'itemLabel' => 'Khách hàng',
+                'itemLabelLower' => 'khách hàng',
+                'createLabel' => 'Thêm khách hàng',
+                'routePrefix' => 'admin.customers',
+            ],
+            default => [
+                'type' => 'all',
+                'pageTitle' => 'Quản lý tài khoản',
+                'pageDescription' => 'Danh sách tổng hợp tài khoản nhân sự và khách hàng.',
+                'sectionTitle' => 'Quản lý tài khoản',
+                'listTitle' => 'Danh sách tài khoản',
+                'itemLabel' => 'Tài khoản',
+                'itemLabelLower' => 'tài khoản',
+                'createLabel' => 'Thêm tài khoản',
+                'routePrefix' => 'admin.users',
+            ],
+        };
+    }
+
+    private function authorizeContext(Request $request, string $type, ?User $targetUser = null): void
+    {
+        $currentUser = $request->user();
+
+        if (! $currentUser) {
+            abort(401);
+        }
+
+        if ($type === 'customer') {
+            if (! $currentUser->isAdmin() && ! $currentUser->isStaff()) {
+                abort(403);
+            }
+
+            if ($targetUser && ! $targetUser->isCustomer()) {
+                abort(403);
+            }
+
+            return;
+        }
+
+        if (! $currentUser->isAdmin()) {
+            abort(403);
+        }
+
+        if ($type === 'staff' && $targetUser && ! $targetUser->isStaff() && ! $targetUser->isAdmin()) {
+            abort(403);
+        }
+    }
+
+    private function applyTypeFilter($query, string $type): void
+    {
+        if ($type === 'staff') {
+            $query->whereHas('role', fn ($roleQuery) => $roleQuery->whereIn('name', [
+                UserRole::ADMIN->value,
+                UserRole::STAFF->value,
+            ]));
+        }
+
+        if ($type === 'customer') {
+            $query->whereHas('role', fn ($roleQuery) => $roleQuery->where('name', UserRole::CUSTOMER->value));
+        }
+    }
+
+    private function rolesForContext(string $type)
+    {
+        if ($type === 'staff') {
+            return Role::where('name', UserRole::STAFF->value)->get();
+        }
+
+        if ($type === 'customer') {
+            return Role::where('name', UserRole::CUSTOMER->value)->get();
+        }
+
+        return Role::orderBy('name')->get();
+    }
+
+    private function roleIdForContext(string $type, ?int $fallbackRoleId, ?User $user = null): int
+    {
+        if ($type === 'staff' && $user?->isAdmin()) {
+            return (int) $user->role_id;
+        }
+
+        $roleName = match ($type) {
+            'staff' => UserRole::STAFF->value,
+            'customer' => UserRole::CUSTOMER->value,
+            default => null,
+        };
+
+        if ($roleName) {
+            return Role::where('name', $roleName)->value('id')
+                ?? Role::create(['name' => $roleName])->id;
+        }
+
+        return (int) $fallbackRoleId;
+    }
+
+    private function makeUniqueUsername(string $displayName, string $email): string
+    {
+        $baseSource = $displayName ?: Str::before($email, '@');
+        $base = Str::lower(Str::ascii($baseSource));
+        $base = preg_replace('/[^a-z0-9_]+/', '_', $base) ?: Str::before($email, '@');
+        $base = trim($base, '_') ?: 'user';
+        $base = substr($base, 0, 40);
+        $username = $base;
+        $counter = 1;
+
+        while (User::withTrashed()->where('username', $username)->exists()) {
+            $suffix = '_'.$counter++;
+            $username = substr($base, 0, 50 - strlen($suffix)).$suffix;
+        }
+
+        return $username;
+    }
+
+    private function hasAddressInput(array $validated): bool
+    {
+        return collect(['city', 'district', 'ward', 'apartment_number'])
+            ->contains(fn (string $field) => filled($validated[$field] ?? null));
     }
 
     private function validationMessages(): array
@@ -196,6 +421,8 @@ class UserController extends Controller
             'username.min' => 'Username phải có ít nhất 3 ký tự',
             'username.unique' => 'Username đã tồn tại',
             'username.regex' => 'Username chỉ chứa chữ cái, số và dấu gạch dưới',
+            'display_name.required' => 'Vui lòng nhập họ và tên',
+            'display_name.max' => 'Tên hiển thị không được vượt quá 255 ký tự',
             'email.required' => 'Vui lòng nhập email',
             'email.email' => 'Email không đúng định dạng',
             'email.unique' => 'Email đã tồn tại',
@@ -207,6 +434,10 @@ class UserController extends Controller
             'password.required' => 'Vui lòng nhập mật khẩu',
             'password.min' => 'Mật khẩu phải có ít nhất 6 ký tự',
             'password.confirmed' => 'Mật khẩu xác nhận không khớp',
+            'city.max' => 'Tỉnh, thành phố không được vượt quá 255 ký tự',
+            'district.max' => 'Quận, huyện không được vượt quá 255 ký tự',
+            'ward.max' => 'Phường, xã không được vượt quá 255 ký tự',
+            'apartment_number.max' => 'Số nhà không được vượt quá 255 ký tự',
         ];
     }
 }
