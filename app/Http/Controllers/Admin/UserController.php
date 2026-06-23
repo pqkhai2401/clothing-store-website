@@ -137,30 +137,7 @@ class UserController extends Controller
             ]);
         }
 
-        return view('admin.users.detail', [
-            'user' => $user,
-            ...$context,
-        ]);
-    }
-
-    /**
-     * Show the form for editing the specified user.
-     */
-    public function edit(string $id)
-    {
-        $user = User::with([
-            'role',
-            'addresses' => fn ($query) => $query->latest('id'),
-        ])->findOrFail($id);
-        $context = $this->resolveContext(request(), $user);
-        $this->authorizeContext(request(), $context['type'], $user);
-        $roles = $this->rolesForContext($context['type']);
-
-        return view('admin.users.edit', [
-            'user' => $user,
-            'roles' => $roles,
-            ...$context,
-        ]);
+        return redirect()->route($context['routePrefix'].'.list');
     }
 
     /**
@@ -482,7 +459,7 @@ class UserController extends Controller
             'role_id' => $user->role_id,
             'role_name' => $user->role?->name,
             'is_active' => (bool) $user->is_active,
-            'status_label' => $user->is_active ? 'Đang hoạt động' : 'Đã khóa',
+            'status_label' => $user->is_active ? 'Đang hoạt động' : 'Ngưng hoạt động',
             'lock_reason' => $user->lock_reason,
             'city' => $address?->city,
             'district' => $address?->district,
@@ -513,7 +490,7 @@ class UserController extends Controller
             'district.max' => 'Quận, huyện không được vượt quá 255 ký tự',
             'ward.max' => 'Phường, xã không được vượt quá 255 ký tự',
             'apartment_number.max' => 'Số nhà không được vượt quá 255 ký tự',
-            'lock_reason.max' => 'Lý do khóa tài khoản không được vượt quá 255 ký tự',
+            'lock_reason.max' => 'Lý do ngưng hoạt động không được vượt quá 255 ký tự',
         ];
     }
 }

@@ -148,7 +148,7 @@ class AuthController extends AppBaseController
         if (! $user->is_active) {
             return back()
                 ->withInput($request->only('login'))
-                ->withErrors(['auth' => 'Tài khoản của bạn đã bị khóa.']);
+                ->withErrors(['auth' => 'Tài khoản của bạn đã ngưng hoạt động.']);
         }
 
         Auth::login($user, $request->boolean('remember'));
@@ -240,7 +240,7 @@ class AuthController extends AppBaseController
         } elseif (! $user->is_active) {
             return redirect()
                 ->route('auth.loginpage')
-                ->with('error', 'Tài khoản của bạn đã bị khóa.');
+                ->with('error', 'Tài khoản của bạn đã ngưng hoạt động.');
         } else {
             $user->forceFill([
                 'google_id' => $googleUser->getId() ?: $user->google_id,
@@ -403,7 +403,7 @@ class AuthController extends AppBaseController
         }
 
         if (! $user->is_active) {
-            return $this->sendError('Tài khoản của bạn đã bị khóa.', 403);
+            return $this->sendError('Tài khoản của bạn đã ngưng hoạt động.', 403);
         }
 
         if (! Auth::attempt($credentials)) {
