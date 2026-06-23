@@ -18,18 +18,24 @@
 
     @yield('css')
 </head>
-<body>
+<body class="@yield('body_class')">
 
-    @include('partials.header')
+    @unless(View::hasSection('auth_standalone'))
+        @include('partials.header')
+    @endunless
 
     <!-- Main Content Area -->
     <main>
-        @include('partials.flash-message')
+        @unless(View::hasSection('auth_standalone') || request()->routeIs('auth.registerpage') || request()->routeIs('auth.loginpage'))
+            @include('partials.flash-message')
+        @endunless
         @yield('content')
     </main>
 
-    @include('partials.newsletter')
-    @include('partials.footer')
+    @unless(View::hasSection('auth_standalone'))
+        @include('partials.newsletter')
+        @include('partials.footer')
+    @endunless
 
     <!-- Bootstrap JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>

@@ -1,23 +1,20 @@
 @extends('layouts.admin')
 
-@section('title', 'Thùng rác người dùng')
+@section('title', 'Thùng rác '.$itemLabelLower)
 
 @section('content')
-    <main class="app-main container">
-        <div class="app-content-header">
-            <div class="container-fluid">
-                <div class="row my-3">
-                    <div class="col-sm-12 px-0">
-                        <div class="d-flex align-items-center justify-content-between">
-                            <h3 class="mb-0 fw-bold text-uppercase">Thùng rác người dùng</h3>
-                        </div>
-                    </div>
-                </div>
+    <main class="app-main container-fluid py-4">
+        <div class="d-flex align-items-start justify-content-between gap-3 mb-4 flex-wrap">
+            <div>
+                <h1 class="h3 fw-bold mb-1">Thùng rác {{ $itemLabelLower ?? 'tài khoản' }}</h1>
+                <div class="text-muted">Danh sách {{ $itemLabelLower ?? 'tài khoản' }} đã bị xóa mềm.</div>
             </div>
+
+            <a href="{{ route(($routePrefix ?? 'admin.users').'.list') }}" class="btn btn-light border fw-semibold">
+                <i class="fa-solid fa-arrow-left me-1"></i> Quay lại
+            </a>
         </div>
 
-        <div class="app-content">
-            @include('admin.users.trash_list')
-        </div>
+        @include('admin.users.trash_list')
     </main>
 @endsection
