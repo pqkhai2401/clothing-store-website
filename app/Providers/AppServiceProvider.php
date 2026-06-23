@@ -46,9 +46,16 @@ class AppServiceProvider extends ServiceProvider
                             'parent' => [],
                         ],
                         [
-                            'title' => 'Quản lý người dùng',
-                            'url' => route('admin.users.list'),
-                            'active_pattern' => 'admin/users*',
+                            'title' => 'Quản lý nhân sự',
+                            'url' => route('admin.staff.list'),
+                            'active_pattern' => 'admin/staff*',
+                            'icon' => 'fa-solid fa-user-tie',
+                            'parent' => [],
+                        ],
+                        [
+                            'title' => 'Quản lý khách hàng',
+                            'url' => route('admin.customers.list'),
+                            'active_pattern' => 'admin/customers*',
                             'icon' => 'fa-solid fa-users',
                             'parent' => [],
                         ],
@@ -106,6 +113,16 @@ class AppServiceProvider extends ServiceProvider
                             'url' => $adminUrl('admin.revenue.index', '/admin/revenue'),
                             'active_pattern' => 'admin/revenue*',
                             'icon' => 'fa-solid fa-chart-line',
+                            'parent' => [],
+                        ],
+                    ];
+                } elseif ($user->isStaff()) {
+                    $menu = [
+                        [
+                            'title' => 'Quản lý khách hàng',
+                            'url' => route('admin.customers.list'),
+                            'active_pattern' => 'admin/customers*',
+                            'icon' => 'fa-solid fa-users',
                             'parent' => [],
                         ],
                     ];

@@ -1,196 +1,169 @@
 @php
     $prefix = $prefix ?? '';
-    $perPageKey = $prefix.'perPage';
-    $currentPerPage = $paginator->perPage();
+    $currentPerPage = (int) $paginator->perPage();
+    $perPageOptions = [10, 25, 50, 100];
+    $firstItem = $paginator->firstItem() ?? 0;
+    $lastItem = $paginator->lastItem() ?? 0;
+    $total = $paginator->total();
 @endphp
 
-@if ($paginator->total() > 0 && ($paginator->hasPages() || $currentPerPage > 10))
-    <div class="d-flex align-items-center justify-content-end mt-2 pt-3">
-        <div class="d-flex align-items-center border-bottom pb-2 ps-3">
-            <div class="d-flex align-items-center me-4 text-muted custom-dropdown-wrapper">
-                <label class="text-muted fw-medium me-2 mb-0" style="font-size: 0.85rem;">Hiển thị:</label>
+<div class="table-pagination-footer">
+    <div class="table-pagination-control">
+        <span class="table-pagination-label">Rows per page:</span>
 
-                <div class="dropdown">
-                    <button class="btn btn-sm d-flex align-items-center justify-content-between custom-btn-select"
-                        type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <span id="{{ $prefix }}perPageDropdownText" class="fw-normal text-dark">{{ $currentPerPage }}</span>
-                        <i class="fas fa-chevron-down ms-2 text-muted" style="font-size: 0.7rem; margin-top: 2px;"></i>
-                    </button>
+        <div class="dropdown">
+            <button class="btn table-pagination-select" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <span id="{{ $prefix }}perPageDropdownText">{{ $currentPerPage }}</span>
+                <i class="fa-solid fa-caret-down ms-2"></i>
+            </button>
 
-                    <ul class="dropdown-menu dropdown-menu-end custom-dropdown-menu shadow-sm">
-                        <li><a class="dropdown-item {{ $currentPerPage == 10 ? 'active' : '' }}" href="#"
-                                onclick="selectPerPageCustom(event, 10, '{{ $prefix }}')">10</a></li>
-                        <li><a class="dropdown-item {{ $currentPerPage == 20 ? 'active' : '' }}" href="#"
-                                onclick="selectPerPageCustom(event, 20, '{{ $prefix }}')">20</a></li>
-                        <li><a class="dropdown-item {{ $currentPerPage == 50 ? 'active' : '' }}" href="#"
-                                onclick="selectPerPageCustom(event, 50, '{{ $prefix }}')">50</a></li>
-                        <li><a class="dropdown-item {{ $currentPerPage == 100 ? 'active' : '' }}" href="#"
-                                onclick="selectPerPageCustom(event, 100, '{{ $prefix }}')">100</a></li>
-                    </ul>
-                </div>
-
-                <select id="{{ $prefix }}hiddenPerPageSelect" class="d-none custom-select-pagination" @if(! isset($isAjax) || ! $isAjax) onchange="changeRowsPerPage(this.value, '{{ $prefix }}')" @endif>
-                    <option value="10" {{ $currentPerPage == 10 ? 'selected' : '' }}>10</option>
-                    <option value="20" {{ $currentPerPage == 20 ? 'selected' : '' }}>20</option>
-                    <option value="50" {{ $currentPerPage == 50 ? 'selected' : '' }}>50</option>
-                    <option value="100" {{ $currentPerPage == 100 ? 'selected' : '' }}>100</option>
-                </select>
-            </div>
-
-            <div class="d-flex align-items-center">
-                <span class="text-muted me-3 fw-medium" style="font-size: 0.85rem;">
-                    {{ $paginator->firstItem() ?? 0 }}-{{ $paginator->lastItem() ?? 0 }} of {{ $paginator->total() }}
-                </span>
-
-                <nav aria-label="Page navigation">
-                    <ul class="pagination mb-0 custom-pagination">
-                        @if ($paginator->onFirstPage())
-                            <li class="page-item disabled">
-                                <span class="page-link" style="border-color: #e2e8f0;">&lt;</span>
-                            </li>
-                        @else
-                            <li class="page-item">
-                                <a class="page-link" style="border-color: #e2e8f0; color:black " href="{{ request()->url() }}"
-                                    data-url="{{ $paginator->previousPageUrl() }}">&lt;</a>
-                            </li>
-                        @endif
-
-                        @if ($paginator->hasMorePages())
-                            <li class="page-item">
-                                <a class="page-link" style="border-color: #e2e8f0; color:black " href="{{ request()->url() }}"
-                                    data-url="{{ $paginator->nextPageUrl() }}">&gt;</a>
-                            </li>
-                        @else
-                            <li class="page-item disabled">
-                                <span class="page-link" style="border-color: #e2e8f0;">&gt;</span>
-                            </li>
-                        @endif
-                    </ul>
-                </nav>
-            </div>
+            <ul class="dropdown-menu dropdown-menu-end table-pagination-menu">
+                @foreach ($perPageOptions as $option)
+                    <li>
+                        <a class="dropdown-item {{ $currentPerPage === $option ? 'active' : '' }}" href="#"
+                            onclick="selectPerPageCustom(event, {{ $option }}, '{{ $prefix }}')">
+                            {{ $option }}
+                        </a>
+                    </li>
+                @endforeach
+            </ul>
         </div>
+
+        <select id="{{ $prefix }}hiddenPerPageSelect" class="d-none custom-select-pagination"
+            onchange="changeRowsPerPage(this.value, '{{ $prefix }}')">
+            @foreach ($perPageOptions as $option)
+                <option value="{{ $option }}" {{ $currentPerPage === $option ? 'selected' : '' }}>
+                    {{ $option }}
+                </option>
+            @endforeach
+        </select>
     </div>
-@endif
+
+    <span class="table-pagination-range">
+        {{ $firstItem }}-{{ $lastItem }} of {{ $total }}
+    </span>
+
+    <nav aria-label="Pagination">
+        <ul class="pagination table-pagination-nav mb-0">
+            <li class="page-item {{ $paginator->onFirstPage() ? 'disabled' : '' }}">
+                @if ($paginator->onFirstPage())
+                    <span class="page-link" aria-disabled="true">
+                        <i class="fa-solid fa-chevron-left"></i>
+                    </span>
+                @else
+                    <a class="page-link" href="{{ $paginator->previousPageUrl() }}">
+                        <i class="fa-solid fa-chevron-left"></i>
+                    </a>
+                @endif
+            </li>
+
+            <li class="page-item {{ $paginator->hasMorePages() ? '' : 'disabled' }}">
+                @if ($paginator->hasMorePages())
+                    <a class="page-link" href="{{ $paginator->nextPageUrl() }}">
+                        <i class="fa-solid fa-chevron-right"></i>
+                    </a>
+                @else
+                    <span class="page-link" aria-disabled="true">
+                        <i class="fa-solid fa-chevron-right"></i>
+                    </span>
+                @endif
+            </li>
+        </ul>
+    </nav>
+</div>
 
 <style>
-    .ajax-spinner-overlay {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(255, 255, 255, 0.6);
+    .table-pagination-footer {
+        min-height: 48px;
         display: flex;
-        justify-content: center;
         align-items: center;
-        z-index: 1000;
+        justify-content: flex-end;
+        gap: 28px;
+        color: #374151;
+        font-size: 13px;
     }
 
-    .ajax-spinner {
-        width: 40px;
-        height: 40px;
-        border: 4px solid transparent;
-        border-top: 4px solid #0d6efd;
-        border-right: 4px solid #0d6efd;
-        border-bottom: 4px solid #0d6efd;
-        border-radius: 50%;
-        animation: spin 0.8s linear infinite;
+    .table-pagination-control {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
     }
 
-    @keyframes spin {
-        0% {
-            transform: rotate(0deg);
-        }
-
-        100% {
-            transform: rotate(360deg);
-        }
+    .table-pagination-label,
+    .table-pagination-range {
+        white-space: nowrap;
     }
 
-    .custom-btn-select {
-        border: 1px solid #e2e8f0;
-        background-color: #ffffff;
-        border-radius: 6px;
-        padding: 4px 10px;
-        min-width: 65px;
+    .table-pagination-select {
+        min-width: 56px;
         height: 32px;
-        box-shadow: none !important;
-        transition: all 0.2s ease;
-    }
-
-    .custom-btn-select:hover,
-    .custom-btn-select:focus {
-        background-color: #f8fafc;
-        border-color: #cbd5e1;
-    }
-
-    .custom-dropdown-menu {
-        border: 1px solid #f1f5f9;
-        border-radius: 8px;
-        padding: 6px;
-        min-width: 70px;
-        margin-top: 4px !important;
-    }
-
-    .custom-dropdown-menu .dropdown-item {
-        border-radius: 6px;
-        text-align: center;
-        padding: 6px 0;
-        margin-bottom: 2px;
-        color: #475569;
-        font-weight: 500;
-        font-size: 0.9rem;
-        transition: all 0.15s ease;
-    }
-
-    .custom-dropdown-menu .dropdown-item:hover {
-        background-color: #f1f5f9;
-        color: #0f172a;
-    }
-
-    .custom-dropdown-menu .dropdown-item.active {
-        background-color: #eff6ff !important;
-        color: #111010 !important;
-        font-weight: 600 !important;
-    }
-
-    .custom-pagination .page-item {
-        margin: 0 3px;
-    }
-
-    .custom-pagination .page-link {
-        border-radius: 8px !important;
-        border: 1px solid transparent;
-        color: #6c757d;
-        font-weight: 500;
-        min-width: 34px;
-        height: 34px;
-        display: flex;
+        padding: 0 8px;
+        display: inline-flex;
         align-items: center;
         justify-content: center;
-        padding: 0 10px;
-        transition: all 0.25s ease-in-out;
+        color: #111827;
+        background: transparent;
+        border: 0;
+        box-shadow: none !important;
+        font-size: 13px;
     }
 
-    .custom-pagination .page-link:hover {
-        background-color: #dddfe2;
-        color: #0d6efd;
-        border-color: #e9ecef;
-        transform: translateY(-2px);
+    .table-pagination-select:hover,
+    .table-pagination-select:focus {
+        background: #f3f4f6;
     }
 
-    .custom-pagination .page-item.active .page-link {
-        background-color: #0d6efd;
+    .table-pagination-menu {
+        min-width: 72px;
+        padding: 4px;
+        border-radius: 4px;
+    }
+
+    .table-pagination-menu .dropdown-item {
+        border-radius: 3px;
+        font-size: 13px;
+        text-align: center;
+    }
+
+    .table-pagination-menu .dropdown-item.active {
         color: #ffffff;
-        border-color: #0d6efd;
-        box-shadow: 0 4px 8px rgba(13, 110, 253, 0.25);
-        transform: translateY(-1px);
+        background: #174761;
     }
 
-    .custom-pagination .page-item.disabled .page-link {
-        background-color: transparent;
-        color: #dee2e6;
-        cursor: not-allowed;
+    .table-pagination-nav {
+        display: inline-flex;
+        gap: 10px;
+    }
+
+    .table-pagination-nav .page-link {
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #6b7280;
+        background: transparent;
+        border: 0;
+        box-shadow: none;
+    }
+
+    .table-pagination-nav .page-link:hover {
+        color: #111827;
+        background: #f3f4f6;
+    }
+
+    .table-pagination-nav .page-item.disabled .page-link {
+        color: #c7cdd6;
+        background: transparent;
+    }
+
+    @media (max-width: 575.98px) {
+        .table-pagination-footer {
+            justify-content: center;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
     }
 </style>
 
@@ -198,14 +171,25 @@
     function selectPerPageCustom(event, value, prefix = '') {
         event.preventDefault();
 
-        document.getElementById(prefix + 'perPageDropdownText').innerText = value;
+        const dropdownText = document.getElementById(prefix + 'perPageDropdownText');
+        const hiddenSelect = document.getElementById(prefix + 'hiddenPerPageSelect');
 
-        let items = event.target.closest('.custom-dropdown-menu').querySelectorAll('.dropdown-item');
-        items.forEach(item => item.classList.remove('active'));
-        event.target.classList.add('active');
+        if (dropdownText) {
+            dropdownText.innerText = value;
+        }
 
-        let hiddenSelect = document.getElementById(prefix + 'hiddenPerPageSelect');
-        hiddenSelect.value = value;
-        hiddenSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        if (hiddenSelect) {
+            hiddenSelect.value = value;
+        }
+
+        changeRowsPerPage(value, prefix);
+    }
+
+    function changeRowsPerPage(value, prefix = '') {
+        const url = new URL(window.location.href);
+        url.searchParams.set('per_page', value);
+        url.searchParams.delete('perPage');
+        url.searchParams.set('page', '1');
+        window.location.href = url.toString();
     }
 </script>

@@ -44,37 +44,51 @@ class AuthController extends AppBaseController
     public function webRegister(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'display_name' => 'required|string|min:2|max:255',
-            'phone_number' => 'required|string|max:20|unique:users,phone_number',
-            'email'        => 'required|email|max:255|unique:users,email',
-            'password'     => 'required|string|min:6|confirmed',
+            'username' => ['bail', 'required', 'string', 'min:2', 'max:255', "regex:/^[\p{L}\s.'-]+$/u"],
+            'phone_number' => ['bail', 'required', 'string', 'regex:/^(0|\+84)(3|5|7|8|9)[0-9]{8}$/'],
+            'email' => ['bail', 'required', 'email', 'max:255', 'unique:users,email'],
+            'password' => ['bail', 'required', 'string', 'min:8', 'max:64'],
         ], [
-            'display_name.required' => 'Vui lòng nhập họ và tên.',
-            'display_name.min'      => 'Họ và tên phải có ít nhất 2 ký tự.',
+            'username.required' => 'Vui lòng nhập họ và tên.',
+            'username.min' => 'Họ và tên phải có ít nhất 2 ký tự.',
+            'username.max' => 'Họ và tên không được vượt quá 255 ký tự.',
+            'username.regex' => 'Họ và tên không hợp lệ.',
             'phone_number.required' => 'Vui lòng nhập số điện thoại.',
-            'phone_number.unique'   => 'Số điện thoại đã được sử dụng.',
-            'email.required'        => 'Vui lòng nhập email.',
-            'email.email'           => 'Email không hợp lệ.',
-            'email.unique'          => 'Email đã được sử dụng.',
-            'password.required'     => 'Vui lòng nhập mật khẩu.',
-            'password.min'          => 'Mật khẩu phải có ít nhất 6 ký tự.',
-            'password.confirmed'    => 'Mật khẩu xác nhận không khớp.',
+            'phone_number.regex' => 'Số điện thoại không hợp lệ.',
+            'email.required' => 'Vui lòng nhập email.',
+            'email.email' => 'Email không hợp lệ.',
+            'email.max' => 'Email không được vượt quá 255 ký tự.',
+            'email.unique' => 'Email đã được sử dụng.',
+            'password.required' => 'Vui lòng nhập mật khẩu.',
+            'password.min' => 'Mật khẩu phải có ít nhất 8 ký tự.',
+            'password.max' => 'Mật khẩu không được vượt quá 64 ký tự.',
         ]);
 
+        $validator->after(function ($validator) use ($request) {
+            if ($validator->errors()->has('phone_number')) {
+                return;
+            }
+
+            $phoneNumber = $this->normalizeVietnamesePhone((string) $request->input('phone_number'));
+
+            if (User::where('phone_number', $phoneNumber)->exists()) {
+                $validator->errors()->add('phone_number', 'Số điện thoại đã được sử dụng.');
+            }
+        });
+
         if ($validator->fails()) {
-            return back()->withErrors($validator)->withInput($request->except('password', 'password_confirmation'));
+            return back()->withErrors($validator)->withInput($request->except('password'));
         }
 
         $customerRole = Role::firstOrCreate(['name' => UserRole::CUSTOMER->value]);
 
         $user = User::create([
-            'username'     => $this->makeUniqueUsername($request->email, $request->display_name),
-            'display_name' => $request->display_name,
-            'phone_number' => $request->phone_number,
-            'email'        => $request->email,
-            'password'     => Hash::make($request->password),
-            'role_id'      => $customerRole->id,
-            'is_active'    => true,
+            'username' => trim((string) $request->input('username')),
+            'phone_number' => $this->normalizeVietnamesePhone((string) $request->input('phone_number')),
+            'email' => trim((string) $request->input('email')),
+            'password' => Hash::make($request->input('password')),
+            'role_id' => $customerRole->id,
+            'is_active' => true,
         ]);
 
         Auth::login($user);
@@ -86,11 +100,30 @@ class AuthController extends AppBaseController
     public function webLogin(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'login' => 'required|string',
-            'password' => 'required|string',
+            'login' => [
+                'bail',
+                'required',
+                'string',
+                'max:255',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    $login = trim((string) $value);
+                    $phoneCandidate = $this->normalizeVietnamesePhone($login);
+                    $isEmail = filter_var($login, FILTER_VALIDATE_EMAIL);
+                    $isVietnamesePhone = preg_match('/^0(3|5|7|8|9)[0-9]{8}$/', $phoneCandidate) === 1;
+                    $isExistingUsername = User::where('username', $login)->exists();
+
+                    if (! $isEmail && ! $isVietnamesePhone && ! $isExistingUsername) {
+                        $fail('Email/SĐT không hợp lệ.');
+                    }
+                },
+            ],
+            'password' => ['bail', 'required', 'string', 'min:8', 'max:64'],
         ], [
-            'login.required' => 'Vui lòng nhập email hoặc số điện thoại.',
-            'password.required' => 'Vui lòng nhập mật khẩu.',
+            'login.required' => 'Vui lòng nhập Email/SĐT của bạn.',
+            'login.max' => 'Email/SĐT không được vượt quá 255 ký tự.',
+            'password.required' => 'Vui lòng nhập mật khẩu của bạn.',
+            'password.min' => 'Mật khẩu phải có ít nhất 8 ký tự.',
+            'password.max' => 'Mật khẩu không được vượt quá 64 ký tự.',
         ]);
 
         if ($validator->fails()) {
@@ -100,15 +133,22 @@ class AuthController extends AppBaseController
         }
 
         $login = trim((string) $request->input('login'));
+        $loginPhone = $this->normalizeVietnamesePhone($login);
         $user = User::where('email', $login)
-            ->orWhere('phone_number', $login)
+            ->orWhere('phone_number', $loginPhone)
             ->orWhere('username', $login)
             ->first();
 
         if (! $user || ! Hash::check($request->input('password'), $user->password)) {
             return back()
                 ->withInput($request->only('login'))
-                ->with('error', 'Email/SĐT hoặc mật khẩu không chính xác! Vui lòng thử lại.');
+                ->withErrors(['auth' => 'Hmmm. Email/SĐT hoặc mật khẩu không chính xác. Vui lòng thử lại.']);
+        }
+
+        if (! $user->is_active) {
+            return back()
+                ->withInput($request->only('login'))
+                ->withErrors(['auth' => 'Tài khoản của bạn đã bị khóa.']);
         }
 
         Auth::login($user, $request->boolean('remember'));
@@ -189,7 +229,6 @@ class AuthController extends AppBaseController
 
             $user = User::create([
                 'username' => $this->makeUniqueUsername($email, $googleUser->getName()),
-                'display_name' => $googleUser->getName(),
                 'email' => $email,
                 'password' => Hash::make(Str::random(40)),
                 'google_id' => $googleUser->getId(),
@@ -198,10 +237,13 @@ class AuthController extends AppBaseController
                 'is_active' => true,
                 'email_verified_at' => now(),
             ]);
+        } elseif (! $user->is_active) {
+            return redirect()
+                ->route('auth.loginpage')
+                ->with('error', 'Tài khoản của bạn đã bị khóa.');
         } else {
             $user->forceFill([
                 'google_id' => $googleUser->getId() ?: $user->google_id,
-                'display_name' => $googleUser->getName() ?: $user->display_name,
                 'avatar_url' => $googleUser->getAvatar() ?: $user->avatar_url,
                 'email_verified_at' => $user->email_verified_at ?: now(),
             ])->save();
@@ -215,23 +257,31 @@ class AuthController extends AppBaseController
             ->with('success', 'Đăng nhập bằng Google thành công.');
     }
 
-    private function makeUniqueUsername(string $email, ?string $displayName = null): string
+    private function makeUniqueUsername(string $email, ?string $fullName = null): string
     {
-        $baseSource = $displayName ?: Str::before($email, '@');
-        $base = Str::lower(Str::ascii($baseSource));
-        $base = preg_replace('/[^a-z0-9_]+/', '_', $base) ?: 'user';
-        $base = trim($base, '_') ?: 'user';
-        $base = substr($base, 0, 40);
+        $base = trim((string) ($fullName ?: Str::before($email, '@'))) ?: 'User';
+        $base = mb_substr($base, 0, 240);
 
         $username = $base;
-        $counter = 1;
+        $counter = 2;
 
         while (User::withTrashed()->where('username', $username)->exists()) {
-            $suffix = '_'.$counter++;
-            $username = substr($base, 0, 50 - strlen($suffix)).$suffix;
+            $suffix = ' '.$counter++;
+            $username = mb_substr($base, 0, 255 - mb_strlen($suffix)).$suffix;
         }
 
         return $username;
+    }
+
+    private function normalizeVietnamesePhone(string $phoneNumber): string
+    {
+        $phoneNumber = preg_replace('/[\s.\-]+/', '', trim($phoneNumber));
+
+        if (str_starts_with($phoneNumber, '+84')) {
+            return '0'.substr($phoneNumber, 3);
+        }
+
+        return $phoneNumber;
     }
 
     private function googleProvider()
@@ -350,6 +400,10 @@ class AuthController extends AppBaseController
 
         if (! $user->role) {
             return $this->sendError('Tài khoản không có quyền truy cập.', 422);
+        }
+
+        if (! $user->is_active) {
+            return $this->sendError('Tài khoản của bạn đã bị khóa.', 403);
         }
 
         if (! Auth::attempt($credentials)) {
@@ -704,4 +758,3 @@ class AuthController extends AppBaseController
         }
     }
 }
-

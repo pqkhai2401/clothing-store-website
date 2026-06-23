@@ -68,9 +68,16 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function changeRowsPerPage(value) {
     const url = new URL(window.location.href);
-    url.searchParams.set("perPage", value);
+    url.searchParams.set("per_page", value);
+    url.searchParams.delete("perPage");
     url.searchParams.set("page", "1");
-    loadFormsWithAjax(url.toString());
+
+    if (document.querySelector("#ajax-forms-container")) {
+      loadFormsWithAjax(url.toString());
+      return;
+    }
+
+    window.location.href = url.toString();
   }
 
   function setupAjaxEvents() {
@@ -82,7 +89,8 @@ document.addEventListener("DOMContentLoaded", function () {
       const targetUrl = new URL(href, window.location.origin);
       const selectBox = container.querySelector(".custom-select-pagination");
       if (selectBox && selectBox.value) {
-        targetUrl.searchParams.set("perPage", selectBox.value);
+        targetUrl.searchParams.set("per_page", selectBox.value);
+        targetUrl.searchParams.delete("perPage");
       }
       return targetUrl.toString();
     }
@@ -122,6 +130,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
       const paramsToHide = [
         "perPage",
+        "per_page",
         "page",
         "start_date",
         "end_date",

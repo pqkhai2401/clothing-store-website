@@ -15,10 +15,6 @@ return new class extends Migration
             Schema::table('users', function (Blueprint $table) {
                 $table->renameColumn('name', 'username');
             });
-
-            Schema::table('users', function (Blueprint $table) {
-                $table->unique('username');
-            });
         }
     }
 
@@ -28,10 +24,6 @@ return new class extends Migration
     public function down(): void
     {
         if (Schema::hasColumn('users', 'username') && ! Schema::hasColumn('users', 'name')) {
-            Schema::table('users', function (Blueprint $table) {
-                $table->dropUnique(['username']);
-            });
-
             Schema::table('users', function (Blueprint $table) {
                 $table->renameColumn('username', 'name');
             });
