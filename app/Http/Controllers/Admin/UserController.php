@@ -20,7 +20,7 @@ class UserController extends Controller
         $context = $this->resolveContext($request);
         $this->authorizeContext($request, $context['type']);
 
-        $perPage = $request->input('per_page', 10);
+        $perPage = $this->resolvePerPage($request);
         $sortBy = $request->input('sort_by', 'id');
         $sortDir = $request->input('sort_dir', 'desc');
 
@@ -46,7 +46,7 @@ class UserController extends Controller
             $query->orderBy('id', 'desc');
         }
 
-        $data = $query->paginate($perPage);
+        $data = $query->paginate($perPage)->appends($request->except('page'));
 
         return view('admin.users.show', [
             'data' => $data,
@@ -246,10 +246,10 @@ class UserController extends Controller
         $context = $this->resolveContext($request);
         $this->authorizeContext($request, $context['type']);
 
-        $perPage = $request->input('per_page', 10);
+        $perPage = $this->resolvePerPage($request);
         $query = User::onlyTrashed()->with('role')->orderBy('deleted_at', 'desc');
         $this->applyTypeFilter($query, $context['type']);
-        $data = $query->paginate($perPage);
+        $data = $query->paginate($perPage)->appends($request->except('page'));
 
         if ($request->ajax()) {
             return view('admin.users.trash_list', [
@@ -339,6 +339,14 @@ class UserController extends Controller
                 'routePrefix' => 'admin.users',
             ],
         };
+    }
+
+    private function resolvePerPage(Request $request): int
+    {
+        $perPage = (int) $request->input('per_page', $request->input('perPage', 25));
+        $allowedPerPages = [10, 25, 50, 100];
+
+        return in_array($perPage, $allowedPerPages, true) ? $perPage : 25;
     }
 
     private function authorizeContext(Request $request, string $type, ?User $targetUser = null): void
