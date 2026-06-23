@@ -94,7 +94,7 @@
                                 </span>
                                 <input type="text" name="keyword" class="form-control"
                                     value="{{ request('keyword') }}"
-                                    placeholder="Tìm theo tên, username, email hoặc số điện thoại">
+                                    placeholder="Tìm theo họ tên, email hoặc số điện thoại">
                             </div>
                         </div>
                         <div class="col-auto">
@@ -128,7 +128,7 @@
                                 <tr>
                                     <td class="ps-3">{{ $user->id }}</td>
                                     <td>
-                                        <div class="fw-bold text-dark">{{ $user->display_name ?: $user->username }}</div>
+                                        <div class="fw-bold text-dark">{{ $user->username }}</div>
                                     </td>
                                     <td>
                                         <span class="fw-semibold">{{ $user->email }}</span>
@@ -157,7 +157,7 @@
                                             <button type="button" class="btn btn-sm btn-outline-danger"
                                                 title="Xóa"
                                                 data-delete-url="{{ route(($routePrefix ?? 'admin.users').'.destroy', $user->id) }}"
-                                                data-delete-name="{{ $user->display_name ?: $user->username }}"
+                                                data-delete-name="{{ $user->username }}"
                                                 data-delete-type="{{ $itemLabelLower ?? 'tài khoản' }}">
                                                 <i class="fa-solid fa-trash"></i>
                                             </button>

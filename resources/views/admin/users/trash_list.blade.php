@@ -40,8 +40,7 @@
                         <tr>
                             <td class="text-center ps-4 fw-semibold text-muted">{{ $user->id }}</td>
                             <td>
-                                <div class="fw-bold">{{ $user->display_name ?: $user->username }}</div>
-                                <div class="text-muted small">{{ $user->username }}</div>
+                                <div class="fw-bold">{{ $user->username }}</div>
                             </td>
                             <td>{{ $user->email }}</td>
                             @if($showRoleColumn)

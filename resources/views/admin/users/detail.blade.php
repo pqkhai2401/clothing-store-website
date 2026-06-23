@@ -11,7 +11,7 @@
         <div class="d-flex align-items-start justify-content-between gap-3 mb-4 flex-wrap">
             <div>
                 <h1 class="h3 fw-bold mb-1">Chi tiết {{ $itemLabelLower ?? 'tài khoản' }}</h1>
-                <div class="text-muted">Thông tin tài khoản {{ $user->display_name ?: $user->username }}.</div>
+                <div class="text-muted">Thông tin tài khoản {{ $user->username }}.</div>
             </div>
 
             <div class="d-flex gap-2">
@@ -37,7 +37,7 @@
 
         <div class="card border shadow-sm">
             <div class="card-header bg-white py-3">
-                <h2 class="h5 fw-bold mb-0">{{ $user->display_name ?: $user->username }}</h2>
+                <h2 class="h5 fw-bold mb-0">{{ $user->username }}</h2>
             </div>
 
             <div class="card-body p-4">
@@ -47,12 +47,8 @@
                         <div class="fw-semibold">{{ $user->id }}</div>
                     </div>
                     <div class="col-md-6 col-xl-4">
-                        <div class="text-muted small text-uppercase fw-semibold mb-1">Username</div>
+                        <div class="text-muted small text-uppercase fw-semibold mb-1">Họ và tên</div>
                         <div class="fw-semibold">{{ $user->username }}</div>
-                    </div>
-                    <div class="col-md-6 col-xl-4">
-                        <div class="text-muted small text-uppercase fw-semibold mb-1">Tên hiển thị</div>
-                        <div class="fw-semibold">{{ $user->display_name ?: 'Chưa cập nhật' }}</div>
                     </div>
                     <div class="col-md-6 col-xl-4">
                         <div class="text-muted small text-uppercase fw-semibold mb-1">Email</div>

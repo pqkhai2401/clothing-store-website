@@ -117,19 +117,18 @@
         height: 52px;
         padding: 0 22px;
         color: #111111;
-        background: #f0f0f0;
-        border: 1.5px solid transparent;
+        background: #ffffff;
+        border: 1.5px solid #d8d8d8;
         border-radius: 999px;
         font-size: 16px;
         font-weight: 600;
         outline: none;
         box-shadow: none;
-        transition: border-color .15s, background .15s;
+        transition: border-color .18s ease, background .18s ease, box-shadow .18s ease;
     }
 
     .auth-input::placeholder {
-        color: #aaaaaa;
-        font-weight: 600;
+        color: transparent;
     }
 
     .auth-input:focus {
@@ -139,13 +138,51 @@
     }
 
     .auth-input.is-invalid {
-        border-color: #dc3545;
-        background: #fff5f5;
+        border-color: #e60012;
+        background: #ffffff;
+    }
+
+    .auth-floating-label {
+        position: absolute;
+        top: 26px;
+        left: 22px;
+        z-index: 2;
+        max-width: calc(100% - 70px);
+        padding: 0 8px;
+        color: #888888;
+        background: #ffffff;
+        border-radius: 999px;
+        font-size: 16px;
+        font-weight: 600;
+        line-height: 1;
+        pointer-events: none;
+        transform: translateY(-50%);
+        transform-origin: left center;
+        transition: top .18s ease, color .18s ease, font-size .18s ease, transform .18s ease;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .auth-input:focus + .auth-floating-label,
+    .auth-input:not(:placeholder-shown) + .auth-floating-label {
+        top: 0;
+        color: #666666;
+        font-size: 14px;
+        transform: translateY(-50%);
+    }
+
+    .auth-input:focus + .auth-floating-label {
+        color: #111111;
+    }
+
+    .auth-input.is-invalid + .auth-floating-label {
+        color: #e60012;
     }
 
     .password-toggle {
         position: absolute;
-        top: 50%;
+        top: 26px;
         right: 16px;
         width: 34px;
         height: 34px;
@@ -157,6 +194,7 @@
         border: 0;
         transform: translateY(-50%);
         cursor: pointer;
+        z-index: 3;
     }
 
     .password-toggle:hover { color: #2554d9; }
@@ -240,11 +278,29 @@
     .google-icon { width: 22px; height: 22px; flex: 0 0 auto; }
 
     .invalid-feedback {
-        margin: 5px 0 0 18px;
+        margin: 6px 0 0 12px;
         font-size: 13px;
-        font-weight: 600;
-        color: #dc3545;
-        display: block;
+        font-weight: 700;
+        color: #e60012;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        line-height: 1.35;
+    }
+
+    .invalid-feedback::before {
+        content: "!";
+        width: 16px;
+        height: 16px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 16px;
+        color: #ffffff;
+        background: #e60012;
+        border-radius: 50%;
+        font-size: 11px;
+        font-weight: 800;
     }
 
     @media (max-width: 575.98px) {
@@ -279,33 +335,28 @@
         </div>
 
      
-        {{-- FORM ĐĂNG KÝ --}}
-        @if (session('error'))
-            <div class="alert alert-danger mb-3" style="border-radius: 12px; font-size: 14px;">{{ session('error') }}</div>
-        @endif
-
         <form action="{{ route('auth.register') }}" method="POST">
             @csrf
 
             <div class="auth-row">
                 <div class="auth-field">
-                    <label for="display_name" class="visually-hidden">Họ và tên</label>
-                    <input type="text" name="display_name" id="display_name"
-                        class="auth-input @error('display_name') is-invalid @enderror"
-                        value="{{ old('display_name') }}"
-                        placeholder="Họ và tên"
+                    <input type="text" name="username" id="username"
+                        class="auth-input @error('username') is-invalid @enderror"
+                        value="{{ old('username') }}"
+                        placeholder=" "
                         autocomplete="name" autofocus>
-                    @error('display_name')
+                    <label for="username" class="auth-floating-label">Họ và tên</label>
+                    @error('username')
                         <span class="invalid-feedback">{{ $message }}</span>
                     @enderror
                 </div>
                 <div class="auth-field">
-                    <label for="phone_number" class="visually-hidden">Số điện thoại</label>
                     <input type="tel" name="phone_number" id="phone_number"
                         class="auth-input @error('phone_number') is-invalid @enderror"
                         value="{{ old('phone_number') }}"
-                        placeholder="Số điện thoại"
+                        placeholder=" "
                         autocomplete="tel">
+                    <label for="phone_number" class="auth-floating-label">Số điện thoại</label>
                     @error('phone_number')
                         <span class="invalid-feedback">{{ $message }}</span>
                     @enderror
@@ -313,23 +364,23 @@
             </div>
 
             <div class="auth-field">
-                <label for="reg_email" class="visually-hidden">Email</label>
                 <input type="email" name="email" id="reg_email"
                     class="auth-input @error('email') is-invalid @enderror"
                     value="{{ old('email') }}"
-                    placeholder="Email"
+                    placeholder=" "
                     autocomplete="email">
+                <label for="reg_email" class="auth-floating-label">Email</label>
                 @error('email')
                     <span class="invalid-feedback">{{ $message }}</span>
                 @enderror
             </div>
 
             <div class="auth-field password-field">
-                <label for="reg_password" class="visually-hidden">Mật khẩu</label>
                 <input type="password" name="password" id="reg_password"
                     class="auth-input @error('password') is-invalid @enderror"
-                    placeholder="Mật khẩu"
+                    placeholder=" "
                     autocomplete="new-password">
+                <label for="reg_password" class="auth-floating-label">Mật khẩu</label>
                 <button type="button" class="password-toggle" data-toggle-password="reg_password" aria-label="Hiện mật khẩu">
                     <i class="bi bi-eye"></i>
                 </button>

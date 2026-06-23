@@ -37,18 +37,7 @@
                 <div class="card-body p-4">
                     <div class="row g-4">
                         <div class="col-md-6">
-                            <label for="display_name" class="form-label fw-semibold">Tên hiển thị</label>
-                            <input type="text" name="display_name" id="display_name"
-                                class="form-control @error('display_name') is-invalid @enderror"
-                                value="{{ old('display_name', $user->display_name) }}"
-                                placeholder="Ví dụ: Nguyễn Văn A">
-                            @error('display_name')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-
-                        <div class="col-md-6">
-                            <label for="username" class="form-label fw-semibold">Username <span class="text-danger">*</span></label>
+                            <label for="username" class="form-label fw-semibold">Họ và tên <span class="text-danger">*</span></label>
                             <input type="text" name="username" id="username"
                                 class="form-control @error('username') is-invalid @enderror"
                                 value="{{ old('username', $user->username) }}" required>

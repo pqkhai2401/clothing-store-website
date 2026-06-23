@@ -24,7 +24,9 @@
 
     <!-- Main Content Area -->
     <main>
-        @include('partials.flash-message')
+        @unless(request()->routeIs('auth.registerpage') || request()->routeIs('auth.loginpage'))
+            @include('partials.flash-message')
+        @endunless
         @yield('content')
     </main>
 

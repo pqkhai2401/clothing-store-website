@@ -1,8 +1,8 @@
 @php
     $currentUser = auth()->user();
-    $displayName = $currentUser?->display_name ?: ($currentUser?->username ?: 'admin');
+    $accountName = $currentUser?->username ?: 'admin';
     $displayEmail = $currentUser?->email ?: 'admin@example.com';
-    $userInitial = \Illuminate\Support\Str::of($displayName)->trim()->substr(0, 1)->upper();
+    $userInitial = \Illuminate\Support\Str::of($accountName)->trim()->substr(0, 1)->upper();
     $roleLabel = $currentUser?->role?->name === 'admin' ? 'Quản trị viên' : 'Nhân viên';
     $profileUrl = $currentUser?->isAdmin() ? route('admin.users.edit', $currentUser->id) : '#';
     $brandUrl = $currentUser?->isAdmin() ? route('admin.dashboard') : route('admin.customers.list');
@@ -92,7 +92,7 @@
             aria-expanded="false">
             <span class="account-avatar">{{ $userInitial }}</span>
             <span class="account-summary">
-                <span class="account-name">{{ $displayName }}</span>
+                <span class="account-name">{{ $accountName }}</span>
                 <span class="account-email">{{ $displayEmail }}</span>
             </span>
             <i class="account-caret fa-solid fa-chevron-up"></i>
@@ -102,7 +102,7 @@
             <div class="account-menu-header">
                 <span class="account-avatar account-avatar-lg">{{ $userInitial }}</span>
                 <span class="account-summary">
-                    <span class="account-name">{{ $displayName }}</span>
+                    <span class="account-name">{{ $accountName }}</span>
                     <span class="account-email">{{ $displayEmail }}</span>
                 </span>
             </div>

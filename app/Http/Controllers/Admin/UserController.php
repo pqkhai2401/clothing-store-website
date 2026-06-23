@@ -8,7 +8,6 @@ use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class UserController extends Controller
@@ -31,7 +30,6 @@ class UserController extends Controller
         if ($keyword = trim((string) $request->input('keyword'))) {
             $query->where(function ($subQuery) use ($keyword) {
                 $subQuery->where('username', 'like', "%{$keyword}%")
-                    ->orWhere('display_name', 'like', "%{$keyword}%")
                     ->orWhere('email', 'like', "%{$keyword}%")
                     ->orWhere('phone_number', 'like', "%{$keyword}%");
             });
@@ -41,7 +39,6 @@ class UserController extends Controller
             match ($sortBy) {
                 'id' => $query->orderBy('id', $sortDir),
                 'username' => $query->orderBy('username', $sortDir),
-                'display_name' => $query->orderBy('display_name', $sortDir),
                 'email' => $query->orderBy('email', $sortDir),
                 default => $query->orderBy('id', 'desc'),
             };
@@ -82,10 +79,10 @@ class UserController extends Controller
         $this->authorizeContext($request, $context['type']);
 
         $validated = $request->validate([
-            'display_name' => ['required', 'string', 'max:255'],
+            'username' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'phone_number' => ['nullable', 'string', 'max:20'],
-            'role_id' => [$context['type'] === 'all' ? 'required' : 'nullable', 'integer', 'exists:roles,id'],
+            'role_id' => [$context['type'] === 'customer' ? 'nullable' : 'required', 'integer', 'exists:roles,id'],
             'is_active' => ['required', 'boolean'],
             'password' => ['required', 'string', 'min:6', 'max:255'],
             'city' => ['nullable', 'string', 'max:255'],
@@ -95,8 +92,7 @@ class UserController extends Controller
         ], $this->validationMessages());
 
         $user = User::create([
-            'username' => $this->makeUniqueUsername($validated['display_name'], $validated['email']),
-            'display_name' => $validated['display_name'],
+            'username' => $validated['username'],
             'email' => $validated['email'],
             'phone_number' => $validated['phone_number'] ?? null,
             'role_id' => $this->roleIdForContext($context['type'], $validated['role_id'] ?? null),
@@ -161,12 +157,8 @@ class UserController extends Controller
             'username' => [
                 'required',
                 'string',
-                'min:3',
-                'max:50',
-                'regex:/^[a-zA-Z0-9_]+$/',
-                Rule::unique('users', 'username')->ignore($user->id),
+                'max:255',
             ],
-            'display_name' => ['nullable', 'string', 'max:255'],
             'email' => [
                 'required',
                 'string',
@@ -182,7 +174,6 @@ class UserController extends Controller
 
         $updateData = [
             'username' => $validated['username'],
-            'display_name' => $validated['display_name'] ?? null,
             'email' => $validated['email'],
             'phone_number' => $validated['phone_number'] ?? null,
             'role_id' => $this->roleIdForContext($context['type'], $validated['role_id'] ?? $user->role_id, $user),
@@ -360,7 +351,10 @@ class UserController extends Controller
     private function rolesForContext(string $type)
     {
         if ($type === 'staff') {
-            return Role::where('name', UserRole::STAFF->value)->get();
+            return Role::whereIn('name', [
+                UserRole::STAFF->value,
+                UserRole::ADMIN->value,
+            ])->get();
         }
 
         if ($type === 'customer') {
@@ -376,8 +370,23 @@ class UserController extends Controller
             return (int) $user->role_id;
         }
 
+        if ($type === 'staff') {
+            if ($fallbackRoleId) {
+                $allowedRoleIds = Role::whereIn('name', [
+                    UserRole::STAFF->value,
+                    UserRole::ADMIN->value,
+                ])->pluck('id')->all();
+
+                if (in_array($fallbackRoleId, $allowedRoleIds, true)) {
+                    return (int) $fallbackRoleId;
+                }
+            }
+
+            return Role::where('name', UserRole::STAFF->value)->value('id')
+                ?? Role::create(['name' => UserRole::STAFF->value])->id;
+        }
+
         $roleName = match ($type) {
-            'staff' => UserRole::STAFF->value,
             'customer' => UserRole::CUSTOMER->value,
             default => null,
         };
@@ -390,24 +399,6 @@ class UserController extends Controller
         return (int) $fallbackRoleId;
     }
 
-    private function makeUniqueUsername(string $displayName, string $email): string
-    {
-        $baseSource = $displayName ?: Str::before($email, '@');
-        $base = Str::lower(Str::ascii($baseSource));
-        $base = preg_replace('/[^a-z0-9_]+/', '_', $base) ?: Str::before($email, '@');
-        $base = trim($base, '_') ?: 'user';
-        $base = substr($base, 0, 40);
-        $username = $base;
-        $counter = 1;
-
-        while (User::withTrashed()->where('username', $username)->exists()) {
-            $suffix = '_'.$counter++;
-            $username = substr($base, 0, 50 - strlen($suffix)).$suffix;
-        }
-
-        return $username;
-    }
-
     private function hasAddressInput(array $validated): bool
     {
         return collect(['city', 'district', 'ward', 'apartment_number'])
@@ -417,12 +408,8 @@ class UserController extends Controller
     private function validationMessages(): array
     {
         return [
-            'username.required' => 'Vui lòng nhập username',
-            'username.min' => 'Username phải có ít nhất 3 ký tự',
-            'username.unique' => 'Username đã tồn tại',
-            'username.regex' => 'Username chỉ chứa chữ cái, số và dấu gạch dưới',
-            'display_name.required' => 'Vui lòng nhập họ và tên',
-            'display_name.max' => 'Tên hiển thị không được vượt quá 255 ký tự',
+            'username.required' => 'Vui lòng nhập họ và tên',
+            'username.max' => 'Họ và tên không được vượt quá 255 ký tự',
             'email.required' => 'Vui lòng nhập email',
             'email.email' => 'Email không đúng định dạng',
             'email.unique' => 'Email đã tồn tại',

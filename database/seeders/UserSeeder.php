@@ -23,7 +23,6 @@ class UserSeeder extends Seeder
         $users = [
             [
                 'username' => 'admin',
-                'display_name' => 'Administrator',
                 'email' => 'admin@example.com',
                 'password' => 'Admin@123',
                 'phone_number' => '0901000001',
@@ -31,8 +30,7 @@ class UserSeeder extends Seeder
                 'is_active' => true,
             ],
             [
-                'username' => 'store_manager',
-                'display_name' => 'Store Manager',
+                'username' => 'Store Manager',
                 'email' => 'manager@example.com',
                 'password' => 'Admin@123',
                 'phone_number' => '0901000002',
@@ -40,8 +38,7 @@ class UserSeeder extends Seeder
                 'is_active' => true,
             ],
             [
-                'username' => 'sales_staff',
-                'display_name' => 'Sales Staff',
+                'username' => 'Sales Staff',
                 'email' => 'staff@example.com',
                 'password' => 'Staff@123',
                 'phone_number' => '0902000001',
@@ -49,8 +46,7 @@ class UserSeeder extends Seeder
                 'is_active' => true,
             ],
             [
-                'username' => 'order_staff',
-                'display_name' => 'Order Staff',
+                'username' => 'Order Staff',
                 'email' => 'order.staff@example.com',
                 'password' => 'Staff@123',
                 'phone_number' => '0902000002',
@@ -58,8 +54,7 @@ class UserSeeder extends Seeder
                 'is_active' => true,
             ],
             [
-                'username' => 'customer_one',
-                'display_name' => 'Customer One',
+                'username' => 'Customer One',
                 'email' => 'customer1@example.com',
                 'password' => 'Customer@123',
                 'phone_number' => '0903000001',
@@ -67,8 +62,7 @@ class UserSeeder extends Seeder
                 'is_active' => true,
             ],
             [
-                'username' => 'customer_two',
-                'display_name' => 'Customer Two',
+                'username' => 'Customer Two',
                 'email' => 'customer2@example.com',
                 'password' => 'Customer@123',
                 'phone_number' => '0903000002',
@@ -76,8 +70,7 @@ class UserSeeder extends Seeder
                 'is_active' => true,
             ],
             [
-                'username' => 'customer_three',
-                'display_name' => 'Customer Three',
+                'username' => 'Customer Three',
                 'email' => 'customer3@example.com',
                 'password' => 'Customer@123',
                 'phone_number' => '0903000003',
@@ -85,8 +78,7 @@ class UserSeeder extends Seeder
                 'is_active' => true,
             ],
             [
-                'username' => 'locked_customer',
-                'display_name' => 'Locked Customer',
+                'username' => 'Locked Customer',
                 'email' => 'locked.customer@example.com',
                 'password' => 'Customer@123',
                 'phone_number' => '0903000004',
@@ -100,7 +92,6 @@ class UserSeeder extends Seeder
                 ['email' => $user['email']],
                 [
                     'username' => $user['username'],
-                    'display_name' => $user['display_name'],
                     'password' => Hash::make($user['password']),
                     'phone_number' => $user['phone_number'],
                     'role_id' => $roles[$user['role']->value]->id,
