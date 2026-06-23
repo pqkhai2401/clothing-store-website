@@ -190,7 +190,7 @@ class UserController extends Controller
 
         $user->update($updateData);
 
-        if ($context['type'] === 'staff' && ($this->hasAddressInput($validated) || $user->addresses()->exists())) {
+        if (in_array($context['type'], ['staff', 'customer']) && ($this->hasAddressInput($validated) || $user->addresses()->exists())) {
             $addressData = [
                 'city' => $validated['city'] ?? '',
                 'district' => $validated['district'] ?? '',
@@ -291,6 +291,17 @@ class UserController extends Controller
     private function resolveContext(Request $request, ?User $user = null): array
     {
         $type = $request->route('account_type') ?: $request->query('type');
+
+        // Route defaults không phải URI segment nên đôi khi không được bind đúng.
+        // Fallback: đọc từ route name — đây là nguồn đáng tin cậy nhất.
+        if (! $type) {
+            $routeName = $request->route()?->getName() ?? '';
+            if (str_starts_with($routeName, 'admin.staff.')) {
+                $type = 'staff';
+            } elseif (str_starts_with($routeName, 'admin.customers.')) {
+                $type = 'customer';
+            }
+        }
 
         if (! $type && $user?->role?->name === UserRole::STAFF->value) {
             $type = 'staff';

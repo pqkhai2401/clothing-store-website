@@ -12,8 +12,6 @@
         const statusSelect = document.getElementById('modal_is_active');
         const lockReasonRow = document.querySelector('[data-modal-lock-reason-row]');
         const lockReasonInput = document.getElementById('modal_lock_reason');
-        const alertBox = document.getElementById('accountAjaxAlert');
-
         function text(value, fallback = 'Chưa cập nhật') {
             return value === null || value === undefined || value === '' ? fallback : value;
         }
@@ -27,14 +25,43 @@
                 .replaceAll("'", '&#039;');
         }
 
-        function showAlert(message, type = 'success') {
-            alertBox.className = `alert alert-${type} account-ajax-alert`;
-            alertBox.textContent = message;
+        const TOAST_SVG = {
+            success: '<path d="M8 12l2.5 2.5L16 9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>',
+            error:   '<path d="M9 9l6 6M15 9l-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>',
+            warning: '<path d="M12 8v4M12 16h.01" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>',
+            danger:  '<path d="M9 9l6 6M15 9l-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>',
+        };
 
-            window.clearTimeout(showAlert.timer);
-            showAlert.timer = window.setTimeout(() => {
-                alertBox.classList.add('d-none');
-            }, 2500);
+        function showAlert(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+
+            const typeClass = type === 'danger' ? 'toast-error' : `toast-${type}`;
+            const svgPath   = TOAST_SVG[type] ?? TOAST_SVG.success;
+
+            const toast = document.createElement('div');
+            toast.className = `custom-toast server-toast ${typeClass}`;
+            toast.style.pointerEvents = 'auto';
+            toast.innerHTML = `
+                <div class="toast-content">
+                    <div class="toast-icon">
+                        <svg style="flex-shrink:0;min-width:22px;min-height:22px;display:block;" viewBox="0 0 24 24" width="22" height="22">
+                            ${svgPath}
+                        </svg>
+                    </div>
+                    <div class="toast-message">${escapeHtml(message)}</div>
+                </div>
+                <span class="toast-close" onclick="closeServerToast(this)">&times;</span>
+            `;
+
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                if (document.body.contains(toast)) {
+                    toast.classList.add('hiding');
+                    setTimeout(() => toast.remove(), 300);
+                }
+            }, 5000);
         }
 
         function setButtonLoading(button, loading, loadingText = 'Đang tải...') {

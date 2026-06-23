@@ -6,7 +6,7 @@
                 @method('PUT')
 
                 <div class="modal-header">
-                    <h2 class="modal-title">Cập nhật người dùng</h2>
+                    <h2 class="modal-title">Cập nhật {{ $itemLabel ?? 'Tài khoản' }}</h2>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
                 </div>
 

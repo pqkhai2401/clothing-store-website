@@ -104,15 +104,6 @@
         word-break: break-word;
     }
 
-    .account-ajax-alert {
-        position: fixed;
-        top: 18px;
-        right: 18px;
-        z-index: 2000;
-        min-width: 280px;
-        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.15);
-    }
-
     .account-modal-loading {
         padding: 28px 12px;
         color: #6b7280;

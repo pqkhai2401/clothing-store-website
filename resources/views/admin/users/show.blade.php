@@ -9,7 +9,7 @@
 @section('content')
     @php
         $showRoleColumn = ($type ?? 'all') !== 'customer';
-        $showAddressFields = ($type ?? 'all') === 'staff';
+        $showAddressFields = in_array(($type ?? 'all'), ['staff', 'customer']);
         $emptyColspan = $showRoleColumn ? 7 : 6;
         $nameColumnLabel = ($type ?? 'all') === 'customer' ? 'Tên khách hàng' : 'Họ và tên';
         $breadcrumbLabel = ($type ?? 'all') === 'customer' ? 'Khách hàng' : 'Nhân sự';
@@ -149,8 +149,6 @@
                 @include('layouts.components.pagination', ['paginator' => $data])
             </div>
         </div>
-
-        <div id="accountAjaxAlert" class="alert alert-success account-ajax-alert d-none" role="alert"></div>
 
         @include('admin.users.detail')
         @include('admin.users.edit')
