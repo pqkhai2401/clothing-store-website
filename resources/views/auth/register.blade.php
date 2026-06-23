@@ -1,154 +1,137 @@
 @extends('layouts.app')
 
 @section('title', 'Đăng ký | HK Store')
+@section('auth_standalone', true)
+@section('body_class', 'auth-standalone-body')
 
 @section('css')
 <style>
-    .auth-section {
-        min-height: 78vh;
-        display: flex;
-        justify-content: center;
-        padding: 28px 16px 72px;
+    .auth-standalone-body {
+        min-height: 100vh;
         background: #ffffff;
     }
 
-    .auth-panel {
-        width: 100%;
-        max-width: 580px;
-        margin: 0 auto;
-    }
-
-    .auth-logo-slot {
-        width: 172px;
-        height: 38px;
-        margin-bottom: 14px;
-    }
-
-    .auth-title {
-        margin: 0 0 20px;
-        color: #000000;
-        font-size: 36px;
-        font-weight: 800;
-        line-height: 1.12;
-        letter-spacing: 0;
-    }
-
-    .auth-benefit-label {
-        margin: 0 0 8px;
-        color: #000000;
-        font-size: 14px;
-        font-weight: 700;
-        line-height: 1.4;
-    }
-
-    .auth-benefits {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 10px;
-        margin-bottom: 28px;
-    }
-
-    .auth-benefit-card {
-        min-height: 72px;
+    .auth-section {
+        min-height: 100vh;
         display: flex;
         align-items: center;
-        gap: 14px;
-        padding: 12px 16px;
-        color: #000000;
+        justify-content: center;
+        padding: 32px 16px;
         background: #ffffff;
-        border: 1px solid #dedede;
-        border-radius: 8px;
-        box-shadow: 0 1px 4px rgba(0, 0, 0, .08);
     }
 
-    .auth-benefit-card i {
-        width: 30px;
+    .auth-box {
+        width: 100%;
+        max-width: 480px;
+        padding: 30px 32px;
+        background: #ffffff;
+        border: 1px solid #d8d8d8;
+        border-radius: 0;
+    }
+
+    .auth-brand {
+        margin: 0 0 20px;
+        color: #000000;
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: 24px;
+        font-weight: 700;
+        letter-spacing: .08em;
+    }
+
+    .auth-form-title {
+        margin: 0 0 8px;
         color: #111111;
-        font-size: 26px;
-        text-align: center;
-    }
-
-    .auth-benefit-card span {
-        display: block;
-        font-size: 18px;
+        font-size: 24px;
         font-weight: 800;
         line-height: 1.2;
     }
 
-    /* ── Section label ── */
-    .auth-section-label {
-        display: flex;
-        align-items: left;
+    .auth-form-subtitle {
         margin: 0 0 20px;
-    }
-
-    .auth-section-label::before,
-    .auth-section-label::after {
-        content: "";
-        flex: 1;
-        height: 1px;
-
-    }
-
-    .auth-section-label span {
-        font-size: 15px;
-        font-weight: 700;
-        color: #2554d9;
-        white-space: nowrap;
-    }
-
-    /* ── Fields ── */
-    .auth-field {
-        position: relative;
-        margin-bottom: 14px;
+        color: #666666;
+        font-size: 14px;
+        font-weight: 600;
+        line-height: 1.5;
     }
 
     .auth-row {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 12px;
-        margin-bottom: 14px;
+        margin-bottom: 10px;
     }
 
-    .auth-row .auth-field { margin-bottom: 0; }
+    .auth-field {
+        position: relative;
+        margin-bottom: 10px;
+    }
+
+    .auth-row .auth-field {
+        margin-bottom: 0;
+    }
 
     .auth-input {
         width: 100%;
-        height: 52px;
+        height: 48px;
         padding: 0 22px;
         color: #111111;
-        background: #f0f0f0;
-        border: 1.5px solid transparent;
-        border-radius: 999px;
+        background: #ffffff;
+        border: 1px solid #d8d8d8;
+        border-radius: 0;
         font-size: 16px;
         font-weight: 600;
         outline: none;
         box-shadow: none;
-        transition: border-color .15s, background .15s;
     }
 
     .auth-input::placeholder {
-        color: #aaaaaa;
-        font-weight: 600;
+        color: transparent;
     }
 
     .auth-input:focus {
-        background: #ffffff;
         border-color: #111111;
-        box-shadow: 0 0 0 3px rgba(0, 0, 0, .07);
     }
 
     .auth-input.is-invalid {
-        border-color: #dc3545;
-        background: #fff5f5;
+        border-color: #e60012;
+    }
+
+    .auth-floating-label {
+        position: absolute;
+        top: 24px;
+        left: 16px;
+        z-index: 2;
+        max-width: calc(100% - 72px);
+        padding: 0 6px;
+        color: #777777;
+        background: #ffffff;
+        font-size: 16px;
+        font-weight: 600;
+        line-height: 1;
+        pointer-events: none;
+        transform: translateY(-50%);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .auth-input:focus + .auth-floating-label,
+    .auth-input:not(:placeholder-shown) + .auth-floating-label {
+        top: 0;
+        color: #555555;
+        font-size: 13px;
+    }
+
+    .auth-input.is-invalid + .auth-floating-label {
+        color: #e60012;
     }
 
     .password-toggle {
         position: absolute;
-        top: 50%;
-        right: 16px;
-        width: 34px;
-        height: 34px;
+        top: 24px;
+        right: 12px;
+        width: 36px;
+        height: 36px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -157,57 +140,53 @@
         border: 0;
         transform: translateY(-50%);
         cursor: pointer;
+        z-index: 3;
     }
 
-    .password-toggle:hover { color: #2554d9; }
-    .password-field .auth-input { padding-right: 54px; }
+    .password-field .auth-input {
+        padding-right: 52px;
+    }
 
-    /* ── Submit ── */
     .auth-submit {
         width: 100%;
-        min-height: 50px;
-        margin-top: 4px;
+        min-height: 44px;
+        margin-top: 6px;
         color: #ffffff;
         background: #000000;
         border: 1px solid #000000;
-        border-radius: 999px;
-        font-size: 16px;
+        border-radius: 0;
+        font-size: 15px;
         font-weight: 800;
         text-transform: uppercase;
-        letter-spacing: .04em;
         cursor: pointer;
-        transition: background .15s;
     }
 
-    .auth-submit:hover,
-    .auth-submit:focus { background: #222222; border-color: #222222; color: #fff; }
-
-    /* ── Links ── */
     .auth-links {
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 16px;
-        margin: 20px 0 28px;
+        margin: 14px 0 18px;
     }
 
     .auth-link {
         color: #123bdc;
         font-size: 14px;
-        font-weight: 800;
+        font-weight: 700;
         text-decoration: none;
     }
 
-    .auth-link:hover { color: #000000; text-decoration: underline; }
+    .auth-link:hover {
+        text-decoration: underline;
+    }
 
-    /* ── Bottom Google ── */
     .auth-divider {
         display: flex;
         align-items: center;
         gap: 10px;
-        margin: 0 0 20px;
-        color: #111111;
-        font-size: 14px;
+        margin: 0 0 14px;
+        color: #555555;
+        font-size: 13px;
         font-weight: 700;
     }
 
@@ -221,7 +200,7 @@
 
     .google-login-btn {
         width: 100%;
-        min-height: 52px;
+        min-height: 44px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -229,83 +208,95 @@
         color: #1f1f1f;
         background: #ffffff;
         border: 1px solid #d8d8d8;
-        border-radius: 999px;
+        border-radius: 0;
         font-size: 15px;
         font-weight: 800;
         text-decoration: none;
-        transition: background .15s, border-color .15s;
     }
 
-    .google-login-btn:hover { color: #000; background: #f8f8f8; border-color: #bfbfbf; }
-    .google-icon { width: 22px; height: 22px; flex: 0 0 auto; }
+    .google-icon {
+        width: 22px;
+        height: 22px;
+        flex: 0 0 auto;
+    }
 
     .invalid-feedback {
-        margin: 5px 0 0 18px;
+        margin: 6px 0 0 0;
+        color: #e60012;
+        display: flex;
+        align-items: center;
+        gap: 6px;
         font-size: 13px;
-        font-weight: 600;
-        color: #dc3545;
-        display: block;
+        font-weight: 700;
+        line-height: 1.35;
+    }
+
+    .invalid-feedback::before {
+        content: "!";
+        width: 16px;
+        height: 16px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 16px;
+        color: #ffffff;
+        background: #e60012;
+        border-radius: 50%;
+        font-size: 11px;
+        font-weight: 800;
     }
 
     @media (max-width: 575.98px) {
-        .auth-section { min-height: auto; padding: 22px 16px 48px; }
-        .auth-title { font-size: 28px; }
-        .auth-benefits { grid-template-columns: 1fr; }
-        .auth-row { grid-template-columns: 1fr; }
-        .auth-benefit-card span { font-size: 16px; }
-        .auth-links { flex-direction: column; gap: 10px; }
+        .auth-section {
+            padding: 16px;
+        }
+
+        .auth-box {
+            padding: 24px 18px;
+        }
+
+        .auth-row {
+            grid-template-columns: 1fr;
+        }
+
+        .auth-links {
+            flex-direction: column;
+            gap: 10px;
+        }
     }
 </style>
 @endsection
 
 @section('content')
 <section class="auth-section">
-    <div class="auth-panel">
-        <div class="auth-logo-slot" aria-label="Logo"></div>
-
-        {{-- FIXED TOP --}}
-        <h1 class="auth-title">Rất nhiều đặc quyền và quyền lợi mua sắm đang chờ bạn</h1>
-
-        <p class="auth-benefit-label">Quyền lợi dành riêng cho bạn khi tham gia HK Store</p>
-        <div class="auth-benefits">
-            <div class="auth-benefit-card">
-                <i class="bi bi-percent" aria-hidden="true"></i>
-                <span>Voucher<br>ưu đãi</span>
-            </div>
-            <div class="auth-benefit-card">
-                <i class="bi bi-gift" aria-hidden="true"></i>
-                <span>Quà tặng<br>độc quyền</span>
-            </div>
-        </div>
-
-     
-        {{-- FORM ĐĂNG KÝ --}}
-        @if (session('error'))
-            <div class="alert alert-danger mb-3" style="border-radius: 12px; font-size: 14px;">{{ session('error') }}</div>
-        @endif
+    <div class="auth-box">
+        <div class="auth-brand">HK STORE</div>
+        <h1 class="auth-form-title">Đăng ký</h1>
+        <p class="auth-form-subtitle">Tạo tài khoản HK Store bằng họ tên, số điện thoại, email và mật khẩu.</p>
 
         <form action="{{ route('auth.register') }}" method="POST">
             @csrf
 
             <div class="auth-row">
                 <div class="auth-field">
-                    <label for="display_name" class="visually-hidden">Họ và tên</label>
-                    <input type="text" name="display_name" id="display_name"
-                        class="auth-input @error('display_name') is-invalid @enderror"
-                        value="{{ old('display_name') }}"
-                        placeholder="Họ và tên"
+                    <input type="text" name="username" id="username"
+                        class="auth-input @error('username') is-invalid @enderror"
+                        value="{{ old('username') }}"
+                        placeholder=" "
                         autocomplete="name" autofocus>
-                    @error('display_name')
+                    <label for="username" class="auth-floating-label">Họ và tên</label>
+                    @error('username')
                         <span class="invalid-feedback">{{ $message }}</span>
                     @enderror
                 </div>
+
                 <div class="auth-field">
-                    <label for="phone_number" class="visually-hidden">Số điện thoại</label>
                     <input type="tel" name="phone_number" id="phone_number"
                         class="auth-input @error('phone_number') is-invalid @enderror"
                         value="{{ old('phone_number') }}"
-                        placeholder="Số điện thoại"
+                        placeholder=" "
                         autocomplete="tel">
+                    <label for="phone_number" class="auth-floating-label">Số điện thoại</label>
                     @error('phone_number')
                         <span class="invalid-feedback">{{ $message }}</span>
                     @enderror
@@ -313,23 +304,23 @@
             </div>
 
             <div class="auth-field">
-                <label for="reg_email" class="visually-hidden">Email</label>
                 <input type="email" name="email" id="reg_email"
                     class="auth-input @error('email') is-invalid @enderror"
                     value="{{ old('email') }}"
-                    placeholder="Email"
+                    placeholder=" "
                     autocomplete="email">
+                <label for="reg_email" class="auth-floating-label">Email</label>
                 @error('email')
                     <span class="invalid-feedback">{{ $message }}</span>
                 @enderror
             </div>
 
             <div class="auth-field password-field">
-                <label for="reg_password" class="visually-hidden">Mật khẩu</label>
                 <input type="password" name="password" id="reg_password"
                     class="auth-input @error('password') is-invalid @enderror"
-                    placeholder="Mật khẩu"
+                    placeholder=" "
                     autocomplete="new-password">
+                <label for="reg_password" class="auth-floating-label">Mật khẩu</label>
                 <button type="button" class="password-toggle" data-toggle-password="reg_password" aria-label="Hiện mật khẩu">
                     <i class="bi bi-eye"></i>
                 </button>
@@ -346,13 +337,7 @@
             </div>
         </form>
 
-        {{-- FIXED BOTTOM --}}
         <div class="auth-divider">Hoặc</div>
-        
-        {{-- SECTION LABEL --}}
-        <div class="auth-section-label">
-            <span>Đăng nhập hoặc đăng ký (miễn phí)</span>
-        </div>
 
         <a href="{{ route('auth.google.redirect') }}" class="google-login-btn">
             <svg class="google-icon" viewBox="0 0 18 18" aria-hidden="true">

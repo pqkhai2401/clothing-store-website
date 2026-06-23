@@ -12,8 +12,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            if (! Schema::hasColumn('users', 'avatar_url')) {
-                $table->string('avatar_url')->nullable()->after('google_id');
+            if (! Schema::hasColumn('users', 'lock_reason')) {
+                $table->string('lock_reason')->nullable()->after('is_active');
             }
         });
     }
@@ -24,8 +24,8 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            if (Schema::hasColumn('users', 'avatar_url')) {
-                $table->dropColumn('avatar_url');
+            if (Schema::hasColumn('users', 'lock_reason')) {
+                $table->dropColumn('lock_reason');
             }
         });
     }

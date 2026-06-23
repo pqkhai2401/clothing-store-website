@@ -18,7 +18,6 @@ class User extends Authenticatable
 
     protected $fillable = [
         'username',
-        'display_name',
         'email',
         'password',
         'google_id',
@@ -26,6 +25,7 @@ class User extends Authenticatable
         'phone_number',
         'role_id',
         'is_active',
+        'lock_reason',
         'email_verified_at',
     ];
 
