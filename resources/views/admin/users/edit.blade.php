@@ -341,7 +341,7 @@
                                 <label for="is_active" class="form-label fw-semibold">Trạng thái <span class="text-danger">*</span></label>
                                 <select name="is_active" id="is_active" class="form-select @error('is_active') is-invalid @enderror" required>
                                     <option value="1" @selected((string) old('is_active', $user->is_active ? '1' : '0') === '1')>Đang hoạt động</option>
-                                    <option value="0" @selected((string) old('is_active', $user->is_active ? '1' : '0') === '0')>Đã khóa</option>
+                                    <option value="0" @selected((string) old('is_active', $user->is_active ? '1' : '0') === '0')>Ngừng hoạt động</option>
                                 </select>
                                 @error('is_active')
                                     <div class="invalid-feedback">{{ $message }}</div>

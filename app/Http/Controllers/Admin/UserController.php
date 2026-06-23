@@ -50,6 +50,7 @@ class UserController extends Controller
 
         return view('admin.users.show', [
             'data' => $data,
+            'roles' => $this->rolesForContext($context['type']),
             ...$context,
         ]);
     }
@@ -125,6 +126,17 @@ class UserController extends Controller
         $context = $this->resolveContext(request(), $user);
         $this->authorizeContext(request(), $context['type'], $user);
 
+        if (request()->expectsJson() || request()->ajax()) {
+            return response()->json([
+                'user' => $this->userModalPayload($user),
+                'roles' => $this->rolesForContext($context['type'])->map(fn (Role $role) => [
+                    'id' => $role->id,
+                    'name' => $role->name,
+                ])->values(),
+                'show_role' => ($context['type'] !== 'customer'),
+            ]);
+        }
+
         return view('admin.users.detail', [
             'user' => $user,
             ...$context,
@@ -160,11 +172,7 @@ class UserController extends Controller
         $context = $this->resolveContext($request, $user);
         $this->authorizeContext($request, $context['type'], $user);
 
-        $passwordRules = ['nullable', 'string', 'min:6', 'max:255'];
-
-        if ($context['type'] !== 'staff') {
-            $passwordRules[] = 'confirmed';
-        }
+        $passwordRules = ['nullable', 'string', 'min:6', 'max:255', 'confirmed'];
 
         $validated = $request->validate([
             'username' => [
@@ -220,6 +228,19 @@ class UserController extends Controller
             } else {
                 $user->addresses()->create($addressData);
             }
+        }
+
+        $user->load([
+            'role',
+            'addresses' => fn ($query) => $query->latest('id'),
+        ]);
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'message' => 'Cập nhật '.$context['itemLabelLower'].' thành công',
+                'user' => $this->userModalPayload($user),
+                'show_role' => ($context['type'] !== 'customer'),
+            ]);
         }
 
         return redirect()->route($context['routePrefix'].'.list')->with('success', 'Cập nhật '.$context['itemLabelLower'].' thành công');
@@ -447,6 +468,29 @@ class UserController extends Controller
     {
         return collect(['city', 'district', 'ward', 'apartment_number'])
             ->contains(fn (string $field) => filled($validated[$field] ?? null));
+    }
+
+    private function userModalPayload(User $user): array
+    {
+        $address = $user->addresses->first();
+
+        return [
+            'id' => $user->id,
+            'username' => $user->username,
+            'email' => $user->email,
+            'phone_number' => $user->phone_number,
+            'role_id' => $user->role_id,
+            'role_name' => $user->role?->name,
+            'is_active' => (bool) $user->is_active,
+            'status_label' => $user->is_active ? 'Đang hoạt động' : 'Đã khóa',
+            'lock_reason' => $user->lock_reason,
+            'city' => $address?->city,
+            'district' => $address?->district,
+            'ward' => $address?->ward,
+            'apartment_number' => $address?->apartment_number,
+            'created_at' => optional($user->created_at)->format('d/m/Y H:i'),
+            'updated_at' => optional($user->updated_at)->format('d/m/Y H:i'),
+        ];
     }
 
     private function validationMessages(): array
