@@ -51,11 +51,8 @@
             display: flex;
             justify-content: center;
             gap: 10px;
-            padding: 22px 0 6px;
-        }
-
-        .account-action-section-header {
-            margin: 16px -16px 0;
+            padding: 18px 14px;
+            background: #ffffff;
             border-top: 1px solid #d8dee6;
         }
 
@@ -94,7 +91,7 @@
         <x-notification />
 
         @if($isStaffContext)
-            <h1 class="h4 fw-semibold mb-4">Cập nhật quản trị viên</h1>
+            <h1 class="h4 fw-semibold mb-4">CẬP NHẬT QUẢN TRỊ VIÊN</h1>
 
             <form method="POST" action="{{ route(($routePrefix ?? 'admin.staff').'.update', $user->id) }}" autocomplete="off">
                 @csrf
@@ -235,7 +232,7 @@
                             </div>
                         </div>
 
-                        <div class="account-form-row" data-lock-reason-row>
+                        <div class="account-form-row mb-0" data-lock-reason-row>
                             <label for="lock_reason" class="account-form-label">Lý Do Khóa Tài Khoản</label>
                             <div>
                                 <input type="text" name="lock_reason" id="lock_reason"
@@ -247,19 +244,13 @@
                             </div>
                         </div>
 
-                        <div class="card-header account-action-section-header d-flex align-items-center justify-content-between">
-                            <h2 class="h6 fw-semibold mb-0">Cập nhật thông tin</h2>
-                            <span class="text-muted">-</span>
-                        </div>
+                    </div>
 
-                        <div class="px-3">
-                            <div class="account-form-actions">
-                                <a href="{{ route(($routePrefix ?? 'admin.staff').'.list') }}" class="btn btn-light border">Hủy</a>
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fa-solid fa-floppy-disk me-1"></i> Cập nhật
-                                </button>
-                            </div>
-                        </div>
+                    <div class="account-form-actions">
+                        <a href="{{ route(($routePrefix ?? 'admin.staff').'.list') }}" class="btn btn-light border">Hủy</a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fa-solid fa-floppy-disk me-1"></i> Cập nhật
+                        </button>
                     </div>
                 </div>
             </form>

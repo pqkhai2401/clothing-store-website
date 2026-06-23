@@ -343,10 +343,10 @@ class UserController extends Controller
 
     private function resolvePerPage(Request $request): int
     {
-        $perPage = (int) $request->input('per_page', $request->input('perPage', 25));
+        $perPage = (int) $request->input('per_page', $request->input('perPage', 10));
         $allowedPerPages = [10, 25, 50, 100];
 
-        return in_array($perPage, $allowedPerPages, true) ? $perPage : 25;
+        return in_array($perPage, $allowedPerPages, true) ? $perPage : 10;
     }
 
     private function authorizeContext(Request $request, string $type, ?User $targetUser = null): void

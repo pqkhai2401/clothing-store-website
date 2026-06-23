@@ -56,7 +56,8 @@
 
 @section('content')
     @php
-        $emptyColspan = 7;
+        $showRoleColumn = ($type ?? 'all') !== 'customer';
+        $emptyColspan = $showRoleColumn ? 7 : 6;
         $nameColumnLabel = ($type ?? 'all') === 'customer' ? 'Tên khách hàng' : 'Họ và tên';
         $breadcrumbLabel = ($type ?? 'all') === 'customer' ? 'Khách hàng' : 'Nhân sự';
     @endphp
@@ -115,7 +116,9 @@
                                 <th>{{ $nameColumnLabel }}</th>
                                 <th>Email</th>
                                 <th>Số điện thoại</th>
-                                <th>Vai trò</th>
+                                @if($showRoleColumn)
+                                    <th>Vai trò</th>
+                                @endif
                                 <th>Trạng thái</th>
                                 <th class="text-center pe-4">Thao tác</th>
                             </tr>
@@ -136,9 +139,11 @@
                                     <td>
                                         {{ $user->phone_number ?: 'Chưa cập nhật' }}
                                     </td>
-                                    <td>
-                                        {{ $roleName ?: 'Chưa có vai trò' }}
-                                    </td>
+                                    @if($showRoleColumn)
+                                        <td>
+                                            {{ $roleName ?: 'Chưa có vai trò' }}
+                                        </td>
+                                    @endif
                                     <td>
                                         <span class="badge status-badge {{ $user->is_active ? 'text-bg-success' : 'text-bg-secondary' }}">
                                             {{ $user->is_active ? 'Đang hoạt động' : 'Đã khóa' }}

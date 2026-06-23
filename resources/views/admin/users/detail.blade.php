@@ -167,9 +167,6 @@
 
                     <div class="account-detail-actions">
                         <a href="{{ route(($routePrefix ?? 'admin.staff').'.list') }}" class="btn btn-light border">Quay lại</a>
-                        <a href="{{ route(($routePrefix ?? 'admin.staff').'.edit', $user->id) }}" class="btn btn-primary">
-                            <i class="fa-solid fa-pen me-1"></i> Cập nhật
-                        </a>
                     </div>
                 </div>
             </div>
@@ -180,14 +177,9 @@
                     <div class="text-muted">Thông tin tài khoản {{ $user->username }}.</div>
                 </div>
 
-                <div class="d-flex gap-2">
-                    <a href="{{ route(($routePrefix ?? 'admin.users').'.list') }}" class="btn btn-light border fw-semibold">
-                        <i class="fa-solid fa-arrow-left me-1"></i> Quay lại
-                    </a>
-                    <a href="{{ route(($routePrefix ?? 'admin.users').'.edit', $user->id) }}" class="btn btn-warning fw-semibold">
-                        <i class="fa-solid fa-pen me-1"></i> Sửa
-                    </a>
-                </div>
+                <a href="{{ route(($routePrefix ?? 'admin.users').'.list') }}" class="btn btn-light border fw-semibold">
+                    <i class="fa-solid fa-arrow-left me-1"></i> Quay lại
+                </a>
             </div>
 
             <div class="card border shadow-sm">
