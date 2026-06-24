@@ -11,28 +11,29 @@ $accountRoutes = function (string $accountType): void {
     Route::get('/create', [UserController::class, 'create'])->name('create')->defaults('account_type', $accountType);
     Route::post('/', [UserController::class, 'store'])->name('store')->defaults('account_type', $accountType);
     Route::get('/{id}', [UserController::class, 'show'])->name('show')->defaults('account_type', $accountType);
-    Route::get('/{id}/edit', [UserController::class, 'edit'])->name('edit')->defaults('account_type', $accountType);
     Route::put('/{id}', [UserController::class, 'update'])->name('update')->defaults('account_type', $accountType);
     Route::delete('/{id}', [UserController::class, 'destroy'])->name('destroy')->defaults('account_type', $accountType);
     Route::patch('/{id}/restore', [UserController::class, 'restore'])->name('restore')->defaults('account_type', $accountType);
     Route::delete('/{id}/force-delete', [UserController::class, 'forceDelete'])->name('forceDelete')->defaults('account_type', $accountType);
 };
 
-Route::middleware('auth.login')
+Route::middleware(['auth.login', 'admin'])
     ->prefix('admin')
     ->name('admin.')
     ->group(function () use ($accountRoutes) {
         Route::prefix('customers')->name('customers.')->group(fn () => $accountRoutes('customer'));
 
-        Route::middleware('admin')->group(function () use ($accountRoutes) {
-            Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+        Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 
-            Route::prefix('staff')->name('staff.')->group(fn () => $accountRoutes('staff'));
-            Route::prefix('users')->name('users.')->group(fn () => $accountRoutes('all'));
-
-            Route::prefix('images')->name('images.')->group(function () {
-                Route::get('/', [ImageController::class, 'index'])->name('list');
-                Route::delete('/{id}', [ImageController::class, 'destroy'])->name('destroy');
+        // Chỉ admin mới có quyền manage-staff
+        Route::middleware('permission:manage-staff')
+            ->group(function () use ($accountRoutes) {
+                Route::prefix('staff')->name('staff.')->group(fn () => $accountRoutes('staff'));
+                Route::prefix('users')->name('users.')->group(fn () => $accountRoutes('all'));
             });
+
+        Route::prefix('images')->name('images.')->group(function () {
+            Route::get('/', [ImageController::class, 'index'])->name('list');
+            Route::delete('/{id}', [ImageController::class, 'destroy'])->name('destroy');
         });
     });

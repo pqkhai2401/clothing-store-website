@@ -4,11 +4,11 @@ namespace App\Http\Controllers\Admin;
 
 use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
-use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
+use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
 {
@@ -24,7 +24,7 @@ class UserController extends Controller
         $sortBy = $request->input('sort_by', 'id');
         $sortDir = $request->input('sort_dir', 'desc');
 
-        $query = User::with('role');
+        $query = User::with('roles');
         $this->applyTypeFilter($query, $context['type']);
 
         if ($keyword = trim((string) $request->input('keyword'))) {
@@ -97,10 +97,14 @@ class UserController extends Controller
             'username' => $validated['username'],
             'email' => $validated['email'],
             'phone_number' => $validated['phone_number'] ?? null,
-            'role_id' => $this->roleIdForContext($context['type'], $validated['role_id'] ?? null),
             'is_active' => (bool) $validated['is_active'],
             'password' => Hash::make($validated['password']),
         ]);
+
+        $roleForUser = $this->roleForContext($context['type'], $validated['role_id'] ?? null);
+        if ($roleForUser) {
+            $user->syncRoles([$roleForUser->name]);
+        }
 
         if ($this->hasAddressInput($validated)) {
             $user->addresses()->create([
@@ -120,7 +124,7 @@ class UserController extends Controller
     public function show(string $id)
     {
         $user = User::with([
-            'role',
+            'roles',
             'addresses' => fn ($query) => $query->latest('id'),
         ])->findOrFail($id);
         $context = $this->resolveContext(request(), $user);
@@ -129,7 +133,7 @@ class UserController extends Controller
         if (request()->expectsJson() || request()->ajax()) {
             return response()->json([
                 'user' => $this->userModalPayload($user),
-                'roles' => $this->rolesForContext($context['type'])->map(fn (Role $role) => [
+                'roles' => $this->rolesForContext($context['type'])->map(fn ($role) => [
                     'id' => $role->id,
                     'name' => $role->name,
                 ])->values(),
@@ -137,30 +141,7 @@ class UserController extends Controller
             ]);
         }
 
-        return view('admin.users.detail', [
-            'user' => $user,
-            ...$context,
-        ]);
-    }
-
-    /**
-     * Show the form for editing the specified user.
-     */
-    public function edit(string $id)
-    {
-        $user = User::with([
-            'role',
-            'addresses' => fn ($query) => $query->latest('id'),
-        ])->findOrFail($id);
-        $context = $this->resolveContext(request(), $user);
-        $this->authorizeContext(request(), $context['type'], $user);
-        $roles = $this->rolesForContext($context['type']);
-
-        return view('admin.users.edit', [
-            'user' => $user,
-            'roles' => $roles,
-            ...$context,
-        ]);
+        return redirect()->route($context['routePrefix'].'.list');
     }
 
     /**
@@ -202,7 +183,6 @@ class UserController extends Controller
             'username' => $validated['username'],
             'email' => $validated['email'],
             'phone_number' => $validated['phone_number'] ?? null,
-            'role_id' => $this->roleIdForContext($context['type'], $validated['role_id'] ?? $user->role_id, $user),
             'is_active' => (bool) $validated['is_active'],
             'lock_reason' => (bool) $validated['is_active'] ? null : ($validated['lock_reason'] ?? null),
         ];
@@ -213,7 +193,12 @@ class UserController extends Controller
 
         $user->update($updateData);
 
-        if ($context['type'] === 'staff' && ($this->hasAddressInput($validated) || $user->addresses()->exists())) {
+        $roleForUser = $this->roleForContext($context['type'], $validated['role_id'] ?? null, $user);
+        if ($roleForUser) {
+            $user->syncRoles([$roleForUser->name]);
+        }
+
+        if (in_array($context['type'], ['staff', 'customer']) && ($this->hasAddressInput($validated) || $user->addresses()->exists())) {
             $addressData = [
                 'city' => $validated['city'] ?? '',
                 'district' => $validated['district'] ?? '',
@@ -231,7 +216,7 @@ class UserController extends Controller
         }
 
         $user->load([
-            'role',
+            'roles',
             'addresses' => fn ($query) => $query->latest('id'),
         ]);
 
@@ -268,7 +253,7 @@ class UserController extends Controller
         $this->authorizeContext($request, $context['type']);
 
         $perPage = $this->resolvePerPage($request);
-        $query = User::onlyTrashed()->with('role')->orderBy('deleted_at', 'desc');
+        $query = User::onlyTrashed()->with('roles')->orderBy('deleted_at', 'desc');
         $this->applyTypeFilter($query, $context['type']);
         $data = $query->paginate($perPage)->appends($request->except('page'));
 
@@ -315,11 +300,22 @@ class UserController extends Controller
     {
         $type = $request->route('account_type') ?: $request->query('type');
 
-        if (! $type && $user?->role?->name === UserRole::STAFF->value) {
+        // Route defaults không phải URI segment nên đôi khi không được bind đúng.
+        // Fallback: đọc từ route name — đây là nguồn đáng tin cậy nhất.
+        if (! $type) {
+            $routeName = $request->route()?->getName() ?? '';
+            if (str_starts_with($routeName, 'admin.staff.')) {
+                $type = 'staff';
+            } elseif (str_starts_with($routeName, 'admin.customers.')) {
+                $type = 'customer';
+            }
+        }
+
+        if (! $type && $user?->hasRole(UserRole::STAFF->value)) {
             $type = 'staff';
         }
 
-        if (! $type && $user?->role?->name === UserRole::CUSTOMER->value) {
+        if (! $type && $user?->hasRole(UserRole::CUSTOMER->value)) {
             $type = 'customer';
         }
 
@@ -402,14 +398,14 @@ class UserController extends Controller
     private function applyTypeFilter($query, string $type): void
     {
         if ($type === 'staff') {
-            $query->whereHas('role', fn ($roleQuery) => $roleQuery->whereIn('name', [
+            $query->whereHas('roles', fn ($roleQuery) => $roleQuery->whereIn('name', [
                 UserRole::ADMIN->value,
                 UserRole::STAFF->value,
             ]));
         }
 
         if ($type === 'customer') {
-            $query->whereHas('role', fn ($roleQuery) => $roleQuery->where('name', UserRole::CUSTOMER->value));
+            $query->whereHas('roles', fn ($roleQuery) => $roleQuery->where('name', UserRole::CUSTOMER->value));
         }
     }
 
@@ -429,26 +425,27 @@ class UserController extends Controller
         return Role::orderBy('name')->get();
     }
 
-    private function roleIdForContext(string $type, ?int $fallbackRoleId, ?User $user = null): int
+    private function roleForContext(string $type, ?int $fallbackRoleId, ?User $user = null): ?Role
     {
         if ($type === 'staff' && $user?->isAdmin()) {
-            return (int) $user->role_id;
+            return $user->roles()->first();
         }
 
         if ($type === 'staff') {
             if ($fallbackRoleId) {
-                $allowedRoleIds = Role::whereIn('name', [
+                $role = Role::whereIn('name', [
                     UserRole::STAFF->value,
                     UserRole::ADMIN->value,
-                ])->pluck('id')->all();
+                ])->find($fallbackRoleId);
 
-                if (in_array($fallbackRoleId, $allowedRoleIds, true)) {
-                    return (int) $fallbackRoleId;
+                if ($role) {
+                    return $role;
                 }
             }
 
-            return Role::where('name', UserRole::STAFF->value)->value('id')
-                ?? Role::create(['name' => UserRole::STAFF->value])->id;
+            return Role::firstOrCreate(
+                ['name' => UserRole::STAFF->value, 'guard_name' => 'web']
+            );
         }
 
         $roleName = match ($type) {
@@ -457,11 +454,10 @@ class UserController extends Controller
         };
 
         if ($roleName) {
-            return Role::where('name', $roleName)->value('id')
-                ?? Role::create(['name' => $roleName])->id;
+            return Role::firstOrCreate(['name' => $roleName, 'guard_name' => 'web']);
         }
 
-        return (int) $fallbackRoleId;
+        return $fallbackRoleId ? Role::find($fallbackRoleId) : null;
     }
 
     private function hasAddressInput(array $validated): bool
@@ -473,16 +469,17 @@ class UserController extends Controller
     private function userModalPayload(User $user): array
     {
         $address = $user->addresses->first();
+        $role = $user->roles->first();
 
         return [
             'id' => $user->id,
             'username' => $user->username,
             'email' => $user->email,
             'phone_number' => $user->phone_number,
-            'role_id' => $user->role_id,
-            'role_name' => $user->role?->name,
+            'role_id' => $role?->id,
+            'role_name' => $role?->name,
             'is_active' => (bool) $user->is_active,
-            'status_label' => $user->is_active ? 'Đang hoạt động' : 'Đã khóa',
+            'status_label' => $user->is_active ? 'Đang hoạt động' : 'Ngưng hoạt động',
             'lock_reason' => $user->lock_reason,
             'city' => $address?->city,
             'district' => $address?->district,
@@ -513,7 +510,7 @@ class UserController extends Controller
             'district.max' => 'Quận, huyện không được vượt quá 255 ký tự',
             'ward.max' => 'Phường, xã không được vượt quá 255 ký tự',
             'apartment_number.max' => 'Số nhà không được vượt quá 255 ký tự',
-            'lock_reason.max' => 'Lý do khóa tài khoản không được vượt quá 255 ký tự',
+            'lock_reason.max' => 'Lý do ngưng hoạt động không được vượt quá 255 ký tự',
         ];
     }
 }

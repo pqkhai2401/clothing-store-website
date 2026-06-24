@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Web;
 use App\Enums\UserRole;
 use App\Http\Controllers\AppBaseController;
 use App\Models\Audit;
-use App\Models\Role;
+use Spatie\Permission\Models\Role;
 use App\Models\User;
 use GuzzleHttp\Client;
 use Illuminate\Support\Facades\Hash;
@@ -80,16 +80,15 @@ class AuthController extends AppBaseController
             return back()->withErrors($validator)->withInput($request->except('password'));
         }
 
-        $customerRole = Role::firstOrCreate(['name' => UserRole::CUSTOMER->value]);
-
         $user = User::create([
             'username' => trim((string) $request->input('username')),
             'phone_number' => $this->normalizeVietnamesePhone((string) $request->input('phone_number')),
             'email' => trim((string) $request->input('email')),
             'password' => Hash::make($request->input('password')),
-            'role_id' => $customerRole->id,
             'is_active' => true,
         ]);
+
+        $user->syncRoles([UserRole::CUSTOMER->value]);
 
         Auth::login($user);
         $request->session()->regenerate();
@@ -148,14 +147,16 @@ class AuthController extends AppBaseController
         if (! $user->is_active) {
             return back()
                 ->withInput($request->only('login'))
-                ->withErrors(['auth' => 'Tài khoản của bạn đã bị khóa.']);
+                ->withErrors(['auth' => 'Tài khoản của bạn đã ngưng hoạt động.']);
         }
 
         Auth::login($user, $request->boolean('remember'));
         $request->session()->regenerate();
 
+        $redirectTo = $user->can('access-admin') ? route('admin.dashboard') : url('/');
+
         return redirect()
-            ->intended($user->isAdmin() ? route('admin.dashboard') : url('/'))
+            ->intended($redirectTo)
             ->with('success', 'Đăng nhập thành công.');
     }
 
@@ -225,22 +226,21 @@ class AuthController extends AppBaseController
         }
 
         if (! $user) {
-            $customerRole = Role::firstOrCreate(['name' => UserRole::CUSTOMER->value]);
-
             $user = User::create([
                 'username' => $this->makeUniqueUsername($email, $googleUser->getName()),
                 'email' => $email,
                 'password' => Hash::make(Str::random(40)),
                 'google_id' => $googleUser->getId(),
                 'avatar_url' => $googleUser->getAvatar(),
-                'role_id' => $customerRole->id,
                 'is_active' => true,
                 'email_verified_at' => now(),
             ]);
+
+            $user->syncRoles([UserRole::CUSTOMER->value]);
         } elseif (! $user->is_active) {
             return redirect()
                 ->route('auth.loginpage')
-                ->with('error', 'Tài khoản của bạn đã bị khóa.');
+                ->with('error', 'Tài khoản của bạn đã ngưng hoạt động.');
         } else {
             $user->forceFill([
                 'google_id' => $googleUser->getId() ?: $user->google_id,
@@ -403,7 +403,7 @@ class AuthController extends AppBaseController
         }
 
         if (! $user->is_active) {
-            return $this->sendError('Tài khoản của bạn đã bị khóa.', 403);
+            return $this->sendError('Tài khoản của bạn đã ngưng hoạt động.', 403);
         }
 
         if (! Auth::attempt($credentials)) {

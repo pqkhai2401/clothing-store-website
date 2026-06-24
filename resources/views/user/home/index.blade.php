@@ -257,10 +257,10 @@
             
             @php
                 $newArrivals = [
-                    ['id' => 20, 'name' => 'Premium Oversized Trench', 'category' => 'Outerwear', 'price' => 245.00, 'sale_price' => null, 'image' => 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?q=80&w=600&auto=format&fit=crop', 'slug' => 'premium-oversized-trench', 'badge' => 'NEW'],
-                    ['id' => 21, 'name' => 'Structured Cotton Shirt', 'category' => 'Shirts', 'price' => 89.00, 'sale_price' => null, 'image' => 'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?q=80&w=600&auto=format&fit=crop', 'slug' => 'structured-cotton-shirt'],
-                    ['id' => 22, 'name' => 'Classic Straight Jeans', 'category' => 'Denim', 'price' => 120.00, 'sale_price' => null, 'image' => 'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?q=80&w=600&auto=format&fit=crop', 'slug' => 'classic-straight-jeans'],
-                    ['id' => 23, 'name' => 'Tailored Wool Blazer', 'category' => 'Blazers', 'price' => 195.00, 'sale_price' => null, 'image' => 'https://images.unsplash.com/photo-1614975058789-41316d0e2e9c?q=80&w=600&auto=format&fit=crop', 'slug' => 'tailored-wool-blazer'],
+                    ['id' => 20, 'name' => 'Premium Oversized Trench', 'category' => 'Outerwear', 'price' => 2450000, 'discount' => 0, 'image' => 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?q=80&w=600&auto=format&fit=crop', 'slug' => 'premium-oversized-trench', 'badge' => 'NEW'],
+                    ['id' => 21, 'name' => 'Structured Cotton Shirt', 'category' => 'Shirts', 'price' => 890000, 'discount' => 0, 'image' => 'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?q=80&w=600&auto=format&fit=crop', 'slug' => 'structured-cotton-shirt'],
+                    ['id' => 22, 'name' => 'Classic Straight Jeans', 'category' => 'Denim', 'price' => 1200000, 'discount' => 20, 'image' => 'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?q=80&w=600&auto=format&fit=crop', 'slug' => 'classic-straight-jeans'],
+                    ['id' => 23, 'name' => 'Tailored Wool Blazer', 'category' => 'Blazers', 'price' => 1950000, 'discount' => 0, 'image' => 'https://images.unsplash.com/photo-1614975058789-41316d0e2e9c?q=80&w=600&auto=format&fit=crop', 'slug' => 'tailored-wool-blazer'],
                 ];
             @endphp
             
@@ -281,10 +281,10 @@
             
             @php
                 $bestSellers = [
-                    ['id' => 30, 'name' => 'Classic Crewneck Tee', 'category' => 'Basics', 'price' => 35.00, 'sale_price' => null, 'image' => 'https://images.unsplash.com/photo-1618354691373-d851c5c3a990?q=80&w=600&auto=format&fit=crop', 'slug' => 'classic-crewneck-tee'],
-                    ['id' => 31, 'name' => 'Pima Cotton Polo', 'category' => 'Shirts', 'price' => 65.00, 'sale_price' => null, 'image' => 'https://images.unsplash.com/photo-1562157873-818bc0726f68?q=80&w=600&auto=format&fit=crop', 'slug' => 'pima-cotton-polo'],
-                    ['id' => 32, 'name' => 'Oversized Merino Hoodie', 'category' => 'Sweats', 'price' => 135.00, 'sale_price' => null, 'image' => 'https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?q=80&w=600&auto=format&fit=crop', 'slug' => 'oversized-merino-hoodie'],
-                    ['id' => 33, 'name' => 'Tailored Smart Trousers', 'category' => 'Trousers', 'price' => 110.00, 'sale_price' => null, 'image' => 'https://images.unsplash.com/photo-1554568218-0f1715e72254?q=80&w=600&auto=format&fit=crop', 'slug' => 'tailored-smart-trousers'],
+                    ['id' => 30, 'name' => 'Classic Crewneck Tee', 'category' => 'Basics', 'price' => 350000, 'discount' => 0, 'image' => 'https://images.unsplash.com/photo-1618354691373-d851c5c3a990?q=80&w=600&auto=format&fit=crop', 'slug' => 'classic-crewneck-tee'],
+                    ['id' => 31, 'name' => 'Pima Cotton Polo', 'category' => 'Shirts', 'price' => 650000, 'discount' => 15, 'image' => 'https://images.unsplash.com/photo-1562157873-818bc0726f68?q=80&w=600&auto=format&fit=crop', 'slug' => 'pima-cotton-polo'],
+                    ['id' => 32, 'name' => 'Oversized Merino Hoodie', 'category' => 'Sweats', 'price' => 1350000, 'discount' => 0, 'image' => 'https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?q=80&w=600&auto=format&fit=crop', 'slug' => 'oversized-merino-hoodie'],
+                    ['id' => 33, 'name' => 'Tailored Smart Trousers', 'category' => 'Trousers', 'price' => 1100000, 'discount' => 0, 'image' => 'https://images.unsplash.com/photo-1554568218-0f1715e72254?q=80&w=600&auto=format&fit=crop', 'slug' => 'tailored-smart-trousers'],
                 ];
             @endphp
             
@@ -302,10 +302,10 @@
             
             @php
                 $trendingNow = [
-                    ['id' => 40, 'name' => 'Cropped Knit Vest', 'category' => 'Knitwear', 'price' => 75.00, 'sale_price' => null, 'image' => 'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?q=80&w=600&auto=format&fit=crop', 'slug' => 'cropped-knit-vest'],
-                    ['id' => 41, 'name' => 'Suede Chelsea Boots', 'category' => 'Shoes', 'price' => 210.00, 'sale_price' => null, 'image' => 'https://images.unsplash.com/photo-1485968579580-b6d095142e6e?q=80&w=600&auto=format&fit=crop', 'slug' => 'suede-chelsea-boots'],
-                    ['id' => 42, 'name' => 'Premium Silk Slip Skirt', 'category' => 'Skirts', 'price' => 125.00, 'sale_price' => null, 'image' => 'https://images.unsplash.com/photo-1620799139834-6b8f844fbe61?q=80&w=600&auto=format&fit=crop', 'slug' => 'premium-silk-slip-skirt'],
-                    ['id' => 43, 'name' => 'Minimalist Leather Belt', 'category' => 'Accessories', 'price' => 45.00, 'sale_price' => null, 'image' => 'https://images.unsplash.com/photo-1509319117193-57bab727e09d?q=80&w=600&auto=format&fit=crop', 'slug' => 'minimalist-leather-belt'],
+                    ['id' => 40, 'name' => 'Cropped Knit Vest', 'category' => 'Knitwear', 'price' => 750000, 'discount' => 0, 'image' => 'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?q=80&w=600&auto=format&fit=crop', 'slug' => 'cropped-knit-vest'],
+                    ['id' => 41, 'name' => 'Suede Chelsea Boots', 'category' => 'Shoes', 'price' => 2100000, 'discount' => 10, 'image' => 'https://images.unsplash.com/photo-1485968579580-b6d095142e6e?q=80&w=600&auto=format&fit=crop', 'slug' => 'suede-chelsea-boots'],
+                    ['id' => 42, 'name' => 'Premium Silk Slip Skirt', 'category' => 'Skirts', 'price' => 1250000, 'discount' => 0, 'image' => 'https://images.unsplash.com/photo-1620799139834-6b8f844fbe61?q=80&w=600&auto=format&fit=crop', 'slug' => 'premium-silk-slip-skirt'],
+                    ['id' => 43, 'name' => 'Minimalist Leather Belt', 'category' => 'Accessories', 'price' => 450000, 'discount' => 0, 'image' => 'https://images.unsplash.com/photo-1509319117193-57bab727e09d?q=80&w=600&auto=format&fit=crop', 'slug' => 'minimalist-leather-belt'],
                 ];
             @endphp
             
