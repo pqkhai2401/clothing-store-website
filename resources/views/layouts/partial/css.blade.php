@@ -14,5 +14,6 @@
     <link rel="stylesheet" href="{{ asset('assets/css/tom-select.crm.css') }}" />
     <link rel="stylesheet" href="{{ asset('css/style.css') }}">
     <link rel="stylesheet" href="{{ asset('css/listCS.css') }}" />
+    <link rel="stylesheet" href="{{ asset('css/admin-theme.css') }}" />
 
 </head>
