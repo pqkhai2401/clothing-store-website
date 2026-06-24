@@ -3,9 +3,9 @@
     $accountName = $currentUser?->username ?: 'admin';
     $displayEmail = $currentUser?->email ?: 'admin@example.com';
     $userInitial = \Illuminate\Support\Str::of($accountName)->trim()->substr(0, 1)->upper();
-    $roleLabel = $currentUser?->role?->name === 'admin' ? 'Quản trị viên' : 'Nhân viên';
-    $profileUrl = $currentUser?->isAdmin() ? route('admin.staff.list') : '#';
-    $brandUrl = $currentUser?->isAdmin() ? route('admin.dashboard') : route('admin.customers.list');
+    $roleLabel = $currentUser?->can('manage-staff') ? 'Quản trị viên' : 'Nhân viên';
+    $profileUrl = $currentUser?->can('manage-staff') ? route('admin.staff.list') : '#';
+    $brandUrl = $currentUser?->can('view-dashboard') ? route('admin.dashboard') : route('admin.customers.list');
 @endphp
 
 <aside class="app-sidebar admin-sidebar">

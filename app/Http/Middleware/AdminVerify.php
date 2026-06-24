@@ -19,7 +19,7 @@ class AdminVerify
     public function handle(Request $request, Closure $next)
     {
         if (Auth::check()) {
-            if (Auth::user()->isAdmin()) {
+            if (Auth::user()->can('access-admin')) {
                 return $next($request);
             }
 

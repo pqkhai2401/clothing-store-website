@@ -19,7 +19,6 @@ return new class extends Migration
             $table->string('google_id')->nullable();
             $table->string('avatar_url')->nullable();
             $table->string('phone_number')->nullable();
-            $table->foreignId('role_id')->constrained('roles');
             $table->boolean('is_active')->default(true);
             $table->timestamp('email_verified_at')->nullable();
             $table->rememberToken();

@@ -28,9 +28,9 @@ enum UserRole: string
     public static function labels(): array
     {
         return [
-            self::ADMIN->value => 'Administrator',
-            self::STAFF->value => 'Staff',
-            self::CUSTOMER->value => 'Customer',
+            self::ADMIN->value => 'Quản trị viên',
+            self::STAFF->value => 'Nhân viên',
+            self::CUSTOMER->value => 'Khách hàng',
         ];
     }
 }

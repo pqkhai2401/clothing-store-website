@@ -310,7 +310,7 @@ class OrderSeeder extends Seeder
 
             $resolved[] = [
                 'variant_id' => $variant->id,
-                'unit_price' => $product->sale_price ?? $product->price,
+                'unit_price' => $product->price,
                 'qty'        => $item['qty'],
             ];
         }
