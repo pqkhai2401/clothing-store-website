@@ -17,21 +17,23 @@ $accountRoutes = function (string $accountType): void {
     Route::delete('/{id}/force-delete', [UserController::class, 'forceDelete'])->name('forceDelete')->defaults('account_type', $accountType);
 };
 
-Route::middleware('auth.login')
+Route::middleware(['auth.login', 'admin'])
     ->prefix('admin')
     ->name('admin.')
     ->group(function () use ($accountRoutes) {
         Route::prefix('customers')->name('customers.')->group(fn () => $accountRoutes('customer'));
 
-        Route::middleware('admin')->group(function () use ($accountRoutes) {
-            Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+        Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 
-            Route::prefix('staff')->name('staff.')->group(fn () => $accountRoutes('staff'));
-            Route::prefix('users')->name('users.')->group(fn () => $accountRoutes('all'));
-
-            Route::prefix('images')->name('images.')->group(function () {
-                Route::get('/', [ImageController::class, 'index'])->name('list');
-                Route::delete('/{id}', [ImageController::class, 'destroy'])->name('destroy');
+        // Chỉ admin mới có quyền manage-staff
+        Route::middleware('permission:manage-staff')
+            ->group(function () use ($accountRoutes) {
+                Route::prefix('staff')->name('staff.')->group(fn () => $accountRoutes('staff'));
+                Route::prefix('users')->name('users.')->group(fn () => $accountRoutes('all'));
             });
+
+        Route::prefix('images')->name('images.')->group(function () {
+            Route::get('/', [ImageController::class, 'index'])->name('list');
+            Route::delete('/{id}', [ImageController::class, 'destroy'])->name('destroy');
         });
     });

@@ -4,17 +4,17 @@ namespace App\Models;
 
 use App\Enums\UserRole;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Passport\HasApiTokens;
+use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
-    use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
+    use HasApiTokens, HasFactory, HasRoles, Notifiable, SoftDeletes;
 
     protected $fillable = [
         'username',
@@ -23,7 +23,6 @@ class User extends Authenticatable
         'google_id',
         'avatar_url',
         'phone_number',
-        'role_id',
         'is_active',
         'lock_reason',
         'email_verified_at',
@@ -45,7 +44,7 @@ class User extends Authenticatable
      */
     public function isAdmin(): bool
     {
-        return $this->role?->name === UserRole::ADMIN->value;
+        return $this->hasRole(UserRole::ADMIN->value);
     }
 
     /**
@@ -53,7 +52,7 @@ class User extends Authenticatable
      */
     public function isCustomer(): bool
     {
-        return $this->role?->name === UserRole::CUSTOMER->value;
+        return $this->hasRole(UserRole::CUSTOMER->value);
     }
 
     /**
@@ -61,7 +60,7 @@ class User extends Authenticatable
      */
     public function isStaff(): bool
     {
-        return $this->role?->name === UserRole::STAFF->value;
+        return $this->hasRole(UserRole::STAFF->value);
     }
 
     /**
@@ -70,14 +69,6 @@ class User extends Authenticatable
     public function findForPassport(string $username): ?self
     {
         return $this->where('username', $username)->first();
-    }
-
-    /**
-     * Get the role associated with the user.
-     */
-    public function role(): BelongsTo
-    {
-        return $this->belongsTo(Role::class);
     }
 
     /**

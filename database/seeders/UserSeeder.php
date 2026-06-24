@@ -3,10 +3,10 @@
 namespace Database\Seeders;
 
 use App\Enums\UserRole;
-use App\Models\Role;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use Spatie\Permission\Models\Role;
 
 class UserSeeder extends Seeder
 {
@@ -17,7 +17,7 @@ class UserSeeder extends Seeder
     {
         $roles = collect(UserRole::cases())
             ->mapWithKeys(fn (UserRole $role) => [
-                $role->value => Role::firstOrCreate(['name' => $role->value]),
+                $role->value => Role::firstOrCreate(['name' => $role->value, 'guard_name' => 'web']),
             ]);
 
         $users = [
@@ -87,18 +87,19 @@ class UserSeeder extends Seeder
             ],
         ];
 
-        foreach ($users as $user) {
-            User::updateOrCreate(
-                ['email' => $user['email']],
+        foreach ($users as $userData) {
+            $user = User::updateOrCreate(
+                ['email' => $userData['email']],
                 [
-                    'username' => $user['username'],
-                    'password' => Hash::make($user['password']),
-                    'phone_number' => $user['phone_number'],
-                    'role_id' => $roles[$user['role']->value]->id,
-                    'is_active' => $user['is_active'],
+                    'username' => $userData['username'],
+                    'password' => Hash::make($userData['password']),
+                    'phone_number' => $userData['phone_number'],
+                    'is_active' => $userData['is_active'],
                     'email_verified_at' => now(),
                 ],
             );
+
+            $user->syncRoles([$userData['role']->value]);
         }
     }
 }
