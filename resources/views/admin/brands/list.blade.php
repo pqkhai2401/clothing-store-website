@@ -15,10 +15,7 @@
             font-size: 12px; font-weight: 800; text-transform: uppercase;
         }
         .page-action-btn.btn-primary { background: #174761; border-color: #174761; }
-        .badge-count {
-            background: #e9ecef; color: #374151;
-            border-radius: 12px; font-size: 11px; font-weight: 700; padding: 3px 8px;
-        }
+        .count-num { font-size: 13px; font-weight: 600; color: #6b7280; }
     </style>
 @endsection
 
@@ -34,6 +31,9 @@
         <div class="d-flex align-items-center gap-2 mb-3">
             <a href="#" class="btn btn-primary page-action-btn">
                 <i class="fa-solid fa-plus me-1"></i> Thêm thương hiệu
+            </a>
+            <a href="{{ route('admin.brands.trash') }}" class="btn btn-outline-secondary page-action-btn">
+                <i class="fa-solid fa-trash me-1"></i> Thùng rác
             </a>
         </div>
 
@@ -79,7 +79,7 @@
                                 <tr>
                                     <td class="ps-3" style="opacity:.45;">{{ $brand->id }}</td>
                                     <td class="fw-semibold">{{ $brand->name }}</td>
-                                    <td><span class="badge-count">{{ $brand->products_count }}</span></td>
+                                    <td><span class="count-num">{{ $brand->products_count }}</span></td>
                                     <td class="text-muted" style="font-size:12px;">
                                         {{ $brand->created_at?->format('d/m/Y') ?? '—' }}
                                     </td>

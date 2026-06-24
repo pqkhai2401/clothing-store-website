@@ -41,4 +41,34 @@ class ProductController extends Controller
 
         return redirect()->route('admin.products.list')->with('success', 'Xóa sản phẩm thành công');
     }
+
+    public function trash(Request $request)
+    {
+        $keyword = trim((string) $request->input('keyword'));
+        $perPage = in_array((int) $request->input('per_page'), [10, 25, 50], true)
+            ? (int) $request->input('per_page') : 10;
+
+        $query = Product::onlyTrashed()->with('category')->orderBy('deleted_at', 'desc');
+        if ($keyword !== '') {
+            $query->where('name', 'like', "%{$keyword}%");
+        }
+
+        $products = $query->paginate($perPage)->appends($request->except('page'));
+
+        return view('admin.products.trash', compact('products', 'keyword', 'perPage'));
+    }
+
+    public function restore(string $id)
+    {
+        Product::onlyTrashed()->findOrFail($id)->restore();
+
+        return redirect()->route('admin.products.trash')->with('success', 'Khôi phục sản phẩm thành công');
+    }
+
+    public function forceDelete(string $id)
+    {
+        Product::onlyTrashed()->findOrFail($id)->forceDelete();
+
+        return redirect()->route('admin.products.trash')->with('success', 'Xóa vĩnh viễn sản phẩm thành công');
+    }
 }

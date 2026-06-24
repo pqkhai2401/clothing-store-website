@@ -18,11 +18,7 @@
             font-size: 12px; font-weight: 800; text-transform: uppercase;
         }
         .page-action-btn.btn-primary { background: #174761; border-color: #174761; }
-        .badge-count {
-            background: #e9ecef; color: #374151;
-            border-radius: 12px; font-size: 11px; font-weight: 700;
-            padding: 3px 8px;
-        }
+        .count-num { font-size: 13px; font-weight: 600; color: #6b7280; }
         .parent-badge {
             background: #dbeafe; color: #1d4ed8;
             border-radius: 3px; font-size: 11px; font-weight: 700;
@@ -48,6 +44,9 @@
         <div class="d-flex align-items-center gap-2 mb-3">
             <a href="#" class="btn btn-primary page-action-btn">
                 <i class="fa-solid fa-plus me-1"></i> Thêm danh mục
+            </a>
+            <a href="{{ route('admin.categories.trash') }}" class="btn btn-outline-secondary page-action-btn">
+                <i class="fa-solid fa-trash me-1"></i> Thùng rác
             </a>
         </div>
 
@@ -108,7 +107,7 @@
                                         <code style="font-size:11px; color:#6b7280;">{{ $category->slug }}</code>
                                     </td>
                                     <td>
-                                        <span class="badge-count">{{ $category->products_count }}</span>
+                                        <span class="count-num">{{ $category->products_count }}</span>
                                     </td>
                                     <td class="text-center">
                                         <div class="d-inline-flex gap-1">

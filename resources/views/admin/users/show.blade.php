@@ -227,7 +227,7 @@
                         <tbody>
                             @forelse ($data as $user)
                                 @php
-                                    $roleName = $user->role?->name;
+                                    $roleName = $user->roles->first()?->name;
                                 @endphp
                                 <tr data-user-row="{{ $user->id }}">
                                     <td class="ps-3">{{ $user->id }}</td>

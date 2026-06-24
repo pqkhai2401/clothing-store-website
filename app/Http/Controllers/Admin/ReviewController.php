@@ -43,4 +43,37 @@ class ReviewController extends Controller
 
         return redirect()->route('admin.reviews.list')->with('success', 'Xóa đánh giá thành công');
     }
+
+    public function trash(Request $request)
+    {
+        $keyword = trim((string) $request->input('keyword'));
+        $perPage = in_array((int) $request->input('per_page'), [10, 25, 50], true)
+            ? (int) $request->input('per_page') : 10;
+
+        $query = Review::onlyTrashed()->with(['user', 'product'])->orderBy('deleted_at', 'desc');
+        if ($keyword !== '') {
+            $query->where(function ($q) use ($keyword) {
+                $q->where('comment', 'like', "%{$keyword}%")
+                  ->orWhereHas('product', fn ($p) => $p->where('name', 'like', "%{$keyword}%"));
+            });
+        }
+
+        $reviews = $query->paginate($perPage)->appends($request->except('page'));
+
+        return view('admin.reviews.trash', compact('reviews', 'keyword', 'perPage'));
+    }
+
+    public function restore(string $id)
+    {
+        Review::onlyTrashed()->findOrFail($id)->restore();
+
+        return redirect()->route('admin.reviews.trash')->with('success', 'Khôi phục đánh giá thành công');
+    }
+
+    public function forceDelete(string $id)
+    {
+        Review::onlyTrashed()->findOrFail($id)->forceDelete();
+
+        return redirect()->route('admin.reviews.trash')->with('success', 'Xóa vĩnh viễn đánh giá thành công');
+    }
 }

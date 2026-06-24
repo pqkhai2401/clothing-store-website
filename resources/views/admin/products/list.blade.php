@@ -108,6 +108,9 @@
             <a href="#" class="btn btn-primary page-action-btn">
                 <i class="fa-solid fa-plus me-1"></i> THÊM SẢN PHẨM
             </a>
+            <a href="{{ route('admin.products.trash') }}" class="btn btn-outline-secondary page-action-btn">
+                <i class="fa-solid fa-trash me-1"></i> THÙNG RÁC
+            </a>
         </div>
 
         <div class="card border shadow-sm">

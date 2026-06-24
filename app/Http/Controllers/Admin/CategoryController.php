@@ -36,4 +36,34 @@ class CategoryController extends Controller
 
         return redirect()->route('admin.categories.list')->with('success', 'Xóa danh mục thành công');
     }
+
+    public function trash(Request $request)
+    {
+        $keyword = trim((string) $request->input('keyword'));
+        $perPage = in_array((int) $request->input('per_page'), [10, 25, 50], true)
+            ? (int) $request->input('per_page') : 10;
+
+        $query = Category::onlyTrashed()->with('parentCategory')->orderBy('deleted_at', 'desc');
+        if ($keyword !== '') {
+            $query->where('name', 'like', "%{$keyword}%");
+        }
+
+        $categories = $query->paginate($perPage)->appends($request->except('page'));
+
+        return view('admin.categories.trash', compact('categories', 'keyword', 'perPage'));
+    }
+
+    public function restore(string $id)
+    {
+        Category::onlyTrashed()->findOrFail($id)->restore();
+
+        return redirect()->route('admin.categories.trash')->with('success', 'Khôi phục danh mục thành công');
+    }
+
+    public function forceDelete(string $id)
+    {
+        Category::onlyTrashed()->findOrFail($id)->forceDelete();
+
+        return redirect()->route('admin.categories.trash')->with('success', 'Xóa vĩnh viễn danh mục thành công');
+    }
 }

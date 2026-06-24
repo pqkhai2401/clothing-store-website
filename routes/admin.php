@@ -24,44 +24,56 @@ $accountRoutes = function (string $accountType): void {
     Route::delete('/{id}/force-delete', [UserController::class, 'forceDelete'])->name('forceDelete')->defaults('account_type', $accountType);
 };
 
+$trashRoutes = function (string $controller): Closure {
+    return function () use ($controller): void {
+        Route::get('/trash', [$controller, 'trash'])->name('trash');
+        Route::patch('/{id}/restore', [$controller, 'restore'])->name('restore');
+        Route::delete('/{id}/force-delete', [$controller, 'forceDelete'])->name('forceDelete');
+    };
+};
+
 Route::middleware(['auth.login', 'admin'])
     ->prefix('admin')
     ->name('admin.')
-    ->group(function () use ($accountRoutes) {
+    ->group(function () use ($accountRoutes, $trashRoutes) {
         Route::prefix('customers')->name('customers.')->group(fn () => $accountRoutes('customer'));
 
         Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 
-        // Chỉ những ai có permission manage-staff mới vào được
         Route::middleware('permission:manage-staff')
             ->group(function () use ($accountRoutes) {
                 Route::prefix('staff')->name('staff.')->group(fn () => $accountRoutes('staff'));
                 Route::prefix('users')->name('users.')->group(fn () => $accountRoutes('all'));
             });
 
-        Route::prefix('products')->name('products.')->group(function () {
+        Route::prefix('products')->name('products.')->group(function () use ($trashRoutes) {
             Route::get('/', [ProductController::class, 'index'])->name('list');
             Route::delete('/{id}', [ProductController::class, 'destroy'])->name('destroy');
+            $trashRoutes(ProductController::class)();
         });
 
-        Route::prefix('categories')->name('categories.')->group(function () {
+        Route::prefix('categories')->name('categories.')->group(function () use ($trashRoutes) {
             Route::get('/', [CategoryController::class, 'index'])->name('list');
             Route::delete('/{id}', [CategoryController::class, 'destroy'])->name('destroy');
+            $trashRoutes(CategoryController::class)();
         });
 
-        Route::prefix('brands')->name('brands.')->group(function () {
+        Route::prefix('brands')->name('brands.')->group(function () use ($trashRoutes) {
             Route::get('/', [BrandController::class, 'index'])->name('list');
             Route::delete('/{id}', [BrandController::class, 'destroy'])->name('destroy');
+            $trashRoutes(BrandController::class)();
         });
 
-        Route::prefix('colors')->name('colors.')->group(function () {
+        Route::prefix('colors')->name('colors.')->group(function () use ($trashRoutes) {
             Route::get('/', [ColorController::class, 'index'])->name('list');
             Route::delete('/{id}', [ColorController::class, 'destroy'])->name('destroy');
+            $trashRoutes(ColorController::class)();
         });
 
-        Route::prefix('sizes')->name('sizes.')->group(function () {
+        Route::prefix('sizes')->name('sizes.')->group(function () use ($trashRoutes) {
             Route::get('/', [SizeController::class, 'index'])->name('list');
             Route::delete('/{id}', [SizeController::class, 'destroy'])->name('destroy');
+            $trashRoutes(SizeController::class)();
         });
 
         Route::prefix('orders')->name('orders.')->group(function () {
@@ -69,9 +81,10 @@ Route::middleware(['auth.login', 'admin'])
             Route::get('/{id}', [OrderController::class, 'show'])->name('show');
         });
 
-        Route::prefix('reviews')->name('reviews.')->group(function () {
+        Route::prefix('reviews')->name('reviews.')->group(function () use ($trashRoutes) {
             Route::get('/', [ReviewController::class, 'index'])->name('list');
             Route::delete('/{id}', [ReviewController::class, 'destroy'])->name('destroy');
+            $trashRoutes(ReviewController::class)();
         });
 
         Route::prefix('images')->name('images.')->group(function () {

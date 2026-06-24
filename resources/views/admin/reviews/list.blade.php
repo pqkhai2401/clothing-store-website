@@ -28,6 +28,12 @@
             <div class="small text-muted">Trang chủ <span class="mx-1">/</span> Đánh giá</div>
         </div>
 
+        <div class="d-flex align-items-center gap-2 mb-3">
+            <a href="{{ route('admin.reviews.trash') }}" class="btn btn-outline-secondary page-action-btn">
+                <i class="fa-solid fa-trash me-1"></i> Thùng rác
+            </a>
+        </div>
+
         <div class="card border shadow-sm">
             <div class="card-header bg-white border-bottom">
                 <form method="GET" action="{{ route('admin.reviews.list') }}">

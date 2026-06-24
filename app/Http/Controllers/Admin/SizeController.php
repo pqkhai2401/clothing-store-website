@@ -33,4 +33,34 @@ class SizeController extends Controller
 
         return redirect()->route('admin.sizes.list')->with('success', 'Xóa kích thước thành công');
     }
+
+    public function trash(Request $request)
+    {
+        $keyword = trim((string) $request->input('keyword'));
+        $perPage = in_array((int) $request->input('per_page'), [10, 25, 50], true)
+            ? (int) $request->input('per_page') : 10;
+
+        $query = Size::onlyTrashed()->orderBy('deleted_at', 'desc');
+        if ($keyword !== '') {
+            $query->where('name', 'like', "%{$keyword}%");
+        }
+
+        $sizes = $query->paginate($perPage)->appends($request->except('page'));
+
+        return view('admin.sizes.trash', compact('sizes', 'keyword', 'perPage'));
+    }
+
+    public function restore(string $id)
+    {
+        Size::onlyTrashed()->findOrFail($id)->restore();
+
+        return redirect()->route('admin.sizes.trash')->with('success', 'Khôi phục kích thước thành công');
+    }
+
+    public function forceDelete(string $id)
+    {
+        Size::onlyTrashed()->findOrFail($id)->forceDelete();
+
+        return redirect()->route('admin.sizes.trash')->with('success', 'Xóa vĩnh viễn kích thước thành công');
+    }
 }
