@@ -11,7 +11,6 @@ $accountRoutes = function (string $accountType): void {
     Route::get('/create', [UserController::class, 'create'])->name('create')->defaults('account_type', $accountType);
     Route::post('/', [UserController::class, 'store'])->name('store')->defaults('account_type', $accountType);
     Route::get('/{id}', [UserController::class, 'show'])->name('show')->defaults('account_type', $accountType);
-    Route::get('/{id}/edit', [UserController::class, 'edit'])->name('edit')->defaults('account_type', $accountType);
     Route::put('/{id}', [UserController::class, 'update'])->name('update')->defaults('account_type', $accountType);
     Route::delete('/{id}', [UserController::class, 'destroy'])->name('destroy')->defaults('account_type', $accountType);
     Route::patch('/{id}/restore', [UserController::class, 'restore'])->name('restore')->defaults('account_type', $accountType);

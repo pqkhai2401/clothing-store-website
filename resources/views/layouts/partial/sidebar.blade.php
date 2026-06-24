@@ -4,7 +4,7 @@
     $displayEmail = $currentUser?->email ?: 'admin@example.com';
     $userInitial = \Illuminate\Support\Str::of($accountName)->trim()->substr(0, 1)->upper();
     $roleLabel = $currentUser?->role?->name === 'admin' ? 'Quản trị viên' : 'Nhân viên';
-    $profileUrl = $currentUser?->isAdmin() ? route('admin.users.edit', $currentUser->id) : '#';
+    $profileUrl = $currentUser?->isAdmin() ? route('admin.staff.list') : '#';
     $brandUrl = $currentUser?->isAdmin() ? route('admin.dashboard') : route('admin.customers.list');
 @endphp
 
