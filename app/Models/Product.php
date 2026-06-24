@@ -18,7 +18,7 @@ class Product extends Model
         'slug',
         'description',
         'price',
-        'sale_price',
+        'discount',
         'thumbnail',
         'category_id',
         'brand_id',
@@ -29,10 +29,10 @@ class Product extends Model
     ];
 
     protected $casts = [
-        'price' => 'decimal:2',
-        'sale_price' => 'decimal:2',
+        'price'       => 'decimal:2',
+        'discount'    => 'integer',
         'is_featured' => 'boolean',
-        'status' => 'boolean',
+        'status'      => 'boolean',
         'views_count' => 'integer',
     ];
 
@@ -90,5 +90,11 @@ class Product extends Model
     public function tags(): BelongsToMany
     {
         return $this->belongsToMany(Tag::class, 'product_tags')->withTimestamps();
+    }
+
+    public function getFinalPriceAttribute()
+    {
+        return $this->price *
+            (100 - $this->discount) / 100;
     }
 }
