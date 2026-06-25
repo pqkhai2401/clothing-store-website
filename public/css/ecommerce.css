@@ -36,7 +36,7 @@ a {
 }
 
 a:hover {
-    color: #888888;
+    color: #c8a84b;
 }
 
 /* Announcement Bar */
@@ -59,6 +59,10 @@ a:hover {
     top: 0;
     z-index: 1020;
     transition: all 0.3s ease;
+}
+
+.main-header .navbar {
+    position: relative;
 }
 
 .navbar-brand {
@@ -446,6 +450,128 @@ a:hover {
 .newsletter-form .btn {
     border-radius: 0;
     padding: 14px 30px;
+}
+
+/* Mega Menu - Products Dropdown */
+.mega-dropdown {
+    position: static;
+}
+
+.mega-dropdown .nav-link.dropdown-toggle::after {
+    display: none;
+}
+
+.mega-menu {
+    display: none;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    background-color: var(--background-color);
+    border-top: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+    z-index: 1050;
+    padding: 40px 60px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+}
+
+.mega-dropdown:hover .mega-menu,
+.mega-dropdown.active .mega-menu {
+    display: block;
+}
+
+.mega-menu-inner {
+    display: flex;
+    gap: 0;
+    align-items: flex-start;
+}
+
+.mega-col-general {
+    padding-right: 40px;
+    min-width: 180px;
+}
+
+.mega-col-general .mega-list a {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text-color);
+}
+
+.mega-col-general .mega-list li {
+    margin-bottom: 12px;
+}
+
+.mega-col-separator {
+    width: 1px;
+    background-color: var(--border-color);
+    align-self: stretch;
+    margin-right: 40px;
+}
+
+.mega-col {
+    flex: 1;
+}
+
+.mega-heading {
+    font-family: var(--font-serif);
+    font-size: 22px;
+    font-weight: 400;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--primary-color);
+    margin-bottom: 12px;
+}
+
+.mega-divider {
+    border-color: var(--border-color);
+    margin-bottom: 16px;
+}
+
+.mega-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.mega-list li {
+    margin-bottom: 10px;
+}
+
+.mega-list a {
+    font-size: 15px;
+    font-weight: 400;
+    color: var(--text-color);
+    letter-spacing: 0.3px;
+    transition: color 0.2s ease;
+}
+
+.mega-list a:hover {
+    color: #c8a84b;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.mega-heading-link {
+    color: var(--primary-color) !important;
+    text-decoration: none;
+    font-family: var(--font-serif);
+    font-size: 22px;
+    font-weight: 400;
+    letter-spacing: 1px;
+}
+
+.mega-heading-link:hover {
+    color: #c8a84b !important;
+    text-decoration: underline;
+    text-underline-offset: 4px;
+}
+
+.mega-col {
+    padding-right: 60px;
+}
+
+.mega-col:last-child {
+    padding-right: 0;
 }
 
 
