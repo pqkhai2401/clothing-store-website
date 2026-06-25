@@ -146,7 +146,6 @@
 
             if (showAddressFields) {
                 rows.push(readonlyRow('Tỉnh, Thành phố', user.city));
-                rows.push(readonlyRow('Quận, Huyện', user.district));
                 rows.push(readonlyRow('Phường, Xã', user.ward));
                 rows.push(readonlyRow('Số nhà', user.apartment_number));
             }
@@ -232,7 +231,6 @@
             setField('is_active', user.is_active ? '1' : '0');
             setField('lock_reason', user.lock_reason);
             setField('city', user.city);
-            setField('district', user.district);
             setField('ward', user.ward);
             setField('apartment_number', user.apartment_number);
             setField('password', '');

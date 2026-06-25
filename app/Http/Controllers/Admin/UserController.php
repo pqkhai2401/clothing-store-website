@@ -87,7 +87,7 @@ class UserController extends Controller
             'is_active' => ['required', 'boolean'],
             'password' => ['required', 'string', 'min:6', 'max:255'],
             'city' => ['nullable', 'string', 'max:255'],
-            'district' => ['nullable', 'string', 'max:255'],
+            
             'ward' => ['nullable', 'string', 'max:255'],
             'apartment_number' => ['nullable', 'string', 'max:255'],
             'lock_reason' => ['nullable', 'string', 'max:255'],
@@ -109,7 +109,7 @@ class UserController extends Controller
         if ($this->hasAddressInput($validated)) {
             $user->addresses()->create([
                 'city' => $validated['city'] ?? '',
-                'district' => $validated['district'] ?? '',
+               
                 'ward' => $validated['ward'] ?? '',
                 'apartment_number' => $validated['apartment_number'] ?? '',
             ]);
@@ -173,7 +173,7 @@ class UserController extends Controller
             'is_active' => ['required', 'boolean'],
             'password' => $passwordRules,
             'city' => ['nullable', 'string', 'max:255'],
-            'district' => ['nullable', 'string', 'max:255'],
+            
             'ward' => ['nullable', 'string', 'max:255'],
             'apartment_number' => ['nullable', 'string', 'max:255'],
             'lock_reason' => ['nullable', 'string', 'max:255'],
@@ -201,7 +201,7 @@ class UserController extends Controller
         if (in_array($context['type'], ['staff', 'customer']) && ($this->hasAddressInput($validated) || $user->addresses()->exists())) {
             $addressData = [
                 'city' => $validated['city'] ?? '',
-                'district' => $validated['district'] ?? '',
+               
                 'ward' => $validated['ward'] ?? '',
                 'apartment_number' => $validated['apartment_number'] ?? '',
             ];
@@ -462,7 +462,7 @@ class UserController extends Controller
 
     private function hasAddressInput(array $validated): bool
     {
-        return collect(['city', 'district', 'ward', 'apartment_number'])
+        return collect(['city', 'ward', 'apartment_number'])
             ->contains(fn (string $field) => filled($validated[$field] ?? null));
     }
 
@@ -482,7 +482,7 @@ class UserController extends Controller
             'status_label' => $user->is_active ? 'Đang hoạt động' : 'Ngưng hoạt động',
             'lock_reason' => $user->lock_reason,
             'city' => $address?->city,
-            'district' => $address?->district,
+            
             'ward' => $address?->ward,
             'apartment_number' => $address?->apartment_number,
             'created_at' => optional($user->created_at)->format('d/m/Y H:i'),
@@ -507,7 +507,7 @@ class UserController extends Controller
             'password.min' => 'Mật khẩu phải có ít nhất 6 ký tự',
             'password.confirmed' => 'Mật khẩu xác nhận không khớp',
             'city.max' => 'Tỉnh, thành phố không được vượt quá 255 ký tự',
-            'district.max' => 'Quận, huyện không được vượt quá 255 ký tự',
+           
             'ward.max' => 'Phường, xã không được vượt quá 255 ký tự',
             'apartment_number.max' => 'Số nhà không được vượt quá 255 ký tự',
             'lock_reason.max' => 'Lý do ngưng hoạt động không được vượt quá 255 ký tự',

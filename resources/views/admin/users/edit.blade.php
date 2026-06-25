@@ -64,11 +64,7 @@
                                 <div class="invalid-feedback d-block" data-error-for="city"></div>
                             </div>
 
-                            <div class="col-md-6">
-                                <label for="modal_district" class="form-label">Quận, Huyện</label>
-                                <input type="text" name="district" id="modal_district" class="form-control">
-                                <div class="invalid-feedback d-block" data-error-for="district"></div>
-                            </div>
+                          
 
                             <div class="col-md-6">
                                 <label for="modal_ward" class="form-label">Phường, Xã</label>
