@@ -47,6 +47,27 @@
             background: #eaf3ff;
         }
 
+        /* Input-group chứa ô password + nút mắt */
+        .input-group .account-form-control {
+            border-radius: 0;
+        }
+
+        .pw-toggle {
+            min-height: 32px;
+            padding: 0 10px;
+            border-radius: 0 3px 3px 0 !important;
+            border-left: 0;
+            font-size: 13px;
+            color: #64748b;
+            background: var(--hk-bg-input, #fff);
+            border-color: var(--hk-border, #ced4da);
+        }
+
+        .pw-toggle:hover {
+            color: var(--hk-accent, #174761);
+            background: var(--hk-bg-input, #f8f9fa);
+        }
+
         .account-form-actions {
             display: flex;
             justify-content: center;
@@ -129,9 +150,16 @@
                     <div class="account-form-row">
                         <label for="password" class="account-form-label">Mật Khẩu</label>
                         <div>
-                            <input type="password" name="password" id="password"
-                                class="form-control account-form-control @error('password') is-invalid @enderror"
-                                required>
+                            <div class="input-group">
+                                <input type="password" name="password" id="password"
+                                    class="form-control account-form-control @error('password') is-invalid @enderror"
+                                    required>
+                                <button type="button" class="btn btn-outline-secondary pw-toggle"
+                                    data-target="password" tabindex="-1"
+                                    title="Hiện / Ẩn mật khẩu">
+                                    <i class="fa-regular fa-eye"></i>
+                                </button>
+                            </div>
                             @error('password')
                                 <div class="invalid-feedback d-block">{{ $message }}</div>
                             @enderror
@@ -180,17 +208,7 @@
                         </div>
                     </div>
 
-                    <div class="account-form-row">
-                        <label for="district" class="account-form-label">Quận, Huyện</label>
-                        <div>
-                            <input type="text" name="district" id="district"
-                                class="form-control account-form-control @error('district') is-invalid @enderror"
-                                value="{{ old('district') }}">
-                            @error('district')
-                                <div class="invalid-feedback d-block">{{ $message }}</div>
-                            @enderror
-                        </div>
-                    </div>
+                    
 
                     <div class="account-form-row">
                         <label for="ward" class="account-form-label">Phường, Xã</label>
@@ -227,3 +245,18 @@
         </div>
     </main>
 @endsection
+
+@push('scripts')
+<script>
+document.querySelectorAll('.pw-toggle').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+        var input = document.getElementById(btn.dataset.target);
+        var icon  = btn.querySelector('i');
+        if (!input) return;
+        var show = input.type === 'password';
+        input.type = show ? 'text' : 'password';
+        icon.className = show ? 'fa-regular fa-eye-slash' : 'fa-regular fa-eye';
+    });
+});
+</script>
+@endpush

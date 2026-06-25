@@ -1,0 +1,734 @@
+/* ================================================================
+   HK Admin — Theme System
+   - Sidebar is always dark (dark blue-black in both modes)
+   - Content area switches between light and dark
+   - Uses Bootstrap CSS variables for reliable propagation
+   - Higher-specificity rules protect against sidebar CSS reverting
+   ================================================================ */
+
+
+/* ---------------------------------------------------------------
+   1. DESIGN TOKENS
+   --------------------------------------------------------------- */
+
+/* Light mode (default) */
+:root {
+    --hk-bg-app:        #f0f4f8;
+    --hk-bg-card:       #ffffff;
+    --hk-bg-th:         #f1f5f9;
+    --hk-bg-input:      #ffffff;
+    --hk-bg-input-addon:#f8fafc;
+    --hk-border:        #dde3ed;
+    --hk-text-1:        #0f172a;
+    --hk-text-2:        #4a5568;
+    --hk-text-3:        #94a3b8;
+    --hk-accent:        #174761;
+    --hk-accent-hover:  #1d5a7a;
+    --hk-radius:        10px;
+
+    /* Sidebar tokens (always dark, same in both modes) */
+    --hk-sb-bg:         #1e293b;
+    --hk-sb-bg-brand:   #172233;
+    --hk-sb-border:     rgba(255,255,255,0.08);
+    --hk-sb-text:       #f1f5f9;
+    --hk-sb-text-hi:    #ffffff;
+    --hk-sb-muted:      #94a3b8;
+    --hk-sb-icon:       #cbd5e1;
+    --hk-sb-hover:      rgba(255,255,255,0.07);
+    --hk-sb-active-bg:  rgba(56,189,248,0.15);
+    --hk-sb-active:     #38bdf8;
+    --hk-sb-dot:        #38bdf8;
+    --hk-sb-acct-bg:    rgba(255,255,255,0.05);
+}
+
+/* Dark mode */
+[data-theme="dark"] {
+    --hk-bg-app:        #0f172a;
+    --hk-bg-card:       #1e293b;
+    --hk-bg-th:         #162032;
+    --hk-bg-input:      #1e293b;
+    --hk-bg-input-addon:#162032;
+    --hk-border:        #2a3f5a;
+    --hk-text-1:        #e8eef5;
+    --hk-text-2:        #94a3b8;
+    --hk-text-3:        #516276;
+    --hk-accent:        #38bdf8;
+    --hk-accent-hover:  #7dd3fc;
+
+    /* Sidebar darker in dark mode */
+    --hk-sb-bg:         #0d1829;
+    --hk-sb-bg-brand:   #09111e;
+    --hk-sb-border:     rgba(255,255,255,0.05);
+    --hk-sb-text:       #f1f5f9;
+    --hk-sb-text-hi:    #ffffff;
+    --hk-sb-muted:      #94a3b8;
+    --hk-sb-icon:       #cbd5e1;
+    --hk-sb-hover:      rgba(255,255,255,0.05);
+    --hk-sb-active-bg:  rgba(56,189,248,0.12);
+    --hk-sb-active:     #38bdf8;
+    --hk-sb-dot:        #38bdf8;
+    --hk-sb-acct-bg:    rgba(255,255,255,0.03);
+}
+
+
+/* ---------------------------------------------------------------
+   2. BOOTSTRAP VARIABLE OVERRIDES — Dark mode
+   Propagates into ALL Bootstrap components automatically.
+   --------------------------------------------------------------- */
+[data-theme="dark"] {
+    --bs-body-bg:              #0f172a;
+    --bs-body-color:           #e8eef5;
+    --bs-body-color-rgb:       232,238,245;
+    --bs-emphasis-color:       #f1f5f9;
+    --bs-secondary-color:      rgba(232,238,245,0.7);
+    --bs-secondary-bg:         #1e293b;
+    --bs-tertiary-bg:          #162032;
+    --bs-border-color:         #2a3f5a;
+    --bs-border-color-translucent: rgba(42,63,90,0.5);
+
+    /* Table */
+    --bs-table-color:          #e8eef5;
+    --bs-table-bg:             transparent;
+    --bs-table-border-color:   #2a3f5a;
+    --bs-table-striped-color:  #e8eef5;
+    --bs-table-striped-bg:     rgba(255,255,255,0.025);
+    --bs-table-hover-color:    #f1f5f9;
+    --bs-table-hover-bg:       rgba(56,189,248,0.07);
+    --bs-table-active-color:   #f1f5f9;
+    --bs-table-active-bg:      rgba(56,189,248,0.1);
+
+    /* Card */
+    --bs-card-bg:              #1e293b;
+    --bs-card-border-color:    #2a3f5a;
+    --bs-card-cap-bg:          #162032;
+    --bs-card-color:           #e8eef5;
+
+    /* Form */
+    --bs-form-control-bg:      #1e293b;
+    --bs-input-bg:             #1e293b;
+    --bs-input-border-color:   #2a3f5a;
+    --bs-input-color:          #e8eef5;
+    --bs-input-group-addon-bg: #162032;
+
+    /* Dropdown */
+    --bs-dropdown-bg:          #1e293b;
+    --bs-dropdown-border-color:#2a3f5a;
+    --bs-dropdown-color:       #e8eef5;
+    --bs-dropdown-link-color:  #e8eef5;
+    --bs-dropdown-link-hover-bg:rgba(56,189,248,0.08);
+    --bs-dropdown-link-hover-color: #f1f5f9;
+    --bs-dropdown-link-active-bg:   rgba(56,189,248,0.18);
+    --bs-dropdown-link-active-color:#f1f5f9;
+    --bs-dropdown-divider-bg:  #2a3f5a;
+    --bs-dropdown-header-color:#94a3b8;
+
+    /* Modal */
+    --bs-modal-bg:             #1e293b;
+    --bs-modal-border-color:   #2a3f5a;
+    --bs-modal-color:          #e8eef5;
+    --bs-modal-header-border-color: #2a3f5a;
+    --bs-modal-footer-border-color: #2a3f5a;
+
+    /* Pagination */
+    --bs-pagination-bg:            #1e293b;
+    --bs-pagination-border-color:  #2a3f5a;
+    --bs-pagination-color:         #94a3b8;
+    --bs-pagination-hover-bg:      rgba(56,189,248,0.07);
+    --bs-pagination-hover-color:   #38bdf8;
+    --bs-pagination-hover-border-color: #2a3f5a;
+    --bs-pagination-active-bg:     #38bdf8;
+    --bs-pagination-active-color:  #0f172a;
+    --bs-pagination-active-border-color: #38bdf8;
+    --bs-pagination-disabled-bg:   #162032;
+    --bs-pagination-disabled-color:#516276;
+}
+
+
+/* ---------------------------------------------------------------
+   3. LAYOUT
+   --------------------------------------------------------------- */
+body,
+.app-wrapper,
+.layout-fixed .app-main,
+.app-main {
+    background: var(--hk-bg-app) !important;
+}
+
+[data-theme="dark"] body { color: var(--hk-text-1); }
+
+
+/* ---------------------------------------------------------------
+   4. SIDEBAR — higher-specificity fallback
+   Uses "body .xxx" (specificity 0,1,1) to beat sidebar.blade.php's
+   ".xxx !important" (specificity 0,1,0) even when loaded earlier.
+   This ensures dark sidebar even if sidebar.blade.php gets reverted.
+   --------------------------------------------------------------- */
+body .admin-sidebar {
+    overflow: visible;
+    display: flex;
+    flex-direction: column;
+    background: var(--hk-sb-bg) !important;
+    border-right: 1px solid var(--hk-sb-border) !important;
+    box-shadow: none !important;
+    color-scheme: dark;
+}
+
+body .admin-sidebar-brand {
+    background: var(--hk-sb-bg-brand) !important;
+    border-bottom: 1px solid var(--hk-sb-border) !important;
+}
+
+body .admin-brand-link {
+    color: var(--hk-sb-text-hi) !important;
+}
+
+body .admin-brand-mark,
+body .account-avatar {
+    background: var(--hk-sb-active) !important;
+    color: #fff !important;
+}
+
+body .admin-brand-text strong,
+body .account-name { color: var(--hk-sb-text-hi) !important; }
+
+body .admin-brand-text small,
+body .account-email { color: var(--hk-sb-muted) !important; }
+
+body .admin-sidebar .nav-item .nav-link,
+body .admin-sidebar .nav-link-title {
+    color: var(--hk-sb-text) !important;
+    border-radius: 7px;
+    position: relative;
+}
+
+body .admin-sidebar .nav-icon { color: var(--hk-sb-icon) !important; }
+
+body .admin-sidebar .nav-link:hover,
+body .admin-sidebar .nav-link-title:hover {
+    background: var(--hk-sb-hover) !important;
+    color: var(--hk-sb-text-hi) !important;
+}
+
+body .admin-sidebar .nav-link.active {
+    background: var(--hk-sb-active-bg) !important;
+    color: var(--hk-sb-active) !important;
+}
+
+body .admin-sidebar .nav-link.active::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 22%; height: 56%; width: 3px;
+    background: var(--hk-sb-dot);
+    border-radius: 0 3px 3px 0;
+}
+
+body .admin-sidebar .nav-link.active .nav-icon { color: var(--hk-sb-active) !important; }
+
+body .admin-sidebar .parent-menu-item.active {
+    background: var(--hk-sb-active-bg) !important;
+    color: var(--hk-sb-active) !important;
+}
+
+body .admin-sidebar .nav-treeview .nav-link {
+    color: var(--hk-sb-text) !important;
+    font-size: 12px;
+}
+
+body .admin-sidebar .dropdown-toggle-btn {
+    background: transparent !important;
+    color: var(--hk-sb-icon) !important;
+}
+
+body .admin-sidebar .dropdown-toggle-btn:hover {
+    background: var(--hk-sb-hover) !important;
+    color: var(--hk-sb-text-hi) !important;
+}
+
+body .sidebar-account {
+    background: var(--hk-sb-bg) !important;
+    border-top: 1px solid var(--hk-sb-border) !important;
+}
+
+body .sidebar-account-toggle {
+    background: var(--hk-sb-acct-bg) !important;
+    color: var(--hk-sb-text-hi) !important;
+    border: 1px solid transparent;
+}
+
+body .sidebar-account-toggle:hover,
+body .sidebar-account-toggle[aria-expanded="true"] {
+    background: var(--hk-sb-hover) !important;
+    border-color: var(--hk-sb-border) !important;
+}
+
+body .account-caret { color: var(--hk-sb-icon) !important; }
+
+body .sidebar-account-menu {
+    background: var(--hk-sb-bg) !important;
+    border-color: var(--hk-sb-border) !important;
+    box-shadow: 0 16px 40px rgba(0,0,0,0.4) !important;
+}
+
+body .account-menu-header { border-bottom: 1px solid var(--hk-sb-border); }
+body .account-menu-section { border-top: 1px solid var(--hk-sb-border); }
+
+body .account-menu-item {
+    color: var(--hk-sb-text) !important;
+    background: transparent !important;
+}
+
+body .account-menu-item i { color: var(--hk-sb-icon) !important; }
+
+body .account-menu-item:hover,
+body .account-menu-item:focus {
+    background: var(--hk-sb-hover) !important;
+    color: var(--hk-sb-text-hi) !important;
+}
+
+body .account-menu-logout:hover { color: #f87171 !important; }
+
+
+/* ---------------------------------------------------------------
+   5. CARD
+   --------------------------------------------------------------- */
+.card {
+    background: var(--hk-bg-card) !important;
+    border-color: var(--hk-border) !important;
+    border-radius: var(--hk-radius) !important;
+}
+
+.card-header {
+    background: var(--hk-bg-th) !important;
+    border-bottom-color: var(--hk-border) !important;
+    color: var(--hk-text-1) !important;
+}
+
+.card-footer {
+    background: var(--hk-bg-th) !important;
+    border-top-color: var(--hk-border) !important;
+}
+
+/* Utility overrides */
+.bg-white     { background: var(--hk-bg-card) !important; }
+.bg-light     { background: var(--hk-bg-th)   !important; }
+.border-bottom{ border-bottom-color: var(--hk-border) !important; }
+.border-top   { border-top-color:    var(--hk-border) !important; }
+.border       { border-color:        var(--hk-border) !important; }
+
+
+/* ---------------------------------------------------------------
+   6. TABLE — Fix Bootstrap table color cascade
+   Key: set --bs-table-color on table element itself
+   --------------------------------------------------------------- */
+
+/* thead */
+.mgmt-table thead th,
+.product-table thead th,
+.account-table thead th,
+.item-table thead th,
+.table thead th,
+.table-light th,
+.table-light td {
+    background: var(--hk-bg-th) !important;
+    color: var(--hk-text-2) !important;
+    border-color: var(--hk-border) !important;
+}
+
+/* Force table color vars in dark mode */
+[data-theme="dark"] .table {
+    --bs-table-color:         #e8eef5;
+    --bs-table-bg:            transparent;
+    --bs-table-border-color:  #2a3f5a;
+    --bs-table-striped-color: #e8eef5;
+    --bs-table-striped-bg:    rgba(255,255,255,0.025);
+    --bs-table-hover-color:   #f1f5f9;
+    --bs-table-hover-bg:      rgba(56,189,248,0.07);
+    color: #e8eef5;
+}
+
+[data-theme="dark"] .table-light {
+    --bs-table-color:        #94a3b8;
+    --bs-table-bg:           #162032;
+    --bs-table-border-color: #2a3f5a;
+    background: #162032 !important;
+    color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .table-light th,
+[data-theme="dark"] .table-light td {
+    background: #162032 !important;
+    color: #94a3b8 !important;
+    border-color: #2a3f5a !important;
+}
+
+/* tbody cells dark */
+[data-theme="dark"] .table td,
+[data-theme="dark"] .table th,
+[data-theme="dark"] .mgmt-table td,
+[data-theme="dark"] .mgmt-table th,
+[data-theme="dark"] .product-table td,
+[data-theme="dark"] .product-table th,
+[data-theme="dark"] .account-table td,
+[data-theme="dark"] .account-table th {
+    color: #e8eef5 !important;
+    border-color: #2a3f5a !important;
+}
+
+/* tbody cells light */
+.mgmt-table tbody td,
+.product-table tbody td,
+.account-table tbody td {
+    color: var(--hk-text-1) !important;
+    border-color: var(--hk-border) !important;
+}
+
+/* Row stripes */
+.mgmt-table tbody tr:nth-child(odd),
+.product-table tbody tr:nth-child(odd),
+.account-table tbody tr:nth-child(odd) {
+    background: #f8fafc;
+}
+
+[data-theme="dark"] .mgmt-table tbody tr:nth-child(odd),
+[data-theme="dark"] .product-table tbody tr:nth-child(odd),
+[data-theme="dark"] .account-table tbody tr:nth-child(odd) {
+    background: rgba(22,32,50,0.7) !important;
+}
+
+[data-theme="dark"] .mgmt-table tbody tr:nth-child(even),
+[data-theme="dark"] .product-table tbody tr:nth-child(even),
+[data-theme="dark"] .account-table tbody tr:nth-child(even) {
+    background: #1e293b !important;
+}
+
+/* Row hover */
+[data-theme="dark"] .table-hover > tbody > tr:hover > * {
+    --bs-table-color-state: #f1f5f9;
+    --bs-table-bg-state:    rgba(56,189,248,0.07);
+    background-color: rgba(56,189,248,0.07) !important;
+    color: #f1f5f9 !important;
+}
+
+/* Table borders */
+[data-theme="dark"] .table-bordered > :not(caption) > * > * {
+    border-color: #2a3f5a !important;
+}
+
+
+/* ---------------------------------------------------------------
+   7. FORMS
+   --------------------------------------------------------------- */
+.form-control,
+.form-select {
+    background-color: var(--hk-bg-input) !important;
+    border-color: var(--hk-border) !important;
+    color: var(--hk-text-1) !important;
+}
+
+.form-control::placeholder { color: var(--hk-text-3) !important; }
+
+.form-control:focus,
+.form-select:focus {
+    background-color: var(--hk-bg-input) !important;
+    border-color: var(--hk-accent) !important;
+    color: var(--hk-text-1) !important;
+    box-shadow: 0 0 0 3px rgba(56,189,248,0.15) !important;
+}
+
+.input-group-text {
+    background: var(--hk-bg-input-addon) !important;
+    border-color: var(--hk-border) !important;
+    color: var(--hk-text-2) !important;
+}
+
+[data-theme="dark"] .form-select option,
+[data-theme="dark"] select option {
+    background: #1e293b;
+    color: #e8eef5;
+}
+
+
+/* ---------------------------------------------------------------
+   8. BUTTONS
+   --------------------------------------------------------------- */
+
+/* Primary */
+.page-action-btn.btn-primary {
+    background: var(--hk-accent) !important;
+    border-color: var(--hk-accent) !important;
+    color: #fff !important;
+}
+
+/* Light mode keeps navy */
+html:not([data-theme="dark"]) .page-action-btn.btn-primary {
+    background: #174761 !important;
+    border-color: #174761 !important;
+}
+
+html:not([data-theme="dark"]) .page-action-btn.btn-primary:hover {
+    background: #1d5a7a !important;
+    border-color: #1d5a7a !important;
+}
+
+[data-theme="dark"] .page-action-btn.btn-primary:hover {
+    background: #7dd3fc !important;
+    border-color: #7dd3fc !important;
+    color: #0f172a !important;
+}
+
+/* Secondary outline */
+.page-action-btn.btn-outline-secondary {
+    color: var(--hk-text-2) !important;
+    border-color: var(--hk-border) !important;
+    background: transparent !important;
+}
+
+.page-action-btn.btn-outline-secondary:hover {
+    background: var(--hk-bg-th) !important;
+    color: var(--hk-text-1) !important;
+}
+
+/* Filter/search button */
+.btn-outline-primary {
+    color: var(--hk-accent) !important;
+    border-color: var(--hk-accent) !important;
+    background: transparent !important;
+}
+
+.btn-outline-primary:hover {
+    background: rgba(56,189,248,0.1) !important;
+}
+
+/* Edit */
+html:not([data-theme="dark"]) .btn-outline-warning {
+    color: #b45309 !important;
+    border-color: #d97706 !important;
+}
+
+[data-theme="dark"] .btn-outline-warning {
+    color: #fbbf24 !important;
+    border-color: #78350f !important;
+}
+
+[data-theme="dark"] .btn-outline-warning:hover {
+    background: rgba(251,191,36,0.12) !important;
+    border-color: #fbbf24 !important;
+    color: #fcd34d !important;
+}
+
+/* Delete */
+html:not([data-theme="dark"]) .btn-outline-danger {
+    color: #dc2626 !important;
+    border-color: #dc2626 !important;
+}
+
+[data-theme="dark"] .btn-outline-danger {
+    color: #f87171 !important;
+    border-color: #7f1d1d !important;
+}
+
+[data-theme="dark"] .btn-outline-danger:hover {
+    background: rgba(248,113,113,0.12) !important;
+    border-color: #f87171 !important;
+    color: #fca5a5 !important;
+}
+
+/* Restore */
+[data-theme="dark"] .btn-outline-success {
+    color: #4ade80 !important;
+    border-color: #14532d !important;
+}
+
+[data-theme="dark"] .btn-outline-success:hover {
+    background: rgba(74,222,128,0.12) !important;
+    border-color: #4ade80 !important;
+    color: #86efac !important;
+}
+
+/* Info */
+[data-theme="dark"] .btn-outline-info {
+    color: #22d3ee !important;
+    border-color: #164e63 !important;
+}
+
+[data-theme="dark"] .btn-outline-info:hover {
+    background: rgba(34,211,238,0.12) !important;
+    border-color: #22d3ee !important;
+    color: #67e8f9 !important;
+}
+
+/* Misc */
+[data-theme="dark"] .btn-danger { background: #dc2626 !important; border-color: #dc2626 !important; color: #fff !important; }
+[data-theme="dark"] .btn-light,
+[data-theme="dark"] .btn-secondary { background: var(--hk-bg-th) !important; border-color: var(--hk-border) !important; color: var(--hk-text-1) !important; }
+
+
+/* ---------------------------------------------------------------
+   9. BADGES & LABELS
+   --------------------------------------------------------------- */
+.parent-badge {
+    background: #dbeafe !important; color: #1e40af !important;
+    border-radius: 4px !important; font-size: 11px !important; font-weight: 700 !important; padding: 2px 7px !important;
+}
+
+[data-theme="dark"] .parent-badge {
+    background: rgba(56,189,248,0.15) !important; color: #7dd3fc !important;
+}
+
+.child-badge {
+    background: #dcfce7 !important; color: #166534 !important;
+    border-radius: 4px !important; font-size: 11px !important; font-weight: 700 !important; padding: 2px 7px !important;
+}
+
+[data-theme="dark"] .child-badge {
+    background: rgba(74,222,128,0.15) !important; color: #86efac !important;
+}
+
+.status-badge { border-radius: 3px !important; font-size: 11px !important; font-weight: 700 !important; }
+.count-num    { color: var(--hk-text-2) !important; }
+.price-sale   { color: #dc2626 !important; }
+.price-normal { color: var(--hk-text-1) !important; }
+.price-original { color: var(--hk-text-3) !important; }
+.stars        { color: #f59e0b !important; }
+.stars .empty { color: var(--hk-border) !important; }
+.order-code   { color: var(--hk-text-1) !important; }
+[data-theme="dark"] .order-code { color: #7dd3fc !important; }
+
+
+/* ---------------------------------------------------------------
+   10. TEXT — fix inline style="color:#174761;" in dark mode
+   !important from stylesheet beats inline style without !important
+   --------------------------------------------------------------- */
+[data-theme="dark"] [style*="color:#174761"],
+[data-theme="dark"] [style*="color: #174761"] { color: var(--hk-text-1) !important; }
+
+[data-theme="dark"] .app-main h1,
+[data-theme="dark"] .app-main h2,
+[data-theme="dark"] .app-main h3,
+[data-theme="dark"] .app-main h4,
+[data-theme="dark"] .app-main h5 { color: var(--hk-text-1) !important; }
+
+html:not([data-theme="dark"]) .app-main h1,
+html:not([data-theme="dark"]) .app-main h4 { color: #174761; }
+
+[data-theme="dark"] .text-muted  { color: var(--hk-text-2) !important; }
+[data-theme="dark"] .text-dark   { color: var(--hk-text-1) !important; }
+.small.text-muted { color: var(--hk-text-3) !important; }
+
+
+/* ---------------------------------------------------------------
+   11. MODAL
+   --------------------------------------------------------------- */
+[data-theme="dark"] .modal-content {
+    background: var(--hk-bg-card) !important;
+    border-color: var(--hk-border) !important;
+    color: var(--hk-text-1) !important;
+}
+
+[data-theme="dark"] .modal-header {
+    background: var(--hk-bg-th) !important;
+    border-color: var(--hk-border) !important;
+}
+
+[data-theme="dark"] .modal-footer {
+    background: var(--hk-bg-th) !important;
+    border-color: var(--hk-border) !important;
+}
+
+[data-theme="dark"] .modal-title { color: var(--hk-text-1) !important; }
+
+[data-theme="dark"] .account-modal-readonly { border-color: var(--hk-border) !important; }
+[data-theme="dark"] .account-modal-readonly-label {
+    background: var(--hk-bg-th) !important;
+    color: var(--hk-text-2) !important;
+    border-right-color: var(--hk-border) !important;
+}
+[data-theme="dark"] .account-modal-readonly-value { color: var(--hk-text-1) !important; }
+[data-theme="dark"] .account-modal .form-label { color: var(--hk-text-2) !important; }
+
+/* Delete confirm */
+[data-theme="dark"] #deleteConfirmModal .modal-content { background: var(--hk-bg-card) !important; border-color: var(--hk-border) !important; }
+[data-theme="dark"] #deleteConfirmLabel { color: var(--hk-text-1) !important; }
+[data-theme="dark"] #deleteConfirmModal .text-muted { color: var(--hk-text-2) !important; }
+[data-theme="dark"] .btn-cancel { background: var(--hk-bg-th) !important; color: var(--hk-text-2) !important; border-color: var(--hk-border) !important; }
+[data-theme="dark"] .btn-cancel:hover { background: var(--hk-border) !important; color: var(--hk-text-1) !important; }
+
+
+/* ---------------------------------------------------------------
+   12. PAGINATION COMPONENT (pagination.blade.php)
+   --------------------------------------------------------------- */
+[data-theme="dark"] .table-pagination-footer { color: var(--hk-text-2) !important; }
+[data-theme="dark"] .table-pagination-select { color: var(--hk-text-1) !important; background: transparent !important; }
+[data-theme="dark"] .table-pagination-select:hover { background: var(--hk-bg-th) !important; }
+[data-theme="dark"] .table-pagination-menu { background: var(--hk-bg-card) !important; border-color: var(--hk-border) !important; }
+[data-theme="dark"] .table-pagination-menu .dropdown-item { color: var(--hk-text-1) !important; }
+[data-theme="dark"] .table-pagination-menu .dropdown-item:hover { background: rgba(56,189,248,0.08) !important; }
+[data-theme="dark"] .table-pagination-menu .dropdown-item.active { background: var(--hk-accent) !important; color: #0f172a !important; }
+[data-theme="dark"] .table-pagination-nav .page-link { color: var(--hk-text-2) !important; background: transparent !important; }
+[data-theme="dark"] .table-pagination-nav .page-link:hover { color: var(--hk-accent) !important; background: rgba(56,189,248,0.08) !important; }
+[data-theme="dark"] .table-pagination-nav .page-item.disabled .page-link { color: var(--hk-text-3) !important; }
+
+
+/* ---------------------------------------------------------------
+   13. DROPDOWN (generic)
+   --------------------------------------------------------------- */
+[data-theme="dark"] .dropdown-menu { background: var(--hk-bg-card) !important; border-color: var(--hk-border) !important; }
+[data-theme="dark"] .dropdown-item { color: var(--hk-text-1) !important; }
+[data-theme="dark"] .dropdown-item:hover,
+[data-theme="dark"] .dropdown-item:focus { background: rgba(56,189,248,0.08) !important; }
+
+
+/* ---------------------------------------------------------------
+   14. PAYMENT BADGES (orders page)
+   --------------------------------------------------------------- */
+.payment-badge { font-size:11px !important; font-weight:700 !important; border-radius:4px !important; padding:3px 8px !important; border:1px solid transparent; }
+.payment-badge.payment-paid   { color:#166534 !important; border-color:#bbf7d0 !important; background:#f0fdf4 !important; }
+.payment-badge.payment-unpaid { color:#92400e !important; border-color:#fde68a !important; background:#fffbeb !important; }
+
+[data-theme="dark"] .payment-badge.payment-paid   { color:#86efac !important; border-color:rgba(74,222,128,.25) !important; background:rgba(74,222,128,.1) !important; }
+[data-theme="dark"] .payment-badge.payment-unpaid { color:#fcd34d !important; border-color:rgba(251,191,36,.25) !important; background:rgba(251,191,36,.1) !important; }
+
+
+/* ---------------------------------------------------------------
+   15. IMAGES & PLACEHOLDERS
+   --------------------------------------------------------------- */
+.product-thumb { border: 1px solid var(--hk-border) !important; }
+
+[data-theme="dark"] .product-thumb-placeholder {
+    background: var(--hk-bg-th) !important;
+    border-color: var(--hk-border) !important;
+    color: var(--hk-text-3) !important;
+}
+
+[data-theme="dark"] td > div[style*="background"] {
+    background: var(--hk-bg-th) !important;
+    border-color: var(--hk-border) !important;
+}
+
+
+/* ---------------------------------------------------------------
+   16. SCROLLBAR (webkit)
+   --------------------------------------------------------------- */
+[data-theme="dark"] ::-webkit-scrollbar       { width: 6px; height: 6px; }
+[data-theme="dark"] ::-webkit-scrollbar-track  { background: #0f172a; }
+[data-theme="dark"] ::-webkit-scrollbar-thumb  { background: #2a3f5a; border-radius: 3px; }
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover { background: #3a5070; }
+
+
+/* ---------------------------------------------------------------
+   17. SMOOTH THEME TRANSITION
+   --------------------------------------------------------------- */
+body,
+.app-wrapper,
+.app-main,
+.card,
+.card-header,
+.card-footer,
+.table,
+.table td,
+.table th,
+.form-control,
+.form-select,
+.input-group-text {
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.15s ease;
+}

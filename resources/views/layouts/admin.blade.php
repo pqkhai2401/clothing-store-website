@@ -1,5 +1,9 @@
 <!doctype html>
 <html lang="en">
+<script>
+    /* Anti-flash: set theme before CSS renders */
+    (function(){var t=localStorage.getItem('admin-theme')||'dark';document.documentElement.setAttribute('data-theme',t);}());
+</script>
 
 @include('layouts.partial.css')
 @yield('css')
