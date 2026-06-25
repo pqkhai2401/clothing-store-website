@@ -20,17 +20,57 @@
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url('/') }}">Home</a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url('/products') }}">Products</a>
+                    <li class="nav-item dropdown mega-dropdown">
+                        <a class="nav-link dropdown-toggle" href="{{ url('/products') }}" id="productsDropdown" role="button">
+                            Products
+                        </a>
+                        <div class="mega-menu" aria-labelledby="productsDropdown">
+                            <div class="mega-menu-inner">
+                                <!-- Cột chung -->
+                                <div class="mega-col mega-col-general">
+                                    <ul class="mega-list">
+                                        <li><a href="{{ url('/products') }}">Tất cả sản phẩm</a></li>
+                                        <li><a href="{{ url('/products?sort=best-selling') }}">Sản phẩm bán chạy</a></li>
+                                        <li><a href="{{ url('/products?sort=newest') }}">Sản phẩm mới nhất</a></li>
+                                    </ul>
+                                </div>
+                                <div class="mega-col-separator"></div>
+                                <!-- Cột Nam -->
+                                <div class="mega-col">
+                                    <h6 class="mega-heading">
+                                        <a href="{{ url('/products?gender=nam') }}" class="mega-heading-link">NAM</a>
+                                    </h6>
+                                    <hr class="mega-divider">
+                                    <ul class="mega-list">
+                                        <li><a href="{{ url('/products?gender=nam&category=ao-thun') }}">Áo thun</a></li>
+                                        <li><a href="{{ url('/products?gender=nam&category=ao-so-mi') }}">Áo sơ mi</a></li>
+                                        <li><a href="{{ url('/products?gender=nam&category=ao-polo') }}">Áo polo</a></li>
+                                        <li><a href="{{ url('/products?gender=nam&category=quan-tay') }}">Quần tây</a></li>
+                                        <li><a href="{{ url('/products?gender=nam&category=quan-jean') }}">Quần jean</a></li>
+                                        <li><a href="{{ url('/products?gender=nam&category=quan-short') }}">Quần short</a></li>
+                                    </ul>
+                                </div>
+                                <!-- Cột Nữ -->
+                                <div class="mega-col">
+                                    <h6 class="mega-heading">
+                                        <a href="{{ url('/products?gender=nu') }}" class="mega-heading-link">NỮ</a>
+                                    </h6>
+                                    <hr class="mega-divider">
+                                    <ul class="mega-list">
+                                        <li><a href="{{ url('/products?gender=nu&category=ao-thun') }}">Áo thun</a></li>
+                                        <li><a href="{{ url('/products?gender=nu&category=ao-polo') }}">Áo polo</a></li>
+                                        <li><a href="{{ url('/products?gender=nu&category=ao-croptop') }}">Áo croptop</a></li>
+                                        <li><a href="{{ url('/products?gender=nu&category=ao-dai-tay') }}">Áo dài tay</a></li>
+                                        <li><a href="{{ url('/products?gender=nu&category=quan-tay') }}">Quần tây</a></li>
+                                        <li><a href="{{ url('/products?gender=nu&category=vay') }}">Váy</a></li>
+                                        <li><a href="{{ url('/products?gender=nu&category=dam') }}">Đầm</a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url('/new-arrivals') }}">New Arrivals</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url('/men') }}">Men</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url('/women') }}">Women</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url('/contact') }}">Contact</a>
@@ -102,21 +142,38 @@
         const searchTrigger = document.getElementById('searchTrigger');
         const searchOverlay = document.getElementById('searchOverlay');
         const searchClose = document.getElementById('searchClose');
-        
+
         if (searchTrigger && searchOverlay && searchClose) {
             searchTrigger.addEventListener('click', function() {
                 searchOverlay.style.display = 'flex';
                 searchOverlay.querySelector('input').focus();
             });
-            
+
             searchClose.addEventListener('click', function() {
                 searchOverlay.style.display = 'none';
             });
 
-            // Close search on Escape key
             document.addEventListener('keydown', function(event) {
                 if (event.key === 'Escape') {
                     searchOverlay.style.display = 'none';
+                }
+            });
+        }
+
+        // Mega menu: click toggle for mobile, hover handled by CSS for desktop
+        const megaDropdown = document.querySelector('.mega-dropdown');
+        if (megaDropdown) {
+            const toggle = megaDropdown.querySelector('.dropdown-toggle');
+            toggle.addEventListener('click', function(e) {
+                if (window.innerWidth < 992) {
+                    e.preventDefault();
+                    megaDropdown.classList.toggle('active');
+                }
+            });
+
+            document.addEventListener('click', function(e) {
+                if (!megaDropdown.contains(e.target)) {
+                    megaDropdown.classList.remove('active');
                 }
             });
         }
