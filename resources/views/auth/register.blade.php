@@ -88,6 +88,10 @@
         color: transparent;
     }
 
+    .auth-input:hover {
+        border-color: #111111;
+    }
+
     .auth-input:focus {
         border-color: #111111;
     }
@@ -159,6 +163,12 @@
         font-weight: 800;
         text-transform: uppercase;
         cursor: pointer;
+        transition: background .18s, color .18s;
+    }
+
+    .auth-submit:hover {
+        outline: 2px solid #000000;
+        outline-offset: 2px;
     }
 
     .auth-links {
@@ -220,7 +230,8 @@
         flex: 0 0 auto;
     }
 
-    .invalid-feedback {
+    .invalid-feedback,
+    .auth-form-error {
         margin: 6px 0 0 0;
         color: #e60012;
         display: flex;
@@ -231,7 +242,12 @@
         line-height: 1.35;
     }
 
-    .invalid-feedback::before {
+    .auth-form-error {
+        margin-bottom: 14px;
+    }
+
+    .invalid-feedback::before,
+    .auth-form-error::before {
         content: "!";
         width: 16px;
         height: 16px;

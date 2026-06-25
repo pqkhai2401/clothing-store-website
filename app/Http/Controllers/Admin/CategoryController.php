@@ -32,6 +32,23 @@ class CategoryController extends Controller
     public function destroy(string $id)
     {
         $category = Category::findOrFail($id);
+
+        // Kiểm tra chính danh mục có sản phẩm đang bán không
+        $selfActiveCount = $category->products()->where('status', true)->count();
+        if ($selfActiveCount > 0) {
+            return redirect()->route('admin.categories.list')
+                ->with('error', 'Không thể xóa danh mục này vì vẫn còn sản phẩm đang bán. Vui lòng chuyển sản phẩm sang danh mục khác hoặc ngừng bán sản phẩm trước khi xóa.');
+        }
+
+        // Kiểm tra danh mục con có sản phẩm đang bán không
+        $childHasActive = $category->childrenCategories()
+            ->whereHas('products', fn ($q) => $q->where('status', true))
+            ->exists();
+        if ($childHasActive) {
+            return redirect()->route('admin.categories.list')
+                ->with('error', 'Không thể xóa danh mục này vì danh mục con vẫn còn sản phẩm đang bán.');
+        }
+
         $category->delete();
 
         return redirect()->route('admin.categories.list')->with('success', 'Xóa danh mục thành công');

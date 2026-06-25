@@ -18,11 +18,11 @@
             <div class="collapse navbar-collapse" id="navbarContent">
                 <ul class="navbar-nav mx-auto mb-2 mb-lg-0">
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url('/') }}">Home</a>
+                        <a class="nav-link" href="{{ url('/') }}">TRANG CHỦ</a>
                     </li>
                     <li class="nav-item dropdown mega-dropdown">
                         <a class="nav-link dropdown-toggle" href="{{ url('/products') }}" id="productsDropdown" role="button">
-                            Products
+                            Sản phẩm
                         </a>
                         <div class="mega-menu" aria-labelledby="productsDropdown">
                             <div class="mega-menu-inner">
@@ -70,10 +70,10 @@
                         </div>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url('/new-arrivals') }}">New Arrivals</a>
+                        <a class="nav-link" href="{{ url('/new-arrivals') }}">Hàng mới về</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url('/contact') }}">Contact</a>
+                        <a class="nav-link" href="{{ url('/contact') }}">Liên hệ</a>
                     </li>
                 </ul>
             </div>
@@ -81,18 +81,18 @@
             <!-- Right Utility Icons -->
             <div class="utility-icons d-flex align-items-center">
                 <!-- Search Trigger -->
-                <button class="btn-icon" id="searchTrigger" title="Search">
+                <button class="btn-icon" id="searchTrigger" title="Tìm kiếm">
                     <i class="bi bi-search"></i>
                 </button>
 
                 <!-- Wishlist -->
-                <a href="{{ url('/wishlist') }}" class="btn-icon" title="Wishlist">
+                <a href="{{ url('/wishlist') }}" class="btn-icon" title="Danh sách yêu thích">
                     <i class="bi bi-heart"></i>
                     <span class="badge-count">0</span>
                 </a>
 
                 <!-- Cart -->
-                <a href="{{ url('/cart') }}" class="btn-icon" title="Shopping Cart">
+                <a href="{{ url('/cart') }}" class="btn-icon" title="Giỏ hàng">
                     <i class="bi bi-bag"></i>
                     <span class="badge-count">0</span>
                 </a>
@@ -104,19 +104,19 @@
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenuButton">
                         @auth
-                            <li><a class="dropdown-item" href="{{ url('/profile') }}">My Profile</a></li>
-                            <li><a class="dropdown-item" href="{{ url('/orders') }}">My Orders</a></li>
+                            <li><a class="dropdown-item" href="{{ url('/profile') }}">Hồ sơ của tôi</a></li>
+                            <li><a class="dropdown-item" href="{{ url('/orders') }}">Đơn hàng của tôi</a></li>
                             @if(auth()->user()->isAdmin())
-                                <li><a class="dropdown-item text-primary" href="{{ route('admin.dashboard') }}">Admin Dashboard</a></li>
+                                <li><a class="dropdown-item text-primary" href="{{ route('admin.dashboard') }}">Bảng điều khiển Admin</a></li>
                             @endif
                             <li><hr class="dropdown-divider"></li>
                             <li>
-                                <a class="dropdown-item" href="{{ route('auth.logout') }}">Log Out</a>
+                                <a class="dropdown-item" href="{{ route('auth.logout') }}">Đăng xuất</a>
                             </li>
                         @else
-                            <li><a class="dropdown-item" href="{{ route('auth.loginpage') }}">Log In</a></li>
+                            <li><a class="dropdown-item" href="{{ route('auth.loginpage') }}">Đăng nhập</a></li>
                             @if (Route::has('register'))
-                                <li><a class="dropdown-item" href="{{ route('register') }}">Register</a></li>
+                                <li><a class="dropdown-item" href="{{ route('register') }}">Đăng ký</a></li>
                             @endif
                         @endauth
                     </ul>
@@ -131,7 +131,7 @@
     <span class="search-close" id="searchClose"><i class="bi bi-x"></i></span>
     <div class="container d-flex justify-content-center">
         <form action="{{ url('/search') }}" method="GET" class="w-100 max-w-600">
-            <input type="text" name="q" class="search-input-field" placeholder="SEARCH FOR PRODUCTS..." autocomplete="off">
+            <input type="text" name="q" class="search-input-field" placeholder="TÌM KIẾM SẢN PHẨM..." autocomplete="off">
         </form>
     </div>
 </div>
