@@ -60,65 +60,6 @@ clothing-store-website/
     └── api.php                   # REST API routes
 ```
 
----
-
-## Models (Database Schema)
-
-| Model | Mô tả |
-|---|---|
-| `User` | Tài khoản người dùng (customer / staff / admin) |
-| `Address` | Địa chỉ giao hàng của người dùng |
-| `Category` | Danh mục sản phẩm (hỗ trợ danh mục cha - con) |
-| `Brand` | Thương hiệu sản phẩm |
-| `Product` | Sản phẩm (tên, mô tả, giá, slug, giới tính...) |
-| `ProductImage` | Ảnh gallery của sản phẩm |
-| `ProductVariant` | Biến thể sản phẩm (màu + size + số lượng) |
-| `Color` | Màu sắc |
-| `Size` | Kích thước |
-| `Tag` | Nhãn sản phẩm |
-| `Wishlist` | Danh sách yêu thích |
-| `Review` | Đánh giá sản phẩm |
-| `Cart` | Giỏ hàng |
-| `CartItem` | Chi tiết giỏ hàng |
-| `PaymentMethod` | Phương thức thanh toán |
-| `Order` | Đơn hàng |
-| `OrderItem` | Chi tiết đơn hàng |
-| `ProductView` | Lịch sử xem sản phẩm |
-| `SearchHistory` | Lịch sử tìm kiếm |
-
----
-
-## Tính năng chính
-
-### Người dùng (User)
-- Trang chủ hiển thị sản phẩm nổi bật
-- Danh sách & tìm kiếm sản phẩm theo danh mục
-- Trang chi tiết sản phẩm (gallery, biến thể màu/size, đánh giá)
-- Giỏ hàng và thanh toán
-- Đăng ký / đăng nhập (email + mật khẩu, hoặc Google OAuth)
-- Quên mật khẩu
-
-### Quản trị (Admin Panel)
-| Module | Chức năng |
-|---|---|
-| Dashboard | Thống kê tổng quan |
-| Sản phẩm | Danh sách, chỉnh sửa, xoá mềm, thùng rác |
-| Danh mục | Danh sách, chỉnh sửa, xoá mềm (chặn nếu có sản phẩm đang bán) |
-| Thương hiệu | Danh sách, chỉnh sửa, xoá mềm |
-| Màu sắc | Danh sách, chỉnh sửa, xoá mềm |
-| Kích thước | Danh sách, chỉnh sửa, xoá mềm |
-| Đơn hàng | Danh sách, chi tiết, cập nhật trạng thái / thanh toán |
-| Đánh giá | Danh sách, kiểm duyệt |
-| Khách hàng | Danh sách, tạo, xem chi tiết, xoá mềm |
-| Nhân viên | Danh sách, tạo, phân quyền (yêu cầu permission `manage-staff`) |
-
-### Hệ thống phân quyền
-- Role: `admin`, `staff`, `customer`
-- Permission: `manage-staff` (kiểm soát truy cập module nhân viên)
-- Middleware `auth.login` + `admin` bảo vệ toàn bộ khu vực admin
-
----
-
 ## Cài đặt và chạy dự án
 
 ### Yêu cầu
@@ -214,8 +155,3 @@ Xem file `database/seeders/` để biết tài khoản admin/staff mặc định
 
 ---
 
-## API
-
-Backend cung cấp REST API tại `/api/*`, bảo vệ bằng Laravel Passport.
-
-Xem tài liệu API đầy đủ tại: `http://localhost:8000/api/documentation`
