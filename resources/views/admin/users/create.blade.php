@@ -4,13 +4,6 @@
 
 @section('css')
     <style>
-        .account-admin-page {
-            background: #f8fafc;
-            min-height: calc(100vh - 56px);
-            padding-top: 0 !important;
-        }
-
-
         .account-create-card {
             border: 1px solid #d8dee6;
             border-radius: 3px;
@@ -79,7 +72,7 @@
             display: flex;
             justify-content: center;
             gap: 10px;
-            padding: 22px 0 6px;
+            padding: 18px 0;
         }
 
         .account-form-actions .btn {
@@ -112,13 +105,12 @@
         $isStaffContext = ($type ?? 'all') === 'staff';
         $pageHeading = $isStaffContext ? 'Thêm mới quản trị viên' : (($createLabel ?? 'Thêm tài khoản').' mới');
         $cardHeading = $isStaffContext ? 'Thông tin Quản trị viên' : 'Thông tin '.($itemLabel ?? 'Tài khoản');
-        $breadcrumbLabel = ($type ?? 'all') === 'customer' ? 'Quản lý khách hàng' : (($type ?? 'all') === 'staff' ? 'Quản lý nhân sự' : 'Quản lý tài khoản');
+        $submitLabel = $isStaffContext ? 'Thêm mới quản trị viên' : 'Thêm mới '.($itemLabelLower ?? 'người dùng');
     @endphp
 
-    <main class="app-main account-admin-page container-fluid py-4">
+    <main class="app-main container-fluid py-4">
         <x-notification />
 
-        <section class="px-3 px-md-4">
         <h1 class="h4 fw-semibold mb-4">{{ $pageHeading }}</h1>
 
         <div class="card account-create-card">
@@ -243,16 +235,18 @@
                         </div>
                     </div>
 
+                </div>
+
+                <div class="card-footer bg-white border-top">
                     <div class="account-form-actions">
                         <a href="{{ route(($routePrefix ?? 'admin.users').'.list') }}" class="btn btn-light border">Hủy</a>
                         <button type="submit" class="btn btn-primary">
-                            <i class="fa-solid fa-floppy-disk me-1"></i> Thêm mới người dùng
+                            <i class="fa-solid fa-floppy-disk me-1"></i> {{ $submitLabel }}
                         </button>
                     </div>
                 </div>
             </form>
         </div>
-        </section>
     </main>
 @endsection
 

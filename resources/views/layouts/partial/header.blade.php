@@ -20,6 +20,21 @@
             break;
         }
     }
+
+    $actionLabel = match ($routeName) {
+        'admin.staff.create' => 'Thêm mới quản trị viên',
+        'admin.customers.create' => 'Thêm mới khách hàng',
+        'admin.users.create' => 'Thêm mới tài khoản',
+        
+        default => null,
+    };
+
+    $pageUrl = match ($routeName) {
+        'admin.staff.create' => route('admin.staff.list'),
+        'admin.customers.create' => route('admin.customers.list'),
+        'admin.users.create' => route('admin.users.list'),
+        default => null,
+    };
 @endphp
 
 <nav class="app-header hk-topbar">
@@ -36,7 +51,16 @@
 
             @if($pageLabel)
                 <i class="fa-solid fa-chevron-right hk-topbar-sep"></i>
-                <span class="hk-topbar-page">{{ $pageLabel }}</span>
+                @if($pageUrl)
+                    <a href="{{ $pageUrl }}" class="hk-topbar-link">{{ $pageLabel }}</a>
+                @else
+                    <span class="hk-topbar-page">{{ $pageLabel }}</span>
+                @endif
+            @endif
+
+            @if($actionLabel)
+                <i class="fa-solid fa-chevron-right hk-topbar-sep"></i>
+                <span class="hk-topbar-page">{{ $actionLabel }}</span>
             @endif
         </div>
 

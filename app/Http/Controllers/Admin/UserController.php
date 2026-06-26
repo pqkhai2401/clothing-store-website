@@ -345,9 +345,9 @@ class UserController extends Controller
                 'pageDescription' => 'Quản trị viên có thể thêm, sửa hoặc xóa tài khoản nhân viên.',
                 'sectionTitle' => 'Quản lý tài khoản nhân viên',
                 'listTitle' => 'Danh sách nhân sự',
-                'itemLabel' => 'Nhân viên',
-                'itemLabelLower' => 'nhân viên',
-                'createLabel' => 'Thêm nhân viên',
+                'itemLabel' => 'Quản trị viên',
+                'itemLabelLower' => 'quản trị viên',
+                'createLabel' => 'Thêm quản trị viên',
                 'routePrefix' => 'admin.staff',
             ],
             'customer' => [

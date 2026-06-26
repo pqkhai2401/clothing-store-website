@@ -21,7 +21,7 @@ class ProductController extends Controller
             ? (int) $request->input('per_page')
             : 10;
 
-        $query = Product::with(['category'])
+        $query = Product::with(['category', 'brand'])
             ->orderBy('id', 'desc');
 
         if ($keyword !== '') {
