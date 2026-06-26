@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Size;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class SizeController extends Controller
 {
@@ -24,6 +25,31 @@ class SizeController extends Controller
         $sizes = $query->paginate($perPage)->appends($request->except('page'));
 
         return view('admin.sizes.list', compact('sizes', 'keyword', 'perPage'));
+    }
+
+    public function edit(string $id)
+    {
+        $size = Size::findOrFail($id);
+
+        return view('admin.sizes.edit', compact('size'));
+    }
+
+    public function update(Request $request, string $id)
+    {
+        $size = Size::findOrFail($id);
+
+        $request->validate([
+            'name' => ['required', 'string', 'max:50', Rule::unique('sizes', 'name')->ignore($id)],
+        ], [
+            'name.required' => 'Tên kích thước không được để trống.',
+            'name.max'      => 'Tên kích thước không được quá 50 ký tự.',
+            'name.unique'   => 'Tên kích thước này đã tồn tại.',
+        ]);
+
+        $size->update(['name' => $request->input('name')]);
+
+        return redirect()->route('admin.sizes.list')
+            ->with('success', "Cập nhật kích thước \"{$size->name}\" thành công.");
     }
 
     public function destroy(string $id)

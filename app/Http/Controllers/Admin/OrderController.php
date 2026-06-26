@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class OrderController extends Controller
 {
@@ -67,8 +68,12 @@ class OrderController extends Controller
 
     public function show(string $id)
     {
-        $order = Order::with(['user', 'address', 'paymentMethod', 'orderItems.productVariant.product', 'orderItems.productVariant.color', 'orderItems.productVariant.size'])
-            ->findOrFail($id);
+        $order = Order::with([
+            'user', 'address', 'paymentMethod',
+            'orderItems.productVariant.product',
+            'orderItems.productVariant.color',
+            'orderItems.productVariant.size',
+        ])->findOrFail($id);
 
         return view('admin.orders.show', [
             'order'               => $order,
@@ -76,5 +81,31 @@ class OrderController extends Controller
             'paymentStatusLabels' => self::PAYMENT_STATUS_LABELS,
             'statusBadge'         => self::STATUS_BADGE,
         ]);
+    }
+
+    public function update(Request $request, string $id)
+    {
+        $order = Order::findOrFail($id);
+
+        $request->validate([
+            'status'         => ['required', Rule::in(array_keys(self::STATUS_LABELS))],
+            'payment_status' => ['required', Rule::in(array_keys(self::PAYMENT_STATUS_LABELS))],
+            'note'           => ['nullable', 'string', 'max:1000'],
+        ], [
+            'status.required'         => 'Vui lòng chọn trạng thái đơn hàng.',
+            'status.in'               => 'Trạng thái đơn hàng không hợp lệ.',
+            'payment_status.required' => 'Vui lòng chọn trạng thái thanh toán.',
+            'payment_status.in'       => 'Trạng thái thanh toán không hợp lệ.',
+            'note.max'                => 'Ghi chú không được quá 1000 ký tự.',
+        ]);
+
+        $order->update([
+            'status'         => $request->input('status'),
+            'payment_status' => $request->input('payment_status'),
+            'note'           => $request->input('note'),
+        ]);
+
+        return redirect()->route('admin.orders.show', $id)
+            ->with('success', 'Cập nhật đơn hàng thành công.');
     }
 }

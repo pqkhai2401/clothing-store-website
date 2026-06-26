@@ -223,7 +223,7 @@
 
                                     <td class="text-center">
                                         <div class="d-inline-flex align-items-center gap-1">
-                                            <a href="#"
+                                            <a href="{{ route('admin.products.edit', $product->id) }}"
                                                 class="btn btn-sm btn-outline-warning"
                                                 title="Sửa">
                                                 <i class="fa-solid fa-pen"></i>

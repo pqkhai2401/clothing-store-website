@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Brand;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class BrandController extends Controller
 {
@@ -24,6 +25,31 @@ class BrandController extends Controller
         $brands = $query->paginate($perPage)->appends($request->except('page'));
 
         return view('admin.brands.list', compact('brands', 'keyword', 'perPage'));
+    }
+
+    public function edit(string $id)
+    {
+        $brand = Brand::findOrFail($id);
+
+        return view('admin.brands.edit', compact('brand'));
+    }
+
+    public function update(Request $request, string $id)
+    {
+        $brand = Brand::findOrFail($id);
+
+        $request->validate([
+            'name' => ['required', 'string', 'max:255', Rule::unique('brands', 'name')->ignore($id)],
+        ], [
+            'name.required' => 'Tên thương hiệu không được để trống.',
+            'name.max'      => 'Tên thương hiệu không được quá 255 ký tự.',
+            'name.unique'   => 'Tên thương hiệu này đã tồn tại.',
+        ]);
+
+        $brand->update(['name' => $request->input('name')]);
+
+        return redirect()->route('admin.brands.list')
+            ->with('success', "Cập nhật thương hiệu \"{$brand->name}\" thành công.");
     }
 
     public function destroy(string $id)

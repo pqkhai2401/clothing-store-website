@@ -48,30 +48,40 @@ Route::middleware(['auth.login', 'admin'])
 
         Route::prefix('products')->name('products.')->group(function () use ($trashRoutes) {
             Route::get('/', [ProductController::class, 'index'])->name('list');
+            Route::get('/{id}/edit', [ProductController::class, 'edit'])->name('edit');
+            Route::put('/{id}', [ProductController::class, 'update'])->name('update');
             Route::delete('/{id}', [ProductController::class, 'destroy'])->name('destroy');
             $trashRoutes(ProductController::class)();
         });
 
         Route::prefix('categories')->name('categories.')->group(function () use ($trashRoutes) {
             Route::get('/', [CategoryController::class, 'index'])->name('list');
+            Route::get('/{id}/edit', [CategoryController::class, 'edit'])->name('edit');
+            Route::put('/{id}', [CategoryController::class, 'update'])->name('update');
             Route::delete('/{id}', [CategoryController::class, 'destroy'])->name('destroy');
             $trashRoutes(CategoryController::class)();
         });
 
         Route::prefix('brands')->name('brands.')->group(function () use ($trashRoutes) {
             Route::get('/', [BrandController::class, 'index'])->name('list');
+            Route::get('/{id}/edit', [BrandController::class, 'edit'])->name('edit');
+            Route::put('/{id}', [BrandController::class, 'update'])->name('update');
             Route::delete('/{id}', [BrandController::class, 'destroy'])->name('destroy');
             $trashRoutes(BrandController::class)();
         });
 
         Route::prefix('colors')->name('colors.')->group(function () use ($trashRoutes) {
             Route::get('/', [ColorController::class, 'index'])->name('list');
+            Route::get('/{id}/edit', [ColorController::class, 'edit'])->name('edit');
+            Route::put('/{id}', [ColorController::class, 'update'])->name('update');
             Route::delete('/{id}', [ColorController::class, 'destroy'])->name('destroy');
             $trashRoutes(ColorController::class)();
         });
 
         Route::prefix('sizes')->name('sizes.')->group(function () use ($trashRoutes) {
             Route::get('/', [SizeController::class, 'index'])->name('list');
+            Route::get('/{id}/edit', [SizeController::class, 'edit'])->name('edit');
+            Route::put('/{id}', [SizeController::class, 'update'])->name('update');
             Route::delete('/{id}', [SizeController::class, 'destroy'])->name('destroy');
             $trashRoutes(SizeController::class)();
         });
@@ -79,6 +89,7 @@ Route::middleware(['auth.login', 'admin'])
         Route::prefix('orders')->name('orders.')->group(function () {
             Route::get('/', [OrderController::class, 'index'])->name('list');
             Route::get('/{id}', [OrderController::class, 'show'])->name('show');
+            Route::put('/{id}', [OrderController::class, 'update'])->name('update');
         });
 
         Route::prefix('reviews')->name('reviews.')->group(function () use ($trashRoutes) {

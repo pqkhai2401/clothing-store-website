@@ -111,7 +111,7 @@
                                     </td>
                                     <td class="text-center">
                                         <div class="d-inline-flex gap-1">
-                                            <a href="#" class="btn btn-sm btn-outline-warning" title="Sửa">
+                                            <a href="{{ route('admin.categories.edit', $category->id) }}" class="btn btn-sm btn-outline-warning" title="Sửa">
                                                 <i class="fa-solid fa-pen"></i>
                                             </a>
                                             <button type="button" class="btn btn-sm btn-outline-danger" title="Xóa"
