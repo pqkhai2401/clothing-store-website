@@ -163,6 +163,7 @@
                     <table class="table table-hover table-bordered product-table align-middle mb-0">
                         <thead class="table-light">
                             <tr>
+                                <th class="hk-cb-th"><input type="checkbox" class="hk-cb-all"></th>
                                 <th class="ps-3" style="width:60px;">ID</th>
                                 <th style="width:70px;">Hình ảnh</th>
                                 <th>Tên sản phẩm</th>
@@ -175,6 +176,7 @@
                         <tbody>
                             @forelse($products as $product)
                                 <tr>
+                                    <td class="hk-cb-td"><input type="checkbox" class="hk-cb-row" value="{{ $product->id }}"></td>
                                     <td class="ps-3 text-muted" style="opacity:0.45;">{{ $product->id }}</td>
 
                                     <td>
@@ -241,7 +243,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="7" class="text-center py-5">
+                                    <td colspan="8" class="text-center py-5">
                                         <i class="fa-solid fa-inbox text-muted mb-3" style="font-size:42px; display:block;"></i>
                                         <div class="fw-semibold text-muted">Chưa có sản phẩm nào</div>
                                     </td>
@@ -253,7 +255,7 @@
             </div>
 
             <div class="card-footer bg-white">
-                @include('layouts.components.pagination', ['paginator' => $products])
+                @include('layouts.components.pagination', ['paginator' => $products, 'itemLabel' => 'sản phẩm', 'bulkDeleteUrl' => route('admin.products.bulkDelete')])
             </div>
         </div>
     </main>

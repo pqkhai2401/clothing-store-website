@@ -67,6 +67,7 @@
                     <table class="table table-hover table-bordered mgmt-table align-middle mb-0">
                         <thead class="table-light">
                             <tr>
+                                <th class="hk-cb-th"><input type="checkbox" class="hk-cb-all"></th>
                                 <th class="ps-3" style="width:60px;">ID</th>
                                 <th>Tên màu sắc</th>
                                 <th style="width:160px;">Số biến thể SP</th>
@@ -77,6 +78,7 @@
                         <tbody>
                             @forelse($colors as $color)
                                 <tr>
+                                    <td class="hk-cb-td"><input type="checkbox" class="hk-cb-row" value="{{ $color->id }}"></td>
                                     <td class="ps-3" style="opacity:.45;">{{ $color->id }}</td>
                                     <td class="fw-semibold">{{ $color->name }}</td>
                                     <td><span class="count-num">{{ $color->product_variants_count }}</span></td>
@@ -99,7 +101,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="5" class="text-center py-5">
+                                    <td colspan="6" class="text-center py-5">
                                         <i class="fa-solid fa-inbox text-muted mb-3" style="font-size:42px;display:block;"></i>
                                         <div class="fw-semibold text-muted">Chưa có màu sắc nào</div>
                                     </td>
@@ -111,7 +113,7 @@
             </div>
 
             <div class="card-footer bg-white">
-                @include('layouts.components.pagination', ['paginator' => $colors])
+                @include('layouts.components.pagination', ['paginator' => $colors, 'itemLabel' => 'màu sắc', 'bulkDeleteUrl' => route('admin.colors.bulkDelete')])
             </div>
         </div>
     </main>

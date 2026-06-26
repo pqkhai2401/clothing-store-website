@@ -1,195 +1,405 @@
 @php
-    $prefix = $prefix ?? '';
+    static $hkPgId = 0;
+    $hkPgId++;
+    $uid            = 'hkpg' . $hkPgId;
+    $itemLabel      = $itemLabel ?? 'mục';
+    $bulkDeleteUrl  = $bulkDeleteUrl ?? null;
     $currentPerPage = (int) $paginator->perPage();
     $perPageOptions = [10, 25, 50, 100];
-    $firstItem = $paginator->firstItem() ?? 0;
-    $lastItem = $paginator->lastItem() ?? 0;
-    $total = $paginator->total();
+    $total          = $paginator->total();
+    $count          = $paginator->count();
+    $currentPage    = $paginator->currentPage();
+    $lastPage       = $paginator->lastPage();
+    $isFirst        = $paginator->onFirstPage();
+    $isLast         = ! $paginator->hasMorePages();
 @endphp
 
-<div class="table-pagination-footer">
-    <div class="table-pagination-control">
-        <span class="table-pagination-label">Rows per page:</span>
+<div class="hk-pagination" id="{{ $uid }}"
+     data-uid="{{ $uid }}"
+     data-label="{{ $itemLabel }}">
 
-        <div class="dropdown">
-            <button class="btn table-pagination-select" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                <span id="{{ $prefix }}perPageDropdownText">{{ $currentPerPage }}</span>
-                <i class="fa-solid fa-caret-down ms-2"></i>
-            </button>
+    {{-- ── LEFT: count + selection ────────────────────────── --}}
+    <div class="hk-pg-left">
+        <span class="hk-pg-info">
+            Hiển thị <strong>{{ $count }}</strong> / <strong>{{ $total }}</strong> {{ $itemLabel }}.
+        </span>
 
-            <ul class="dropdown-menu dropdown-menu-end table-pagination-menu">
-                @foreach ($perPageOptions as $option)
-                    <li>
-                        <a class="dropdown-item {{ $currentPerPage === $option ? 'active' : '' }}" href="#"
-                            onclick="selectPerPageCustom(event, {{ $option }}, '{{ $prefix }}')">
-                            {{ $option }}
-                        </a>
-                    </li>
-                @endforeach
-            </ul>
+        <div class="hk-pg-selection" id="{{ $uid }}_sel" style="display:none;">
+            <span class="hk-pg-sel-sep"> | </span>
+            <span class="hk-pg-sel-count" id="{{ $uid }}_selCount">0 {{ $itemLabel }} được chọn</span>
+            @if ($bulkDeleteUrl)
+                <button type="button" class="hk-pg-sel-delete" id="{{ $uid }}_selBtn">
+                    <i class="fa-regular fa-trash-can"></i> Xóa đã chọn
+                </button>
+            @endif
         </div>
-
-        <select id="{{ $prefix }}hiddenPerPageSelect" class="d-none custom-select-pagination"
-            onchange="changeRowsPerPage(this.value, '{{ $prefix }}')">
-            @foreach ($perPageOptions as $option)
-                <option value="{{ $option }}" {{ $currentPerPage === $option ? 'selected' : '' }}>
-                    {{ $option }}
-                </option>
-            @endforeach
-        </select>
     </div>
 
-    <span class="table-pagination-range">
-        {{ $firstItem }}-{{ $lastItem }} of {{ $total }}
-    </span>
+    {{-- ── RIGHT: per-page + page nav ────────────────────── --}}
+    <div class="hk-pg-right">
+        <span class="hk-pg-pp-label">Số hàng mỗi trang</span>
+        <select class="hk-pg-pp-select" onchange="handlePerPageChange(this.value)">
+            @foreach ($perPageOptions as $opt)
+                <option value="{{ $opt }}" @selected($currentPerPage === $opt)>{{ $opt }}</option>
+            @endforeach
+        </select>
 
-    <nav aria-label="Pagination">
-        <ul class="pagination table-pagination-nav mb-0">
-            <li class="page-item {{ $paginator->onFirstPage() ? 'disabled' : '' }}">
-                @if ($paginator->onFirstPage())
-                    <span class="page-link" aria-disabled="true">
-                        <i class="fa-solid fa-chevron-left"></i>
-                    </span>
-                @else
-                    <a class="page-link" href="{{ $paginator->previousPageUrl() }}">
-                        <i class="fa-solid fa-chevron-left"></i>
-                    </a>
-                @endif
-            </li>
+        <span class="hk-pg-pageinfo">Trang {{ $currentPage }} / {{ $lastPage }}</span>
 
-            <li class="page-item {{ $paginator->hasMorePages() ? '' : 'disabled' }}">
-                @if ($paginator->hasMorePages())
-                    <a class="page-link" href="{{ $paginator->nextPageUrl() }}">
-                        <i class="fa-solid fa-chevron-right"></i>
-                    </a>
-                @else
-                    <span class="page-link" aria-disabled="true">
-                        <i class="fa-solid fa-chevron-right"></i>
-                    </span>
-                @endif
-            </li>
-        </ul>
-    </nav>
+        <div class="hk-pg-buttons">
+            {{-- «  First --}}
+            @if ($isFirst)
+                <span class="hk-pg-btn hk-pg-btn--off" title="Trang đầu">
+                    <i class="fa-solid fa-angles-left"></i>
+                </span>
+            @else
+                <a class="hk-pg-btn" href="{{ $paginator->url(1) }}" title="Trang đầu">
+                    <i class="fa-solid fa-angles-left"></i>
+                </a>
+            @endif
+
+            {{-- ‹  Prev --}}
+            @if ($isFirst)
+                <span class="hk-pg-btn hk-pg-btn--off" title="Trang trước">
+                    <i class="fa-solid fa-angle-left"></i>
+                </span>
+            @else
+                <a class="hk-pg-btn" href="{{ $paginator->previousPageUrl() }}" title="Trang trước">
+                    <i class="fa-solid fa-angle-left"></i>
+                </a>
+            @endif
+
+            {{-- ›  Next --}}
+            @if ($isLast)
+                <span class="hk-pg-btn hk-pg-btn--off" title="Trang sau">
+                    <i class="fa-solid fa-angle-right"></i>
+                </span>
+            @else
+                <a class="hk-pg-btn" href="{{ $paginator->nextPageUrl() }}" title="Trang sau">
+                    <i class="fa-solid fa-angle-right"></i>
+                </a>
+            @endif
+
+            {{-- »  Last --}}
+            @if ($isLast)
+                <span class="hk-pg-btn hk-pg-btn--off" title="Trang cuối">
+                    <i class="fa-solid fa-angles-right"></i>
+                </span>
+            @else
+                <a class="hk-pg-btn" href="{{ $paginator->url($lastPage) }}" title="Trang cuối">
+                    <i class="fa-solid fa-angles-right"></i>
+                </a>
+            @endif
+        </div>
+    </div>
 </div>
 
+@if ($bulkDeleteUrl)
+<form id="{{ $uid }}_bdf" method="POST" action="{{ $bulkDeleteUrl }}" style="display:none;">
+    @csrf
+</form>
+@endif
+
+{{-- ══════════════════════ CSS (inlined once, duplicates ignored by browser) ══════════════════════ --}}
 <style>
-    .table-pagination-footer {
-        min-height: 48px;
-        display: flex;
-        align-items: center;
-        justify-content: flex-end;
-        gap: 28px;
-        color: #374151;
-        font-size: 13px;
-    }
+/* ── Base layout ─────────────────────────────────── */
+.hk-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    min-height: 52px;
+    padding: 10px 4px;
+    font-size: 13px;
+    color: #374151;
+    flex-wrap: wrap;
+}
 
-    .table-pagination-control {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-    }
+/* ── LEFT ────────────────────────────────────────── */
+.hk-pg-left {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    flex-wrap: wrap;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+.hk-pg-info {
+    white-space: nowrap;
+    color: #111827;
+    flex-shrink: 0;
+}
+.hk-pg-info strong { color: #111827; font-weight: 600; }
 
-    .table-pagination-label,
-    .table-pagination-range {
-        white-space: nowrap;
-    }
+/* Selection strip */
+.hk-pg-selection {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: 8px;
+}
+.hk-pg-sel-sep {
+    color: #9ca3af;
+    flex-shrink: 0;
+    margin: 0 2px;
+}
+.hk-pg-sel-count {
+    white-space: nowrap;
+    color: #111827;
+    font-weight: 600;
+    font-size: 13px;
+}
+.hk-pg-sel-delete {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 12px;
+    height: 28px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #dc2626;
+    background: #fee2e2;
+    border: 1px solid #fca5a5;
+    border-radius: 999px;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    line-height: 1;
+}
+.hk-pg-sel-delete:hover { background: #fecaca; color: #b91c1c; }
 
-    .table-pagination-select {
-        min-width: 56px;
-        height: 32px;
-        padding: 0 8px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        color: #111827;
-        background: transparent;
-        border: 0;
-        box-shadow: none !important;
-        font-size: 13px;
-    }
+/* ── RIGHT ───────────────────────────────────────── */
+.hk-pg-right {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+}
+.hk-pg-pp-label {
+    color: #374151;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.hk-pg-pp-select {
+    height: 32px;
+    padding: 0 8px;
+    font-size: 13px;
+    color: #111827;
+    background: #fff;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    cursor: pointer;
+    outline: none;
+    min-width: 58px;
+    transition: border-color 0.15s;
+}
+.hk-pg-pp-select:hover,
+.hk-pg-pp-select:focus { border-color: #9ca3af; }
 
-    .table-pagination-select:hover,
-    .table-pagination-select:focus {
-        background: #f3f4f6;
-    }
+.hk-pg-divider {
+    display: inline-block;
+    width: 1px;
+    height: 18px;
+    background: #e5e7eb;
+    flex-shrink: 0;
+}
+.hk-pg-pageinfo {
+    white-space: nowrap;
+    color: #374151;
+    font-weight: 500;
+}
 
-    .table-pagination-menu {
-        min-width: 72px;
-        padding: 4px;
-        border-radius: 4px;
-    }
+/* ── Nav buttons ──────────────────────────────────── */
+.hk-pg-buttons {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.hk-pg-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: #fff;
+    color: #374151;
+    font-size: 11px;
+    font-weight: 700;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s, color 0.12s;
+    user-select: none;
+}
+.hk-pg-btn:hover {
+    background: #f3f4f6;
+    border-color: #9ca3af;
+    color: #111827;
+}
+.hk-pg-btn:active { background: #e5e7eb; }
+/* Disabled / boundary state */
+.hk-pg-btn--off {
+    opacity: 0.35;
+    cursor: not-allowed;
+    pointer-events: none;
+}
 
-    .table-pagination-menu .dropdown-item {
-        border-radius: 3px;
-        font-size: 13px;
-        text-align: center;
-    }
+/* ── Checkbox column ──────────────────────────────── */
+.hk-cb-th {
+    width: 42px !important;
+    text-align: center;
+    padding-left: 12px !important;
+}
+.hk-cb-td {
+    text-align: center;
+    padding-left: 12px !important;
+}
+.hk-cb-row,
+.hk-cb-all {
+    width: 15px;
+    height: 15px;
+    cursor: pointer;
+    accent-color: #174761;
+}
+/* Highlight selected row lightly */
+tr.hk-row-selected { background-color: #f0f7ff !important; }
 
-    .table-pagination-menu .dropdown-item.active {
-        color: #ffffff;
-        background: #174761;
-    }
+/* ── Dark mode ────────────────────────────────────── */
+[data-theme="dark"] .hk-pagination         { color: #94a3b8; }
+[data-theme="dark"] .hk-pg-info            { color: #2d1111; }
+[data-theme="dark"] .hk-pg-info strong     { color: #e2e8f0; }
+[data-theme="dark"] .hk-pg-sel-sep         { color: #334155; }
+[data-theme="dark"] .hk-pg-sel-count       { color: #e2e8f0; }
+[data-theme="dark"] .hk-pg-sel-delete      { color: #f87171; background: #1e1010; border-color: #7f1d1d; }
+[data-theme="dark"] .hk-pg-sel-delete:hover{ background: #2d1111; }
+[data-theme="dark"] .hk-pg-pp-label        { color: #94a3b8; }
+[data-theme="dark"] .hk-pg-pp-select       { color: #e2e8f0; border-color: #334155; background: #0f172a; }
+[data-theme="dark"] .hk-pg-pp-select:hover { border-color: #475569; }
+[data-theme="dark"] .hk-pg-pageinfo        { color: #94a3b8; }
+[data-theme="dark"] .hk-pg-btn             { background: #0f172a; border-color: #334155; color: #94a3b8; }
+[data-theme="dark"] .hk-pg-btn:hover       { background: #1e293b; border-color: #475569; color: #e2e8f0; }
+[data-theme="dark"] tr.hk-row-selected     { background-color: #0f2033 !important; }
 
-    .table-pagination-nav {
-        display: inline-flex;
-        gap: 10px;
-    }
-
-    .table-pagination-nav .page-link {
-        width: 32px;
-        height: 32px;
-        padding: 0;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        color: #6b7280;
-        background: transparent;
-        border: 0;
-        box-shadow: none;
-    }
-
-    .table-pagination-nav .page-link:hover {
-        color: #111827;
-        background: #f3f4f6;
-    }
-
-    .table-pagination-nav .page-item.disabled .page-link {
-        color: #c7cdd6;
-        background: transparent;
-    }
-
-    @media (max-width: 575.98px) {
-        .table-pagination-footer {
-            justify-content: center;
-            gap: 14px;
-            flex-wrap: wrap;
-        }
-    }
+/* ── Responsive ───────────────────────────────────── */
+@media (max-width: 640px) {
+    .hk-pagination  { justify-content: center; gap: 10px; }
+    .hk-pg-left     { justify-content: center; width: 100%; }
+    .hk-pg-right    { justify-content: center; width: 100%; }
+}
 </style>
 
+{{-- ══════════════════════ JS ══════════════════════ --}}
 <script>
-    function selectPerPageCustom(event, value, prefix = '') {
-        event.preventDefault();
+(function () {
+    'use strict';
 
-        const dropdownText = document.getElementById(prefix + 'perPageDropdownText');
-        const hiddenSelect = document.getElementById(prefix + 'hiddenPerPageSelect');
-
-        if (dropdownText) {
-            dropdownText.innerText = value;
-        }
-
-        if (hiddenSelect) {
-            hiddenSelect.value = value;
-        }
-
-        changeRowsPerPage(value, prefix);
-    }
-
-    function changeRowsPerPage(value, prefix = '') {
+    /* Global per-page handler (same across all pagination instances) */
+    window.handlePerPageChange = function (value) {
         const url = new URL(window.location.href);
         url.searchParams.set('per_page', value);
         url.searchParams.delete('perPage');
         url.searchParams.set('page', '1');
         window.location.href = url.toString();
-    }
+    };
+
+    document.addEventListener('DOMContentLoaded', function () {
+
+        document.querySelectorAll('.hk-pagination').forEach(function (pgEl) {
+            const uid      = pgEl.dataset.uid;
+            const label    = pgEl.dataset.label || 'mục';
+            const selEl    = document.getElementById(uid + '_sel');
+            const cntEl    = document.getElementById(uid + '_selCount');
+            const btnEl    = document.getElementById(uid + '_selBtn');
+            const form     = document.getElementById(uid + '_bdf');
+
+            /* All row checkboxes and the select-all header checkbox.
+               We search the entire document so it works with tables
+               rendered outside the pagination div. */
+            const allRows = Array.from(document.querySelectorAll('.hk-cb-row'));
+            const cbAll   = document.querySelector('.hk-cb-all');
+
+            if (!allRows.length) return;
+
+            /* ─── updateSelectedState ──────────────────────── */
+            function updateSelectedState() {
+                const checkedBoxes = allRows.filter(function (cb) { return cb.checked; });
+                const n = checkedBoxes.length;
+
+                /* Show / hide the selection strip */
+                if (selEl) selEl.style.display = n > 0 ? 'inline-flex' : 'none';
+
+                /* Update count text */
+                if (cntEl) cntEl.textContent = n + ' ' + label + ' được chọn';
+
+                /* Highlight / unhighlight rows */
+                allRows.forEach(function (cb) {
+                    const row = cb.closest('tr');
+                    if (row) row.classList.toggle('hk-row-selected', cb.checked);
+                });
+            }
+
+            /* ─── handleSelectAll ──────────────────────────── */
+            function handleSelectAll() {
+                const checked = cbAll.checked;
+                allRows.forEach(function (cb) { cb.checked = checked; });
+                updateSelectedState();
+            }
+
+            /* ─── handleRowCheckboxChange ──────────────────── */
+            function handleRowCheckboxChange() {
+                const total   = allRows.length;
+                const checked = allRows.filter(function (cb) { return cb.checked; }).length;
+
+                if (cbAll) {
+                    cbAll.checked       = (checked === total);
+                    cbAll.indeterminate = (checked > 0 && checked < total);
+                }
+                updateSelectedState();
+            }
+
+            /* ─── handleBulkDelete ─────────────────────────── */
+            function handleBulkDelete() {
+                const ids = allRows
+                    .filter(function (cb) { return cb.checked; })
+                    .map(function (cb) { return cb.value; });
+
+                if (!ids.length) return;
+
+                var confirmed = window.confirm(
+                    'Bạn có chắc chắn muốn xóa ' + ids.length + ' ' + label + ' đã chọn không?'
+                );
+                if (!confirmed) return;
+
+                if (form) {
+                    /* Remove previously appended inputs */
+                    form.querySelectorAll('input[name="ids[]"]').forEach(function (el) { el.remove(); });
+
+                    ids.forEach(function (id) {
+                        var input   = document.createElement('input');
+                        input.type  = 'hidden';
+                        input.name  = 'ids[]';
+                        input.value = id;
+                        form.appendChild(input);
+                    });
+
+                    form.submit();
+                }
+            }
+
+            /* ─── Wire up events ───────────────────────────── */
+            allRows.forEach(function (cb) {
+                cb.addEventListener('change', handleRowCheckboxChange);
+            });
+
+            if (cbAll)  cbAll.addEventListener('change', handleSelectAll);
+            if (btnEl) btnEl.addEventListener('click',  handleBulkDelete);
+
+            /* Initial sync (e.g. browser restores checked state on back-nav) */
+            updateSelectedState();
+        });
+
+    });
+}());
 </script>

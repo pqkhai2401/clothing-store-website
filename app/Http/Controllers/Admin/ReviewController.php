@@ -44,6 +44,19 @@ class ReviewController extends Controller
         return redirect()->route('admin.reviews.list')->with('success', 'Xóa đánh giá thành công');
     }
 
+    public function bulkDelete(Request $request)
+    {
+        $ids = array_filter((array) $request->input('ids', []), 'is_numeric');
+
+        if (empty($ids)) {
+            return back()->with('error', 'Vui lòng chọn ít nhất một đánh giá để xóa.');
+        }
+
+        $deleted = Review::whereIn('id', $ids)->delete();
+
+        return back()->with('success', "Đã xóa {$deleted} đánh giá thành công.");
+    }
+
     public function trash(Request $request)
     {
         $keyword = trim((string) $request->input('keyword'));

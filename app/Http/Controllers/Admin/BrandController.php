@@ -60,6 +60,19 @@ class BrandController extends Controller
         return redirect()->route('admin.brands.list')->with('success', 'Xóa thương hiệu thành công');
     }
 
+    public function bulkDelete(Request $request)
+    {
+        $ids = array_filter((array) $request->input('ids', []), 'is_numeric');
+
+        if (empty($ids)) {
+            return back()->with('error', 'Vui lòng chọn ít nhất một thương hiệu để xóa.');
+        }
+
+        $deleted = Brand::whereIn('id', $ids)->delete();
+
+        return back()->with('success', "Đã xóa {$deleted} thương hiệu thành công.");
+    }
+
     public function trash(Request $request)
     {
         $keyword = trim((string) $request->input('keyword'));

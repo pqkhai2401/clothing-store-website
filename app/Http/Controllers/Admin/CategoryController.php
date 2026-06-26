@@ -104,6 +104,19 @@ class CategoryController extends Controller
         return redirect()->route('admin.categories.list')->with('success', 'Xóa danh mục thành công');
     }
 
+    public function bulkDelete(Request $request)
+    {
+        $ids = array_filter((array) $request->input('ids', []), 'is_numeric');
+
+        if (empty($ids)) {
+            return back()->with('error', 'Vui lòng chọn ít nhất một danh mục để xóa.');
+        }
+
+        $deleted = Category::whereIn('id', $ids)->delete();
+
+        return back()->with('success', "Đã xóa {$deleted} danh mục thành công.");
+    }
+
     public function trash(Request $request)
     {
         $keyword = trim((string) $request->input('keyword'));

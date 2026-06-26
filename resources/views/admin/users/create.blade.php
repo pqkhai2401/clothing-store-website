@@ -4,6 +4,13 @@
 
 @section('css')
     <style>
+        .account-admin-page {
+            background: #f8fafc;
+            min-height: calc(100vh - 56px);
+            padding-top: 0 !important;
+        }
+
+
         .account-create-card {
             border: 1px solid #d8dee6;
             border-radius: 3px;
@@ -103,13 +110,15 @@
 @section('content')
     @php
         $isStaffContext = ($type ?? 'all') === 'staff';
-        $pageHeading = $isStaffContext ? 'Thêm quản trị viên mới' : (($createLabel ?? 'Thêm tài khoản').' mới');
+        $pageHeading = $isStaffContext ? 'Thêm mới quản trị viên' : (($createLabel ?? 'Thêm tài khoản').' mới');
         $cardHeading = $isStaffContext ? 'Thông tin Quản trị viên' : 'Thông tin '.($itemLabel ?? 'Tài khoản');
+        $breadcrumbLabel = ($type ?? 'all') === 'customer' ? 'Quản lý khách hàng' : (($type ?? 'all') === 'staff' ? 'Quản lý nhân sự' : 'Quản lý tài khoản');
     @endphp
 
-    <main class="app-main container-fluid py-4">
+    <main class="app-main account-admin-page container-fluid py-4">
         <x-notification />
 
+        <section class="px-3 px-md-4">
         <h1 class="h4 fw-semibold mb-4">{{ $pageHeading }}</h1>
 
         <div class="card account-create-card">
@@ -243,6 +252,7 @@
                 </div>
             </form>
         </div>
+        </section>
     </main>
 @endsection
 

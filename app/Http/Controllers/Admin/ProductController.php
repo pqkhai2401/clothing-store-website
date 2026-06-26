@@ -124,6 +124,19 @@ class ProductController extends Controller
         return redirect()->route('admin.products.list')->with('success', 'Xóa sản phẩm thành công');
     }
 
+    public function bulkDelete(Request $request)
+    {
+        $ids = array_filter((array) $request->input('ids', []), 'is_numeric');
+
+        if (empty($ids)) {
+            return back()->with('error', 'Vui lòng chọn ít nhất một sản phẩm để xóa.');
+        }
+
+        $deleted = Product::whereIn('id', $ids)->delete();
+
+        return back()->with('success', "Đã xóa {$deleted} sản phẩm thành công.");
+    }
+
     public function trash(Request $request)
     {
         $keyword = trim((string) $request->input('keyword'));

@@ -97,7 +97,7 @@
             </div>
 
             <div class="card-footer bg-white">
-                @include('layouts.components.pagination', ['paginator' => $sizes])
+                @include('layouts.components.pagination', ['paginator' => $sizes, 'itemLabel' => 'kích thước'])
             </div>
         </div>
     </main>

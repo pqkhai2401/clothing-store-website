@@ -64,7 +64,6 @@
                                 <div class="invalid-feedback d-block" data-error-for="city"></div>
                             </div>
 
-                          
 
                             <div class="col-md-6">
                                 <label for="modal_ward" class="form-label">Phường, Xã</label>
