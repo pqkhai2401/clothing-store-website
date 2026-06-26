@@ -18,7 +18,11 @@
             <div class="collapse navbar-collapse" id="navbarContent">
                 <ul class="navbar-nav mx-auto mb-2 mb-lg-0">
                     <li class="nav-item">
+<<<<<<< HEAD
                         <a class="nav-link" href="{{ url('/') }}">TRANG CHỦ</a>
+=======
+                        <a class="nav-link" href="{{ url('/') }}">Trang chủ</a>
+>>>>>>> develop
                     </li>
                     <li class="nav-item dropdown mega-dropdown">
                         <a class="nav-link dropdown-toggle" href="{{ url('/products') }}" id="productsDropdown" role="button">
@@ -99,15 +103,15 @@
 
                 <!-- User Account Dropdown -->
                 <div class="dropdown d-inline-block">
-                    <button class="btn-icon" type="button" id="userMenuButton" data-bs-toggle="dropdown" aria-expanded="false" title="Account">
+                    <button class="btn-icon" type="button" id="userMenuButton" data-bs-toggle="dropdown" aria-expanded="false" title="Tài khoản">
                         <i class="bi bi-person"></i>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenuButton">
                         @auth
-                            <li><a class="dropdown-item" href="{{ url('/profile') }}">Hồ sơ của tôi</a></li>
+                            <li><a class="dropdown-item" href="{{ url('/profile') }}">Thông tin cá nhân</a></li>
                             <li><a class="dropdown-item" href="{{ url('/orders') }}">Đơn hàng của tôi</a></li>
-                            @if(auth()->user()->isAdmin())
-                                <li><a class="dropdown-item text-primary" href="{{ route('admin.dashboard') }}">Bảng điều khiển Admin</a></li>
+                            @if(auth()->user()->can('access-admin'))
+                                <li><a class="dropdown-item text-primary" href="{{ route('admin.dashboard') }}">Trang Quản Trị</a></li>
                             @endif
                             <li><hr class="dropdown-divider"></li>
                             <li>
