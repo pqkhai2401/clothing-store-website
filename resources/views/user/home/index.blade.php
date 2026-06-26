@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'NOIR | Premium Minimalist Fashion Store')
+@section('title', 'HK Store | Thời Trang Cao Cấp')
 
 @section('css')
 <style>
@@ -193,9 +193,9 @@
     <!-- 1. Hero Banner -->
     <section class="hero-section">
         <div class="container hero-content">
-            <h1 class="animate__animated animate__fadeInUp">CHIC MINIMALISM</h1>
-            <p class="animate__animated animate__fadeInUp animate__delay-1s">Elevate your everyday wardrobe with our carefully curated pieces</p>
-            <a href="{{ url('/products') }}" class="btn btn-black animate__animated animate__fadeInUp animate__delay-2s">Shop New Arrivals</a>
+            <h1 class="animate__animated animate__fadeInUp">PHONG CÁCH TỐI GIẢN</h1>
+            <p class="animate__animated animate__fadeInUp animate__delay-1s">Nâng tầm phong cách hàng ngày với bộ sưu tập được chọn lọc kỹ càng</p>
+            <a href="{{ url('/products') }}" class="btn btn-black animate__animated animate__fadeInUp animate__delay-2s">Khám Phá Hàng Mới</a>
         </div>
     </section>
 
@@ -203,8 +203,8 @@
     <section class="py-5 my-5">
         <div class="container-fluid px-lg-5">
             <div class="section-header text-center">
-                <h2 class="section-title">Shop by Category</h2>
-                <div class="section-subtitle">Discover our main collections</div>
+                <h2 class="section-title">Mua Theo Danh Mục</h2>
+                <div class="section-subtitle">Khám phá các bộ sưu tập chính của chúng tôi</div>
             </div>
             <div class="row">
                 <!-- Men -->
@@ -214,8 +214,8 @@
                             <img src="{{ asset('images/category_men.png') }}" alt="Men's Collection" class="category-img">
                         </div>
                         <div class="category-overlay">
-                            <h3 class="category-title">Men</h3>
-                            <a href="{{ url('/men') }}" class="category-link">Explore Collection</a>
+                            <h3 class="category-title">Nam</h3>
+                            <a href="{{ url('/men') }}" class="category-link">Xem Bộ Sưu Tập</a>
                         </div>
                     </div>
                 </div>
@@ -223,11 +223,11 @@
                 <div class="col-md-4">
                     <div class="category-container">
                         <div class="category-img-wrapper">
-                            <img src="{{ asset('images/category_women.png') }}" alt="Women's Collection" class="category-img">
+                            <img src="{{ asset('images/category_women.png') }}" alt="Bộ Sưu Tập Nữ" class="category-img">
                         </div>
                         <div class="category-overlay">
-                            <h3 class="category-title">Women</h3>
-                            <a href="{{ url('/women') }}" class="category-link">Explore Collection</a>
+                            <h3 class="category-title">Nữ</h3>
+                            <a href="{{ url('/women') }}" class="category-link">Xem Bộ Sưu Tập</a>
                         </div>
                     </div>
                 </div>
@@ -235,11 +235,11 @@
                 <div class="col-md-4">
                     <div class="category-container">
                         <div class="category-img-wrapper">
-                            <img src="{{ asset('images/category_acc.png') }}" alt="Accessories Collection" class="category-img">
+                            <img src="{{ asset('images/category_acc.png') }}" alt="Bộ Sưu Tập Phụ Kiện" class="category-img">
                         </div>
                         <div class="category-overlay">
-                            <h3 class="category-title">Accessories</h3>
-                            <a href="{{ url('/products?category=accessories') }}" class="category-link">Explore Collection</a>
+                            <h3 class="category-title">Phụ Kiện</h3>
+                            <a href="{{ url('/products?category=accessories') }}" class="category-link">Xem Bộ Sưu Tập</a>
                         </div>
                     </div>
                 </div>
@@ -251,16 +251,16 @@
     <section class="py-5">
         <div class="container-fluid px-lg-5">
             <div class="section-header text-center">
-                <h2 class="section-title">New Arrivals</h2>
-                <div class="section-subtitle">Just added to our collection</div>
+                <h2 class="section-title">Hàng Mới Về</h2>
+                <div class="section-subtitle">Vừa được thêm vào bộ sưu tập</div>
             </div>
             
             @php
                 $newArrivals = [
-                    ['id' => 20, 'name' => 'Premium Oversized Trench', 'category' => 'Outerwear', 'price' => 2450000, 'discount' => 0, 'image' => 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?q=80&w=600&auto=format&fit=crop', 'slug' => 'premium-oversized-trench', 'badge' => 'NEW'],
-                    ['id' => 21, 'name' => 'Structured Cotton Shirt', 'category' => 'Shirts', 'price' => 890000, 'discount' => 0, 'image' => 'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?q=80&w=600&auto=format&fit=crop', 'slug' => 'structured-cotton-shirt'],
-                    ['id' => 22, 'name' => 'Classic Straight Jeans', 'category' => 'Denim', 'price' => 1200000, 'discount' => 20, 'image' => 'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?q=80&w=600&auto=format&fit=crop', 'slug' => 'classic-straight-jeans'],
-                    ['id' => 23, 'name' => 'Tailored Wool Blazer', 'category' => 'Blazers', 'price' => 1950000, 'discount' => 0, 'image' => 'https://images.unsplash.com/photo-1614975058789-41316d0e2e9c?q=80&w=600&auto=format&fit=crop', 'slug' => 'tailored-wool-blazer'],
+                    ['id' => 20, 'name' => 'Áo Khoác Trench Oversized Cao Cấp', 'category' => 'Áo khoác', 'price' => 2450000, 'discount' => 0, 'image' => 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?q=80&w=600&auto=format&fit=crop', 'slug' => 'premium-oversized-trench', 'badge' => 'MỚI'],
+                    ['id' => 21, 'name' => 'Áo Sơ Mi Cotton Dáng Suông', 'category' => 'Áo sơ mi', 'price' => 890000, 'discount' => 0, 'image' => 'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?q=80&w=600&auto=format&fit=crop', 'slug' => 'structured-cotton-shirt'],
+                    ['id' => 22, 'name' => 'Quần Jean Thẳng Cổ Điển', 'category' => 'Denim', 'price' => 1200000, 'discount' => 20, 'image' => 'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?q=80&w=600&auto=format&fit=crop', 'slug' => 'classic-straight-jeans'],
+                    ['id' => 23, 'name' => 'Áo Blazer Len May Đo', 'category' => 'Blazer', 'price' => 1950000, 'discount' => 0, 'image' => 'https://images.unsplash.com/photo-1614975058789-41316d0e2e9c?q=80&w=600&auto=format&fit=crop', 'slug' => 'tailored-wool-blazer'],
                 ];
             @endphp
             
@@ -275,16 +275,16 @@
     <section class="py-5 my-5">
         <div class="container-fluid px-lg-5">
             <div class="section-header text-center">
-                <h2 class="section-title">Best Sellers</h2>
-                <div class="section-subtitle">Our most popular designs</div>
+                <h2 class="section-title">Bán Chạy Nhất</h2>
+                <div class="section-subtitle">Những thiết kế được yêu thích nhất của chúng tôi</div>
             </div>
             
             @php
                 $bestSellers = [
-                    ['id' => 30, 'name' => 'Classic Crewneck Tee', 'category' => 'Basics', 'price' => 350000, 'discount' => 0, 'image' => 'https://images.unsplash.com/photo-1618354691373-d851c5c3a990?q=80&w=600&auto=format&fit=crop', 'slug' => 'classic-crewneck-tee'],
-                    ['id' => 31, 'name' => 'Pima Cotton Polo', 'category' => 'Shirts', 'price' => 650000, 'discount' => 15, 'image' => 'https://images.unsplash.com/photo-1562157873-818bc0726f68?q=80&w=600&auto=format&fit=crop', 'slug' => 'pima-cotton-polo'],
-                    ['id' => 32, 'name' => 'Oversized Merino Hoodie', 'category' => 'Sweats', 'price' => 1350000, 'discount' => 0, 'image' => 'https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?q=80&w=600&auto=format&fit=crop', 'slug' => 'oversized-merino-hoodie'],
-                    ['id' => 33, 'name' => 'Tailored Smart Trousers', 'category' => 'Trousers', 'price' => 1100000, 'discount' => 0, 'image' => 'https://images.unsplash.com/photo-1554568218-0f1715e72254?q=80&w=600&auto=format&fit=crop', 'slug' => 'tailored-smart-trousers'],
+                    ['id' => 30, 'name' => 'Áo Thun Cổ Tròn Cổ Điển', 'category' => 'Cơ bản', 'price' => 350000, 'discount' => 0, 'image' => 'https://images.unsplash.com/photo-1618354691373-d851c5c3a990?q=80&w=600&auto=format&fit=crop', 'slug' => 'classic-crewneck-tee'],
+                    ['id' => 31, 'name' => 'Áo Polo Cotton Pima', 'category' => 'Áo sơ mi', 'price' => 650000, 'discount' => 15, 'image' => 'https://images.unsplash.com/photo-1562157873-818bc0726f68?q=80&w=600&auto=format&fit=crop', 'slug' => 'pima-cotton-polo'],
+                    ['id' => 32, 'name' => 'Áo Hoodie Len Merino Oversized', 'category' => 'Áo nỉ', 'price' => 1350000, 'discount' => 0, 'image' => 'https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?q=80&w=600&auto=format&fit=crop', 'slug' => 'oversized-merino-hoodie'],
+                    ['id' => 33, 'name' => 'Quần Âu Dáng Suông', 'category' => 'Quần dài', 'price' => 1100000, 'discount' => 0, 'image' => 'https://images.unsplash.com/photo-1554568218-0f1715e72254?q=80&w=600&auto=format&fit=crop', 'slug' => 'tailored-smart-trousers'],
                 ];
             @endphp
             
@@ -296,16 +296,16 @@
     <section class="py-5 bg-light">
         <div class="container-fluid px-lg-5">
             <div class="section-header text-center">
-                <h2 class="section-title">Trending Now</h2>
-                <div class="section-subtitle">Highly popular styles of the season</div>
+                <h2 class="section-title">Đang Thịnh Hành</h2>
+                <div class="section-subtitle">Những phong cách được yêu thích nhất mùa này</div>
             </div>
             
             @php
                 $trendingNow = [
-                    ['id' => 40, 'name' => 'Cropped Knit Vest', 'category' => 'Knitwear', 'price' => 750000, 'discount' => 0, 'image' => 'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?q=80&w=600&auto=format&fit=crop', 'slug' => 'cropped-knit-vest'],
-                    ['id' => 41, 'name' => 'Suede Chelsea Boots', 'category' => 'Shoes', 'price' => 2100000, 'discount' => 10, 'image' => 'https://images.unsplash.com/photo-1485968579580-b6d095142e6e?q=80&w=600&auto=format&fit=crop', 'slug' => 'suede-chelsea-boots'],
-                    ['id' => 42, 'name' => 'Premium Silk Slip Skirt', 'category' => 'Skirts', 'price' => 1250000, 'discount' => 0, 'image' => 'https://images.unsplash.com/photo-1620799139834-6b8f844fbe61?q=80&w=600&auto=format&fit=crop', 'slug' => 'premium-silk-slip-skirt'],
-                    ['id' => 43, 'name' => 'Minimalist Leather Belt', 'category' => 'Accessories', 'price' => 450000, 'discount' => 0, 'image' => 'https://images.unsplash.com/photo-1509319117193-57bab727e09d?q=80&w=600&auto=format&fit=crop', 'slug' => 'minimalist-leather-belt'],
+                    ['id' => 40, 'name' => 'Áo Gile Len Croptop', 'category' => 'Áo len', 'price' => 750000, 'discount' => 0, 'image' => 'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?q=80&w=600&auto=format&fit=crop', 'slug' => 'cropped-knit-vest'],
+                    ['id' => 41, 'name' => 'Giày Chelsea Boots Da Lộn', 'category' => 'Giày', 'price' => 2100000, 'discount' => 10, 'image' => 'https://images.unsplash.com/photo-1485968579580-b6d095142e6e?q=80&w=600&auto=format&fit=crop', 'slug' => 'suede-chelsea-boots'],
+                    ['id' => 42, 'name' => 'Chân Váy Lụa Cao Cấp', 'category' => 'Chân váy', 'price' => 1250000, 'discount' => 0, 'image' => 'https://images.unsplash.com/photo-1620799139834-6b8f844fbe61?q=80&w=600&auto=format&fit=crop', 'slug' => 'premium-silk-slip-skirt'],
+                    ['id' => 43, 'name' => 'Thắt Lưng Da Tối Giản', 'category' => 'Phụ kiện', 'price' => 450000, 'discount' => 0, 'image' => 'https://images.unsplash.com/photo-1509319117193-57bab727e09d?q=80&w=600&auto=format&fit=crop', 'slug' => 'minimalist-leather-belt'],
                 ];
             @endphp
             
@@ -318,10 +318,10 @@
         <div class="container">
             <div class="row">
                 <div class="col-lg-6 col-md-8 text-start animate__animated animate__fadeInLeft px-4 px-md-0">
-                    <span class="text-uppercase tracking-wider font-semibold text-white fs-6 mb-3 d-block">Eco-Conscious Edition</span>
-                    <h2 class="promo-title">THE SUSTAINABLE COLLECTION</h2>
-                    <p class="fs-5 mb-4 text-white opacity-75">Crafted from 100% organic and recycled fabrics. Fashion designed to look elegant today and protect tomorrow.</p>
-                    <a href="{{ url('/products?collection=sustainable') }}" class="btn btn-black bg-white text-dark border-white">Explore Collection</a>
+                    <span class="text-uppercase tracking-wider font-semibold text-white fs-6 mb-3 d-block">Bộ Sưu Tập Thân Thiện Môi Trường</span>
+                    <h2 class="promo-title">BỘ SƯU TẬP BỀN VỮNG</h2>
+                    <p class="fs-5 mb-4 text-white opacity-75">Được làm từ 100% vải hữu cơ và tái chế. Thời trang được thiết kế để vừa thanh lịch hôm nay, vừa bảo vệ ngày mai.</p>
+                    <a href="{{ url('/products?collection=sustainable') }}" class="btn btn-black bg-white text-dark border-white">Khám Phá Bộ Sưu Tập</a>
                 </div>
             </div>
         </div>
@@ -331,29 +331,29 @@
     <section class="py-5 my-5">
         <div class="container-fluid px-lg-5">
             <div class="section-header text-center">
-                <h2 class="section-title">What Our Customers Say</h2>
-                <div class="section-subtitle">Real experiences from our global community</div>
+                <h2 class="section-title">Khách Hàng Nói Gì</h2>
+                <div class="section-subtitle">Những trải nghiệm thực tế từ cộng đồng khách hàng của chúng tôi</div>
             </div>
             
             @php
                 $mockReviews = [
                     [
-                        'author' => 'Alexander V.',
+                        'author' => 'Minh Tuấn',
                         'rating' => 5,
-                        'comment' => 'The quality of the linen shirt is unparalleled. Minimal design, perfect sizing, and extremely breathable fabric. It has immediately become a staple in my summer wardrobe.',
-                        'date' => 'May 12, 2026'
+                        'comment' => 'Chất lượng áo linen thực sự xuất sắc. Thiết kế tối giản, vừa vặn hoàn hảo và vải cực kỳ thoáng mát. Ngay lập tức trở thành item không thể thiếu trong tủ đồ hè của tôi.',
+                        'date' => '12 tháng 5, 2026'
                     ],
                     [
-                        'author' => 'Sophia M.',
+                        'author' => 'Thu Hà',
                         'rating' => 5,
-                        'comment' => 'I was skeptical about the AI recommendation at first, but it suggested a tailored wool blazer that fits me like a glove. The checkout was seamless and shipping was fast.',
-                        'date' => 'Jun 01, 2026'
+                        'comment' => 'Lúc đầu tôi còn nghi ngờ về gợi ý từ AI, nhưng nó đề xuất chiếc blazer len may đo vừa như in với vóc dáng của tôi. Thanh toán trơn tru và giao hàng nhanh chóng.',
+                        'date' => '01 tháng 6, 2026'
                     ],
                     [
-                        'author' => 'Liam H.',
+                        'author' => 'Hoàng Long',
                         'rating' => 5,
-                        'comment' => 'Outstanding customer service and beautiful packaging. You can tell this brand cares about sustainability, from their fabrics to their recyclable shipping boxes.',
-                        'date' => 'Jun 10, 2026'
+                        'comment' => 'Dịch vụ khách hàng xuất sắc và bao bì rất đẹp. Rõ ràng thương hiệu này quan tâm đến môi trường, từ chất liệu vải cho đến hộp giao hàng có thể tái chế.',
+                        'date' => '10 tháng 6, 2026'
                     ]
                 ];
             @endphp
