@@ -27,6 +27,14 @@ class Category extends Model
     }
 
     /**
+     * Get only active (đang bán) products in this category.
+     */
+    public function activeProducts(): HasMany
+    {
+        return $this->hasMany(Product::class)->where('status', true);
+    }
+
+    /**
      * Get the parent category.
      */
     public function parentCategory(): BelongsTo

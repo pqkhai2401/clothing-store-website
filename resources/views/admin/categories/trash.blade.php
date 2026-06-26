@@ -103,7 +103,7 @@
             </div>
 
             <div class="card-footer bg-white">
-                @include('layouts.components.pagination', ['paginator' => $categories])
+                @include('layouts.components.pagination', ['paginator' => $categories, 'itemLabel' => 'danh mục'])
             </div>
         </div>
     </main>

@@ -8,6 +8,9 @@
         .info-value { font-size: 13px; color: #111827; font-weight: 600; }
         .section-title { font-size: 13px; font-weight: 800; color: #174761; text-transform: uppercase; letter-spacing: .04em; }
         .item-table thead th { font-size: 12px; font-weight: 800; background: #f9fafb; }
+        .update-card .form-select,
+        .update-card .form-control { font-size: 13px; }
+        .update-card label { font-size: 13px; font-weight: 700; color: #374151; }
         .item-table tbody td { font-size: 13px; }
         .status-badge { border-radius: 2px; font-size: 11px; font-weight: 800; padding: 4px 8px; }
         .product-thumb { width: 44px; height: 44px; object-fit: cover; border-radius: 4px; border: 1px solid #e5e7eb; }
@@ -190,6 +193,67 @@
                         </tfoot>
                     </table>
                 </div>
+            </div>
+        </div>
+        {{-- Form cập nhật trạng thái đơn hàng --}}
+        <div class="card border shadow-sm mt-4 update-card">
+            <div class="card-header bg-white border-bottom">
+                <span class="section-title">Cập nhật đơn hàng</span>
+            </div>
+            <div class="card-body p-4">
+                <x-notification />
+                <form method="POST" action="{{ route('admin.orders.update', $order->id) }}">
+                    @csrf
+                    @method('PUT')
+
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label for="status" class="form-label">Trạng thái đơn hàng <span class="text-danger">*</span></label>
+                            <select id="status" name="status"
+                                class="form-select @error('status') is-invalid @enderror">
+                                @foreach($statusLabels as $key => $label)
+                                    <option value="{{ $key }}"
+                                        {{ old('status', $order->status) === $key ? 'selected' : '' }}>
+                                        {{ $label }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('status') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        </div>
+
+                        <div class="col-md-4">
+                            <label for="payment_status" class="form-label">Trạng thái thanh toán <span class="text-danger">*</span></label>
+                            <select id="payment_status" name="payment_status"
+                                class="form-select @error('payment_status') is-invalid @enderror">
+                                @foreach($paymentStatusLabels as $key => $label)
+                                    <option value="{{ $key }}"
+                                        {{ old('payment_status', $order->payment_status) === $key ? 'selected' : '' }}>
+                                        {{ $label }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('payment_status') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        </div>
+
+                        <div class="col-md-4">
+                            <label for="note" class="form-label">Ghi chú</label>
+                            <input type="text" id="note" name="note"
+                                class="form-control @error('note') is-invalid @enderror"
+                                value="{{ old('note', $order->note) }}"
+                                placeholder="Ghi chú nội bộ (tuỳ chọn)">
+                            @error('note') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        </div>
+                    </div>
+
+                    <div class="mt-3 d-flex gap-2">
+                        <button type="submit" class="btn btn-primary fw-bold" style="font-size:13px;">
+                            <i class="fa-solid fa-floppy-disk me-1"></i> Lưu thay đổi
+                        </button>
+                        <a href="{{ route('admin.orders.list') }}" class="btn btn-light border fw-semibold" style="font-size:13px;">
+                            <i class="fa-solid fa-arrow-left me-1"></i> Danh sách đơn hàng
+                        </a>
+                    </div>
+                </form>
             </div>
         </div>
     </main>

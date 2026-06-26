@@ -82,6 +82,6 @@
     </div>
 
     <div class="card-footer bg-white">
-        @include('layouts.components.pagination', ['paginator' => $data])
+        @include('layouts.components.pagination', ['paginator' => $data, 'itemLabel' => 'tài khoản'])
     </div>
 </div>

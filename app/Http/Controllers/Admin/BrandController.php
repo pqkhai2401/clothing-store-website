@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Brand;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class BrandController extends Controller
 {
@@ -26,12 +27,50 @@ class BrandController extends Controller
         return view('admin.brands.list', compact('brands', 'keyword', 'perPage'));
     }
 
+    public function edit(string $id)
+    {
+        $brand = Brand::findOrFail($id);
+
+        return view('admin.brands.edit', compact('brand'));
+    }
+
+    public function update(Request $request, string $id)
+    {
+        $brand = Brand::findOrFail($id);
+
+        $request->validate([
+            'name' => ['required', 'string', 'max:255', Rule::unique('brands', 'name')->ignore($id)],
+        ], [
+            'name.required' => 'Tên thương hiệu không được để trống.',
+            'name.max'      => 'Tên thương hiệu không được quá 255 ký tự.',
+            'name.unique'   => 'Tên thương hiệu này đã tồn tại.',
+        ]);
+
+        $brand->update(['name' => $request->input('name')]);
+
+        return redirect()->route('admin.brands.list')
+            ->with('success', "Cập nhật thương hiệu \"{$brand->name}\" thành công.");
+    }
+
     public function destroy(string $id)
     {
         $brand = Brand::findOrFail($id);
         $brand->delete();
 
         return redirect()->route('admin.brands.list')->with('success', 'Xóa thương hiệu thành công');
+    }
+
+    public function bulkDelete(Request $request)
+    {
+        $ids = array_filter((array) $request->input('ids', []), 'is_numeric');
+
+        if (empty($ids)) {
+            return back()->with('error', 'Vui lòng chọn ít nhất một thương hiệu để xóa.');
+        }
+
+        $deleted = Brand::whereIn('id', $ids)->delete();
+
+        return back()->with('success', "Đã xóa {$deleted} thương hiệu thành công.");
     }
 
     public function trash(Request $request)

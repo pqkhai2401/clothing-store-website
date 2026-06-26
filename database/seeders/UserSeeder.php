@@ -31,7 +31,7 @@ class UserSeeder extends Seeder
             ],
             [
                 'username' => 'Trần Hữu Minh Hiệp',
-                'email' => 'Admin1@gmail.com',
+                'email' => '0306231289@caothang.edu.vn',
                 'password' => 'MinhHiep@123',
                 'phone_number' => '0357989856',
                 'role' => UserRole::ADMIN,
@@ -40,7 +40,7 @@ class UserSeeder extends Seeder
 
             [
                 'username' => 'Phạm Quang Khải',
-                'email' => 'QuangKhai@gmail.com',
+                'email' => '0306231295@caothang.edu.vn',
                 'password' => 'QuangKhai@123',
                 'phone_number' => '0949032437',
                 'role' => UserRole::STAFF,

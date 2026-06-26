@@ -22,7 +22,7 @@ class UserController extends Controller
 
         $perPage = $this->resolvePerPage($request);
         $sortBy = $request->input('sort_by', 'id');
-        $sortDir = $request->input('sort_dir', 'desc');
+        $sortDir = $request->input('sort_dir', 'asc');
 
         $query = User::with('roles');
         $this->applyTypeFilter($query, $context['type']);
@@ -40,10 +40,10 @@ class UserController extends Controller
                 'id' => $query->orderBy('id', $sortDir),
                 'username' => $query->orderBy('username', $sortDir),
                 'email' => $query->orderBy('email', $sortDir),
-                default => $query->orderBy('id', 'desc'),
+                default => $query->orderBy('id', 'asc'),
             };
         } else {
-            $query->orderBy('id', 'desc');
+            $query->orderBy('id', 'asc');
         }
 
         $data = $query->paginate($perPage)->appends($request->except('page'));
@@ -87,7 +87,6 @@ class UserController extends Controller
             'is_active' => ['required', 'boolean'],
             'password' => ['required', 'string', 'min:6', 'max:255'],
             'city' => ['nullable', 'string', 'max:255'],
-            
             'ward' => ['nullable', 'string', 'max:255'],
             'apartment_number' => ['nullable', 'string', 'max:255'],
             'lock_reason' => ['nullable', 'string', 'max:255'],
@@ -109,7 +108,6 @@ class UserController extends Controller
         if ($this->hasAddressInput($validated)) {
             $user->addresses()->create([
                 'city' => $validated['city'] ?? '',
-               
                 'ward' => $validated['ward'] ?? '',
                 'apartment_number' => $validated['apartment_number'] ?? '',
             ]);
@@ -173,7 +171,6 @@ class UserController extends Controller
             'is_active' => ['required', 'boolean'],
             'password' => $passwordRules,
             'city' => ['nullable', 'string', 'max:255'],
-            
             'ward' => ['nullable', 'string', 'max:255'],
             'apartment_number' => ['nullable', 'string', 'max:255'],
             'lock_reason' => ['nullable', 'string', 'max:255'],
@@ -201,7 +198,6 @@ class UserController extends Controller
         if (in_array($context['type'], ['staff', 'customer']) && ($this->hasAddressInput($validated) || $user->addresses()->exists())) {
             $addressData = [
                 'city' => $validated['city'] ?? '',
-               
                 'ward' => $validated['ward'] ?? '',
                 'apartment_number' => $validated['apartment_number'] ?? '',
             ];
@@ -271,6 +267,27 @@ class UserController extends Controller
     }
 
     /**
+     * Bulk soft-delete selected users of the resolved type.
+     */
+    public function bulkDelete(Request $request)
+    {
+        $context = $this->resolveContext($request);
+        $this->authorizeContext($request, $context['type']);
+
+        $ids = array_filter((array) $request->input('ids', []), 'is_numeric');
+
+        if (empty($ids)) {
+            return back()->with('error', 'Vui lòng chọn ít nhất một ' . $context['itemLabelLower'] . ' để xóa.');
+        }
+
+        $query = User::whereIn('id', $ids);
+        $this->applyTypeFilter($query, $context['type']);
+        $deleted = $query->delete();
+
+        return back()->with('success', "Đã xóa {$deleted} {$context['itemLabelLower']} thành công.");
+    }
+
+    /**
      * Restore a soft deleted user.
      */
     public function restore(string $id)
@@ -328,9 +345,9 @@ class UserController extends Controller
                 'pageDescription' => 'Quản trị viên có thể thêm, sửa hoặc xóa tài khoản nhân viên.',
                 'sectionTitle' => 'Quản lý tài khoản nhân viên',
                 'listTitle' => 'Danh sách nhân sự',
-                'itemLabel' => 'Nhân viên',
-                'itemLabelLower' => 'nhân viên',
-                'createLabel' => 'Thêm nhân viên',
+                'itemLabel' => 'Quản trị viên',
+                'itemLabelLower' => 'quản trị viên',
+                'createLabel' => 'Thêm quản trị viên',
                 'routePrefix' => 'admin.staff',
             ],
             'customer' => [
@@ -482,7 +499,6 @@ class UserController extends Controller
             'status_label' => $user->is_active ? 'Đang hoạt động' : 'Ngưng hoạt động',
             'lock_reason' => $user->lock_reason,
             'city' => $address?->city,
-            
             'ward' => $address?->ward,
             'apartment_number' => $address?->apartment_number,
             'created_at' => optional($user->created_at)->format('d/m/Y H:i'),

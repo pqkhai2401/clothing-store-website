@@ -80,6 +80,7 @@
                     <table class="table table-hover table-bordered mgmt-table align-middle mb-0">
                         <thead class="table-light">
                             <tr>
+                                <th class="hk-cb-th"><input type="checkbox" class="hk-cb-all"></th>
                                 <th class="ps-3" style="width:60px;">ID</th>
                                 <th>Tên danh mục</th>
                                 <th style="width:180px;">Danh mục cha</th>
@@ -91,6 +92,7 @@
                         <tbody>
                             @forelse($categories as $category)
                                 <tr>
+                                    <td class="hk-cb-td"><input type="checkbox" class="hk-cb-row" value="{{ $category->id }}"></td>
                                     <td class="ps-3" style="opacity:.45;">{{ $category->id }}</td>
                                     <td>
                                         <span class="fw-semibold">{{ $category->name }}</span>
@@ -111,7 +113,7 @@
                                     </td>
                                     <td class="text-center">
                                         <div class="d-inline-flex gap-1">
-                                            <a href="#" class="btn btn-sm btn-outline-warning" title="Sửa">
+                                            <a href="{{ route('admin.categories.edit', $category->id) }}" class="btn btn-sm btn-outline-warning" title="Sửa">
                                                 <i class="fa-solid fa-pen"></i>
                                             </a>
                                             <button type="button" class="btn btn-sm btn-outline-danger" title="Xóa"
@@ -125,7 +127,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="6" class="text-center py-5">
+                                    <td colspan="7" class="text-center py-5">
                                         <i class="fa-solid fa-inbox text-muted mb-3" style="font-size:42px;display:block;"></i>
                                         <div class="fw-semibold text-muted">Chưa có danh mục nào</div>
                                     </td>
@@ -137,7 +139,7 @@
             </div>
 
             <div class="card-footer bg-white">
-                @include('layouts.components.pagination', ['paginator' => $categories])
+                @include('layouts.components.pagination', ['paginator' => $categories, 'itemLabel' => 'danh mục', 'bulkDeleteUrl' => route('admin.categories.bulkDelete')])
             </div>
         </div>
     </main>

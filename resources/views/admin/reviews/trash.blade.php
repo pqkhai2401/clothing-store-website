@@ -120,7 +120,7 @@
             </div>
 
             <div class="card-footer bg-white">
-                @include('layouts.components.pagination', ['paginator' => $reviews])
+                @include('layouts.components.pagination', ['paginator' => $reviews, 'itemLabel' => 'đánh giá'])
             </div>
         </div>
     </main>

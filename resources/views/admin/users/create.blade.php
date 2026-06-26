@@ -72,7 +72,7 @@
             display: flex;
             justify-content: center;
             gap: 10px;
-            padding: 22px 0 6px;
+            padding: 18px 0;
         }
 
         .account-form-actions .btn {
@@ -103,8 +103,9 @@
 @section('content')
     @php
         $isStaffContext = ($type ?? 'all') === 'staff';
-        $pageHeading = $isStaffContext ? 'Thêm quản trị viên mới' : (($createLabel ?? 'Thêm tài khoản').' mới');
+        $pageHeading = $isStaffContext ? 'Thêm mới quản trị viên' : (($createLabel ?? 'Thêm tài khoản').' mới');
         $cardHeading = $isStaffContext ? 'Thông tin Quản trị viên' : 'Thông tin '.($itemLabel ?? 'Tài khoản');
+        $submitLabel = $isStaffContext ? 'Thêm mới quản trị viên' : 'Thêm mới '.($itemLabelLower ?? 'người dùng');
     @endphp
 
     <main class="app-main container-fluid py-4">
@@ -234,10 +235,13 @@
                         </div>
                     </div>
 
+                </div>
+
+                <div class="card-footer bg-white border-top">
                     <div class="account-form-actions">
                         <a href="{{ route(($routePrefix ?? 'admin.users').'.list') }}" class="btn btn-light border">Hủy</a>
                         <button type="submit" class="btn btn-primary">
-                            <i class="fa-solid fa-floppy-disk me-1"></i> Thêm mới người dùng
+                            <i class="fa-solid fa-floppy-disk me-1"></i> {{ $submitLabel }}
                         </button>
                     </div>
                 </div>

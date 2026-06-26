@@ -18,7 +18,7 @@
             <div class="collapse navbar-collapse" id="navbarContent">
                 <ul class="navbar-nav mx-auto mb-2 mb-lg-0">
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url('/') }}">Trang chủ</a>
+                        <a class="nav-link" href="{{ url('/') }}">TRANG CHỦ</a>
                     </li>
                     <li class="nav-item dropdown mega-dropdown">
                         <a class="nav-link dropdown-toggle" href="{{ url('/products') }}" id="productsDropdown" role="button">

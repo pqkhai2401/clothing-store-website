@@ -74,6 +74,7 @@
                     <table class="table table-hover table-bordered mgmt-table align-middle mb-0">
                         <thead class="table-light">
                             <tr>
+                                <th class="hk-cb-th"><input type="checkbox" class="hk-cb-all"></th>
                                 <th class="ps-3" style="width:60px;">ID</th>
                                 <th style="width:60px;">Ảnh</th>
                                 <th style="width:200px;">Sản phẩm</th>
@@ -87,6 +88,7 @@
                         <tbody>
                             @forelse($reviews as $review)
                                 <tr>
+                                    <td class="hk-cb-td"><input type="checkbox" class="hk-cb-row" value="{{ $review->id }}"></td>
                                     <td class="ps-3" style="opacity:.45;">{{ $review->id }}</td>
                                     <td>
                                         @if($review->product?->thumbnail)
@@ -140,7 +142,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="8" class="text-center py-5">
+                                    <td colspan="9" class="text-center py-5">
                                         <i class="fa-solid fa-inbox text-muted mb-3" style="font-size:42px;display:block;"></i>
                                         <div class="fw-semibold text-muted">Chưa có đánh giá nào</div>
                                     </td>
@@ -152,7 +154,7 @@
             </div>
 
             <div class="card-footer bg-white">
-                @include('layouts.components.pagination', ['paginator' => $reviews])
+                @include('layouts.components.pagination', ['paginator' => $reviews, 'itemLabel' => 'đánh giá', 'bulkDeleteUrl' => route('admin.reviews.bulkDelete')])
             </div>
         </div>
     </main>
