@@ -35,7 +35,9 @@
             display: flex;
             align-items: center;
             gap: 10px;
-            flex-wrap: wrap;
+            flex: 1 1 auto;
+            flex-wrap: nowrap;
+            min-width: 0;
         }
 
         .product-search,
@@ -50,10 +52,12 @@
 
         .product-search {
             width: min(380px, 100%);
+            flex: 0 1 380px;
         }
 
         .product-filter {
             width: 230px;
+            flex: 0 0 230px;
         }
 
         .product-search:focus,
@@ -251,6 +255,7 @@
 
             .product-toolbar-left,
             .product-tool-actions {
+                flex-wrap: wrap;
                 justify-content: flex-end;
             }
 
