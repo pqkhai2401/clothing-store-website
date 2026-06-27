@@ -6,7 +6,7 @@
     }
 
     .product-header-title {
-        color: #000000;
+        color: #000000 !important;
         font-size: 25px;
         font-weight: 800;
         letter-spacing: 0;
