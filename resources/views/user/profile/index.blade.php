@@ -209,7 +209,7 @@
         <div class="password-section">
             <label class="form-label">Mật khẩu</label>
             <div class="password-display">
-                <span class="password-dots">••••••••</span>
+                <span class="password-dots">********</span>
                 <button type="button" class="btn-change-password" id="toggleChangePassword">Đổi mật khẩu</button>
             </div>
         </div>
