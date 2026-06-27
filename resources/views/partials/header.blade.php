@@ -101,10 +101,13 @@
                 <div class="dropdown d-inline-block">
                     <button class="btn-icon" type="button" id="userMenuButton" data-bs-toggle="dropdown" aria-expanded="false" title="Tài khoản">
                         <i class="bi bi-person"></i>
+                        @auth
+                            <span class="ms-1 d-none d-lg-inline fw-medium" style="font-size: 14px;">Xin chào, {{ auth()->user()->username }}</span>
+                        @endauth
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenuButton">
                         @auth
-                            <li><a class="dropdown-item" href="{{ url('/profile') }}">Thông tin cá nhân</a></li>
+                            <li><a class="dropdown-item" href="{{ route('profile.index') }}">Thông tin cá nhân</a></li>
                             <li><a class="dropdown-item" href="{{ url('/orders') }}">Đơn hàng của tôi</a></li>
                             @if(auth()->user()->can('access-admin'))
                                 <li><a class="dropdown-item text-primary" href="{{ route('admin.dashboard') }}">Trang Quản Trị</a></li>
