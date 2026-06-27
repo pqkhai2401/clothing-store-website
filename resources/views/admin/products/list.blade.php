@@ -388,7 +388,7 @@
 
         <section class="px-3 px-md-4">
             <div>
-                <h1 class="product-header-title mb-2">Quản lý sản phẩm</h1>
+                <h1 class="product-header-title mb-2" style="color: black;">Quản lý sản phẩm</h1>
                 <p class="product-header-desc mb-0">Danh sách tất cả sản phẩm trong hệ thống.</p>
             </div>
 

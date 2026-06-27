@@ -306,8 +306,8 @@
 
         <section class="px-3 px-md-4">
             <div>
-                <h1 class="account-header-title mb-2">{{ $pageTitle ?? 'Quản lý tài khoản' }}</h1>
-                <p class="account-header-desc mb-0">{{ $description }}</p>
+                <h1 class="account-header-title mb-2" style="color: black;">{{ $pageTitle ?? 'Quản lý tài khoản' }}</h1>
+                <p class="account-header-desc mb-0" style="color: black;">{{ $description }}</p>
             </div>
 
             <div class="account-toolbar">

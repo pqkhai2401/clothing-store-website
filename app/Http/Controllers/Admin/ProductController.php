@@ -36,7 +36,7 @@ class ProductController extends Controller
         $products   = $query->paginate($perPage)->appends($request->except('page'));
         $categories = Category::whereNull('parent_id')->with('childrenCategories')->get();
 
-        return view('admin.products.list', compact('products', 'categories', 'keyword', 'categoryId', 'perPage'));
+        return view('admin.products.show', compact('products', 'categories', 'keyword', 'categoryId', 'perPage'));
     }
 
     public function edit(string $id)
