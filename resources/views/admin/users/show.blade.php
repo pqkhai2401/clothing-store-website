@@ -112,7 +112,7 @@
                                     </td>
                                     @if($showRoleColumn)
                                         <td data-cell="role_name" data-sort-value="{{ $roleLabel }}">
-                                            <span class="role-badge">{{ $roleLabel }}</span>
+                                            <span class="role-badge" data-role="{{ $roleName ?? '' }}">{{ $roleLabel }}</span>
                                         </td>
                                     @endif
                                     <td data-cell="status" data-sort-value="{{ $user->is_active ? 1 : 0 }}">

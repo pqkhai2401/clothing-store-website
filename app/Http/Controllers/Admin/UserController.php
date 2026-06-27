@@ -249,12 +249,23 @@ class UserController extends Controller
         $this->authorizeContext($request, $context['type']);
 
         $perPage = $this->resolvePerPage($request);
+        $keyword = trim($request->input('keyword', ''));
+
         $query = User::onlyTrashed()->with('roles')->orderBy('deleted_at', 'desc');
         $this->applyTypeFilter($query, $context['type']);
+
+        if ($keyword !== '') {
+            $query->where(function ($q) use ($keyword) {
+                $q->where('username', 'like', "%{$keyword}%")
+                  ->orWhere('email', 'like', "%{$keyword}%");
+            });
+        }
+
         $data = $query->paginate($perPage)->appends($request->except('page'));
 
         return view('admin.users.trash', [
-            'data' => $data,
+            'data'    => $data,
+            'keyword' => $keyword,
             ...$context,
         ]);
     }
