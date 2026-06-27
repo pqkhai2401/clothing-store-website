@@ -108,10 +108,10 @@
             </div>
 
             <div class="account-menu-section">
-                <a class="account-menu-item" href="{{ $profileUrl }}">
+                <button class="account-menu-item" type="button" data-profile-open>
                     <i class="fa-regular fa-circle-user"></i>
                     <span>Hồ sơ</span>
-                </a>
+                </button>
                 <button class="account-menu-item" type="button" data-admin-theme-toggle aria-pressed="false">
                     <i class="fa-regular fa-moon"></i>
                     <span>Giao diện tối</span>

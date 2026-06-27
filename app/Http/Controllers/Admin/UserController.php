@@ -35,6 +35,10 @@ class UserController extends Controller
             });
         }
 
+        if (in_array($request->input('status'), ['0', '1'], true)) {
+            $query->where('is_active', (bool) (int) $request->input('status'));
+        }
+
         if (in_array($sortDir, ['asc', 'desc'], true)) {
             match ($sortBy) {
                 'id' => $query->orderBy('id', $sortDir),
@@ -176,6 +180,33 @@ class UserController extends Controller
             'lock_reason' => ['nullable', 'string', 'max:255'],
         ], $this->validationMessages());
 
+        // Staff chỉ được ngưng hoạt động, không được kích hoạt lại
+        if ($context['type'] === 'staff' && ! $user->is_active && (bool) $validated['is_active']) {
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'errors' => ['is_active' => ['Không thể kích hoạt lại tài khoản nhân sự.']],
+                ], 422);
+            }
+
+            return back()->withErrors(['is_active' => 'Không thể kích hoạt lại tài khoản nhân sự.']);
+        }
+
+        // Không cho phép tự thay đổi vai trò của tài khoản đang đăng nhập
+        $skipRoleSync = false;
+        if ($context['type'] === 'staff' && $user->id === auth()->id()) {
+            $currentRoleId = $user->roles()->first()?->id;
+            if (! empty($validated['role_id']) && (int) $validated['role_id'] !== (int) $currentRoleId) {
+                if ($request->expectsJson() || $request->ajax()) {
+                    return response()->json([
+                        'errors' => ['role_id' => ['Không thể thay đổi vai trò của tài khoản đang đăng nhập.']],
+                    ], 422);
+                }
+
+                return back()->withErrors(['role_id' => 'Không thể thay đổi vai trò của tài khoản đang đăng nhập.']);
+            }
+            $skipRoleSync = true;
+        }
+
         $updateData = [
             'username' => $validated['username'],
             'email' => $validated['email'],
@@ -190,9 +221,11 @@ class UserController extends Controller
 
         $user->update($updateData);
 
-        $roleForUser = $this->roleForContext($context['type'], $validated['role_id'] ?? null, $user);
-        if ($roleForUser) {
-            $user->syncRoles([$roleForUser->name]);
+        if (! $skipRoleSync) {
+            $roleForUser = $this->roleForContext($context['type'], $validated['role_id'] ?? null, $user);
+            if ($roleForUser) {
+                $user->syncRoles([$roleForUser->name]);
+            }
         }
 
         if (in_array($context['type'], ['staff', 'customer']) && ($this->hasAddressInput($validated) || $user->addresses()->exists())) {
@@ -235,6 +268,17 @@ class UserController extends Controller
         $user = User::findOrFail($id);
         $context = $this->resolveContext(request(), $user);
         $this->authorizeContext(request(), $context['type'], $user);
+
+        if ($user->id === auth()->id()) {
+            return redirect()->route($context['routePrefix'].'.list')
+                ->with('error', 'Bạn không thể xóa tài khoản của chính mình.');
+        }
+
+        if ($context['type'] === 'staff') {
+            return redirect()->route($context['routePrefix'].'.list')
+                ->with('error', 'Không thể xóa tài khoản nhân sự. Hãy chuyển trạng thái sang Ngưng hoạt động.');
+        }
+
         $user->delete();
 
         return redirect()->route($context['routePrefix'].'.list')->with('success', 'Xóa '.$context['itemLabelLower'].' thành công');
@@ -278,7 +322,14 @@ class UserController extends Controller
         $context = $this->resolveContext($request);
         $this->authorizeContext($request, $context['type']);
 
+        if ($context['type'] === 'staff') {
+            return back()->with('error', 'Không thể xóa hàng loạt tài khoản nhân sự.');
+        }
+
         $ids = array_filter((array) $request->input('ids', []), 'is_numeric');
+
+        // Never delete the currently logged-in account
+        $ids = array_values(array_filter($ids, fn ($id) => (int) $id !== auth()->id()));
 
         if (empty($ids)) {
             return back()->with('error', 'Vui lòng chọn ít nhất một ' . $context['itemLabelLower'] . ' để xóa.');
@@ -448,10 +499,6 @@ class UserController extends Controller
 
     private function roleForContext(string $type, ?int $fallbackRoleId, ?User $user = null): ?Role
     {
-        if ($type === 'staff' && $user?->isAdmin()) {
-            return $user->roles()->first();
-        }
-
         if ($type === 'staff') {
             if ($fallbackRoleId) {
                 $role = Role::whereIn('name', [
@@ -500,7 +547,7 @@ class UserController extends Controller
             'role_id' => $role?->id,
             'role_name' => $role?->name,
             'is_active' => (bool) $user->is_active,
-            'status_label' => $user->is_active ? 'Đang hoạt động' : 'Ngưng hoạt động',
+            'status_label' => $user->is_active ? 'Hoạt động' : 'Ngưng hoạt động',
             'lock_reason' => $user->lock_reason,
             'city' => $address?->city,
             'ward' => $address?->ward,

@@ -237,6 +237,7 @@
         background: #F8FAFC;
         color: #334155;
         border-bottom: 1px solid #E2E8F0;
+        border-right: 1px solid #E2E8F0;
         font-size: 13px;
         font-weight: 800;
         line-height: 1;
@@ -244,13 +245,22 @@
         white-space: nowrap;
     }
 
+    .product-table thead th:last-child {
+        border-right: 0;
+    }
+
     .product-table tbody td {
         min-height: 64px;
         padding: 15px 16px;
         color: #0F172A;
         border-bottom: 1px solid #E2E8F0;
+        border-right: 1px solid #E2E8F0;
         font-size: 13px;
         vertical-align: middle;
+    }
+
+    .product-table tbody td:last-child {
+        border-right: 0;
     }
 
     .product-table tbody tr:last-child td {

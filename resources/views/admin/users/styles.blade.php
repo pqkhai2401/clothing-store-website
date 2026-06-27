@@ -27,7 +27,7 @@
     }
 
     .account-search {
-        width: min(380px, 100%);
+        width: min(340px, 100%);
         min-height: 38px;
         border: 1px solid #D8E0EA;
         border-radius: 10px;
@@ -35,6 +35,7 @@
         box-shadow: none;
         font-size: 14px;
         color: #0F172A;
+        flex: 0 1 340px;
     }
 
     .account-search::placeholder {
@@ -44,6 +45,104 @@
     .account-search:focus {
         border-color: #16A34A;
         box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.12);
+    }
+
+    /* ── Toolbar left group ─────────────────────────── */
+    .account-toolbar-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex: 1 1 auto;
+        flex-wrap: nowrap;
+        min-width: 0;
+    }
+
+    /* ── Custom status dropdown ─────────────────────── */
+    .hk-cat-filter {
+        position: relative;
+        width: 200px;
+        flex: 0 0 200px;
+    }
+
+    .hk-cat-trigger {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        width: 100%;
+        min-height: 38px;
+        padding: 0 12px;
+        border: 1px solid #D8E0EA;
+        border-radius: 10px;
+        background: #fff;
+        font-size: 14px;
+        color: #0F172A;
+        text-align: left;
+        cursor: pointer;
+        transition: border-color .15s;
+    }
+
+    .hk-cat-trigger:hover,
+    .hk-cat-trigger.is-open {
+        border-color: #16A34A;
+    }
+
+    .hk-cat-trigger-label {
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .hk-cat-arrow {
+        font-size: 11px;
+        color: #6b7280;
+        transition: transform .2s;
+        flex-shrink: 0;
+    }
+
+    .hk-cat-trigger.is-open .hk-cat-arrow {
+        transform: rotate(180deg);
+    }
+
+    .hk-cat-panel {
+        position: absolute;
+        top: calc(100% + 6px);
+        left: 0;
+        z-index: 1050;
+        width: 220px;
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        box-shadow: 0 8px 32px rgba(15, 23, 42, 0.14);
+        overflow: hidden;
+    }
+
+    .hk-cat-list {
+        padding: 6px 0;
+    }
+
+    .hk-cat-item {
+        display: block;
+        width: 100%;
+        padding: 8px 14px;
+        border: 0;
+        background: transparent;
+        font-size: 13px;
+        color: #374151;
+        text-align: left;
+        cursor: pointer;
+        transition: background .12s;
+    }
+
+    .hk-cat-item:hover {
+        background: #f3f4f6;
+    }
+
+    .hk-cat-item.is-active {
+        color: #111827;
+        font-weight: 700;
+        background: #f0f9ff;
     }
 
     .account-tool-actions {
@@ -216,9 +315,9 @@
     }
 
     .status-badge--inactive {
-        background: #F8FAFC;
-        border: 1.5px solid #CBD5E1;
-        color: #64748B;
+        background: #FFF7F7;
+        border: 1.5px solid #FECACA;
+        color: #DC2626;
     }
 
     .account-more-btn {
@@ -331,6 +430,12 @@
         word-break: break-word;
     }
 
+    .role-field--locked {
+        opacity: 0.45;
+        pointer-events: none;
+        user-select: none;
+    }
+
     .account-modal-loading {
         padding: 28px 12px;
         color: #6b7280;
@@ -377,6 +482,32 @@
 
     [data-theme="dark"] .account-search::placeholder {
         color: #64748B !important;
+    }
+
+    [data-theme="dark"] .hk-cat-trigger {
+        background: #101C33 !important;
+        border-color: #2A3B59 !important;
+        color: #E2E8F0 !important;
+    }
+
+    [data-theme="dark"] .hk-cat-trigger:hover,
+    [data-theme="dark"] .hk-cat-trigger.is-open {
+        border-color: #3B82F6 !important;
+    }
+
+    [data-theme="dark"] .hk-cat-arrow { color: #94A3B8 !important; }
+
+    [data-theme="dark"] .hk-cat-panel {
+        background: #0F1B31 !important;
+        border-color: #22324D !important;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.5) !important;
+    }
+
+    [data-theme="dark"] .hk-cat-item { color: #CBD5E1 !important; }
+    [data-theme="dark"] .hk-cat-item:hover { background: #162843 !important; }
+    [data-theme="dark"] .hk-cat-item.is-active {
+        background: rgba(59,130,246,0.15) !important;
+        color: #93C5FD !important;
     }
 
     [data-theme="dark"] .account-table-wrap {
@@ -426,9 +557,9 @@
     }
 
     [data-theme="dark"] .status-badge--inactive {
-        background: rgba(100,116,139,0.14) !important;
-        border-color: rgba(148,163,184,0.30) !important;
-        color: #CBD5E1 !important;
+        background: rgba(239,68,68,0.12) !important;
+        border-color: rgba(252,165,165,0.35) !important;
+        color: #FCA5A5 !important;
     }
 
     [data-theme="dark"] .account-more-btn {

@@ -24,6 +24,7 @@
     @include('layouts.partial.js')
     @stack('scripts')
     @stack('modals')
+    @include('admin.partials.profile-modal')
 </body>
 
 </html>

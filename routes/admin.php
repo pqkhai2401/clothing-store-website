@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\ReviewController;
 use App\Http\Controllers\Admin\SizeController;
+use App\Http\Controllers\Admin\ProfileController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Api\ImageController;
 
@@ -40,6 +41,9 @@ Route::middleware(['auth.login', 'admin'])
         Route::prefix('customers')->name('customers.')->group(fn () => $accountRoutes('customer'));
 
         Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+
+        Route::get('/profile', [ProfileController::class, 'show'])->name('profile');
+        Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
 
         Route::middleware('permission:manage-staff')
             ->group(function () use ($accountRoutes) {

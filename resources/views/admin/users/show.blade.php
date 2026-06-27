@@ -22,6 +22,8 @@
             'staff' => 'Nhân viên',
             'customer' => 'Khách hàng',
         ];
+        $currentUserId = auth()->id();
+        $isStaffPage   = ($type ?? 'all') === 'staff';
     @endphp
 
     <main class="app-main account-admin-page container-fluid py-4">
@@ -30,21 +32,75 @@
         <section class="px-3 px-md-4">
             <div>
                 <h1 class="account-header-title mb-2" style="color: black;">{{ $pageTitle ?? 'Quản lý tài khoản' }}</h1>
-                <p class="account-header-desc mb-0" style="color: black;">{{ $description }}</p>
+                <p class="account-header-desc mb-0" style="color: #64748b;">{{ $description }}</p>
             </div>
 
             <div class="account-toolbar">
-                <input type="search" id="accountRealtimeSearch" class="form-control account-search"
-                    placeholder="{{ $searchPlaceholder }}" autocomplete="off">
+                @if ($isStaffPage)
+                    {{-- Staff: tìm kiếm + lọc trạng thái client-side --}}
+                    <div class="account-toolbar-left">
+                        <input type="search" id="accountRealtimeSearch" class="form-control account-search"
+                            placeholder="{{ $searchPlaceholder }}" autocomplete="off">
 
-                <div class="account-tool-actions">
-                    <a href="{{ route(($routePrefix ?? 'admin.users') . '.trash') }}" class="btn btn-light border account-action-btn">
-                        <i class="fa-regular fa-trash-can me-1"></i> Thùng rác
-                    </a>
-                    <a href="{{ route(($routePrefix ?? 'admin.users') . '.create') }}" class="btn btn-dark account-action-btn">
-                        <i class="fa-solid fa-plus me-1"></i> {{ $createLabel ?? 'Thêm tài khoản' }}
-                    </a>
-                </div>
+                        <div class="hk-cat-filter" id="hkStaffStatusDrop">
+                            <button type="button" class="hk-cat-trigger" id="hkStaffStatusTrigger" aria-haspopup="listbox" aria-expanded="false">
+                                <span class="hk-cat-trigger-label" id="hkStaffStatusLabel">Tất cả trạng thái</span>
+                                <i class="fa-solid fa-chevron-down hk-cat-arrow"></i>
+                            </button>
+                            <div class="hk-cat-panel" id="hkStaffStatusPanel" hidden>
+                                <div class="hk-cat-list" id="hkStaffStatusList" role="listbox">
+                                    <button type="button" class="hk-cat-item is-active" data-value="" data-label="Tất cả trạng thái">Tất cả trạng thái</button>
+                                    <button type="button" class="hk-cat-item" data-value="1" data-label="Hoạt động">Hoạt động</button>
+                                    <button type="button" class="hk-cat-item" data-value="0" data-label="Ngưng hoạt động">Ngưng hoạt động</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="account-tool-actions">
+                        <a href="{{ route(($routePrefix ?? 'admin.users') . '.create') }}" class="btn btn-dark account-action-btn">
+                            <i class="fa-solid fa-plus me-1"></i> {{ $createLabel ?? 'Thêm tài khoản' }}
+                        </a>
+                    </div>
+                @else
+                    {{-- Customer: tìm kiếm + lọc trạng thái server-side --}}
+                    @php
+                        $statusVal = request('status', '');
+                        $statusLabelMap = ['' => 'Tất cả trạng thái', '1' => 'Hoạt động', '0' => 'Ngưng hoạt động'];
+                    @endphp
+                    <form method="GET" action="{{ route(($routePrefix ?? 'admin.users') . '.list') }}"
+                          id="customerFilterForm" class="account-toolbar-left">
+                        <input type="search" name="keyword" id="customerKeyword"
+                            value="{{ request('keyword') }}"
+                            class="form-control account-search"
+                            placeholder="{{ $searchPlaceholder }}"
+                            autocomplete="off">
+
+                        <input type="hidden" name="status" id="customerStatusHidden" value="{{ $statusVal }}">
+                        <div class="hk-cat-filter" id="hkStatusDrop">
+                            <button type="button" class="hk-cat-trigger" id="hkStatusTrigger" aria-haspopup="listbox" aria-expanded="false">
+                                <span class="hk-cat-trigger-label" id="hkStatusLabel">{{ $statusLabelMap[$statusVal] ?? 'Tất cả trạng thái' }}</span>
+                                <i class="fa-solid fa-chevron-down hk-cat-arrow"></i>
+                            </button>
+                            <div class="hk-cat-panel" id="hkStatusPanel" hidden>
+                                <div class="hk-cat-list" id="hkStatusList" role="listbox">
+                                    <button type="button" class="hk-cat-item {{ $statusVal === '' ? 'is-active' : '' }}" data-value="" data-label="Tất cả trạng thái">Tất cả trạng thái</button>
+                                    <button type="button" class="hk-cat-item {{ $statusVal === '1' ? 'is-active' : '' }}" data-value="1" data-label="Hoạt động">Hoạt động</button>
+                                    <button type="button" class="hk-cat-item {{ $statusVal === '0' ? 'is-active' : '' }}" data-value="0" data-label="Ngưng hoạt động">Ngưng hoạt động</button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+
+                    <div class="account-tool-actions">
+                        <a href="{{ route(($routePrefix ?? 'admin.users') . '.trash') }}" class="btn btn-light border account-action-btn">
+                            <i class="fa-regular fa-trash-can me-1"></i> Thùng rác
+                        </a>
+                        <a href="{{ route(($routePrefix ?? 'admin.users') . '.create') }}" class="btn btn-dark account-action-btn">
+                            <i class="fa-solid fa-plus me-1"></i> {{ $createLabel ?? 'Thêm tài khoản' }}
+                        </a>
+                    </div>
+                @endif
             </div>
 
             <div class="account-table-wrap">
@@ -96,7 +152,7 @@
                                     $roleName = $user->roles->first()?->name;
                                     $roleLabel = $roleName ? ($roleLabels[$roleName] ?? $roleName) : 'Chưa có vai trò';
                                 @endphp
-                                <tr data-user-row="{{ $user->id }}">
+                                <tr data-user-row="{{ $user->id }}" data-user-status="{{ $user->is_active ? '1' : '0' }}">
                                     <td>
                                         <input type="checkbox" class="form-check-input account-check account-row-check hk-cb-row" value="{{ $user->id }}">
                                     </td>
@@ -135,12 +191,14 @@
                                                     data-update-url="{{ route(($routePrefix ?? 'admin.users') . '.update', $user->id) }}">
                                                     <i class="fa-regular fa-pen-to-square"></i> Sửa
                                                 </button>
-                                                <button type="button" class="dropdown-item text-danger"
-                                                    data-delete-url="{{ route(($routePrefix ?? 'admin.users') . '.destroy', $user->id) }}"
-                                                    data-delete-name="{{ $user->username }}"
-                                                    data-delete-type="{{ $itemLabelLower ?? 'tài khoản' }}">
-                                                    <i class="fa-regular fa-trash-can"></i> Xóa
-                                                </button>
+                                                @if (!$isStaffPage && $user->id !== $currentUserId)
+                                                    <button type="button" class="dropdown-item text-danger"
+                                                        data-delete-url="{{ route(($routePrefix ?? 'admin.users') . '.destroy', $user->id) }}"
+                                                        data-delete-name="{{ $user->username }}"
+                                                        data-delete-type="{{ $itemLabelLower ?? 'tài khoản' }}">
+                                                        <i class="fa-regular fa-trash-can"></i> Xóa
+                                                    </button>
+                                                @endif
                                             </div>
                                         </div>
                                     </td>
@@ -162,7 +220,7 @@
                 @include('layouts.components.pagination', [
                     'paginator'     => $data,
                     'itemLabel'     => $itemLabelLower ?? 'tài khoản',
-                    'bulkDeleteUrl' => route(($routePrefix ?? 'admin.users') . '.bulkDelete'),
+                    'bulkDeleteUrl' => $isStaffPage ? null : route(($routePrefix ?? 'admin.users') . '.bulkDelete'),
                 ])
             </div>
         </section>
@@ -176,6 +234,62 @@
     @include('layouts.components.confirm.delete')
     @include('admin.users.scripts')
     <script>
+        /* ── Customer filter (server-side) ───────────────────── */
+        function submitCustomerFilter() {
+            const form = document.getElementById('customerFilterForm');
+            if (!form) return;
+            const url = new URL(window.location.href);
+            const keyword = form.elements.keyword?.value ?? '';
+            const status  = form.elements.status?.value ?? '';
+            keyword ? url.searchParams.set('keyword', keyword) : url.searchParams.delete('keyword');
+            status !== '' ? url.searchParams.set('status', status) : url.searchParams.delete('status');
+            url.searchParams.set('page', '1');
+            window.location.href = url.toString();
+        }
+
+        document.getElementById('customerKeyword')?.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') { e.preventDefault(); submitCustomerFilter(); }
+        });
+
+        /* ── Custom status dropdown ── */
+        (function () {
+            const trigger = document.getElementById('hkStatusTrigger');
+            const panel   = document.getElementById('hkStatusPanel');
+            const label   = document.getElementById('hkStatusLabel');
+            const list    = document.getElementById('hkStatusList');
+            const hidden  = document.getElementById('customerStatusHidden');
+
+            function open() {
+                panel.hidden = false;
+                trigger.classList.add('is-open');
+                trigger.setAttribute('aria-expanded', 'true');
+            }
+            function close() {
+                panel.hidden = true;
+                trigger.classList.remove('is-open');
+                trigger.setAttribute('aria-expanded', 'false');
+            }
+
+            trigger?.addEventListener('click', function () { panel.hidden ? open() : close(); });
+
+            list?.addEventListener('click', function (e) {
+                const btn = e.target.closest('.hk-cat-item');
+                if (!btn) return;
+                list.querySelectorAll('.hk-cat-item').forEach(function (b) { b.classList.remove('is-active'); });
+                btn.classList.add('is-active');
+                label.textContent = btn.dataset.label;
+                if (hidden) hidden.value = btn.dataset.value;
+                close();
+                submitCustomerFilter();
+            });
+
+            document.addEventListener('click', function (e) {
+                if (!panel?.hidden && !document.getElementById('hkStatusDrop')?.contains(e.target)) {
+                    close();
+                }
+            });
+        }());
+
         document.addEventListener('DOMContentLoaded', function () {
             const table = document.getElementById('accountUsersTable');
             const searchInput = document.getElementById('accountRealtimeSearch');
@@ -186,6 +300,7 @@
             const tbody = table.querySelector('tbody');
             const rows = Array.from(tbody.querySelectorAll('tr[data-user-row]'));
             let sortState = { key: 'id', dir: 'asc' };
+            let staffStatusFilter = '';
 
             function normalize(value) {
                 return String(value || '').toLowerCase().trim();
@@ -195,7 +310,9 @@
                 const keyword = normalize(searchInput?.value);
 
                 rows.forEach(row => {
-                    row.hidden = keyword && !normalize(row.innerText).includes(keyword);
+                    const matchesKeyword = !keyword || normalize(row.innerText).includes(keyword);
+                    const matchesStatus  = !staffStatusFilter || row.dataset.userStatus === staffStatusFilter;
+                    row.hidden = !(matchesKeyword && matchesStatus);
                 });
 
                 if (checkAll) {
@@ -203,6 +320,46 @@
                     checkAll.indeterminate = false;
                 }
             }
+
+            /* ── Staff status dropdown (client-side filter) ── */
+            (function () {
+                const stTrigger = document.getElementById('hkStaffStatusTrigger');
+                const stPanel   = document.getElementById('hkStaffStatusPanel');
+                const stLabel   = document.getElementById('hkStaffStatusLabel');
+                const stList    = document.getElementById('hkStaffStatusList');
+
+                if (!stTrigger) return;
+
+                function open() {
+                    stPanel.hidden = false;
+                    stTrigger.classList.add('is-open');
+                    stTrigger.setAttribute('aria-expanded', 'true');
+                }
+                function close() {
+                    stPanel.hidden = true;
+                    stTrigger.classList.remove('is-open');
+                    stTrigger.setAttribute('aria-expanded', 'false');
+                }
+
+                stTrigger.addEventListener('click', function () { stPanel.hidden ? open() : close(); });
+
+                stList.addEventListener('click', function (e) {
+                    const btn = e.target.closest('.hk-cat-item');
+                    if (!btn) return;
+                    stList.querySelectorAll('.hk-cat-item').forEach(function (b) { b.classList.remove('is-active'); });
+                    btn.classList.add('is-active');
+                    stLabel.textContent = btn.dataset.label;
+                    staffStatusFilter = btn.dataset.value;
+                    close();
+                    filterRows();
+                });
+
+                document.addEventListener('click', function (e) {
+                    if (!stPanel.hidden && !document.getElementById('hkStaffStatusDrop')?.contains(e.target)) {
+                        close();
+                    }
+                });
+            }());
 
             function cellValue(row, key, type) {
                 if (key === 'id') {
