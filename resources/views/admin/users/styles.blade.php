@@ -78,6 +78,7 @@
         background: #fff;
         color: #020617;
         border-bottom: 1px solid #e5e7eb;
+        border-right: 1px solid #e5e7eb;
         font-size: 14px;
         font-weight: 800;
         line-height: 1;
@@ -85,13 +86,22 @@
         white-space: nowrap;
     }
 
+    .account-table thead th:last-child {
+        border-right: 0;
+    }
+
     .account-table tbody td {
         min-height: 64px;
         padding: 15px 16px;
         color: #0f172a;
         border-bottom: 1px solid #e5e7eb;
+        border-right: 1px solid #e5e7eb;
         font-size: 13px;
         vertical-align: middle;
+    }
+
+    .account-table tbody td:last-child {
+        border-right: 0;
     }
 
     .account-table tbody tr:last-child td {
@@ -140,11 +150,36 @@
         font-size: 16px;
     }
 
-    .status-badge {
+    .role-badge {
+        display: inline-block;
         border-radius: 999px;
-        font-size: 11px;
-        font-weight: 800;
-        padding: 5px 9px;
+        font-size: 12px;
+        font-weight: 600;
+        padding: 4px 12px;
+        border: 1.5px solid #d1d5db;
+        color: #374151;
+        background: transparent;
+        line-height: 1.4;
+    }
+
+    .status-badge {
+        display: inline-block;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+        padding: 4px 12px;
+        line-height: 1.4;
+        background: transparent;
+    }
+
+    .status-badge--active {
+        border: 1.5px solid #16a34a;
+        color: #16a34a;
+    }
+
+    .status-badge--inactive {
+        border: 1.5px solid #9ca3af;
+        color: #6b7280;
     }
 
     .account-more-btn {

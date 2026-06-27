@@ -297,10 +297,23 @@
     }
 
     .status-badge {
+        display: inline-block;
         border-radius: 999px;
-        font-size: 11px;
-        font-weight: 800;
-        padding: 5px 9px;
+        font-size: 12px;
+        font-weight: 600;
+        padding: 4px 12px;
+        line-height: 1.4;
+        background: transparent;
+    }
+
+    .status-badge--active {
+        border: 1.5px solid #16a34a;
+        color: #16a34a;
+    }
+
+    .status-badge--inactive {
+        border: 1.5px solid #9ca3af;
+        color: #6b7280;
     }
 
     .price-display {

@@ -175,7 +175,7 @@
                                     </td>
 
                                     <td data-cell="status" data-sort-value="{{ $product->status ? 1 : 0 }}">
-                                        <span class="badge status-badge {{ $product->status ? 'text-bg-success' : 'text-bg-secondary' }}">
+                                        <span class="status-badge {{ $product->status ? 'status-badge--active' : 'status-badge--inactive' }}">
                                             {{ $product->status ? 'Đang bán' : 'Ẩn' }}
                                         </span>
                                     </td>
