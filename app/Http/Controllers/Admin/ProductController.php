@@ -22,6 +22,7 @@ class ProductController extends Controller
             : 10;
 
         $query = Product::with(['category', 'brand'])
+            ->withSum('productVariants', 'stock')
             ->orderBy('id', 'desc');
 
         if ($keyword !== '') {
