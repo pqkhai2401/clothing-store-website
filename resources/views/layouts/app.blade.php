@@ -27,7 +27,11 @@
     <!-- Main Content Area -->
     <main>
         @unless(View::hasSection('auth_standalone') || request()->routeIs('auth.registerpage') || request()->routeIs('auth.loginpage'))
-            @include('partials.flash-message')
+            @if(View::hasSection('hide_flash_errors'))
+                @include('partials.flash-message-success-only')
+            @else
+                @include('partials.flash-message')
+            @endif
         @endunless
         @yield('content')
     </main>

@@ -2,37 +2,39 @@
 
 @section('title', 'Thông tin cá nhân | HK Store')
 
+@section('hide_flash_errors', true)
+
 @section('css')
 <style>
     .profile-section {
-        max-width: 700px;
-        margin: 60px auto;
+        max-width: 500px;
+        margin: 40px auto;
         padding: 0 15px;
     }
 
     .profile-section h2 {
         font-family: var(--font-serif);
-        font-size: 1.8rem;
+        font-size: 1.5rem;
         text-align: center;
-        margin-bottom: 40px;
+        margin-bottom: 30px;
         letter-spacing: 1px;
     }
 
     .profile-form .form-label {
-        font-size: 13px;
+        font-size: 12px;
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.5px;
         color: var(--text-color);
-        margin-bottom: 6px;
+        margin-bottom: 4px;
     }
 
     .profile-form .form-control,
     .profile-form .form-select {
         border-radius: 0;
         border: 1px solid var(--border-color);
-        padding: 10px 14px;
-        font-size: 14px;
+        padding: 8px 12px;
+        font-size: 13px;
         transition: border-color 0.3s ease;
     }
 
@@ -52,8 +54,8 @@
         color: #fff;
         border: none;
         border-radius: 0;
-        padding: 12px 40px;
-        font-size: 13px;
+        padding: 10px 30px;
+        font-size: 12px;
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 1.5px;
@@ -71,8 +73,8 @@
         color: var(--primary-color);
         border: 1px solid var(--primary-color);
         border-radius: 0;
-        padding: 8px 20px;
-        font-size: 12px;
+        padding: 6px 16px;
+        font-size: 11px;
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 1px;
@@ -86,25 +88,25 @@
 
     .password-section {
         border-top: 1px solid var(--border-color);
-        margin-top: 30px;
-        padding-top: 30px;
+        margin-top: 20px;
+        padding-top: 20px;
     }
 
     .password-display {
         display: flex;
         align-items: center;
-        gap: 15px;
+        gap: 12px;
     }
 
     .password-dots {
-        font-size: 14px;
+        font-size: 13px;
         letter-spacing: 3px;
         color: var(--muted-text);
     }
 
     .change-password-form {
         display: none;
-        margin-top: 20px;
+        margin-top: 15px;
     }
 
     .change-password-form.show {
@@ -113,7 +115,48 @@
 
     .divider {
         border-top: 1px solid var(--border-color);
-        margin: 30px 0;
+        margin: 20px 0;
+    }
+
+    @media (max-width: 576px) {
+        .profile-section {
+            max-width: 100%;
+            margin: 20px auto;
+            padding: 0 12px;
+        }
+
+        .profile-section h2 {
+            font-size: 1.25rem;
+            margin-bottom: 20px;
+        }
+
+        .profile-form .form-control,
+        .profile-form .form-select {
+            padding: 8px 10px;
+            font-size: 13px;
+        }
+
+        .profile-form .mb-3 {
+            margin-bottom: 12px !important;
+        }
+
+        .password-display {
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .btn-update {
+            padding: 10px 20px;
+        }
+
+        .password-section {
+            margin-top: 15px;
+            padding-top: 15px;
+        }
+
+        .divider {
+            margin: 15px 0;
+        }
     }
 </style>
 @endsection
@@ -158,12 +201,10 @@
 
         <div class="mb-3">
             <label for="email" class="form-label">Email</label>
-            <input type="email" class="form-control @error('email') is-invalid @enderror" id="email" name="email" value="{{ old('email', $user->email) }}">
-            @error('email')
-                <div class="invalid-feedback">{{ $message }}</div>
-            @enderror
+            <input type="email" class="form-control" id="email" value="{{ $user->email }}" readonly>
         </div>
 
+        @if(!$user->google_id)
         {{-- Password Section --}}
         <div class="password-section">
             <label class="form-label">Mật khẩu</label>
@@ -172,12 +213,14 @@
                 <button type="button" class="btn-change-password" id="toggleChangePassword">Đổi mật khẩu</button>
             </div>
         </div>
+        @endif
 
         <div class="divider"></div>
 
         <button type="submit" class="btn btn-update">Cập nhật tài khoản</button>
     </form>
 
+    @if(!$user->google_id)
     {{-- Change Password Form --}}
     <div class="change-password-form" id="changePasswordForm">
         <form action="{{ route('profile.change-password') }}" method="POST" class="profile-form">
@@ -213,6 +256,7 @@
             <button type="submit" class="btn btn-update">Xác nhận đổi mật khẩu</button>
         </form>
     </div>
+    @endif
 </div>
 @endsection
 
