@@ -253,14 +253,7 @@ class UserController extends Controller
         $this->applyTypeFilter($query, $context['type']);
         $data = $query->paginate($perPage)->appends($request->except('page'));
 
-        if ($request->ajax()) {
-            return view('admin.users.trash_list', [
-                'data' => $data,
-                ...$context,
-            ]);
-        }
-
-        return view('admin.users.trash_show', [
+        return view('admin.users.trash', [
             'data' => $data,
             ...$context,
         ]);
