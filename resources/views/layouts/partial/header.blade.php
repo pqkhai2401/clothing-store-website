@@ -23,9 +23,7 @@
 
     $actionLabel = match ($routeName) {
         'admin.staff.create'      => 'Thêm mới quản trị viên',
-        'admin.staff.trash'       => 'Thùng rác nhân sự',
         'admin.customers.create'  => 'Thêm mới khách hàng',
-        'admin.customers.trash'   => 'Thùng rác khách hàng',
         'admin.users.create'      => 'Thêm mới tài khoản',
         'admin.products.trash'    => 'Thùng rác sản phẩm',
         'admin.categories.trash'  => 'Thùng rác danh mục',
@@ -38,10 +36,8 @@
     };
 
     $pageUrl = match ($routeName) {
-        'admin.staff.create',
-        'admin.staff.trash'      => route('admin.staff.list'),
-        'admin.customers.create',
-        'admin.customers.trash'  => route('admin.customers.list'),
+        'admin.staff.create'     => route('admin.staff.list'),
+        'admin.customers.create' => route('admin.customers.list'),
         'admin.users.create'     => route('admin.users.list'),
         'admin.products.trash'   => route('admin.products.list'),
         'admin.categories.trash' => route('admin.categories.list'),

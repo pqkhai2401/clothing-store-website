@@ -180,48 +180,53 @@ class UserController extends Controller
             'lock_reason' => ['nullable', 'string', 'max:255'],
         ], $this->validationMessages());
 
-        // Staff chỉ được ngưng hoạt động, không được kích hoạt lại
-        if ($context['type'] === 'staff' && ! $user->is_active && (bool) $validated['is_active']) {
-            if ($request->expectsJson() || $request->ajax()) {
-                return response()->json([
-                    'errors' => ['is_active' => ['Không thể kích hoạt lại tài khoản nhân sự.']],
-                ], 422);
-            }
+        $currentUser = $request->user();
+        $isSelf = (int) $currentUser->id === (int) $user->id;
+        $isProtectedTarget = (bool) $user->is_protected;
+        $isProtectedEditedByOther = $isProtectedTarget && ! $isSelf;
+        $currentRoleId = $user->roles()->first()?->id;
+        $statusChanged = (bool) $validated['is_active'] !== (bool) $user->is_active;
+        $roleChanged = ! empty($validated['role_id']) && (int) $validated['role_id'] !== (int) $currentRoleId;
+        $passwordChanged = filled($validated['password'] ?? null);
 
-            return back()->withErrors(['is_active' => 'Không thể kích hoạt lại tài khoản nhân sự.']);
+        if ($isSelf && $statusChanged && ! (bool) $validated['is_active']) {
+            return $this->validationErrorResponse($request, 'is_active', 'Bạn không thể tự khóa tài khoản đang đăng nhập.');
         }
 
-        // Không cho phép tự thay đổi vai trò của tài khoản đang đăng nhập
-        $skipRoleSync = false;
-        if ($context['type'] === 'staff' && $user->id === auth()->id()) {
-            $currentRoleId = $user->roles()->first()?->id;
-            if (! empty($validated['role_id']) && (int) $validated['role_id'] !== (int) $currentRoleId) {
-                if ($request->expectsJson() || $request->ajax()) {
-                    return response()->json([
-                        'errors' => ['role_id' => ['Không thể thay đổi vai trò của tài khoản đang đăng nhập.']],
-                    ], 422);
-                }
-
-                return back()->withErrors(['role_id' => 'Không thể thay đổi vai trò của tài khoản đang đăng nhập.']);
-            }
-            $skipRoleSync = true;
+        if ($isSelf && $roleChanged) {
+            return $this->validationErrorResponse($request, 'role_id', 'Bạn không thể tự thay đổi vai trò của chính mình.');
         }
+
+        if ($isProtectedEditedByOther && ($statusChanged || $roleChanged || $passwordChanged)) {
+            return $this->validationErrorResponse(
+                $request,
+                'is_active',
+                'Không thể thay đổi vai trò, trạng thái hoặc mật khẩu của admin hệ thống.'
+            );
+        }
+
+        $canChangeStatus = ! $isProtectedEditedByOther && ! ($isSelf && $context['type'] === 'staff');
+        $canChangeRole = ! $isProtectedEditedByOther && ! $isSelf;
+        $canChangePassword = ! $isProtectedEditedByOther;
 
         $updateData = [
             'username' => $validated['username'],
             'email' => $validated['email'],
             'phone_number' => $validated['phone_number'] ?? null,
-            'is_active' => (bool) $validated['is_active'],
-            'lock_reason' => (bool) $validated['is_active'] ? null : ($validated['lock_reason'] ?? null),
         ];
 
-        if (! empty($validated['password'])) {
+        if ($canChangeStatus) {
+            $updateData['is_active'] = (bool) $validated['is_active'];
+            $updateData['lock_reason'] = (bool) $validated['is_active'] ? null : ($validated['lock_reason'] ?? null);
+        }
+
+        if ($canChangePassword && $passwordChanged) {
             $updateData['password'] = Hash::make($validated['password']);
         }
 
         $user->update($updateData);
 
-        if (! $skipRoleSync) {
+        if ($canChangeRole) {
             $roleForUser = $this->roleForContext($context['type'], $validated['role_id'] ?? null, $user);
             if ($roleForUser) {
                 $user->syncRoles([$roleForUser->name]);
@@ -279,6 +284,11 @@ class UserController extends Controller
                 ->with('error', 'Không thể xóa tài khoản nhân sự. Hãy chuyển trạng thái sang Ngưng hoạt động.');
         }
 
+        if ($user->is_protected) {
+            return redirect()->route($context['routePrefix'].'.list')
+                ->with('error', 'Không thể xóa admin hệ thống.');
+        }
+
         $user->delete();
 
         return redirect()->route($context['routePrefix'].'.list')->with('success', 'Xóa '.$context['itemLabelLower'].' thành công');
@@ -291,6 +301,11 @@ class UserController extends Controller
     {
         $context = $this->resolveContext($request);
         $this->authorizeContext($request, $context['type']);
+
+        if (in_array($context['type'], ['staff', 'customer'], true)) {
+            return redirect()->route($context['routePrefix'].'.list')
+                ->with('error', 'Chức năng thùng rác không áp dụng cho khu vực này.');
+        }
 
         $perPage = $this->resolvePerPage($request);
         $keyword = trim($request->input('keyword', ''));
@@ -322,8 +337,8 @@ class UserController extends Controller
         $context = $this->resolveContext($request);
         $this->authorizeContext($request, $context['type']);
 
-        if ($context['type'] === 'staff') {
-            return back()->with('error', 'Không thể xóa hàng loạt tài khoản nhân sự.');
+        if (in_array($context['type'], ['staff', 'customer'], true)) {
+            return back()->with('error', 'Không thể xóa hàng loạt tài khoản trong khu vực này.');
         }
 
         $ids = array_filter((array) $request->input('ids', []), 'is_numeric');
@@ -335,11 +350,46 @@ class UserController extends Controller
             return back()->with('error', 'Vui lòng chọn ít nhất một ' . $context['itemLabelLower'] . ' để xóa.');
         }
 
-        $query = User::whereIn('id', $ids);
+        $query = User::whereIn('id', $ids)->where('is_protected', false);
         $this->applyTypeFilter($query, $context['type']);
         $deleted = $query->delete();
 
         return back()->with('success', "Đã xóa {$deleted} {$context['itemLabelLower']} thành công.");
+    }
+
+    /**
+     * Bulk update selected customer account statuses.
+     */
+    public function bulkUpdateStatus(Request $request)
+    {
+        $context = $this->resolveContext($request);
+        $this->authorizeContext($request, $context['type']);
+
+        if ($context['type'] !== 'customer') {
+            abort(404);
+        }
+
+        $validated = $request->validate([
+            'ids' => ['required', 'array'],
+            'ids.*' => ['integer', 'exists:users,id'],
+            'is_active' => ['required', 'boolean'],
+        ], [
+            'ids.required' => 'Vui lòng chọn ít nhất một khách hàng.',
+            'ids.array' => 'Danh sách khách hàng không hợp lệ.',
+            'ids.*.exists' => 'Khách hàng được chọn không hợp lệ.',
+            'is_active.required' => 'Vui lòng chọn trạng thái cần cập nhật.',
+            'is_active.boolean' => 'Trạng thái không hợp lệ.',
+        ]);
+
+        $updated = User::query()
+            ->whereIn('id', $validated['ids'])
+            ->whereHas('roles', fn ($roleQuery) => $roleQuery->where('name', UserRole::CUSTOMER->value))
+            ->update([
+                'is_active' => (bool) $validated['is_active'],
+                'lock_reason' => (bool) $validated['is_active'] ? null : 'Cập nhật trạng thái hàng loạt',
+            ]);
+
+        return back()->with('success', "Đã cập nhật trạng thái {$updated} khách hàng.");
     }
 
     /**
@@ -350,6 +400,10 @@ class UserController extends Controller
         $user = User::onlyTrashed()->findOrFail($id);
         $context = $this->resolveContext(request(), $user);
         $this->authorizeContext(request(), $context['type'], $user);
+        if (in_array($context['type'], ['staff', 'customer'], true)) {
+            return redirect()->route($context['routePrefix'].'.list')
+                ->with('error', 'Chức năng thùng rác không áp dụng cho khu vực này.');
+        }
         $user->restore();
 
         return redirect()->route($context['routePrefix'].'.trash')->with('success', 'Khôi phục '.$context['itemLabelLower'].' thành công');
@@ -363,9 +417,24 @@ class UserController extends Controller
         $user = User::onlyTrashed()->findOrFail($id);
         $context = $this->resolveContext(request(), $user);
         $this->authorizeContext(request(), $context['type'], $user);
+        if (in_array($context['type'], ['staff', 'customer'], true) || $user->is_protected) {
+            return redirect()->route($context['routePrefix'].'.list')
+                ->with('error', 'Không thể xóa vĩnh viễn tài khoản này.');
+        }
         $user->forceDelete();
 
         return redirect()->route($context['routePrefix'].'.trash')->with('success', 'Xóa vĩnh viễn '.$context['itemLabelLower'].' thành công');
+    }
+
+    private function validationErrorResponse(Request $request, string $field, string $message)
+    {
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'errors' => [$field => [$message]],
+            ], 422);
+        }
+
+        return back()->withErrors([$field => $message])->withInput();
     }
 
     private function resolveContext(Request $request, ?User $user = null): array
@@ -547,6 +616,7 @@ class UserController extends Controller
             'role_id' => $role?->id,
             'role_name' => $role?->name,
             'is_active' => (bool) $user->is_active,
+            'is_protected' => (bool) $user->is_protected,
             'status_label' => $user->is_active ? 'Hoạt động' : 'Ngưng hoạt động',
             'lock_reason' => $user->lock_reason,
             'city' => $address?->city,

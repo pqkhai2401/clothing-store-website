@@ -140,6 +140,10 @@
                 rows.push(readonlyRow('Vai trò', roleLabel(user.role_name)));
             }
 
+            if (user.is_protected) {
+                rows.push(readonlyRow('Bảo vệ', 'Admin hệ thống'));
+            }
+
             rows.push(readonlyRow('Trạng thái', user.status_label));
 
             if (!user.is_active) {
@@ -221,6 +225,7 @@
 
         function fillEditForm(data, updateUrl) {
             const user = data.user;
+            const isProtectedByOther = Boolean(user.is_protected) && currentUserId !== null && String(user.id) !== String(currentUserId);
 
             editForm.action = updateUrl;
             editForm.dataset.currentUserId = user.id;
@@ -258,10 +263,29 @@
                 roleField?.classList.remove('role-field--locked');
                 if (isStaffPage && currentUserId !== null && String(user.id) === String(currentUserId)) {
                     roleSelect.disabled = true;
+                    if (roleLockedNote) {
+                        roleLockedNote.innerHTML = '<i class="fa-solid fa-lock" style="font-size:11px;color:#9ca3af;"></i> Không thể thay đổi vai trò của tài khoản đang đăng nhập';
+                    }
+                    roleLockedNote?.classList.remove('d-none');
+                    roleField?.classList.add('role-field--locked');
+                }
+
+                if (isProtectedByOther) {
+                    roleSelect.disabled = true;
+                    if (roleLockedNote) {
+                        roleLockedNote.innerHTML = '<i class="fa-solid fa-lock" style="font-size:11px;color:#9ca3af;"></i> Admin hệ thống được bảo vệ, không thể đổi vai trò';
+                    }
                     roleLockedNote?.classList.remove('d-none');
                     roleField?.classList.add('role-field--locked');
                 }
             }
+
+            ['password', 'password_confirmation'].forEach(function (fieldName) {
+                const field = editForm.elements[fieldName];
+                if (field) {
+                    field.disabled = isProtectedByOther;
+                }
+            });
         }
 
         function updateTableRow(user) {
@@ -269,11 +293,15 @@
             if (!row) return;
 
             row.dataset.userStatus = user.is_active ? '1' : '0';
+            row.dataset.protected = user.is_protected ? '1' : '0';
 
             const usernameCell = row.querySelector('[data-cell="username"]');
             if (usernameCell) {
                 usernameCell.dataset.sortValue = user.username;
-                usernameCell.innerHTML = `<div class="fw-bold text-dark">${escapeHtml(user.username)}</div>`;
+                const protectedChip = isStaffPage && user.is_protected
+                    ? '<span class="system-admin-chip">Admin hệ thống</span>'
+                    : '';
+                usernameCell.innerHTML = `<div class="fw-bold text-dark d-flex align-items-center gap-2 flex-wrap"><span>${escapeHtml(user.username)}</span>${protectedChip}</div>`;
             }
 
             const emailCell = row.querySelector('[data-cell="email"]');

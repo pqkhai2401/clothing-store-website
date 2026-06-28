@@ -4,6 +4,7 @@
     $uid            = 'hkpg' . $hkPgId;
     $itemLabel      = $itemLabel ?? 'mục';
     $bulkDeleteUrl  = $bulkDeleteUrl ?? null;
+    $bulkStatusUrl  = $bulkStatusUrl ?? null;
     $currentPerPage = (int) $paginator->perPage();
     $perPageOptions = [10, 25, 50, 100];
     $total          = $paginator->total();
@@ -31,6 +32,16 @@
                 <button type="button" class="hk-pg-sel-delete" id="{{ $uid }}_selBtn">
                     <i class="fa-regular fa-trash-can"></i> Xóa đã chọn
                 </button>
+            @endif
+            @if ($bulkStatusUrl)
+                <span class="hk-pg-status-actions">
+                    <button type="button" class="hk-pg-sel-status hk-pg-sel-status--active" data-status="1">
+                        Kích hoạt đã chọn
+                    </button>
+                    <button type="button" class="hk-pg-sel-status hk-pg-sel-status--inactive" data-status="0">
+                        Ngưng hoạt động đã chọn
+                    </button>
+                </span>
             @endif
         </div>
     </div>
@@ -97,6 +108,13 @@
 @if ($bulkDeleteUrl)
 <form id="{{ $uid }}_bdf" method="POST" action="{{ $bulkDeleteUrl }}" style="display:none;">
     @csrf
+</form>
+@endif
+
+@if ($bulkStatusUrl)
+<form id="{{ $uid }}_bsf" method="POST" action="{{ $bulkStatusUrl }}" style="display:none;">
+    @csrf
+    @method('PATCH')
 </form>
 @endif
 
@@ -167,6 +185,38 @@
     line-height: 1;
 }
 .hk-pg-sel-delete:hover { background: #fecaca; color: #b91c1c; }
+.hk-pg-status-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+.hk-pg-sel-status {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 28px;
+    padding: 3px 12px;
+    border-radius: 999px;
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    color: #111827;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.hk-pg-sel-status--active {
+    border-color: #86efac;
+    background: #ecfdf5;
+    color: #047857;
+}
+.hk-pg-sel-status--inactive {
+    border-color: #cbd5e1;
+    background: #f8fafc;
+    color: #334155;
+}
+.hk-pg-sel-status:hover { filter: brightness(0.98); }
 
 /* ── RIGHT ───────────────────────────────────────── */
 .hk-pg-right {
@@ -313,6 +363,8 @@ tr.hk-row-selected { background-color: #f0f7ff !important; }
             const cntEl    = document.getElementById(uid + '_selCount');
             const btnEl    = document.getElementById(uid + '_selBtn');
             const form     = document.getElementById(uid + '_bdf');
+            const statusForm = document.getElementById(uid + '_bsf');
+            const statusButtons = Array.from(document.querySelectorAll('#' + uid + '_sel .hk-pg-sel-status'));
 
             /* All row checkboxes and the select-all header checkbox.
                We search the entire document so it works with tables
@@ -388,6 +440,42 @@ tr.hk-row-selected { background-color: #f0f7ff !important; }
                 }
             }
 
+            function selectedIds() {
+                return allRows
+                    .filter(function (cb) { return cb.checked; })
+                    .map(function (cb) { return cb.value; });
+            }
+
+            function handleBulkStatus(status) {
+                const ids = selectedIds();
+
+                if (!ids.length || !statusForm) return;
+
+                const labelText = status === '1' ? 'kích hoạt' : 'ngưng hoạt động';
+                var confirmed = window.confirm(
+                    'Bạn có chắc chắn muốn ' + labelText + ' ' + ids.length + ' ' + label + ' đã chọn không?'
+                );
+                if (!confirmed) return;
+
+                statusForm.querySelectorAll('input[name="ids[]"], input[name="is_active"]').forEach(function (el) { el.remove(); });
+
+                ids.forEach(function (id) {
+                    var input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'ids[]';
+                    input.value = id;
+                    statusForm.appendChild(input);
+                });
+
+                var statusInput = document.createElement('input');
+                statusInput.type = 'hidden';
+                statusInput.name = 'is_active';
+                statusInput.value = status;
+                statusForm.appendChild(statusInput);
+
+                statusForm.submit();
+            }
+
             /* ─── Wire up events ───────────────────────────── */
             allRows.forEach(function (cb) {
                 cb.addEventListener('change', handleRowCheckboxChange);
@@ -395,6 +483,11 @@ tr.hk-row-selected { background-color: #f0f7ff !important; }
 
             if (cbAll)  cbAll.addEventListener('change', handleSelectAll);
             if (btnEl) btnEl.addEventListener('click',  handleBulkDelete);
+            statusButtons.forEach(function (button) {
+                button.addEventListener('click', function () {
+                    handleBulkStatus(this.dataset.status || '1');
+                });
+            });
 
             /* Initial sync (e.g. browser restores checked state on back-nav) */
             updateSelectedState();

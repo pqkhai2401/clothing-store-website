@@ -538,6 +538,20 @@
         color: #60A5FA !important;
     }
 
+    .system-admin-chip {
+        display: inline-flex;
+        align-items: center;
+        height: 22px;
+        padding: 0 9px;
+        border-radius: 999px;
+        border: 1px solid #bfdbfe;
+        background: #eff6ff;
+        color: #1d4ed8;
+        font-size: 11px;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
     [data-theme="dark"] .role-badge {
         background: rgba(148,163,184,0.14) !important;
         border-color: rgba(148,163,184,0.32) !important;

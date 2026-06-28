@@ -3,134 +3,216 @@
 @section('title', 'Quản lý đơn hàng')
 
 @section('css')
+    @include('admin.products.styles')
     <style>
-        .mgmt-table thead th {
-            background: #ffffff; color: #111827;
-            font-size: 12px; font-weight: 800; white-space: nowrap;
+        /* ── Order status chips ────────────────────────────────── */
+        .order-badge {
+            display: inline-flex;
+            align-items: center;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+            padding: 5px 13px;
+            min-height: 28px;
+            line-height: 1;
+            white-space: nowrap;
         }
-        .mgmt-table tbody td { color: #374151; font-size: 13px; }
-        .mgmt-table tbody tr:nth-child(odd) { background: #f3f3f3; }
-        .status-badge {
-            border-radius: 2px; font-size: 10px; font-weight: 800;
-            line-height: 1; padding: 4px 7px;
-        }
+
+        .order-badge--pending   { background: #FFFBEB; border: 1.5px solid #FDE68A; color: #92400E; }
+        .order-badge--confirmed { background: #EFF6FF; border: 1.5px solid #BFDBFE; color: #1D4ED8; }
+        .order-badge--shipping  { background: #F0F9FF; border: 1.5px solid #BAE6FD; color: #0369A1; }
+        .order-badge--delivered { background: #ECFDF5; border: 1.5px solid #86EFAC; color: #16A34A; }
+        .order-badge--cancelled { background: #FEF2F2; border: 1.5px solid #FECACA; color: #DC2626; }
+
         .payment-badge {
-            border-radius: 2px; font-size: 10px; font-weight: 700;
-            line-height: 1; padding: 3px 6px; border: 1px solid;
+            display: inline-flex;
+            align-items: center;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+            padding: 5px 13px;
+            min-height: 28px;
+            line-height: 1;
+            white-space: nowrap;
         }
-        .payment-paid   { color: #166534; border-color: #bbf7d0; background: #f0fdf4; }
-        .payment-unpaid { color: #92400e; border-color: #fde68a; background: #fffbeb; }
-        .order-code { font-family: monospace; font-size: 12px; font-weight: 700; color: #374151; }
+
+        .payment-badge--paid   { background: #ECFDF5; border: 1.5px solid #86EFAC; color: #16A34A; }
+        .payment-badge--unpaid { background: #FEF2F2; border: 1.5px solid #FECACA; color: #DC2626; }
+
+        .order-code {
+            font-family: monospace;
+            font-size: 12px;
+            font-weight: 700;
+            color: #374151;
+            background: #F1F5F9;
+            padding: 3px 7px;
+            border-radius: 5px;
+        }
+
+        /* ── Dark mode ────────────────────────────────── */
+        [data-theme="dark"] .order-badge--pending   { background: rgba(251,191,36,0.12) !important; border-color: rgba(251,191,36,0.3) !important; color: #FCD34D !important; }
+        [data-theme="dark"] .order-badge--confirmed { background: rgba(59,130,246,0.12) !important; border-color: rgba(59,130,246,0.3) !important; color: #93C5FD !important; }
+        [data-theme="dark"] .order-badge--shipping  { background: rgba(14,165,233,0.12) !important; border-color: rgba(14,165,233,0.3) !important; color: #7DD3FC !important; }
+        [data-theme="dark"] .order-badge--delivered { background: rgba(34,197,94,0.12) !important; border-color: rgba(34,197,94,0.3) !important; color: #86EFAC !important; }
+        [data-theme="dark"] .order-badge--cancelled { background: rgba(239,68,68,0.12) !important; border-color: rgba(239,68,68,0.3) !important; color: #FCA5A5 !important; }
+        [data-theme="dark"] .payment-badge--paid    { background: rgba(34,197,94,0.12) !important; border-color: rgba(34,197,94,0.3) !important; color: #86EFAC !important; }
+        [data-theme="dark"] .payment-badge--unpaid  { background: rgba(239,68,68,0.12) !important; border-color: rgba(239,68,68,0.3) !important; color: #FCA5A5 !important; }
+        [data-theme="dark"] .order-code {
+            background: #162843 !important;
+            color: #CBD5E1 !important;
+        }
     </style>
 @endsection
 
 @section('content')
-    <main class="app-main container-fluid py-4">
+    <main class="app-main product-admin-page container-fluid py-4">
         <x-notification />
 
-        <div class="d-flex align-items-start justify-content-between gap-3 mb-4 flex-wrap">
-            <h1 class="h4 fw-bold mb-0" style="color:#174761;">Quản lý đơn hàng</h1>
-            <div class="small text-muted">Trang chủ <span class="mx-1">/</span> Đơn hàng</div>
-        </div>
-
-        <div class="card border shadow-sm">
-            <div class="card-header bg-white border-bottom">
-                <form method="GET" action="{{ route('admin.orders.list') }}">
-                    <div class="row g-2 align-items-center">
-                        <div class="col-md-4 col-lg-3">
-                            <div class="input-group">
-                                <span class="input-group-text bg-white"><i class="fa-solid fa-magnifying-glass"></i></span>
-                                <input type="text" name="keyword" class="form-control"
-                                    value="{{ $keyword }}" placeholder="Mã đơn, SĐT, tên KH...">
-                            </div>
-                        </div>
-                        <div class="col-md-3 col-lg-2">
-                            <select name="status" class="form-select" style="font-size:13px;">
-                                <option value="">Tất cả trạng thái</option>
-                                @foreach($statusLabels as $val => $label)
-                                    <option value="{{ $val }}" {{ $statusFilter === $val ? 'selected' : '' }}>
-                                        {{ $label }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="col-auto">
-                            <button type="submit" class="btn btn-outline-primary fw-semibold">
-                                <i class="fa-solid fa-filter me-1"></i> Lọc
-                            </button>
-                            @if($keyword || $statusFilter)
-                                <a href="{{ route('admin.orders.list') }}" class="btn btn-outline-secondary fw-semibold ms-1">
-                                    <i class="fa-solid fa-xmark me-1"></i> Xóa lọc
-                                </a>
-                            @endif
-                        </div>
-                    </div>
-                </form>
+        <section class="px-3 px-md-4">
+            <div>
+                <h1 class="product-header-title mb-2">Quản lý đơn hàng</h1>
+                <p class="product-header-desc mb-0">Danh sách tất cả đơn hàng trong hệ thống.</p>
             </div>
 
-            <div class="card-body p-0">
+            @php
+                $statusVal  = $statusFilter ?? '';
+                $paymentVal = $paymentFilter ?? '';
+                $selectedStatusLabel  = $statusVal  ? ($statusLabels[$statusVal]  ?? 'Tất cả trạng thái') : 'Tất cả trạng thái';
+                $selectedPaymentLabel = $paymentVal ? ($paymentStatusLabels[$paymentVal] ?? 'Tất cả thanh toán') : 'Tất cả thanh toán';
+            @endphp
+
+            <form method="GET" action="{{ route('admin.orders.list') }}" id="orderFilterForm"
+                  class="product-toolbar">
+                <input type="hidden" name="per_page" value="{{ $perPage }}">
+                <input type="hidden" name="status" id="orderStatusHidden" value="{{ $statusVal }}">
+                <input type="hidden" name="payment_status" id="orderPaymentHidden" value="{{ $paymentVal }}">
+
+                <div class="product-toolbar-left">
+                    <input type="search" name="keyword" id="orderSearch"
+                        class="form-control product-search"
+                        value="{{ $keyword }}"
+                        placeholder="Mã đơn, tên khách hàng, SĐT..." autocomplete="off">
+
+                    {{-- Filter trạng thái đơn --}}
+                    <div class="hk-cat-filter" id="hkOrderStatusDrop">
+                        <button type="button" class="hk-cat-trigger" id="hkOrderStatusTrigger"
+                            aria-haspopup="listbox" aria-expanded="false">
+                            <span class="hk-cat-trigger-label" id="hkOrderStatusLabel">{{ $selectedStatusLabel }}</span>
+                            <i class="fa-solid fa-chevron-down hk-cat-arrow"></i>
+                        </button>
+                        <div class="hk-cat-panel" id="hkOrderStatusPanel" hidden>
+                            <div class="hk-cat-list" id="hkOrderStatusList" role="listbox">
+                                <button type="button" class="hk-cat-item {{ $statusVal === '' ? 'is-active' : '' }}"
+                                    data-value="" data-label="Tất cả trạng thái">Tất cả trạng thái</button>
+                                @foreach($statusLabels as $val => $label)
+                                    <button type="button" class="hk-cat-item {{ $statusVal === $val ? 'is-active' : '' }}"
+                                        data-value="{{ $val }}" data-label="{{ $label }}">{{ $label }}</button>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Filter thanh toán --}}
+                    <div class="hk-cat-filter" id="hkOrderPaymentDrop">
+                        <button type="button" class="hk-cat-trigger" id="hkOrderPaymentTrigger"
+                            aria-haspopup="listbox" aria-expanded="false">
+                            <span class="hk-cat-trigger-label" id="hkOrderPaymentLabel">{{ $selectedPaymentLabel }}</span>
+                            <i class="fa-solid fa-chevron-down hk-cat-arrow"></i>
+                        </button>
+                        <div class="hk-cat-panel" id="hkOrderPaymentPanel" hidden>
+                            <div class="hk-cat-list" id="hkOrderPaymentList" role="listbox">
+                                <button type="button" class="hk-cat-item {{ $paymentVal === '' ? 'is-active' : '' }}"
+                                    data-value="" data-label="Tất cả thanh toán">Tất cả thanh toán</button>
+                                @foreach($paymentStatusLabels as $val => $label)
+                                    <button type="button" class="hk-cat-item {{ $paymentVal === $val ? 'is-active' : '' }}"
+                                        data-value="{{ $val }}" data-label="{{ $label }}">{{ $label }}</button>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+
+            <div class="product-table-wrap">
                 <div class="table-responsive">
-                    <table class="table table-hover table-bordered mgmt-table align-middle mb-0">
-                        <thead class="table-light">
+                    <table class="table table-hover product-table align-middle" id="orderTable">
+                        <thead>
                             <tr>
-                                <th class="ps-3" style="width:60px;">ID</th>
-                                <th style="width:140px;">Mã đơn hàng</th>
+                                <th style="width:150px;">Mã đơn hàng</th>
                                 <th>Khách hàng</th>
-                                <th style="width:90px;">SĐT</th>
-                                <th style="width:130px;">Tổng tiền</th>
-                                <th style="width:130px;">Trạng thái</th>
-                                <th style="width:130px;">Thanh toán</th>
-                                <th style="width:110px;">Ngày đặt</th>
-                                <th class="text-center" style="width:80px;">Chi tiết</th>
+                                <th style="width:120px;">Số điện thoại</th>
+                                <th style="width:140px;">Tổng tiền</th>
+                                <th style="width:110px;">Phí ship</th>
+                                <th style="width:150px;">Trạng thái đơn</th>
+                                <th style="width:150px;">Thanh toán</th>
+                                <th style="width:120px;">Ngày đặt</th>
+                                <th class="text-center" style="width:90px;">Thao tác</th>
                             </tr>
                         </thead>
                         <tbody>
+                            @php
+                                $orderBadgeCss = [
+                                    'pending'   => 'order-badge--pending',
+                                    'confirmed' => 'order-badge--confirmed',
+                                    'shipping'  => 'order-badge--shipping',
+                                    'delivered' => 'order-badge--delivered',
+                                    'cancelled' => 'order-badge--cancelled',
+                                ];
+                            @endphp
                             @forelse($orders as $order)
                                 <tr>
-                                    <td class="ps-3" style="opacity:.45;">{{ $order->id }}</td>
-                                    <td><span class="order-code">{{ $order->order_code ?? '—' }}</span></td>
                                     <td>
-                                        <div class="fw-semibold">{{ $order->user?->username ?? 'Khách vãng lai' }}</div>
+                                        <span class="order-code">{{ $order->order_code ?? '—' }}</span>
+                                    </td>
+                                    <td>
+                                        <div class="fw-bold text-dark">{{ $order->user?->username ?? 'Khách vãng lai' }}</div>
                                         @if($order->user?->email)
                                             <div class="text-muted" style="font-size:11px;">{{ $order->user->email }}</div>
                                         @endif
                                     </td>
-                                    <td class="text-muted" style="font-size:12px;">{{ $order->phone ?? '—' }}</td>
+                                    <td style="color:#64748B;font-size:13px;">{{ $order->phone ?? '—' }}</td>
                                     <td>
-                                        <span class="fw-bold" style="color:#174761;">
+                                        <span class="fw-bold" style="color:#0F172A;">
                                             {{ number_format($order->total_money, 0, ',', '.') }}₫
                                         </span>
+                                    </td>
+                                    <td style="color:#64748B;font-size:13px;">
                                         @if($order->shipping_fee > 0)
-                                            <div class="text-muted" style="font-size:11px;">
-                                                Ship: {{ number_format($order->shipping_fee, 0, ',', '.') }}₫
-                                            </div>
+                                            {{ number_format($order->shipping_fee, 0, ',', '.') }}₫
+                                        @else
+                                            <span class="text-muted">Miễn phí</span>
                                         @endif
                                     </td>
                                     <td>
-                                        @php $badgeClass = $statusBadge[$order->status] ?? 'text-bg-secondary'; @endphp
-                                        <span class="badge status-badge {{ $badgeClass }}">
+                                        <span class="order-badge {{ $orderBadgeCss[$order->status] ?? '' }}">
                                             {{ $statusLabels[$order->status] ?? $order->status }}
                                         </span>
                                     </td>
                                     <td>
                                         @if($order->payment_status === 'paid')
-                                            <span class="payment-badge payment-paid">Đã thanh toán</span>
+                                            <span class="payment-badge payment-badge--paid">Đã thanh toán</span>
                                         @else
-                                            <span class="payment-badge payment-unpaid">Chưa thanh toán</span>
+                                            <span class="payment-badge payment-badge--unpaid">Chưa thanh toán</span>
                                         @endif
                                     </td>
-                                    <td class="text-muted" style="font-size:12px;">
+                                    <td style="color:#64748B;font-size:13px;">
                                         {{ $order->created_at?->format('d/m/Y') ?? '—' }}
                                     </td>
                                     <td class="text-center">
-                                        <a href="{{ route('admin.orders.show', $order->id) }}"
-                                            class="btn btn-sm btn-outline-info" title="Xem chi tiết">
-                                            <i class="fa-solid fa-eye"></i>
-                                        </a>
+                                        <div class="dropdown">
+                                            <button type="button" class="product-more-btn" data-bs-toggle="dropdown" aria-expanded="false">
+                                                <i class="fa-solid fa-ellipsis"></i>
+                                            </button>
+                                            <div class="dropdown-menu dropdown-menu-end product-row-menu">
+                                                <a href="{{ route('admin.orders.show', $order->id) }}" class="dropdown-item">
+                                                    <i class="fa-regular fa-eye"></i> Xem chi tiết
+                                                </a>
+                                            </div>
+                                        </div>
                                     </td>
                                 </tr>
                             @empty
-                                <tr>
+                                <tr data-empty-row>
                                     <td colspan="9" class="text-center py-5">
                                         <i class="fa-solid fa-inbox text-muted mb-3" style="font-size:42px;display:block;"></i>
                                         <div class="fw-semibold text-muted">Chưa có đơn hàng nào</div>
@@ -142,9 +224,83 @@
                 </div>
             </div>
 
-            <div class="card-footer bg-white">
-                @include('layouts.components.pagination', ['paginator' => $orders, 'itemLabel' => 'đơn hàng'])
+            <div class="bg-white border border-top-0 rounded-bottom px-3 py-2">
+                @include('layouts.components.pagination', [
+                    'paginator' => $orders,
+                    'itemLabel' => 'đơn hàng',
+                ])
             </div>
-        </div>
+        </section>
     </main>
 @endsection
+
+@push('scripts')
+    <script>
+    (function () {
+        /* ── Status dropdown ── */
+        (function () {
+            const trigger = document.getElementById('hkOrderStatusTrigger');
+            const panel   = document.getElementById('hkOrderStatusPanel');
+            const label   = document.getElementById('hkOrderStatusLabel');
+            const list    = document.getElementById('hkOrderStatusList');
+            const hidden  = document.getElementById('orderStatusHidden');
+            if (!trigger) return;
+
+            function open()  { panel.hidden = false; trigger.classList.add('is-open'); trigger.setAttribute('aria-expanded', 'true'); }
+            function close() { panel.hidden = true;  trigger.classList.remove('is-open'); trigger.setAttribute('aria-expanded', 'false'); }
+
+            trigger.addEventListener('click', () => panel.hidden ? open() : close());
+
+            list.addEventListener('click', function (e) {
+                const btn = e.target.closest('.hk-cat-item');
+                if (!btn) return;
+                list.querySelectorAll('.hk-cat-item').forEach(b => b.classList.remove('is-active'));
+                btn.classList.add('is-active');
+                label.textContent = btn.dataset.label;
+                hidden.value = btn.dataset.value;
+                close();
+                document.getElementById('orderFilterForm')?.submit();
+            });
+
+            document.addEventListener('click', function (e) {
+                if (!panel.hidden && !document.getElementById('hkOrderStatusDrop')?.contains(e.target)) close();
+            });
+        }());
+
+        /* ── Payment dropdown ── */
+        (function () {
+            const trigger = document.getElementById('hkOrderPaymentTrigger');
+            const panel   = document.getElementById('hkOrderPaymentPanel');
+            const label   = document.getElementById('hkOrderPaymentLabel');
+            const list    = document.getElementById('hkOrderPaymentList');
+            const hidden  = document.getElementById('orderPaymentHidden');
+            if (!trigger) return;
+
+            function open()  { panel.hidden = false; trigger.classList.add('is-open'); trigger.setAttribute('aria-expanded', 'true'); }
+            function close() { panel.hidden = true;  trigger.classList.remove('is-open'); trigger.setAttribute('aria-expanded', 'false'); }
+
+            trigger.addEventListener('click', () => panel.hidden ? open() : close());
+
+            list.addEventListener('click', function (e) {
+                const btn = e.target.closest('.hk-cat-item');
+                if (!btn) return;
+                list.querySelectorAll('.hk-cat-item').forEach(b => b.classList.remove('is-active'));
+                btn.classList.add('is-active');
+                label.textContent = btn.dataset.label;
+                hidden.value = btn.dataset.value;
+                close();
+                document.getElementById('orderFilterForm')?.submit();
+            });
+
+            document.addEventListener('click', function (e) {
+                if (!panel.hidden && !document.getElementById('hkOrderPaymentDrop')?.contains(e.target)) close();
+            });
+        }());
+
+        /* ── Search: Enter submits form ── */
+        document.getElementById('orderSearch')?.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') { e.preventDefault(); document.getElementById('orderFilterForm')?.submit(); }
+        });
+    }());
+    </script>
+@endpush

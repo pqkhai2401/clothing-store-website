@@ -10,7 +10,6 @@
     @php
         $showRoleColumn = ($type ?? 'all') !== 'customer';
         $showAddressFields = in_array(($type ?? 'all'), ['staff', 'customer']);
-        $emptyColspan = $showRoleColumn ? 8 : 7;
         $nameColumnLabel = ($type ?? 'all') === 'customer' ? 'Tên khách hàng' : 'Họ và tên';
         $breadcrumbLabel = ($type ?? 'all') === 'customer' ? 'Quản lý khách hàng' : 'Quản lý nhân sự';
         $description = ($type ?? 'all') === 'staff'
@@ -24,6 +23,9 @@
         ];
         $currentUserId = auth()->id();
         $isStaffPage   = ($type ?? 'all') === 'staff';
+        $isCustomerPage = ($type ?? 'all') === 'customer';
+        $showBulkCheckbox = $isCustomerPage;
+        $emptyColspan = ($showRoleColumn ? 7 : 6) + ($showBulkCheckbox ? 1 : 0);
     @endphp
 
     <main class="app-main account-admin-page container-fluid py-4">
@@ -93,9 +95,6 @@
                     </form>
 
                     <div class="account-tool-actions">
-                        <a href="{{ route(($routePrefix ?? 'admin.users') . '.trash') }}" class="btn btn-light border account-action-btn">
-                            <i class="fa-regular fa-trash-can me-1"></i> Thùng rác
-                        </a>
                         <a href="{{ route(($routePrefix ?? 'admin.users') . '.create') }}" class="btn btn-dark account-action-btn">
                             <i class="fa-solid fa-plus me-1"></i> {{ $createLabel ?? 'Thêm tài khoản' }}
                         </a>
@@ -108,9 +107,11 @@
                     <table class="table table-hover account-table align-middle" id="accountUsersTable">
                         <thead>
                             <tr>
-                                <th style="width: 58px;">
-                                    <input type="checkbox" class="form-check-input account-check hk-cb-all" id="accountCheckAll">
-                                </th>
+                                @if($showBulkCheckbox)
+                                    <th style="width: 58px;">
+                                        <input type="checkbox" class="form-check-input account-check hk-cb-all" id="accountCheckAll">
+                                    </th>
+                                @endif
                                 <th style="width: 86px;">
                                     <button type="button" class="account-sort-btn is-active" data-sort-key="id" data-sort-type="number">
                                         ID <span class="account-sort-icon">↑</span>
@@ -152,13 +153,20 @@
                                     $roleName = $user->roles->first()?->name;
                                     $roleLabel = $roleName ? ($roleLabels[$roleName] ?? $roleName) : 'Chưa có vai trò';
                                 @endphp
-                                <tr data-user-row="{{ $user->id }}" data-user-status="{{ $user->is_active ? '1' : '0' }}">
-                                    <td>
-                                        <input type="checkbox" class="form-check-input account-check account-row-check hk-cb-row" value="{{ $user->id }}">
-                                    </td>
-                                    <td data-sort-value="{{ $user->id }}">{{ $user->id }}</td>
+                                <tr data-user-row="{{ $user->id }}" data-user-status="{{ $user->is_active ? '1' : '0' }}" data-protected="{{ $user->is_protected ? '1' : '0' }}">
+                                    @if($showBulkCheckbox)
+                                        <td>
+                                            <input type="checkbox" class="form-check-input account-check account-row-check hk-cb-row" value="{{ $user->id }}">
+                                        </td>
+                                    @endif
+                                    <td data-cell="id" data-sort-value="{{ $user->id }}">{{ $user->id }}</td>
                                     <td data-cell="username" data-sort-value="{{ $user->username }}">
-                                        <div class="fw-bold text-dark">{{ $user->username }}</div>
+                                        <div class="fw-bold text-dark d-flex align-items-center gap-2 flex-wrap">
+                                            <span>{{ $user->username }}</span>
+                                            @if($isStaffPage && $user->is_protected)
+                                                <span class="system-admin-chip">Admin hệ thống</span>
+                                            @endif
+                                        </div>
                                     </td>
                                     <td data-cell="email" data-sort-value="{{ $user->email }}">
                                         <span class="fw-semibold">{{ $user->email }}</span>
@@ -191,7 +199,7 @@
                                                     data-update-url="{{ route(($routePrefix ?? 'admin.users') . '.update', $user->id) }}">
                                                     <i class="fa-regular fa-pen-to-square"></i> Sửa
                                                 </button>
-                                                @if (!$isStaffPage && $user->id !== $currentUserId)
+                                                @if (!$isStaffPage && $user->id !== $currentUserId && ! $user->is_protected)
                                                     <button type="button" class="dropdown-item text-danger"
                                                         data-delete-url="{{ route(($routePrefix ?? 'admin.users') . '.destroy', $user->id) }}"
                                                         data-delete-name="{{ $user->username }}"
@@ -220,7 +228,8 @@
                 @include('layouts.components.pagination', [
                     'paginator'     => $data,
                     'itemLabel'     => $itemLabelLower ?? 'tài khoản',
-                    'bulkDeleteUrl' => $isStaffPage ? null : route(($routePrefix ?? 'admin.users') . '.bulkDelete'),
+                    'bulkDeleteUrl' => null,
+                    'bulkStatusUrl' => $isCustomerPage ? route('admin.customers.bulkUpdateStatus') : null,
                 ])
             </div>
         </section>
@@ -363,7 +372,7 @@
 
             function cellValue(row, key, type) {
                 if (key === 'id') {
-                    return Number(row.children[1]?.dataset.sortValue || 0);
+                    return Number(row.querySelector('[data-cell="id"]')?.dataset.sortValue || 0);
                 }
 
                 const cell = row.querySelector(`[data-cell="${key}"]`);

@@ -239,6 +239,7 @@ class UserSeeder extends Seeder
                     'password' => Hash::make($userData['password']),
                     'phone_number' => $userData['phone_number'],
                     'is_active' => $userData['is_active'],
+                    'is_protected' => $userData['role'] === UserRole::ADMIN,
                     'email_verified_at' => now(),
                 ],
             );

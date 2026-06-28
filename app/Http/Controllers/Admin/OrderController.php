@@ -33,7 +33,8 @@ class OrderController extends Controller
     public function index(Request $request)
     {
         $keyword       = trim((string) $request->input('keyword'));
-        $statusFilter  = $request->input('status');
+        $statusFilter  = $request->input('status', '');
+        $paymentFilter = $request->input('payment_status', '');
         $perPage       = in_array((int) $request->input('per_page'), [10, 25, 50], true)
             ? (int) $request->input('per_page')
             : 10;
@@ -49,8 +50,12 @@ class OrderController extends Controller
             });
         }
 
-        if ($statusFilter) {
+        if ($statusFilter !== '') {
             $query->where('status', $statusFilter);
+        }
+
+        if ($paymentFilter !== '') {
+            $query->where('payment_status', $paymentFilter);
         }
 
         $orders = $query->paginate($perPage)->appends($request->except('page'));
@@ -59,6 +64,7 @@ class OrderController extends Controller
             'orders'              => $orders,
             'keyword'             => $keyword,
             'statusFilter'        => $statusFilter,
+            'paymentFilter'       => $paymentFilter,
             'perPage'             => $perPage,
             'statusLabels'        => self::STATUS_LABELS,
             'paymentStatusLabels' => self::PAYMENT_STATUS_LABELS,
