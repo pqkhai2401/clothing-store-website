@@ -32,7 +32,8 @@ class OrderController extends Controller
 
     public function index(Request $request)
     {
-        $keyword       = trim((string) $request->input('keyword'));
+        $search        = trim((string) $request->input('search', $request->input('keyword')));
+        $keyword       = $search;
         $statusFilter  = $request->input('status', '');
         $paymentFilter = $request->input('payment_status', '');
         $perPage       = in_array((int) $request->input('per_page'), [10, 25, 50], true)
@@ -42,11 +43,11 @@ class OrderController extends Controller
         $query = Order::with(['user', 'paymentMethod'])
             ->orderBy('created_at', 'desc');
 
-        if ($keyword !== '') {
-            $query->where(function ($q) use ($keyword) {
-                $q->where('order_code', 'like', "%{$keyword}%")
-                  ->orWhere('phone', 'like', "%{$keyword}%")
-                  ->orWhereHas('user', fn ($u) => $u->where('username', 'like', "%{$keyword}%"));
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('order_code', 'like', "%{$search}%")
+                  ->orWhere('phone', 'like', "%{$search}%")
+                  ->orWhereHas('user', fn ($u) => $u->where('username', 'like', "%{$search}%"));
             });
         }
 
@@ -58,7 +59,18 @@ class OrderController extends Controller
             $query->where('payment_status', $paymentFilter);
         }
 
-        $orders = $query->paginate($perPage)->appends($request->except('page'));
+        $orders = $query->paginate($perPage)->withQueryString();
+
+        if ($request->ajax()) {
+            return response()->json([
+                'html' => view('admin.orders.partials.table', [
+                    'orders' => $orders,
+                    'statusLabels' => self::STATUS_LABELS,
+                    'paymentStatusLabels' => self::PAYMENT_STATUS_LABELS,
+                    'statusBadge' => self::STATUS_BADGE,
+                ])->render(),
+            ]);
+        }
 
         return view('admin.orders.index', [
             'orders'              => $orders,

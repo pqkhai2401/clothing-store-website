@@ -12,21 +12,34 @@ class CategoryController extends Controller
 {
     public function index(Request $request)
     {
-        $keyword = trim((string) $request->input('keyword'));
+        $keyword = trim((string) $request->input('search', $request->input('keyword')));
+        $sort = $request->input('sort', 'name');
+        $direction = in_array($request->input('direction'), ['asc', 'desc'], true) ? $request->input('direction') : 'asc';
         $perPage = in_array((int) $request->input('per_page'), [10, 25, 50], true)
             ? (int) $request->input('per_page')
             : 10;
 
         $query = Category::with(['parentCategory'])
-            ->withCount('products')
-            ->orderBy('parent_id')
-            ->orderBy('name');
+            ->withCount('products');
 
         if ($keyword !== '') {
             $query->where('name', 'like', "%{$keyword}%");
         }
 
-        $categories = $query->paginate($perPage)->appends($request->except('page'));
+        match ($sort) {
+            'id' => $query->orderBy('id', $direction),
+            'products_count' => $query->orderBy('products_count', $direction),
+            'created_at' => $query->orderBy('created_at', $direction),
+            default => $query->orderBy('parent_id')->orderBy('name', $direction),
+        };
+
+        $categories = $query->paginate($perPage)->withQueryString();
+
+        if ($request->ajax()) {
+            return response()->json([
+                'html' => view('admin.categories.partials.table', compact('categories'))->render(),
+            ]);
+        }
 
         return view('admin.categories.index', compact('categories', 'keyword', 'perPage'));
     }
