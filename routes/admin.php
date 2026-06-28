@@ -59,8 +59,11 @@ Route::middleware(['auth.login', 'admin'])
             Route::get('/', [ProductController::class, 'index'])->name('list');
             Route::get('/{id}/edit', [ProductController::class, 'edit'])->name('edit');
             Route::put('/{id}', [ProductController::class, 'update'])->name('update');
+            Route::patch('/{id}/toggle-status', [ProductController::class, 'toggleStatus'])->name('toggleStatus');
             Route::delete('/{id}', [ProductController::class, 'destroy'])->name('destroy');
             Route::post('/bulk-delete', [ProductController::class, 'bulkDelete'])->name('bulkDelete');
+            Route::post('/trash/bulk-restore', [ProductController::class, 'bulkRestore'])->name('bulkRestore');
+            Route::post('/trash/bulk-force-delete', [ProductController::class, 'bulkForceDelete'])->name('bulkForceDelete');
             $trashRoutes(ProductController::class)();
         });
 
@@ -70,6 +73,8 @@ Route::middleware(['auth.login', 'admin'])
             Route::put('/{id}', [CategoryController::class, 'update'])->name('update');
             Route::delete('/{id}', [CategoryController::class, 'destroy'])->name('destroy');
             Route::post('/bulk-delete', [CategoryController::class, 'bulkDelete'])->name('bulkDelete');
+            Route::post('/trash/bulk-restore', [CategoryController::class, 'bulkRestore'])->name('bulkRestore');
+            Route::post('/trash/bulk-force-delete', [CategoryController::class, 'bulkForceDelete'])->name('bulkForceDelete');
             $trashRoutes(CategoryController::class)();
         });
 
@@ -79,6 +84,8 @@ Route::middleware(['auth.login', 'admin'])
             Route::put('/{id}', [BrandController::class, 'update'])->name('update');
             Route::delete('/{id}', [BrandController::class, 'destroy'])->name('destroy');
             Route::post('/bulk-delete', [BrandController::class, 'bulkDelete'])->name('bulkDelete');
+            Route::post('/trash/bulk-restore', [BrandController::class, 'bulkRestore'])->name('bulkRestore');
+            Route::post('/trash/bulk-force-delete', [BrandController::class, 'bulkForceDelete'])->name('bulkForceDelete');
             $trashRoutes(BrandController::class)();
         });
 
@@ -88,6 +95,8 @@ Route::middleware(['auth.login', 'admin'])
             Route::put('/{id}', [ColorController::class, 'update'])->name('update');
             Route::delete('/{id}', [ColorController::class, 'destroy'])->name('destroy');
             Route::post('/bulk-delete', [ColorController::class, 'bulkDelete'])->name('bulkDelete');
+            Route::post('/trash/bulk-restore', [ColorController::class, 'bulkRestore'])->name('bulkRestore');
+            Route::post('/trash/bulk-force-delete', [ColorController::class, 'bulkForceDelete'])->name('bulkForceDelete');
             $trashRoutes(ColorController::class)();
         });
 
@@ -97,6 +106,8 @@ Route::middleware(['auth.login', 'admin'])
             Route::put('/{id}', [SizeController::class, 'update'])->name('update');
             Route::delete('/{id}', [SizeController::class, 'destroy'])->name('destroy');
             Route::post('/bulk-delete', [SizeController::class, 'bulkDelete'])->name('bulkDelete');
+            Route::post('/trash/bulk-restore', [SizeController::class, 'bulkRestore'])->name('bulkRestore');
+            Route::post('/trash/bulk-force-delete', [SizeController::class, 'bulkForceDelete'])->name('bulkForceDelete');
             $trashRoutes(SizeController::class)();
         });
 

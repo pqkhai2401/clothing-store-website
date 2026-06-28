@@ -4,7 +4,7 @@
                         <thead>
                             <tr>
                                 <th style="width:54px;">
-                                    <input type="checkbox" class="form-check-input product-check" id="sizeCheckAll">
+                                    <input type="checkbox" class="form-check-input product-check hk-cb-all">
                                 </th>
                                 <th style="width:76px;">
                                     <button type="button" class="product-sort-btn is-active" data-sort-key="id" data-sort-type="number">
@@ -34,7 +34,7 @@
                             @forelse($sizes as $size)
                                 <tr>
                                     <td>
-                                        <input type="checkbox" class="form-check-input product-check size-row-check" value="{{ $size->id }}">
+                                        <input type="checkbox" class="form-check-input product-check hk-cb-row" value="{{ $size->id }}">
                                     </td>
                                     <td data-sort-value="{{ $size->id }}" style="opacity:.55;">{{ $size->id }}</td>
                                     <td data-cell="name" data-sort-value="{{ $size->name }}">

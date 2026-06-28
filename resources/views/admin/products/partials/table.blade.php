@@ -114,6 +114,18 @@
                                                 <a href="{{ route('admin.products.edit', $product->id) }}" class="dropdown-item">
                                                     <i class="fa-regular fa-pen-to-square"></i> Sửa
                                                 </a>
+                                                <form method="POST" action="{{ route('admin.products.toggleStatus', $product->id) }}" style="margin:0">
+                                                    @csrf
+                                                    @method('PATCH')
+                                                    <button type="submit" class="dropdown-item">
+                                                        @if($product->status)
+                                                            <i class="fa-regular fa-eye-slash"></i> Ẩn sản phẩm
+                                                        @else
+                                                            <i class="fa-regular fa-eye"></i> Hiện lại sản phẩm
+                                                        @endif
+                                                    </button>
+                                                </form>
+                                                <div class="dropdown-divider my-1"></div>
                                                 <button type="button" class="dropdown-item text-danger"
                                                     data-delete-url="{{ route('admin.products.destroy', $product->id) }}"
                                                     data-delete-name="{{ $product->name }}"

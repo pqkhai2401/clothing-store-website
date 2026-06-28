@@ -138,12 +138,46 @@ class ProductController extends Controller
             ->with('success', "Cập nhật sản phẩm \"{$product->name}\" thành công.");
     }
 
+    public function toggleStatus(string $id)
+    {
+        $product = Product::findOrFail($id);
+        $newStatus = !$product->status;
+        $product->update(['status' => $newStatus]);
+
+        $msg = $newStatus
+            ? "Sản phẩm \"{$product->name}\" đã được hiển thị."
+            : "Sản phẩm \"{$product->name}\" đã được ẩn khỏi website.";
+
+        return back()->with('success', $msg);
+    }
+
     public function destroy(string $id)
     {
         $product = Product::findOrFail($id);
         $product->delete();
 
         return redirect()->route('admin.products.list')->with('success', 'Xóa sản phẩm thành công');
+    }
+
+    public function bulkRestore(Request $request)
+    {
+        $ids = array_filter((array) $request->input('ids', []), 'is_numeric');
+        if (empty($ids)) {
+            return back()->with('error', 'Vui lòng chọn ít nhất một sản phẩm.');
+        }
+        $restored = Product::onlyTrashed()->whereIn('id', $ids)->restore();
+        return back()->with('success', "Đã khôi phục {$restored} sản phẩm thành công.");
+    }
+
+    public function bulkForceDelete(Request $request)
+    {
+        $ids = array_filter((array) $request->input('ids', []), 'is_numeric');
+        if (empty($ids)) {
+            return back()->with('error', 'Vui lòng chọn ít nhất một sản phẩm.');
+        }
+        $count = Product::onlyTrashed()->whereIn('id', $ids)->count();
+        Product::onlyTrashed()->whereIn('id', $ids)->forceDelete();
+        return back()->with('success', "Đã xóa vĩnh viễn {$count} sản phẩm.");
     }
 
     public function bulkDelete(Request $request)
@@ -161,16 +195,22 @@ class ProductController extends Controller
 
     public function trash(Request $request)
     {
-        $keyword = trim((string) $request->input('keyword'));
+        $keyword = trim((string) $request->input('search', $request->input('keyword')));
         $perPage = in_array((int) $request->input('per_page'), [10, 25, 50], true)
             ? (int) $request->input('per_page') : 10;
 
-        $query = Product::onlyTrashed()->with('category')->orderBy('deleted_at', 'desc');
+        $query = Product::onlyTrashed()->with(['category', 'brand'])->orderBy('deleted_at', 'desc');
         if ($keyword !== '') {
             $query->where('name', 'like', "%{$keyword}%");
         }
 
-        $products = $query->paginate($perPage)->appends($request->except('page'));
+        $products = $query->paginate($perPage)->withQueryString();
+
+        if ($request->ajax()) {
+            return response()->json([
+                'html' => view('admin.products.partials.trash-table', compact('products'))->render(),
+            ]);
+        }
 
         return view('admin.products.trash', compact('products', 'keyword', 'perPage'));
     }

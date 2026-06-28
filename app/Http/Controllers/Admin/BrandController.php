@@ -90,16 +90,24 @@ class BrandController extends Controller
 
     public function trash(Request $request)
     {
-        $keyword = trim((string) $request->input('keyword'));
+        $keyword = trim((string) $request->input('search', $request->input('keyword')));
         $perPage = in_array((int) $request->input('per_page'), [10, 25, 50], true)
             ? (int) $request->input('per_page') : 10;
 
-        $query = Brand::onlyTrashed()->orderBy('deleted_at', 'desc');
+        $query = Brand::onlyTrashed()
+            ->withCount('products')
+            ->orderBy('deleted_at', 'desc');
         if ($keyword !== '') {
             $query->where('name', 'like', "%{$keyword}%");
         }
 
-        $brands = $query->paginate($perPage)->appends($request->except('page'));
+        $brands = $query->paginate($perPage)->withQueryString();
+
+        if ($request->ajax()) {
+            return response()->json([
+                'html' => view('admin.brands.partials.trash-table', compact('brands'))->render(),
+            ]);
+        }
 
         return view('admin.brands.trash', compact('brands', 'keyword', 'perPage'));
     }
@@ -116,5 +124,26 @@ class BrandController extends Controller
         Brand::onlyTrashed()->findOrFail($id)->forceDelete();
 
         return redirect()->route('admin.brands.trash')->with('success', 'Xóa vĩnh viễn thương hiệu thành công');
+    }
+
+    public function bulkRestore(Request $request)
+    {
+        $ids = array_filter((array) $request->input('ids', []), 'is_numeric');
+        if (empty($ids)) {
+            return back()->with('error', 'Vui lòng chọn ít nhất một thương hiệu.');
+        }
+        $restored = Brand::onlyTrashed()->whereIn('id', $ids)->restore();
+        return back()->with('success', "Đã khôi phục {$restored} thương hiệu thành công.");
+    }
+
+    public function bulkForceDelete(Request $request)
+    {
+        $ids = array_filter((array) $request->input('ids', []), 'is_numeric');
+        if (empty($ids)) {
+            return back()->with('error', 'Vui lòng chọn ít nhất một thương hiệu.');
+        }
+        $count = Brand::onlyTrashed()->whereIn('id', $ids)->count();
+        Brand::onlyTrashed()->whereIn('id', $ids)->forceDelete();
+        return back()->with('success', "Đã xóa vĩnh viễn {$count} thương hiệu.");
     }
 }

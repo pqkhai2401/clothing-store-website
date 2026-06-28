@@ -90,16 +90,24 @@ class SizeController extends Controller
 
     public function trash(Request $request)
     {
-        $keyword = trim((string) $request->input('keyword'));
+        $keyword = trim((string) $request->input('search', $request->input('keyword')));
         $perPage = in_array((int) $request->input('per_page'), [10, 25, 50], true)
             ? (int) $request->input('per_page') : 10;
 
-        $query = Size::onlyTrashed()->orderBy('deleted_at', 'desc');
+        $query = Size::onlyTrashed()
+            ->withCount('productVariants')
+            ->orderBy('deleted_at', 'desc');
         if ($keyword !== '') {
             $query->where('name', 'like', "%{$keyword}%");
         }
 
-        $sizes = $query->paginate($perPage)->appends($request->except('page'));
+        $sizes = $query->paginate($perPage)->withQueryString();
+
+        if ($request->ajax()) {
+            return response()->json([
+                'html' => view('admin.sizes.partials.trash-table', compact('sizes'))->render(),
+            ]);
+        }
 
         return view('admin.sizes.trash', compact('sizes', 'keyword', 'perPage'));
     }
@@ -116,5 +124,26 @@ class SizeController extends Controller
         Size::onlyTrashed()->findOrFail($id)->forceDelete();
 
         return redirect()->route('admin.sizes.trash')->with('success', 'Xóa vĩnh viễn kích thước thành công');
+    }
+
+    public function bulkRestore(Request $request)
+    {
+        $ids = array_filter((array) $request->input('ids', []), 'is_numeric');
+        if (empty($ids)) {
+            return back()->with('error', 'Vui lòng chọn ít nhất một kích thước.');
+        }
+        $restored = Size::onlyTrashed()->whereIn('id', $ids)->restore();
+        return back()->with('success', "Đã khôi phục {$restored} kích thước thành công.");
+    }
+
+    public function bulkForceDelete(Request $request)
+    {
+        $ids = array_filter((array) $request->input('ids', []), 'is_numeric');
+        if (empty($ids)) {
+            return back()->with('error', 'Vui lòng chọn ít nhất một kích thước.');
+        }
+        $count = Size::onlyTrashed()->whereIn('id', $ids)->count();
+        Size::onlyTrashed()->whereIn('id', $ids)->forceDelete();
+        return back()->with('success', "Đã xóa vĩnh viễn {$count} kích thước.");
     }
 }

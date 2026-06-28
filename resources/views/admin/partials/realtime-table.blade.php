@@ -145,6 +145,27 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function wireBulkActions() {
         updateSelectedState();
+        updateSortState();
+    }
+
+    function updateSortState() {
+        const url       = new URL(window.location.href);
+        const activeKey = url.searchParams.get('sort') || url.searchParams.get('sort_by') || '';
+        const activeDir = url.searchParams.get('direction') || url.searchParams.get('sort_dir') || 'asc';
+
+        document.querySelectorAll(
+            '.product-sort-btn[data-sort-key], .account-sort-btn[data-sort-key], [data-admin-sort][data-sort-key]'
+        ).forEach(function (btn) {
+            const key      = btn.dataset.sortKey;
+            const icon     = btn.querySelector('.product-sort-icon, .account-sort-icon');
+            const isActive = Boolean(key && activeKey && key === activeKey);
+
+            btn.classList.toggle('is-active', isActive);
+
+            if (icon) {
+                icon.textContent = isActive ? (activeDir === 'desc' ? '↓' : '↑') : '↑↓';
+            }
+        });
     }
 
     searchInput?.addEventListener('input', function () {
@@ -215,6 +236,17 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     document.addEventListener('click', function (event) {
+        const restoreButton = event.target.closest('[data-admin-table-area] .hk-pg-sel-restore');
+        if (restoreButton) {
+            const form  = tableArea.querySelector('form[id$="_brf"]');
+            const label = tableArea.querySelector('.hk-pagination')?.dataset.label || 'mục';
+            const count = selectedRows().length;
+            if (count && confirm('Bạn có chắc chắn muốn khôi phục ' + count + ' ' + label + ' đã chọn không?')) {
+                submitBulk(form);
+            }
+            return;
+        }
+
         const deleteButton = event.target.closest('[data-admin-table-area] .hk-pg-sel-delete');
         if (deleteButton) {
             const form = tableArea.querySelector('form[id$="_bdf"]');
@@ -253,5 +285,6 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     wireBulkActions();
+    updateSortState();
 });
 </script>

@@ -299,13 +299,13 @@
     }
 
     .product-sort-btn.is-active {
-        padding: 8px 10px;
-        border-radius: 10px;
-        background: #f3f4f6;
+        color: #ffffff;
+        font-weight: 800;
     }
 
     .product-sort-btn.is-active .product-sort-icon {
-        font-size: 16px;
+        color: #ffffff;
+        font-weight: 900;
     }
 
     .product-thumb {
@@ -507,7 +507,11 @@
     }
 
     [data-theme="dark"] .product-sort-btn.is-active {
-        background: rgba(59,130,246,0.12) !important;
+        color: #ffffff !important;
+    }
+
+    [data-theme="dark"] .product-sort-btn.is-active .product-sort-icon {
+        color: #ffffff !important;
     }
 
     [data-theme="dark"] .product-sort-icon {
@@ -653,8 +657,13 @@
             font-size: 13px;
             padding: 13px 16px;
             border-bottom: 1px solid #E2E8F0;
+            border-right: 1px solid #E2E8F0;
             background: #F8FAFC;
             white-space: nowrap;
+        }
+
+        .product-trash-table thead th:last-child {
+            border-right: 0;
         }
 
         .product-trash-table tbody td {
@@ -662,7 +671,12 @@
             font-size: 13px;
             color: #0F172A;
             border-bottom: 1px solid #E2E8F0;
+            border-right: 1px solid #E2E8F0;
             vertical-align: middle;
+        }
+
+        .product-trash-table tbody td:last-child {
+            border-right: 0;
         }
 
         .product-trash-table tbody tr:last-child td {
@@ -703,10 +717,11 @@
         }
         [data-theme="dark"] .product-trash-table thead th {
             background: #0C1830 !important; color: #94A3B8 !important;
-            border-color: #22324D !important;
+            border-bottom-color: #22324D !important; border-right-color: #22324D !important;
         }
         [data-theme="dark"] .product-trash-table tbody td {
-            color: #E2E8F0 !important; border-color: #22324D !important;
+            color: #E2E8F0 !important;
+            border-bottom-color: #22324D !important; border-right-color: #22324D !important;
         }
         [data-theme="dark"] .product-trash-table tbody tr:hover td {
             background: #1A3050 !important;
