@@ -2,20 +2,9 @@
 
 @section('title', 'Chi tiết đơn hàng #' . $order->id)
 
-@section('css')
-    <style>
-        .info-label { font-weight: 700; font-size: 13px; color: #6b7280; min-width: 150px; }
-        .info-value { font-size: 13px; color: #111827; font-weight: 600; }
-        .section-title { font-size: 13px; font-weight: 800; color: #174761; text-transform: uppercase; letter-spacing: .04em; }
-        .item-table thead th { font-size: 12px; font-weight: 800; background: #f9fafb; }
-        .update-card .form-select,
-        .update-card .form-control { font-size: 13px; }
-        .update-card label { font-size: 13px; font-weight: 700; color: #374151; }
-        .item-table tbody td { font-size: 13px; }
-        .status-badge { border-radius: 2px; font-size: 11px; font-weight: 800; padding: 4px 8px; }
-        .product-thumb { width: 44px; height: 44px; object-fit: cover; border-radius: 4px; border: 1px solid #e5e7eb; }
-    </style>
-@endsection
+@push('styles')
+    @include('admin.orders.styles')
+@endpush
 
 @section('content')
     <main class="app-main container-fluid py-4">

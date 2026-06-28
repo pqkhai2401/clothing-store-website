@@ -25,7 +25,7 @@ class UserSeeder extends Seeder
                 'username' => 'admin',
                 'email' => 'admin@gmail.com',
                 'password' => 'Admin@123',
-                'phone_number' => '0357989856',
+                'phone_number' => '0123456789',
                 'role' => UserRole::ADMIN,
                 'is_active' => true,
             ],
@@ -37,13 +37,20 @@ class UserSeeder extends Seeder
                 'role' => UserRole::ADMIN,
                 'is_active' => true,
             ],
-
+            [
+                'username' => 'Trần Hữu Minh Hiệp',
+                'email' => 'hiep29042021@gmail.com',
+                'password' => 'MinhHiep@123',
+                'phone_number' => '0357989857',
+                'role' => UserRole::ADMIN,
+                'is_active' => true,
+            ],
             [
                 'username' => 'Phạm Quang Khải',
                 'email' => '0306231295@caothang.edu.vn',
                 'password' => 'QuangKhai@123',
                 'phone_number' => '0949032437',
-                'role' => UserRole::STAFF,
+                'role' => UserRole::ADMIN,
                 'is_active' => true,
             ],
             [
@@ -232,6 +239,7 @@ class UserSeeder extends Seeder
                     'password' => Hash::make($userData['password']),
                     'phone_number' => $userData['phone_number'],
                     'is_active' => $userData['is_active'],
+                    'is_protected' => $userData['role'] === UserRole::ADMIN,
                     'email_verified_at' => now(),
                 ],
             );

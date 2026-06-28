@@ -22,6 +22,7 @@ class ProductController extends Controller
             : 10;
 
         $query = Product::with(['category', 'brand'])
+            ->withSum('productVariants', 'stock')
             ->orderBy('id', 'desc');
 
         if ($keyword !== '') {
@@ -35,7 +36,7 @@ class ProductController extends Controller
         $products   = $query->paginate($perPage)->appends($request->except('page'));
         $categories = Category::whereNull('parent_id')->with('childrenCategories')->get();
 
-        return view('admin.products.list', compact('products', 'categories', 'keyword', 'categoryId', 'perPage'));
+        return view('admin.products.index', compact('products', 'categories', 'keyword', 'categoryId', 'perPage'));
     }
 
     public function edit(string $id)

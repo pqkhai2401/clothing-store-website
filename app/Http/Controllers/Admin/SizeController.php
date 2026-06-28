@@ -24,7 +24,7 @@ class SizeController extends Controller
 
         $sizes = $query->paginate($perPage)->appends($request->except('page'));
 
-        return view('admin.sizes.list', compact('sizes', 'keyword', 'perPage'));
+        return view('admin.sizes.index', compact('sizes', 'keyword', 'perPage'));
     }
 
     public function edit(string $id)

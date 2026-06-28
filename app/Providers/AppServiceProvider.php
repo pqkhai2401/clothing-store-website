@@ -53,7 +53,7 @@ class AppServiceProvider extends ServiceProvider
                         'permission'     => 'manage-staff',
                         'title'          => 'Quản lý nhân sự',
                         'url'            => $r('admin.staff.list', '/admin/staff'),
-                        'active_pattern' => 'admin/staff*',
+                        'active_pattern' => 'admin/users*',
                         'icon'           => 'fa-solid fa-user-tie',
                         'parent'         => [],
                     ],

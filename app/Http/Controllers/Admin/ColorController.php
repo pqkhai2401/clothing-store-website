@@ -24,7 +24,7 @@ class ColorController extends Controller
 
         $colors = $query->paginate($perPage)->appends($request->except('page'));
 
-        return view('admin.colors.list', compact('colors', 'keyword', 'perPage'));
+        return view('admin.colors.index', compact('colors', 'keyword', 'perPage'));
     }
 
     public function edit(string $id)

@@ -22,17 +22,29 @@
     }
 
     $actionLabel = match ($routeName) {
-        'admin.staff.create' => 'Thêm mới quản trị viên',
-        'admin.customers.create' => 'Thêm mới khách hàng',
-        'admin.users.create' => 'Thêm mới tài khoản',
+        'admin.staff.create'      => 'Thêm mới quản trị viên',
+        'admin.customers.create'  => 'Thêm mới khách hàng',
+        'admin.users.create'      => 'Thêm mới tài khoản',
+        'admin.products.trash'    => 'Thùng rác sản phẩm',
+        'admin.categories.trash'  => 'Thùng rác danh mục',
+        'admin.brands.trash'      => 'Thùng rác thương hiệu',
+        'admin.colors.trash'      => 'Thùng rác màu sắc',
+        'admin.sizes.trash'       => 'Thùng rác kích thước',
+        'admin.reviews.trash'     => 'Thùng rác đánh giá',
         
         default => null,
     };
 
     $pageUrl = match ($routeName) {
-        'admin.staff.create' => route('admin.staff.list'),
+        'admin.staff.create'     => route('admin.staff.list'),
         'admin.customers.create' => route('admin.customers.list'),
-        'admin.users.create' => route('admin.users.list'),
+        'admin.users.create'     => route('admin.users.list'),
+        'admin.products.trash'   => route('admin.products.list'),
+        'admin.categories.trash' => route('admin.categories.list'),
+        'admin.brands.trash'     => route('admin.brands.list'),
+        'admin.colors.trash'     => route('admin.colors.list'),
+        'admin.sizes.trash'      => route('admin.sizes.list'),
+        'admin.reviews.trash'    => route('admin.reviews.list'),
         default => null,
     };
 @endphp

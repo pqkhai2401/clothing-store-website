@@ -28,7 +28,7 @@ class CategoryController extends Controller
 
         $categories = $query->paginate($perPage)->appends($request->except('page'));
 
-        return view('admin.categories.list', compact('categories', 'keyword', 'perPage'));
+        return view('admin.categories.index', compact('categories', 'keyword', 'perPage'));
     }
 
     public function edit(string $id)

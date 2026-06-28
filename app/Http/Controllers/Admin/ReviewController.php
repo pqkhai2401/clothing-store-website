@@ -33,7 +33,7 @@ class ReviewController extends Controller
 
         $reviews = $query->paginate($perPage)->appends($request->except('page'));
 
-        return view('admin.reviews.list', compact('reviews', 'keyword', 'ratingFilter', 'perPage'));
+        return view('admin.reviews.index', compact('reviews', 'keyword', 'ratingFilter', 'perPage'));
     }
 
     public function destroy(string $id)
