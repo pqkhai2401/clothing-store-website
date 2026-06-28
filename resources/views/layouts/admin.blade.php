@@ -7,6 +7,7 @@
 
 @include('layouts.partial.css')
 @yield('css')
+@stack('styles')
 
 <body class="layout-fixed sidebar-expand-lg">
     <div class="app-wrapper">

@@ -602,3 +602,231 @@
         color: #F8FAFC !important;
     }
 </style>
+
+
+{{-- Styles extracted from create.blade.php --}}
+<style>
+        .account-create-card {
+            border: 1px solid #d8dee6;
+            border-radius: 3px;
+            box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08);
+        }
+
+        .account-create-card .card-header {
+            min-height: 38px;
+            padding: 10px 14px;
+            background: #ffffff;
+            border-bottom: 1px solid #d8dee6;
+        }
+
+        .account-form-row {
+            display: grid;
+            grid-template-columns: 210px minmax(0, 1fr);
+            margin-bottom: 10px;
+        }
+
+        .account-form-label {
+            display: flex;
+            align-items: center;
+            min-height: 32px;
+            padding: 7px 10px;
+            color: #334155;
+            background: #e9ecef;
+            border: 1px solid #cfd6df;
+            border-right: 0;
+            border-radius: 3px 0 0 3px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .account-form-control {
+            min-height: 32px;
+            border-radius: 0 3px 3px 0;
+            font-size: 13px;
+        }
+
+        .account-form-control:focus {
+            background: #eaf3ff;
+        }
+
+        /* Input-group chứa ô password + nút mắt */
+        .input-group .account-form-control {
+            border-radius: 0;
+        }
+
+        .pw-toggle {
+            min-height: 32px;
+            padding: 0 10px;
+            border-radius: 0 3px 3px 0 !important;
+            border-left: 0;
+            font-size: 13px;
+            color: #64748b;
+            background: var(--hk-bg-input, #fff);
+            border-color: var(--hk-border, #ced4da);
+        }
+
+        .pw-toggle:hover {
+            color: var(--hk-accent, #174761);
+            background: var(--hk-bg-input, #f8f9fa);
+        }
+
+        .account-form-actions {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            padding: 18px 0;
+        }
+
+        .account-form-actions .btn {
+            min-height: 34px;
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        @media (max-width: 767.98px) {
+            .account-form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .account-form-label {
+                border-right: 1px solid #cfd6df;
+                border-radius: 3px 3px 0 0;
+            }
+
+            .account-form-control {
+                border-radius: 0 0 3px 3px;
+            }
+        }
+    </style>
+
+
+{{-- Styles extracted from trash.blade.php --}}
+<style>
+        /* ── Search ────────────────────────────────────────── */
+        .user-trash-search {
+            min-height: 38px;
+            border: 1px solid #D8E0EA;
+            border-radius: 10px;
+            font-size: 13px;
+            color: #0F172A;
+            background: #ffffff;
+            width: 320px;
+            box-shadow: none;
+        }
+
+        .user-trash-search:focus {
+            border-color: #16A34A;
+            box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.12);
+            color: #0F172A;
+        }
+
+        .user-trash-search::placeholder {
+            color: #94A3B8;
+        }
+
+        /* ── Table wrapper ─────────────────────────────────── */
+        .user-trash-table-wrap {
+            overflow: hidden;
+            background: #ffffff;
+            border: 1px solid #E2E8F0;
+            border-radius: 12px;
+        }
+
+        /* ── Table ─────────────────────────────────────────── */
+        .user-trash-table thead th {
+            color: #334155;
+            font-weight: 800;
+            font-size: 13px;
+            padding: 13px 16px;
+            border-bottom: 1px solid #E2E8F0;
+            background: #F8FAFC;
+            white-space: nowrap;
+        }
+
+        .user-trash-table tbody td {
+            padding: 14px 16px;
+            font-size: 13px;
+            color: #0F172A;
+            border-bottom: 1px solid #E2E8F0;
+            vertical-align: middle;
+        }
+
+        .user-trash-table tbody tr:last-child td {
+            border-bottom: 0;
+        }
+
+        .user-trash-table tbody tr:hover td {
+            background: #F8FAFC;
+        }
+
+        /* ── Muted helpers ─────────────────────────────────── */
+        .user-trash-id   { color: #64748B; font-weight: 600; }
+        .user-trash-date { color: #475569; }
+        .user-trash-email { color: #475569; }
+
+        /* ── Role badge ────────────────────────────────────── */
+        .role-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 5px 13px;
+            min-height: 28px;
+            border: 1.5px solid #CBD5E1;
+            color: #475569;
+            background: #F8FAFC;
+            line-height: 1;
+            white-space: nowrap;
+        }
+
+        .role-badge[data-role="admin"] {
+            background: #EFF6FF;
+            border-color: #BFDBFE;
+            color: #2563EB;
+        }
+
+        /* ── Dark mode ─────────────────────────────────────── */
+        [data-theme="dark"] .user-trash-search {
+            background: #101C33 !important;
+            border-color: #2A3B59 !important;
+            color: #E2E8F0 !important;
+        }
+        [data-theme="dark"] .user-trash-search:focus {
+            border-color: #3B82F6 !important;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15) !important;
+        }
+        [data-theme="dark"] .user-trash-search::placeholder { color: #64748B !important; }
+        [data-theme="dark"] .user-trash-table-wrap {
+            background: #0F1B31 !important;
+            border-color: #22324D !important;
+        }
+        [data-theme="dark"] .user-trash-table thead th {
+            background: #0C1830 !important;
+            color: #94A3B8 !important;
+            border-color: #22324D !important;
+        }
+        [data-theme="dark"] .user-trash-table tbody td {
+            color: #E2E8F0 !important;
+            border-color: #22324D !important;
+        }
+        [data-theme="dark"] .user-trash-table tbody tr:hover td {
+            background: #1A3050 !important;
+        }
+        [data-theme="dark"] .user-trash-id   { color: #94A3B8 !important; }
+        [data-theme="dark"] .user-trash-date  { color: #94A3B8 !important; }
+        [data-theme="dark"] .user-trash-email { color: #CBD5E1 !important; }
+        [data-theme="dark"] .role-badge {
+            background: rgba(148,163,184,0.14) !important;
+            border-color: rgba(148,163,184,0.32) !important;
+            color: #CBD5E1 !important;
+        }
+        [data-theme="dark"] .role-badge[data-role="admin"] {
+            background: rgba(59,130,246,0.16) !important;
+            border-color: rgba(96,165,250,0.45) !important;
+            color: #BFDBFE !important;
+        }
+    </style>

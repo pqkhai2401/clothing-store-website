@@ -60,7 +60,7 @@ class OrderController extends Controller
 
         $orders = $query->paginate($perPage)->appends($request->except('page'));
 
-        return view('admin.orders.list', [
+        return view('admin.orders.index', [
             'orders'              => $orders,
             'keyword'             => $keyword,
             'statusFilter'        => $statusFilter,

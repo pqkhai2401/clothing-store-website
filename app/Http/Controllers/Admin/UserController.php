@@ -52,7 +52,7 @@ class UserController extends Controller
 
         $data = $query->paginate($perPage)->appends($request->except('page'));
 
-        return view('admin.users.show', [
+        return view('admin.users.index', [
             'data' => $data,
             'roles' => $this->rolesForContext($context['type']),
             ...$context,

@@ -2,9 +2,9 @@
 
 @section('title', 'Quản lý màu sắc')
 
-@section('css')
-    @include('admin.products.styles')
-@endsection
+@push('styles')
+    @include('admin.colors.styles')
+@endpush
 
 @section('content')
     <main class="app-main product-admin-page container-fluid py-4">

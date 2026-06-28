@@ -2,9 +2,9 @@
 
 @section('title', 'Quản lý kích thước')
 
-@section('css')
-    @include('admin.products.styles')
-@endsection
+@push('styles')
+    @include('admin.sizes.styles')
+@endpush
 
 @section('content')
     <main class="app-main product-admin-page container-fluid py-4">

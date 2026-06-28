@@ -1,10 +1,10 @@
 @extends('layouts.admin')
 
-@section('title', 'Quản lý thương hiệu')
+@section('title', 'Quản lý danh mục')
 
-@section('css')
-    @include('admin.products.styles')
-@endsection
+@push('styles')
+    @include('admin.categories.styles')
+@endpush
 
 @section('content')
     <main class="app-main product-admin-page container-fluid py-4">
@@ -12,36 +12,36 @@
 
         <section class="px-3 px-md-4">
             <div>
-                <h1 class="product-header-title mb-2">Quản lý thương hiệu</h1>
-                <p class="product-header-desc mb-0">Danh sách tất cả thương hiệu sản phẩm trong hệ thống.</p>
+                <h1 class="product-header-title mb-2">Quản lý danh mục</h1>
+                <p class="product-header-desc mb-0">Danh sách tất cả danh mục sản phẩm trong hệ thống.</p>
             </div>
 
-            <form method="GET" action="{{ route('admin.brands.list') }}" id="brandSearchForm"
+            <form method="GET" action="{{ route('admin.categories.list') }}" id="catSearchForm"
                   class="product-toolbar">
                 <input type="hidden" name="per_page" value="{{ $perPage }}">
                 <div class="product-toolbar-left">
-                    <input type="search" name="keyword" id="brandRealtimeSearch"
+                    <input type="search" name="keyword" id="catRealtimeSearch"
                         class="form-control product-search"
                         value="{{ $keyword }}"
-                        placeholder="Tìm kiếm theo tên thương hiệu..." autocomplete="off">
+                        placeholder="Tìm kiếm theo tên danh mục hoặc slug..." autocomplete="off">
                 </div>
                 <div class="product-tool-actions">
-                    <a href="{{ route('admin.brands.trash') }}" class="btn btn-light border product-action-btn">
+                    <a href="{{ route('admin.categories.trash') }}" class="btn btn-light border product-action-btn">
                         <i class="fa-regular fa-trash-can me-1"></i> Thùng rác
                     </a>
                     <a href="#" class="btn btn-dark product-action-btn">
-                        <i class="fa-solid fa-plus me-1"></i> Thêm thương hiệu
+                        <i class="fa-solid fa-plus me-1"></i> Thêm danh mục
                     </a>
                 </div>
             </form>
 
             <div class="product-table-wrap">
                 <div class="table-responsive">
-                    <table class="table table-hover product-table align-middle" id="brandTable">
+                    <table class="table table-hover product-table align-middle" id="catTable">
                         <thead>
                             <tr>
                                 <th style="width:54px;">
-                                    <input type="checkbox" class="form-check-input product-check" id="brandCheckAll">
+                                    <input type="checkbox" class="form-check-input product-check" id="catCheckAll">
                                 </th>
                                 <th style="width:76px;">
                                     <button type="button" class="product-sort-btn is-active" data-sort-key="id" data-sort-type="number">
@@ -50,15 +50,17 @@
                                 </th>
                                 <th>
                                     <button type="button" class="product-sort-btn" data-sort-key="name">
-                                        Tên thương hiệu <span class="product-sort-icon">↑↓</span>
+                                        Tên danh mục <span class="product-sort-icon">↑↓</span>
                                     </button>
                                 </th>
-                                <th style="width:160px;">
+                                <th style="width:190px;">Danh mục cha</th>
+                                <th style="width:200px;">Slug</th>
+                                <th style="width:130px;">
                                     <button type="button" class="product-sort-btn" data-sort-key="products_count" data-sort-type="number">
                                         Số sản phẩm <span class="product-sort-icon">↑↓</span>
                                     </button>
                                 </th>
-                                <th style="width:140px;">
+                                <th style="width:130px;">
                                     <button type="button" class="product-sort-btn" data-sort-key="created_at">
                                         Ngày tạo <span class="product-sort-icon">↑↓</span>
                                     </button>
@@ -68,21 +70,32 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @forelse($brands as $brand)
-                                <tr data-brand-row="{{ $brand->id }}"
-                                    data-search-text="{{ Str::lower($brand->name) }}">
+                            @forelse($categories as $category)
+                                <tr data-cat-row="{{ $category->id }}"
+                                    data-search-text="{{ Str::lower($category->name . ' ' . $category->slug . ' ' . ($category->parentCategory?->name ?? '')) }}">
                                     <td>
-                                        <input type="checkbox" class="form-check-input product-check brand-row-check" value="{{ $brand->id }}">
+                                        <input type="checkbox" class="form-check-input product-check cat-row-check" value="{{ $category->id }}">
                                     </td>
-                                    <td data-sort-value="{{ $brand->id }}" style="opacity:.55;">{{ $brand->id }}</td>
-                                    <td data-cell="name" data-sort-value="{{ $brand->name }}">
-                                        <div class="fw-bold text-dark">{{ $brand->name }}</div>
+                                    <td data-sort-value="{{ $category->id }}" style="opacity:.55;">{{ $category->id }}</td>
+                                    <td data-cell="name" data-sort-value="{{ $category->name }}">
+                                        <div class="fw-bold text-dark">{{ $category->name }}</div>
+                                        @if(is_null($category->parent_id))
+                                            <span class="parent-tag mt-1">Cha</span>
+                                        @else
+                                            <span class="child-tag mt-1">Con</span>
+                                        @endif
                                     </td>
-                                    <td data-cell="products_count" data-sort-value="{{ $brand->products_count }}">
-                                        <span class="fw-semibold">{{ number_format($brand->products_count) }}</span>
+                                    <td>
+                                        <span class="fw-semibold">{{ $category->parentCategory?->name ?? 'Danh mục gốc' }}</span>
                                     </td>
-                                    <td data-cell="created_at" data-sort-value="{{ $brand->created_at?->format('Ymd') ?? '0' }}">
-                                        {{ $brand->created_at?->format('d/m/Y') ?? '—' }}
+                                    <td>
+                                        <code class="slug-code">{{ $category->slug }}</code>
+                                    </td>
+                                    <td data-cell="products_count" data-sort-value="{{ $category->products_count }}">
+                                        <span class="fw-semibold">{{ number_format($category->products_count) }}</span>
+                                    </td>
+                                    <td data-cell="created_at" data-sort-value="{{ $category->created_at?->format('Ymd') ?? '0' }}">
+                                        {{ $category->created_at?->format('d/m/Y') ?? '—' }}
                                     </td>
                                     <td>
                                         <span class="status-badge status-badge--active">Hoạt động</span>
@@ -93,13 +106,13 @@
                                                 <i class="fa-solid fa-ellipsis"></i>
                                             </button>
                                             <div class="dropdown-menu dropdown-menu-end product-row-menu">
-                                                <a href="{{ route('admin.brands.edit', $brand->id) }}" class="dropdown-item">
+                                                <a href="{{ route('admin.categories.edit', $category->id) }}" class="dropdown-item">
                                                     <i class="fa-regular fa-pen-to-square"></i> Sửa
                                                 </a>
                                                 <button type="button" class="dropdown-item text-danger"
-                                                    data-delete-url="{{ route('admin.brands.destroy', $brand->id) }}"
-                                                    data-delete-name="{{ $brand->name }}"
-                                                    data-delete-type="thương hiệu">
+                                                    data-delete-url="{{ route('admin.categories.destroy', $category->id) }}"
+                                                    data-delete-name="{{ $category->name }}"
+                                                    data-delete-type="danh mục">
                                                     <i class="fa-regular fa-trash-can"></i> Xóa
                                                 </button>
                                             </div>
@@ -108,9 +121,9 @@
                                 </tr>
                             @empty
                                 <tr data-empty-row>
-                                    <td colspan="7" class="text-center py-5">
+                                    <td colspan="9" class="text-center py-5">
                                         <i class="fa-solid fa-inbox text-muted mb-3" style="font-size:42px;display:block;"></i>
-                                        <div class="fw-semibold text-muted">Chưa có thương hiệu nào</div>
+                                        <div class="fw-semibold text-muted">Chưa có danh mục nào</div>
                                     </td>
                                 </tr>
                             @endforelse
@@ -121,9 +134,9 @@
 
             <div class="bg-white border border-top-0 rounded-bottom px-3 py-2">
                 @include('layouts.components.pagination', [
-                    'paginator'     => $brands,
-                    'itemLabel'     => 'thương hiệu',
-                    'bulkDeleteUrl' => route('admin.brands.bulkDelete'),
+                    'paginator'     => $categories,
+                    'itemLabel'     => 'danh mục',
+                    'bulkDeleteUrl' => route('admin.categories.bulkDelete'),
                 ])
             </div>
         </section>
@@ -134,13 +147,13 @@
     @include('layouts.components.confirm.delete')
     <script>
     (function () {
-        const table    = document.getElementById('brandTable');
-        const searchEl = document.getElementById('brandRealtimeSearch');
-        const checkAll = document.getElementById('brandCheckAll');
+        const table    = document.getElementById('catTable');
+        const searchEl = document.getElementById('catRealtimeSearch');
+        const checkAll = document.getElementById('catCheckAll');
         if (!table) return;
 
         const tbody = table.querySelector('tbody');
-        const rows  = Array.from(tbody.querySelectorAll('tr[data-brand-row]'));
+        const rows  = Array.from(tbody.querySelectorAll('tr[data-cat-row]'));
         let sortState = { key: 'id', dir: 'asc' };
 
         function normalize(v) { return String(v ?? '').toLowerCase().trim(); }
@@ -184,12 +197,12 @@
 
         searchEl?.addEventListener('input', filterRows);
         searchEl?.addEventListener('keydown', function (e) {
-            if (e.key === 'Enter') { e.preventDefault(); document.getElementById('brandSearchForm')?.submit(); }
+            if (e.key === 'Enter') { e.preventDefault(); document.getElementById('catSearchForm')?.submit(); }
         });
 
         checkAll?.addEventListener('change', function () {
             rows.filter(r => !r.hidden).forEach(r => {
-                const cb = r.querySelector('.brand-row-check');
+                const cb = r.querySelector('.cat-row-check');
                 if (cb) cb.checked = this.checked;
             });
         });
