@@ -2,15 +2,9 @@
 
 @section('title', 'Thùng rác — Thương hiệu')
 
-@section('css')
-    <style>
-        .mgmt-table thead th { background:#fff; color:#111827; font-size:12px; font-weight:800; white-space:nowrap; }
-        .mgmt-table tbody td { color:#374151; font-size:13px; }
-        .mgmt-table tbody tr:nth-child(odd) { background:#f3f3f3; }
-        .page-action-btn { min-height:32px; padding:7px 14px; border-radius:2px; font-size:12px; font-weight:800; text-transform:uppercase; }
-        .deleted-at { font-size:11px; color:#9ca3af; }
-    </style>
-@endsection
+@push('styles')
+    @include('admin.brands.styles')
+@endpush
 
 @section('content')
     <main class="app-main container-fluid py-4">

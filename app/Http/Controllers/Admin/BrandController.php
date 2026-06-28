@@ -24,7 +24,7 @@ class BrandController extends Controller
 
         $brands = $query->paginate($perPage)->appends($request->except('page'));
 
-        return view('admin.brands.list', compact('brands', 'keyword', 'perPage'));
+        return view('admin.brands.index', compact('brands', 'keyword', 'perPage'));
     }
 
     public function edit(string $id)

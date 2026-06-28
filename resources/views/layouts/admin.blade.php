@@ -7,6 +7,7 @@
 
 @include('layouts.partial.css')
 @yield('css')
+@stack('styles')
 
 <body class="layout-fixed sidebar-expand-lg">
     <div class="app-wrapper">
@@ -24,6 +25,7 @@
     @include('layouts.partial.js')
     @stack('scripts')
     @stack('modals')
+    @include('admin.partials.profile-modal')
 </body>
 
 </html>

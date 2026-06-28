@@ -2,22 +2,9 @@
 
 @section('title', 'Quản lý đánh giá')
 
-@section('css')
-    <style>
-        .mgmt-table thead th {
-            background: #ffffff; color: #111827;
-            font-size: 12px; font-weight: 800; white-space: nowrap;
-        }
-        .mgmt-table tbody td { color: #374151; font-size: 13px; }
-        .mgmt-table tbody tr:nth-child(odd) { background: #f3f3f3; }
-        .stars { color: #f59e0b; font-size: 13px; letter-spacing: 1px; }
-        .stars .empty { color: #d1d5db; }
-        .product-thumb {
-            width: 40px; height: 40px; object-fit: cover;
-            border-radius: 4px; border: 1px solid #e5e7eb;
-        }
-    </style>
-@endsection
+@push('styles')
+    @include('admin.reviews.styles')
+@endpush
 
 @section('content')
     <main class="app-main container-fluid py-4">

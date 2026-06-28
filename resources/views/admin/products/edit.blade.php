@@ -2,25 +2,9 @@
 
 @section('title', 'Sửa sản phẩm: ' . $product->name)
 
-@section('css')
-<style>
-    .edit-card { border: 1px solid var(--hk-border, #d8dee6); border-radius: 6px; }
-    .edit-card .card-header { background: var(--hk-bg-card, #fff); border-bottom: 1px solid var(--hk-border, #d8dee6); padding: 12px 18px; }
-    .edit-field { margin-bottom: 18px; }
-    .edit-field label { display: block; font-size: 13px; font-weight: 700; color: var(--hk-text-2, #374151); margin-bottom: 6px; }
-    .edit-field .form-control,
-    .edit-field .form-select { font-size: 13px; border-color: var(--hk-border, #ced4da); background: var(--hk-bg-input, #fff); color: var(--hk-text-1, #111); }
-    .edit-field .form-control:focus,
-    .edit-field .form-select:focus { border-color: #174761; box-shadow: 0 0 0 2px rgba(23,71,97,.12); }
-    .edit-field .form-text { font-size: 12px; color: var(--hk-text-3, #6b7280); margin-top: 4px; }
-    .section-label { font-size: 11px; font-weight: 800; color: #174761; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 14px; padding-bottom: 6px; border-bottom: 2px solid #e5e7eb; }
-    .thumb-preview { width: 120px; height: 120px; object-fit: cover; border-radius: 6px; border: 1px solid var(--hk-border, #e5e7eb); }
-    .thumb-placeholder { width: 120px; height: 120px; border-radius: 6px; border: 1px dashed var(--hk-border, #d1d5db); background: var(--hk-bg-th, #f9fafb); display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 28px; }
-    .edit-actions { display: flex; gap: 10px; padding-top: 10px; }
-    .edit-actions .btn { min-height: 38px; font-size: 13px; font-weight: 700; border-radius: 4px; padding: 6px 20px; }
-    .form-check-label { font-size: 13px; font-weight: 600; }
-</style>
-@endsection
+@push('styles')
+    @include('admin.products.styles')
+@endpush
 
 @section('content')
 <main class="app-main container-fluid py-4">
