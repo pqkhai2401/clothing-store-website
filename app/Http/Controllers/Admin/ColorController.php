@@ -11,18 +11,33 @@ class ColorController extends Controller
 {
     public function index(Request $request)
     {
-        $keyword = trim((string) $request->input('keyword'));
+        $keyword = trim((string) $request->input('search', $request->input('keyword')));
+        $sort = $request->input('sort', 'name');
+        $direction = in_array($request->input('direction'), ['asc', 'desc'], true) ? $request->input('direction') : 'asc';
         $perPage = in_array((int) $request->input('per_page'), [10, 25, 50], true)
             ? (int) $request->input('per_page')
             : 10;
 
-        $query = Color::withCount('productVariants')->orderBy('name');
+        $query = Color::withCount('productVariants');
 
         if ($keyword !== '') {
             $query->where('name', 'like', "%{$keyword}%");
         }
 
-        $colors = $query->paginate($perPage)->appends($request->except('page'));
+        match ($sort) {
+            'id' => $query->orderBy('id', $direction),
+            'variants_count' => $query->orderBy('product_variants_count', $direction),
+            'created_at' => $query->orderBy('created_at', $direction),
+            default => $query->orderBy('name', $direction),
+        };
+
+        $colors = $query->paginate($perPage)->withQueryString();
+
+        if ($request->ajax()) {
+            return response()->json([
+                'html' => view('admin.colors.partials.table', compact('colors'))->render(),
+            ]);
+        }
 
         return view('admin.colors.index', compact('colors', 'keyword', 'perPage'));
     }

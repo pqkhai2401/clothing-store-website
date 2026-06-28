@@ -15,26 +15,47 @@ class ProductController extends Controller
 {
     public function index(Request $request)
     {
-        $keyword    = trim((string) $request->input('keyword'));
+        $search     = trim((string) $request->input('search', $request->input('keyword')));
+        $keyword    = $search;
         $categoryId = $request->input('category_id');
+        $sort       = $request->input('sort', 'id');
+        $direction  = $request->input('direction', 'desc');
         $perPage    = in_array((int) $request->input('per_page'), [10, 25, 50], true)
             ? (int) $request->input('per_page')
             : 10;
 
         $query = Product::with(['category', 'brand'])
-            ->withSum('productVariants', 'stock')
-            ->orderBy('id', 'desc');
+            ->withSum('productVariants', 'stock');
 
-        if ($keyword !== '') {
-            $query->where('name', 'like', "%{$keyword}%");
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhereHas('category', fn ($categoryQuery) => $categoryQuery->where('name', 'like', "%{$search}%"))
+                    ->orWhereHas('brand', fn ($brandQuery) => $brandQuery->where('name', 'like', "%{$search}%"));
+            });
         }
 
         if ($categoryId) {
             $query->where('category_id', $categoryId);
         }
 
-        $products   = $query->paginate($perPage)->appends($request->except('page'));
+        $direction = in_array($direction, ['asc', 'desc'], true) ? $direction : 'desc';
+        match ($sort) {
+            'name' => $query->orderBy('name', $direction),
+            'price' => $query->orderBy('price', $direction),
+            'stock' => $query->orderBy('product_variants_sum_stock', $direction),
+            'status' => $query->orderBy('status', $direction),
+            default => $query->orderBy('id', $direction),
+        };
+
+        $products   = $query->paginate($perPage)->withQueryString();
         $categories = Category::whereNull('parent_id')->with('childrenCategories')->get();
+
+        if ($request->ajax()) {
+            return response()->json([
+                'html' => view('admin.products.partials.table', compact('products'))->render(),
+            ]);
+        }
 
         return view('admin.products.index', compact('products', 'categories', 'keyword', 'categoryId', 'perPage'));
     }

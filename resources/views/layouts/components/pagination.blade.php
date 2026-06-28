@@ -357,6 +357,8 @@ tr.hk-row-selected { background-color: #f0f7ff !important; }
     document.addEventListener('DOMContentLoaded', function () {
 
         document.querySelectorAll('.hk-pagination').forEach(function (pgEl) {
+            if (pgEl.closest('[data-admin-table-area]')) return;
+
             const uid      = pgEl.dataset.uid;
             const label    = pgEl.dataset.label || 'mục';
             const selEl    = document.getElementById(uid + '_sel');

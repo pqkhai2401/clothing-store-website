@@ -7,13 +7,13 @@
 @endpush
 
 @section('content')
-    <main class="app-main container-fluid py-4">
+    <div class="container-fluid py-4" style="padding-top: 0px;">
         <x-notification />
 
         {{-- Page header --}}
         <div class="d-flex align-items-start justify-content-between gap-3 mb-3 flex-wrap">
             <div>
-                <h1 class="h3 fw-bold mb-1 product-header-title">Thùng rác sản phẩm</h1>
+                <h1 class="h3 fw-bold mb-1 product-header-title " style="margin: 0;">Thùng rác sản phẩm</h1>
                 <p class="product-header-desc mb-0">Danh sách các sản phẩm đã xóa mềm và có thể khôi phục.</p>
             </div>
             <a href="{{ route('admin.products.list') }}" class="btn btn-outline-secondary fw-semibold" style="border-radius: 10px; font-size: 13px;">
@@ -119,7 +119,7 @@
                 @include('layouts.components.pagination', ['paginator' => $products, 'itemLabel' => 'sản phẩm'])
             </div>
         </div>
-    </main>
+    </div>
 @endsection
 
 @push('scripts')
