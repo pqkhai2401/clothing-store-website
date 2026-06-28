@@ -15,7 +15,7 @@
         $description = ($type ?? 'all') === 'staff'
             ? 'Danh sách tất cả nhân sự trong hệ thống.'
             : (($type ?? 'all') === 'customer' ? 'Danh sách tất cả khách hàng trong hệ thống.' : ($pageDescription ?? 'Danh sách tài khoản trong hệ thống.'));
-        $searchPlaceholder = ($type ?? 'all') === 'customer' ? 'Tìm kiếm theo tên khách hàng...' : 'Tìm kiếm theo tên nhân sự...';
+        $searchPlaceholder = ($type ?? 'all') === 'customer' ? 'Tìm kiếm theo tên khách hàng, email, SĐT...' : 'Tìm kiếm theo tên nhân sự, email, SĐT...';
         $roleLabels = [
             'admin' => 'Quản trị viên',
             'staff' => 'Nhân viên',
@@ -28,7 +28,7 @@
         $emptyColspan = ($showRoleColumn ? 7 : 6) + ($showBulkCheckbox ? 1 : 0);
     @endphp
 
-    <main class="app-main account-admin-page container-fluid py-4">
+    <div class="account-admin-page container-fluid py-4">
         <x-notification />
 
         <section class="px-3 px-md-4">
@@ -234,9 +234,9 @@
             </div>
         </section>
 
-        @include('admin.users.show')
+        @include('admin.users.detail')
         @include('admin.users.edit')
-    </main>
+    </div>
 @endsection
 
 @push('scripts')

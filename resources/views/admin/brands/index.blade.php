@@ -7,7 +7,7 @@
 @endpush
 
 @section('content')
-    <main class="app-main product-admin-page container-fluid py-4">
+    <div class="product-admin-page container-fluid py-4">
         <x-notification />
 
         <section class="px-3 px-md-4">
@@ -127,7 +127,7 @@
                 ])
             </div>
         </section>
-    </main>
+    </div>
 @endsection
 
 @push('scripts')

@@ -7,7 +7,7 @@
 @endpush
 
 @section('content')
-    <main class="app-main product-admin-page container-fluid py-4">
+    <div class="product-admin-page container-fluid py-4">
         <x-notification />
 
         <section class="px-3 px-md-4">
@@ -20,7 +20,7 @@
                 <div class="product-toolbar-left">
                     <input type="search" id="productRealtimeSearch" class="form-control product-search"
                         value="{{ $keyword }}"
-                        placeholder="Tìm kiếm theo tên sản phẩm..." autocomplete="off">
+                        placeholder="Tìm kiếm theo tên sản phẩm, danh mục,..." autocomplete="off">
 
                     @php
                         $selectedCatLabel = 'Tất cả danh mục';
@@ -220,7 +220,7 @@
                 ])
             </div>
         </section>
-    </main>
+    </div>
 @endsection
 
 @push('scripts')
