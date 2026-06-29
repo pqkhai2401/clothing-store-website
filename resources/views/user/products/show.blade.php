@@ -259,10 +259,16 @@
         margin-bottom: 30px;
     }
 
-    .btn-add-cart,
+    .btn-add-cart {
+        flex: 0 0 auto;
+        height: 46px;
+        padding: 0 30px;
+    }
+
     .btn-buy-now {
-        flex: 1;
-        height: 50px;
+        flex: 0 0 auto;
+        height: 46px;
+        padding: 0 30px;
         font-size: 12px;
         font-weight: 600;
         text-transform: uppercase;
