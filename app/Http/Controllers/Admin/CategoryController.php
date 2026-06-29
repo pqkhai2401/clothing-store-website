@@ -13,6 +13,7 @@ class CategoryController extends Controller
     public function index(Request $request)
     {
         $keyword = trim((string) $request->input('search', $request->input('keyword')));
+        $status = $request->input('status');
         $sort = $request->input('sort', 'name');
         $direction = in_array($request->input('direction'), ['asc', 'desc'], true) ? $request->input('direction') : 'asc';
         $perPage = in_array((int) $request->input('per_page'), [10, 25, 50], true)
@@ -20,10 +21,14 @@ class CategoryController extends Controller
             : 10;
 
         $query = Category::with(['parentCategory'])
-            ->withCount('products');
+            ->withCount(['products', 'activeProducts', 'childrenCategories']);
 
         if ($keyword !== '') {
             $query->where('name', 'like', "%{$keyword}%");
+        }
+
+        if (in_array($status, ['0', '1'], true)) {
+            $query->where('status', (bool) (int) $status);
         }
 
         match ($sort) {
@@ -115,6 +120,19 @@ class CategoryController extends Controller
         $category->delete();
 
         return redirect()->route('admin.categories.list')->with('success', 'Xóa danh mục thành công');
+    }
+
+    public function toggleStatus(string $id)
+    {
+        $category = Category::findOrFail($id);
+        $newStatus = !$category->status;
+        $category->update(['status' => $newStatus]);
+
+        $msg = $newStatus
+            ? "Danh mục \"{$category->name}\" đã được hiển thị."
+            : "Danh mục \"{$category->name}\" đã được ẩn khỏi website.";
+
+        return back()->with('success', $msg);
     }
 
     public function bulkDelete(Request $request)

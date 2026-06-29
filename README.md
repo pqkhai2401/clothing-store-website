@@ -72,7 +72,7 @@ clothing-store-website/
 ### Bước 1: Clone và cài đặt dependencies
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/pqkhai2401/clothing-store-website.git
 cd clothing-store-website
 
 # Cài đặt PHP dependencies

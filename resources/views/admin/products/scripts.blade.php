@@ -82,6 +82,63 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 document.addEventListener('DOMContentLoaded', function () {
+    function wireSimpleDropdown(config) {
+        const root = document.getElementById(config.root);
+        const trigger = document.getElementById(config.trigger);
+        const panel = document.getElementById(config.panel);
+        const label = document.getElementById(config.label);
+        const list = document.getElementById(config.list);
+        const hidden = document.getElementById(config.hidden);
+        if (!root || !trigger || !panel || !list || !hidden) return;
+
+        function open() {
+            panel.hidden = false;
+            trigger.classList.add('is-open');
+            trigger.setAttribute('aria-expanded', 'true');
+        }
+
+        function close() {
+            panel.hidden = true;
+            trigger.classList.remove('is-open');
+            trigger.setAttribute('aria-expanded', 'false');
+        }
+
+        trigger.addEventListener('click', function () {
+            panel.hidden ? open() : close();
+        });
+
+        list.addEventListener('click', function (event) {
+            const btn = event.target.closest('.hk-cat-item');
+            if (!btn) return;
+
+            list.querySelectorAll('.hk-cat-item').forEach(function (item) {
+                item.classList.remove('is-active');
+            });
+            btn.classList.add('is-active');
+            if (label) label.textContent = btn.dataset.label;
+            hidden.value = btn.dataset.value || '';
+            hidden.dispatchEvent(new Event('change', { bubbles: true }));
+            close();
+        });
+
+        document.addEventListener('click', function (event) {
+            if (!panel.hidden && !root.contains(event.target)) {
+                close();
+            }
+        });
+    }
+
+    wireSimpleDropdown({
+        root: 'hkProductStatusFilter',
+        trigger: 'hkProductStatusTrigger',
+        panel: 'hkProductStatusPanel',
+        label: 'hkProductStatusLabel',
+        list: 'hkProductStatusList',
+        hidden: 'productStatusFilter',
+    });
+});
+
+document.addEventListener('DOMContentLoaded', function () {
     const tableArea = document.querySelector('[data-admin-table-area]');
     if (!tableArea) return;
 

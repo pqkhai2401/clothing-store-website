@@ -71,6 +71,7 @@ Route::middleware(['auth.login', 'admin'])
             Route::get('/', [CategoryController::class, 'index'])->name('list');
             Route::get('/{id}/edit', [CategoryController::class, 'edit'])->name('edit');
             Route::put('/{id}', [CategoryController::class, 'update'])->name('update');
+            Route::patch('/{id}/toggle-status', [CategoryController::class, 'toggleStatus'])->name('toggleStatus');
             Route::delete('/{id}', [CategoryController::class, 'destroy'])->name('destroy');
             Route::post('/bulk-delete', [CategoryController::class, 'bulkDelete'])->name('bulkDelete');
             Route::post('/trash/bulk-restore', [CategoryController::class, 'bulkRestore'])->name('bulkRestore');
@@ -82,6 +83,7 @@ Route::middleware(['auth.login', 'admin'])
             Route::get('/', [BrandController::class, 'index'])->name('list');
             Route::get('/{id}/edit', [BrandController::class, 'edit'])->name('edit');
             Route::put('/{id}', [BrandController::class, 'update'])->name('update');
+            Route::patch('/{id}/toggle-status', [BrandController::class, 'toggleStatus'])->name('toggleStatus');
             Route::delete('/{id}', [BrandController::class, 'destroy'])->name('destroy');
             Route::post('/bulk-delete', [BrandController::class, 'bulkDelete'])->name('bulkDelete');
             Route::post('/trash/bulk-restore', [BrandController::class, 'bulkRestore'])->name('bulkRestore');

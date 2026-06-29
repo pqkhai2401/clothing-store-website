@@ -24,7 +24,7 @@
     pointer-events: none;
     transition: opacity 0.12s ease, visibility 0.12s ease;
     box-shadow: 0 18px 45px rgba(15, 23, 42, 0.18);
-    font-size: 12px;
+    font-size: 14px;
     line-height: 1.4;
     text-align: left;
 }
@@ -51,6 +51,7 @@
 .stock-tooltip-product {
     margin-bottom: 4px;
     color: var(--stock-tip-heading);
+    font-weight: 400;
     word-break: break-word;
 }
 
@@ -104,8 +105,8 @@
 
 .stock-tooltip-total {
     display: flex;
-    justify-content: space-between;
-    gap: 16px;
+    justify-content: flex-start;
+    gap: 6px;
     margin-top: 7px;
     padding: 8px 10px;
     border: 1px solid var(--stock-tip-divider);
@@ -121,7 +122,7 @@ html:not([data-theme="dark"]) .tooltip-box {
     --stock-tip-count: #0f172a;
     --stock-tip-divider: #e5e7eb;
     --stock-tip-bullet: #64748b;
-    --stock-tip-total-bg: #f8fafc;
+    --stock-tip-total-bg: #eef2f7;
     background: #ffffff;
     color: #111827;
     border: 1px solid #d7dde8;
@@ -145,7 +146,7 @@ html:not([data-theme="dark"]) .stock-total {
     --stock-tip-count: #ffffff;
     --stock-tip-divider: #2a3b59;
     --stock-tip-bullet: #93c5fd;
-    --stock-tip-total-bg: rgba(148, 163, 184, 0.12);
+    --stock-tip-total-bg: rgba(148, 163, 184, 0.18);
     background: #111827;
     color: #f8fafc;
     border: 1px solid #334155;
@@ -270,6 +271,7 @@ html:not([data-theme="dark"]) .stock-total {
                                             <span class="price-normal">{{ number_format($product->price, 0, ',', '.') }}₫</span>
                                         @endif
                                     </td>
+
                                     {{-- Số lượng tồn kho --}}
                                     @php
                                         $totalStock = (int) ($product->product_variants_sum_stock ?? 0);
@@ -287,7 +289,7 @@ html:not([data-theme="dark"]) .stock-total {
                                                     Chi tiết tồn kho theo size và màu
                                                 </h5>
                                                 <div class="stock-tooltip-product">
-                                                    Product: {{ $product->name }}
+                                                    <strong>Tên sản phẩm:</strong> {{ $product->name }}
                                                 </div>
                                                 @forelse($variantsBySize as $sizeName => $variants)
                                                     <div class="stock-tooltip-group">
@@ -295,7 +297,7 @@ html:not([data-theme="dark"]) .stock-total {
                                                         @foreach($variants as $variant)
                                                             <div class="stock-tooltip-color">
                                                                 <span class="stock-tooltip-color-name">
-                                                                    Màu {{ $variant->color?->name ?? 'Không màu' }}:
+                                                                    Màu: {{ $variant->color?->name ?? 'Không màu' }}
                                                                 </span>
                                                                 <span class="stock-tooltip-count">
                                                                     {{ number_format($variant->stock) }}
@@ -308,7 +310,7 @@ html:not([data-theme="dark"]) .stock-total {
                                                 @endforelse
 
                                                 <div class="stock-tooltip-total">
-                                                    <span>Total</span>
+                                                    <span>Tổng tồn kho: </span>
                                                     <span>{{ number_format($totalStock) }}</span>
                                                 </div>
                                             </div>

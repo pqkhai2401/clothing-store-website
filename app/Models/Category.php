@@ -16,6 +16,11 @@ class Category extends Model
         'name',
         'slug',
         'parent_id',
+        'status',
+    ];
+
+    protected $casts = [
+        'status' => 'boolean',
     ];
 
     /**
