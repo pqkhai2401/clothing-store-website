@@ -108,10 +108,10 @@
             </div>
 
             <div class="account-menu-section">
-                <a class="account-menu-item" href="{{ $profileUrl }}">
+                <button class="account-menu-item" type="button" data-profile-open>
                     <i class="fa-regular fa-circle-user"></i>
                     <span>Hồ sơ</span>
-                </a>
+                </button>
                 <button class="account-menu-item" type="button" data-admin-theme-toggle aria-pressed="false">
                     <i class="fa-regular fa-moon"></i>
                     <span>Giao diện tối</span>
@@ -133,13 +133,13 @@
 </aside>
 
 <style>
+    /* ── Sidebar layout (structure only) ── */
     .admin-sidebar {
         overflow: visible;
         display: flex;
         flex-direction: column;
-        background: #ffffff !important;
-        border-right: 1px solid #e5e7eb;
-        color: #111827;
+        background: var(--hk-sb-bg) !important;
+        border-right: 1px solid var(--hk-sb-border) !important;
         box-shadow: none !important;
     }
 
@@ -147,7 +147,8 @@
         flex: 0 0 auto;
         height: 68px;
         padding: 12px 14px;
-        border-bottom: 1px solid #e5e7eb;
+        background: var(--hk-sb-bg-brand) !important;
+        border-bottom: 1px solid var(--hk-sb-border) !important;
     }
 
     .admin-brand-link {
@@ -155,7 +156,7 @@
         align-items: center;
         gap: 10px;
         width: 100%;
-        color: #111827 !important;
+        color: var(--hk-sb-text-hi) !important;
         text-decoration: none;
     }
 
@@ -168,8 +169,8 @@
         width: 32px;
         height: 32px;
         border-radius: 9px;
-        background: #0891a3;
-        color: #ffffff;
+        background: var(--hk-sb-active) !important;
+        color: #fff !important;
         font-size: 14px;
         font-weight: 700;
         line-height: 1;
@@ -186,7 +187,7 @@
     .admin-brand-text strong,
     .account-name {
         overflow: hidden;
-        color: #111827;
+        color: var(--hk-sb-text-hi) !important;
         font-size: 13px;
         font-weight: 700;
         text-overflow: ellipsis;
@@ -196,7 +197,7 @@
     .admin-brand-text small,
     .account-email {
         overflow: hidden;
-        color: #4b5563;
+        color: var(--hk-sb-muted) !important;
         font-size: 11px;
         font-weight: 500;
         text-overflow: ellipsis;
@@ -223,12 +224,13 @@
         gap: 10px;
         min-height: 38px;
         padding: 9px 10px;
-        border-radius: 8px;
-        color: #111827 !important;
+        border-radius: 7px;
+        color: var(--hk-sb-text) !important;
         font-size: 13px;
         font-weight: 500;
         text-decoration: none;
         line-height: 1.3;
+        position: relative;
     }
 
     .admin-sidebar .nav-link p,
@@ -243,22 +245,39 @@
     .admin-sidebar .nav-icon {
         width: 18px;
         min-width: 18px;
-        color: #111827;
+        color: var(--hk-sb-icon) !important;
         font-size: 14px;
         text-align: center;
     }
 
+    /* Hover */
     .admin-sidebar .nav-link:hover,
-    .admin-sidebar .nav-link-title:hover,
-    .admin-sidebar .parent-menu-item.active,
-    .admin-sidebar .nav-link.active {
-        background: #f3f4f6 !important;
-        color: #030712 !important;
+    .admin-sidebar .nav-link-title:hover {
+        background: var(--hk-sb-hover) !important;
+        color: var(--hk-sb-text-hi) !important;
+    }
+
+    /* Active */
+    .admin-sidebar .nav-link.active,
+    .admin-sidebar .parent-menu-item.active {
+        background: var(--hk-sb-active-bg) !important;
+        color: var(--hk-sb-active) !important;
+    }
+
+    .admin-sidebar .nav-link.active::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 22%;
+        height: 56%;
+        width: 3px;
+        background: var(--hk-sb-dot);
+        border-radius: 0 3px 3px 0;
     }
 
     .admin-sidebar .parent-menu-item {
         height: auto !important;
-        border-radius: 8px;
+        border-radius: 7px;
         overflow: hidden;
     }
 
@@ -273,13 +292,14 @@
         min-height: 38px;
         padding: 0;
         border: 0;
-        border-radius: 8px;
-        background: transparent;
-        color: #111827;
+        border-radius: 7px;
+        background: transparent !important;
+        color: var(--hk-sb-icon) !important;
     }
 
     .admin-sidebar .dropdown-toggle-btn:hover {
-        background: #e5e7eb;
+        background: var(--hk-sb-hover) !important;
+        color: var(--hk-sb-text-hi) !important;
     }
 
     .admin-sidebar .nav-arrow {
@@ -296,13 +316,8 @@
         transition: max-height 0.25s ease;
     }
 
-    .admin-sidebar .submenu:not(.show) {
-        max-height: 0;
-    }
-
-    .admin-sidebar .submenu.show {
-        max-height: 320px;
-    }
+    .admin-sidebar .submenu:not(.show) { max-height: 0; }
+    .admin-sidebar .submenu.show { max-height: 360px; }
 
     .admin-sidebar .nav-treeview {
         padding: 3px 0 4px 18px;
@@ -311,16 +326,17 @@
     .admin-sidebar .nav-treeview .nav-link {
         min-height: 34px;
         padding: 8px 10px;
-        color: #374151 !important;
+        color: var(--hk-sb-text) !important;
         font-size: 12px;
     }
 
+    /* Account section */
     .sidebar-account {
         position: relative;
         flex: 0 0 auto;
         padding: 10px;
-        border-top: 1px solid #e5e7eb;
-        background: #ffffff;
+        border-top: 1px solid var(--hk-sb-border) !important;
+        background: var(--hk-sb-bg) !important;
         z-index: 10;
     }
 
@@ -334,20 +350,19 @@
         padding: 8px;
         border: 1px solid transparent;
         border-radius: 8px;
-        background: #f9fafb;
-        color: #111827;
+        background: var(--hk-sb-acct-bg) !important;
+        color: var(--hk-sb-text-hi) !important;
         text-align: left;
     }
 
     .sidebar-account-toggle:hover,
     .sidebar-account-toggle[aria-expanded="true"] {
-        border-color: #e5e7eb;
-        background: #ffffff;
-        box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+        border-color: var(--hk-sb-border) !important;
+        background: var(--hk-sb-hover) !important;
     }
 
     .account-caret {
-        color: #111827;
+        color: var(--hk-sb-icon) !important;
         font-size: 11px;
         transition: transform 0.2s ease;
     }
@@ -359,10 +374,10 @@
     .sidebar-account-menu {
         width: 224px;
         padding: 0;
-        border: 1px solid #e5e7eb;
+        border: 1px solid var(--hk-sb-border) !important;
         border-radius: 8px;
-        background: #ffffff;
-        box-shadow: 0 16px 36px rgba(15, 23, 42, 0.14);
+        background: var(--hk-sb-bg) !important;
+        box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35) !important;
         overflow: hidden;
     }
 
@@ -372,6 +387,7 @@
         gap: 8px;
         align-items: center;
         padding: 10px;
+        border-bottom: 1px solid var(--hk-sb-border);
     }
 
     .account-avatar-lg {
@@ -381,12 +397,10 @@
 
     .account-menu-section {
         padding: 6px 0;
-        border-top: 1px solid #e5e7eb;
+        border-top: 1px solid var(--hk-sb-border);
     }
 
-    .account-menu-section-last {
-        padding: 6px 0;
-    }
+    .account-menu-section-last { padding: 6px 0; }
 
     .account-menu-item {
         display: flex;
@@ -397,7 +411,7 @@
         padding: 8px 12px;
         border: 0;
         background: transparent;
-        color: #111827;
+        color: var(--hk-sb-text) !important;
         font-size: 13px;
         font-weight: 500;
         line-height: 1.2;
@@ -408,76 +422,19 @@
     .account-menu-item i {
         width: 16px;
         min-width: 16px;
-        color: #6b7280;
+        color: var(--hk-sb-icon) !important;
         font-size: 14px;
         text-align: center;
     }
 
     .account-menu-item:hover,
     .account-menu-item:focus {
-        background: #f3f4f6;
-        color: #030712;
+        background: var(--hk-sb-hover) !important;
+        color: var(--hk-sb-text-hi) !important;
         text-decoration: none;
     }
 
-    .account-menu-logout {
-        color: #111827;
-    }
-
-    .admin-dark-mode {
-        background: #111827;
-        color: #e5e7eb;
-    }
-
-    .admin-dark-mode .admin-sidebar,
-    .admin-dark-mode .sidebar-account,
-    .admin-dark-mode .sidebar-account-menu {
-        background: #111827 !important;
-        border-color: #374151;
-    }
-
-    .admin-dark-mode .admin-sidebar .nav-link,
-    .admin-dark-mode .admin-sidebar .nav-link-title,
-    .admin-dark-mode .admin-sidebar .nav-icon,
-    .admin-dark-mode .admin-sidebar .dropdown-toggle-btn,
-    .admin-dark-mode .admin-brand-text strong,
-    .admin-dark-mode .account-name,
-    .admin-dark-mode .account-menu-item,
-    .admin-dark-mode .account-caret {
-        color: #f9fafb !important;
-    }
-
-    .admin-dark-mode .admin-brand-text small,
-    .admin-dark-mode .account-email {
-        color: #cbd5e1;
-    }
-
-    .admin-dark-mode .sidebar-account-toggle,
-    .admin-dark-mode .admin-sidebar .nav-link:hover,
-    .admin-dark-mode .admin-sidebar .nav-link-title:hover,
-    .admin-dark-mode .admin-sidebar .nav-link.active,
-    .admin-dark-mode .admin-sidebar .parent-menu-item.active,
-    .admin-dark-mode .account-menu-item:hover,
-    .admin-dark-mode .account-menu-item:focus {
-        background: #1f2937 !important;
-        border-color: #374151;
-    }
-
-    .ripple-effect {
-        position: absolute;
-        border-radius: 50%;
-        background-color: rgba(17, 24, 39, 0.12);
-        transform: scale(0);
-        animation: ripple 0.6s linear;
-        pointer-events: none;
-    }
-
-    @keyframes ripple {
-        to {
-            transform: scale(4);
-            opacity: 0;
-        }
-    }
+    .account-menu-logout:hover { color: #f87171 !important; }
 
     @media (max-width: 991.98px) {
         .app-sidebar {
@@ -497,28 +454,34 @@
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const toggle = document.querySelector('[data-admin-theme-toggle]');
-            const storageKey = 'hk-admin-theme';
+            const STORAGE_KEY = 'admin-theme';
 
             function applyTheme(theme) {
                 const isDark = theme === 'dark';
-                document.body.classList.toggle('admin-dark-mode', isDark);
 
+                /* 1. Set attribute on <html> — drives all CSS variables */
+                document.documentElement.setAttribute('data-theme', theme);
+
+                /* 2. Sync toggle button UI */
                 if (toggle) {
+                    const icon  = toggle.querySelector('i');
+                    const label = toggle.querySelector('span');
                     toggle.setAttribute('aria-pressed', String(isDark));
-                    const icon = toggle.querySelector('i');
-                    if (icon) {
-                        icon.className = isDark ? 'fa-regular fa-sun' : 'fa-regular fa-moon';
-                    }
+                    if (icon)  icon.className  = isDark ? 'fa-regular fa-sun' : 'fa-regular fa-moon';
+                    if (label) label.textContent = isDark ? 'Giao diện sáng' : 'Giao diện tối';
                 }
             }
 
-            applyTheme(localStorage.getItem(storageKey) || 'light');
+            /* Apply saved theme (html already has data-theme from anti-flash, just sync UI) */
+            applyTheme(localStorage.getItem(STORAGE_KEY) || 'dark');
 
+            /* Toggle on click */
             if (toggle) {
                 toggle.addEventListener('click', function () {
-                    const nextTheme = document.body.classList.contains('admin-dark-mode') ? 'light' : 'dark';
-                    localStorage.setItem(storageKey, nextTheme);
-                    applyTheme(nextTheme);
+                    const current = document.documentElement.getAttribute('data-theme') || 'dark';
+                    const next    = current === 'dark' ? 'light' : 'dark';
+                    localStorage.setItem(STORAGE_KEY, next);
+                    applyTheme(next);
                 });
             }
         });

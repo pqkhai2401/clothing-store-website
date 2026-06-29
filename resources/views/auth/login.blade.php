@@ -77,6 +77,10 @@
         color: transparent;
     }
 
+    .auth-input:hover {
+        border-color: #111111;
+    }
+
     .auth-input:focus {
         border-color: #111111;
     }
@@ -148,6 +152,12 @@
         font-weight: 800;
         text-transform: uppercase;
         cursor: pointer;
+        transition: background .18s, color .18s;
+    }
+
+    .auth-submit:hover {
+        outline: 2px solid #000000;
+        outline-offset: 2px;
     }
 
     .auth-links {

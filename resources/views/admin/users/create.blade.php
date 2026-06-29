@@ -2,88 +2,16 @@
 
 @section('title', ($type ?? 'all') === 'staff' ? 'Thêm quản trị viên mới' : ($createLabel ?? 'Thêm tài khoản'))
 
-@section('css')
-    <style>
-        .account-create-card {
-            border: 1px solid #d8dee6;
-            border-radius: 3px;
-            box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08);
-        }
-
-        .account-create-card .card-header {
-            min-height: 38px;
-            padding: 10px 14px;
-            background: #ffffff;
-            border-bottom: 1px solid #d8dee6;
-        }
-
-        .account-form-row {
-            display: grid;
-            grid-template-columns: 210px minmax(0, 1fr);
-            margin-bottom: 10px;
-        }
-
-        .account-form-label {
-            display: flex;
-            align-items: center;
-            min-height: 32px;
-            padding: 7px 10px;
-            color: #334155;
-            background: #e9ecef;
-            border: 1px solid #cfd6df;
-            border-right: 0;
-            border-radius: 3px 0 0 3px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-
-        .account-form-control {
-            min-height: 32px;
-            border-radius: 0 3px 3px 0;
-            font-size: 13px;
-        }
-
-        .account-form-control:focus {
-            background: #eaf3ff;
-        }
-
-        .account-form-actions {
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-            padding: 22px 0 6px;
-        }
-
-        .account-form-actions .btn {
-            min-height: 34px;
-            padding: 6px 14px;
-            border-radius: 6px;
-            font-size: 13px;
-            font-weight: 700;
-        }
-
-        @media (max-width: 767.98px) {
-            .account-form-row {
-                grid-template-columns: 1fr;
-            }
-
-            .account-form-label {
-                border-right: 1px solid #cfd6df;
-                border-radius: 3px 3px 0 0;
-            }
-
-            .account-form-control {
-                border-radius: 0 0 3px 3px;
-            }
-        }
-    </style>
-@endsection
+@push('styles')
+    @include('admin.users.styles')
+@endpush
 
 @section('content')
     @php
         $isStaffContext = ($type ?? 'all') === 'staff';
-        $pageHeading = $isStaffContext ? 'Thêm quản trị viên mới' : (($createLabel ?? 'Thêm tài khoản').' mới');
+        $pageHeading = $isStaffContext ? 'Thêm mới quản trị viên' : (($createLabel ?? 'Thêm tài khoản').' mới');
         $cardHeading = $isStaffContext ? 'Thông tin Quản trị viên' : 'Thông tin '.($itemLabel ?? 'Tài khoản');
+        $submitLabel = $isStaffContext ? 'Thêm mới quản trị viên' : 'Thêm mới '.($itemLabelLower ?? 'người dùng');
     @endphp
 
     <main class="app-main container-fluid py-4">
@@ -129,9 +57,16 @@
                     <div class="account-form-row">
                         <label for="password" class="account-form-label">Mật Khẩu</label>
                         <div>
-                            <input type="password" name="password" id="password"
-                                class="form-control account-form-control @error('password') is-invalid @enderror"
-                                required>
+                            <div class="input-group">
+                                <input type="password" name="password" id="password"
+                                    class="form-control account-form-control @error('password') is-invalid @enderror"
+                                    required>
+                                <button type="button" class="btn btn-outline-secondary pw-toggle"
+                                    data-target="password" tabindex="-1"
+                                    title="Hiện / Ẩn mật khẩu">
+                                    <i class="fa-regular fa-eye"></i>
+                                </button>
+                            </div>
                             @error('password')
                                 <div class="invalid-feedback d-block">{{ $message }}</div>
                             @enderror
@@ -180,17 +115,7 @@
                         </div>
                     </div>
 
-                    <div class="account-form-row">
-                        <label for="district" class="account-form-label">Quận, Huyện</label>
-                        <div>
-                            <input type="text" name="district" id="district"
-                                class="form-control account-form-control @error('district') is-invalid @enderror"
-                                value="{{ old('district') }}">
-                            @error('district')
-                                <div class="invalid-feedback d-block">{{ $message }}</div>
-                            @enderror
-                        </div>
-                    </div>
+                    
 
                     <div class="account-form-row">
                         <label for="ward" class="account-form-label">Phường, Xã</label>
@@ -216,10 +141,13 @@
                         </div>
                     </div>
 
+                </div>
+
+                <div class="card-footer bg-white border-top">
                     <div class="account-form-actions">
                         <a href="{{ route(($routePrefix ?? 'admin.users').'.list') }}" class="btn btn-light border">Hủy</a>
                         <button type="submit" class="btn btn-primary">
-                            <i class="fa-solid fa-floppy-disk me-1"></i> Thêm mới người dùng
+                            <i class="fa-solid fa-floppy-disk me-1"></i> {{ $submitLabel }}
                         </button>
                     </div>
                 </div>
@@ -227,3 +155,18 @@
         </div>
     </main>
 @endsection
+
+@push('scripts')
+<script>
+document.querySelectorAll('.pw-toggle').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+        var input = document.getElementById(btn.dataset.target);
+        var icon  = btn.querySelector('i');
+        if (!input) return;
+        var show = input.type === 'password';
+        input.type = show ? 'text' : 'password';
+        icon.className = show ? 'fa-regular fa-eye-slash' : 'fa-regular fa-eye';
+    });
+});
+</script>
+@endpush

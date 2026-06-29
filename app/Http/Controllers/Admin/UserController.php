@@ -21,18 +21,22 @@ class UserController extends Controller
         $this->authorizeContext($request, $context['type']);
 
         $perPage = $this->resolvePerPage($request);
-        $sortBy = $request->input('sort_by', 'id');
-        $sortDir = $request->input('sort_dir', 'desc');
+        $sortBy = $request->input('sort', $request->input('sort_by', 'id'));
+        $sortDir = $request->input('direction', $request->input('sort_dir', 'asc'));
 
         $query = User::with('roles');
         $this->applyTypeFilter($query, $context['type']);
 
-        if ($keyword = trim((string) $request->input('keyword'))) {
-            $query->where(function ($subQuery) use ($keyword) {
-                $subQuery->where('username', 'like', "%{$keyword}%")
-                    ->orWhere('email', 'like', "%{$keyword}%")
-                    ->orWhere('phone_number', 'like', "%{$keyword}%");
+        if ($search = trim((string) $request->input('search', $request->input('keyword')))) {
+            $query->where(function ($subQuery) use ($search) {
+                $subQuery->where('username', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('phone_number', 'like', "%{$search}%");
             });
+        }
+
+        if (in_array($request->input('status'), ['0', '1'], true)) {
+            $query->where('is_active', (bool) (int) $request->input('status'));
         }
 
         if (in_array($sortDir, ['asc', 'desc'], true)) {
@@ -40,17 +44,28 @@ class UserController extends Controller
                 'id' => $query->orderBy('id', $sortDir),
                 'username' => $query->orderBy('username', $sortDir),
                 'email' => $query->orderBy('email', $sortDir),
-                default => $query->orderBy('id', 'desc'),
+                default => $query->orderBy('id', 'asc'),
             };
         } else {
-            $query->orderBy('id', 'desc');
+            $query->orderBy('id', 'asc');
         }
 
-        $data = $query->paginate($perPage)->appends($request->except('page'));
+        $data = $query->paginate($perPage)->withQueryString();
+        $roles = $this->rolesForContext($context['type']);
 
-        return view('admin.users.show', [
+        if ($request->ajax()) {
+            return response()->json([
+                'html' => view('admin.users.partials.table', [
+                    'data' => $data,
+                    'roles' => $roles,
+                    ...$context,
+                ])->render(),
+            ]);
+        }
+
+        return view('admin.users.index', [
             'data' => $data,
-            'roles' => $this->rolesForContext($context['type']),
+            'roles' => $roles,
             ...$context,
         ]);
     }
@@ -87,7 +102,6 @@ class UserController extends Controller
             'is_active' => ['required', 'boolean'],
             'password' => ['required', 'string', 'min:6', 'max:255'],
             'city' => ['nullable', 'string', 'max:255'],
-            'district' => ['nullable', 'string', 'max:255'],
             'ward' => ['nullable', 'string', 'max:255'],
             'apartment_number' => ['nullable', 'string', 'max:255'],
             'lock_reason' => ['nullable', 'string', 'max:255'],
@@ -109,7 +123,6 @@ class UserController extends Controller
         if ($this->hasAddressInput($validated)) {
             $user->addresses()->create([
                 'city' => $validated['city'] ?? '',
-                'district' => $validated['district'] ?? '',
                 'ward' => $validated['ward'] ?? '',
                 'apartment_number' => $validated['apartment_number'] ?? '',
             ]);
@@ -173,35 +186,67 @@ class UserController extends Controller
             'is_active' => ['required', 'boolean'],
             'password' => $passwordRules,
             'city' => ['nullable', 'string', 'max:255'],
-            'district' => ['nullable', 'string', 'max:255'],
             'ward' => ['nullable', 'string', 'max:255'],
             'apartment_number' => ['nullable', 'string', 'max:255'],
             'lock_reason' => ['nullable', 'string', 'max:255'],
         ], $this->validationMessages());
 
+        $currentUser = $request->user();
+        $isSelf = (int) $currentUser->id === (int) $user->id;
+        $isProtectedTarget = (bool) $user->is_protected;
+        $isProtectedEditedByOther = $isProtectedTarget && ! $isSelf;
+        $currentRoleId = $user->roles()->first()?->id;
+        $statusChanged = (bool) $validated['is_active'] !== (bool) $user->is_active;
+        $roleChanged = ! empty($validated['role_id']) && (int) $validated['role_id'] !== (int) $currentRoleId;
+        $passwordChanged = filled($validated['password'] ?? null);
+
+        if ($isSelf && $statusChanged && ! (bool) $validated['is_active']) {
+            return $this->validationErrorResponse($request, 'is_active', 'Bạn không thể tự khóa tài khoản đang đăng nhập.');
+        }
+
+        if ($isSelf && $roleChanged) {
+            return $this->validationErrorResponse($request, 'role_id', 'Bạn không thể tự thay đổi vai trò của chính mình.');
+        }
+
+        if ($isProtectedEditedByOther && ($statusChanged || $roleChanged || $passwordChanged)) {
+            return $this->validationErrorResponse(
+                $request,
+                'is_active',
+                'Không thể thay đổi vai trò, trạng thái hoặc mật khẩu của admin hệ thống.'
+            );
+        }
+
+        $canChangeStatus = ! $isProtectedEditedByOther && ! ($isSelf && $context['type'] === 'staff');
+        $canChangeRole = ! $isProtectedEditedByOther && ! $isSelf;
+        $canChangePassword = ! $isProtectedEditedByOther;
+
         $updateData = [
             'username' => $validated['username'],
             'email' => $validated['email'],
             'phone_number' => $validated['phone_number'] ?? null,
-            'is_active' => (bool) $validated['is_active'],
-            'lock_reason' => (bool) $validated['is_active'] ? null : ($validated['lock_reason'] ?? null),
         ];
 
-        if (! empty($validated['password'])) {
+        if ($canChangeStatus) {
+            $updateData['is_active'] = (bool) $validated['is_active'];
+            $updateData['lock_reason'] = (bool) $validated['is_active'] ? null : ($validated['lock_reason'] ?? null);
+        }
+
+        if ($canChangePassword && $passwordChanged) {
             $updateData['password'] = Hash::make($validated['password']);
         }
 
         $user->update($updateData);
 
-        $roleForUser = $this->roleForContext($context['type'], $validated['role_id'] ?? null, $user);
-        if ($roleForUser) {
-            $user->syncRoles([$roleForUser->name]);
+        if ($canChangeRole) {
+            $roleForUser = $this->roleForContext($context['type'], $validated['role_id'] ?? null, $user);
+            if ($roleForUser) {
+                $user->syncRoles([$roleForUser->name]);
+            }
         }
 
         if (in_array($context['type'], ['staff', 'customer']) && ($this->hasAddressInput($validated) || $user->addresses()->exists())) {
             $addressData = [
                 'city' => $validated['city'] ?? '',
-                'district' => $validated['district'] ?? '',
                 'ward' => $validated['ward'] ?? '',
                 'apartment_number' => $validated['apartment_number'] ?? '',
             ];
@@ -239,6 +284,22 @@ class UserController extends Controller
         $user = User::findOrFail($id);
         $context = $this->resolveContext(request(), $user);
         $this->authorizeContext(request(), $context['type'], $user);
+
+        if ($user->id === auth()->id()) {
+            return redirect()->route($context['routePrefix'].'.list')
+                ->with('error', 'Bạn không thể xóa tài khoản của chính mình.');
+        }
+
+        if ($context['type'] === 'staff') {
+            return redirect()->route($context['routePrefix'].'.list')
+                ->with('error', 'Không thể xóa tài khoản nhân sự. Hãy chuyển trạng thái sang Ngưng hoạt động.');
+        }
+
+        if ($user->is_protected) {
+            return redirect()->route($context['routePrefix'].'.list')
+                ->with('error', 'Không thể xóa admin hệ thống.');
+        }
+
         $user->delete();
 
         return redirect()->route($context['routePrefix'].'.list')->with('success', 'Xóa '.$context['itemLabelLower'].' thành công');
@@ -252,22 +313,94 @@ class UserController extends Controller
         $context = $this->resolveContext($request);
         $this->authorizeContext($request, $context['type']);
 
-        $perPage = $this->resolvePerPage($request);
-        $query = User::onlyTrashed()->with('roles')->orderBy('deleted_at', 'desc');
-        $this->applyTypeFilter($query, $context['type']);
-        $data = $query->paginate($perPage)->appends($request->except('page'));
-
-        if ($request->ajax()) {
-            return view('admin.users.trash_list', [
-                'data' => $data,
-                ...$context,
-            ]);
+        if (in_array($context['type'], ['staff', 'customer'], true)) {
+            return redirect()->route($context['routePrefix'].'.list')
+                ->with('error', 'Chức năng thùng rác không áp dụng cho khu vực này.');
         }
 
-        return view('admin.users.trash_show', [
-            'data' => $data,
+        $perPage = $this->resolvePerPage($request);
+        $keyword = trim($request->input('keyword', ''));
+
+        $query = User::onlyTrashed()->with('roles')->orderBy('deleted_at', 'desc');
+        $this->applyTypeFilter($query, $context['type']);
+
+        if ($keyword !== '') {
+            $query->where(function ($q) use ($keyword) {
+                $q->where('username', 'like', "%{$keyword}%")
+                  ->orWhere('email', 'like', "%{$keyword}%");
+            });
+        }
+
+        $data = $query->paginate($perPage)->appends($request->except('page'));
+
+        return view('admin.users.trash', [
+            'data'    => $data,
+            'keyword' => $keyword,
             ...$context,
         ]);
+    }
+
+    /**
+     * Bulk soft-delete selected users of the resolved type.
+     */
+    public function bulkDelete(Request $request)
+    {
+        $context = $this->resolveContext($request);
+        $this->authorizeContext($request, $context['type']);
+
+        if (in_array($context['type'], ['staff', 'customer'], true)) {
+            return back()->with('error', 'Không thể xóa hàng loạt tài khoản trong khu vực này.');
+        }
+
+        $ids = array_filter((array) $request->input('ids', []), 'is_numeric');
+
+        // Never delete the currently logged-in account
+        $ids = array_values(array_filter($ids, fn ($id) => (int) $id !== auth()->id()));
+
+        if (empty($ids)) {
+            return back()->with('error', 'Vui lòng chọn ít nhất một ' . $context['itemLabelLower'] . ' để xóa.');
+        }
+
+        $query = User::whereIn('id', $ids)->where('is_protected', false);
+        $this->applyTypeFilter($query, $context['type']);
+        $deleted = $query->delete();
+
+        return back()->with('success', "Đã xóa {$deleted} {$context['itemLabelLower']} thành công.");
+    }
+
+    /**
+     * Bulk update selected customer account statuses.
+     */
+    public function bulkUpdateStatus(Request $request)
+    {
+        $context = $this->resolveContext($request);
+        $this->authorizeContext($request, $context['type']);
+
+        if ($context['type'] !== 'customer') {
+            abort(404);
+        }
+
+        $validated = $request->validate([
+            'ids' => ['required', 'array'],
+            'ids.*' => ['integer', 'exists:users,id'],
+            'is_active' => ['required', 'boolean'],
+        ], [
+            'ids.required' => 'Vui lòng chọn ít nhất một khách hàng.',
+            'ids.array' => 'Danh sách khách hàng không hợp lệ.',
+            'ids.*.exists' => 'Khách hàng được chọn không hợp lệ.',
+            'is_active.required' => 'Vui lòng chọn trạng thái cần cập nhật.',
+            'is_active.boolean' => 'Trạng thái không hợp lệ.',
+        ]);
+
+        $updated = User::query()
+            ->whereIn('id', $validated['ids'])
+            ->whereHas('roles', fn ($roleQuery) => $roleQuery->where('name', UserRole::CUSTOMER->value))
+            ->update([
+                'is_active' => (bool) $validated['is_active'],
+                'lock_reason' => (bool) $validated['is_active'] ? null : 'Cập nhật trạng thái hàng loạt',
+            ]);
+
+        return back()->with('success', "Đã cập nhật trạng thái {$updated} khách hàng.");
     }
 
     /**
@@ -278,6 +411,10 @@ class UserController extends Controller
         $user = User::onlyTrashed()->findOrFail($id);
         $context = $this->resolveContext(request(), $user);
         $this->authorizeContext(request(), $context['type'], $user);
+        if (in_array($context['type'], ['staff', 'customer'], true)) {
+            return redirect()->route($context['routePrefix'].'.list')
+                ->with('error', 'Chức năng thùng rác không áp dụng cho khu vực này.');
+        }
         $user->restore();
 
         return redirect()->route($context['routePrefix'].'.trash')->with('success', 'Khôi phục '.$context['itemLabelLower'].' thành công');
@@ -291,9 +428,24 @@ class UserController extends Controller
         $user = User::onlyTrashed()->findOrFail($id);
         $context = $this->resolveContext(request(), $user);
         $this->authorizeContext(request(), $context['type'], $user);
+        if (in_array($context['type'], ['staff', 'customer'], true) || $user->is_protected) {
+            return redirect()->route($context['routePrefix'].'.list')
+                ->with('error', 'Không thể xóa vĩnh viễn tài khoản này.');
+        }
         $user->forceDelete();
 
         return redirect()->route($context['routePrefix'].'.trash')->with('success', 'Xóa vĩnh viễn '.$context['itemLabelLower'].' thành công');
+    }
+
+    private function validationErrorResponse(Request $request, string $field, string $message)
+    {
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'errors' => [$field => [$message]],
+            ], 422);
+        }
+
+        return back()->withErrors([$field => $message])->withInput();
     }
 
     private function resolveContext(Request $request, ?User $user = null): array
@@ -328,9 +480,9 @@ class UserController extends Controller
                 'pageDescription' => 'Quản trị viên có thể thêm, sửa hoặc xóa tài khoản nhân viên.',
                 'sectionTitle' => 'Quản lý tài khoản nhân viên',
                 'listTitle' => 'Danh sách nhân sự',
-                'itemLabel' => 'Nhân viên',
-                'itemLabelLower' => 'nhân viên',
-                'createLabel' => 'Thêm nhân viên',
+                'itemLabel' => 'Quản trị viên',
+                'itemLabelLower' => 'quản trị viên',
+                'createLabel' => 'Thêm quản trị viên',
                 'routePrefix' => 'admin.staff',
             ],
             'customer' => [
@@ -427,10 +579,6 @@ class UserController extends Controller
 
     private function roleForContext(string $type, ?int $fallbackRoleId, ?User $user = null): ?Role
     {
-        if ($type === 'staff' && $user?->isAdmin()) {
-            return $user->roles()->first();
-        }
-
         if ($type === 'staff') {
             if ($fallbackRoleId) {
                 $role = Role::whereIn('name', [
@@ -462,7 +610,7 @@ class UserController extends Controller
 
     private function hasAddressInput(array $validated): bool
     {
-        return collect(['city', 'district', 'ward', 'apartment_number'])
+        return collect(['city', 'ward', 'apartment_number'])
             ->contains(fn (string $field) => filled($validated[$field] ?? null));
     }
 
@@ -479,10 +627,10 @@ class UserController extends Controller
             'role_id' => $role?->id,
             'role_name' => $role?->name,
             'is_active' => (bool) $user->is_active,
-            'status_label' => $user->is_active ? 'Đang hoạt động' : 'Ngưng hoạt động',
+            'is_protected' => (bool) $user->is_protected,
+            'status_label' => $user->is_active ? 'Hoạt động' : 'Ngưng hoạt động',
             'lock_reason' => $user->lock_reason,
             'city' => $address?->city,
-            'district' => $address?->district,
             'ward' => $address?->ward,
             'apartment_number' => $address?->apartment_number,
             'created_at' => optional($user->created_at)->format('d/m/Y H:i'),
@@ -507,7 +655,7 @@ class UserController extends Controller
             'password.min' => 'Mật khẩu phải có ít nhất 6 ký tự',
             'password.confirmed' => 'Mật khẩu xác nhận không khớp',
             'city.max' => 'Tỉnh, thành phố không được vượt quá 255 ký tự',
-            'district.max' => 'Quận, huyện không được vượt quá 255 ký tự',
+           
             'ward.max' => 'Phường, xã không được vượt quá 255 ký tự',
             'apartment_number.max' => 'Số nhà không được vượt quá 255 ký tự',
             'lock_reason.max' => 'Lý do ngưng hoạt động không được vượt quá 255 ký tự',

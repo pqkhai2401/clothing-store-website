@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Web\AuthController;
+use App\Http\Controllers\Web\ProductController;
+use App\Http\Controllers\Web\ProfileController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -11,13 +13,14 @@ Route::name('404-not-found')->get('404-not-found', function () {
     return view('404');
 });
 
-Route::get('/products', function () {
-    return view('user.products.index');
-});
+Route::get('/products', [ProductController::class, 'index'])->name('products.index');
 
-Route::get('/products/premium-oversized-trench', function () {
-    return view('user.products.show');
-});
+// Route chi tiết sản phẩm: /san-pham/{slug}
+Route::get('/san-pham/{slug}', [ProductController::class, 'show'])->name('products.show');
+
+// Route danh mục sản phẩm: /danh-muc/{slug}?gender=men|women
+Route::get('/danh-muc/{slug}', [ProductController::class, 'getProductsByCategory'])
+    ->name('category.products');
 
 Route::get('/cart', function () {
     return view('user.cart.index');
@@ -27,6 +30,13 @@ Route::get('/checkout', function () {
     return view('user.checkout.index');
 });
 
+
+// Profile
+Route::middleware('auth')->group(function () {
+    Route::get('/profile', [ProfileController::class, 'index'])->name('profile.index');
+    Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::put('/profile/change-password', [ProfileController::class, 'changePassword'])->name('profile.change-password');
+});
 
 // Auth
 Route::get('/login', [AuthController::class, 'index'])->name(name: 'auth.loginpage')->middleware('redirect.authenticated');

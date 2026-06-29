@@ -16,6 +16,11 @@ class Category extends Model
         'name',
         'slug',
         'parent_id',
+        'status',
+    ];
+
+    protected $casts = [
+        'status' => 'boolean',
     ];
 
     /**
@@ -24,6 +29,14 @@ class Category extends Model
     public function products(): HasMany
     {
         return $this->hasMany(Product::class);
+    }
+
+    /**
+     * Get only active (đang bán) products in this category.
+     */
+    public function activeProducts(): HasMany
+    {
+        return $this->hasMany(Product::class)->where('status', true);
     }
 
     /**

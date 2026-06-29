@@ -12,7 +12,7 @@
     $pFinalPrice = $pDiscount > 0 ? $pPrice * (100 - $pDiscount) / 100 : null;
 
     // Resolve URL
-    $pUrl = $pSlug !== '#' ? url('/products/' . $pSlug) : '#';
+    $pUrl = $pSlug !== '#' ? url('/san-pham/' . $pSlug) : '#';
 @endphp
 
 <div class="product-grid-card">

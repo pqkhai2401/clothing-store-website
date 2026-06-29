@@ -3,6 +3,8 @@
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
         const showRoleColumn = @json($showRoleColumn);
         const showAddressFields = @json($showAddressFields);
+        const isStaffPage = @json($isStaffPage);
+        const currentUserId = @json($currentUserId ?? null);
         const detailModalEl = document.getElementById('userDetailModal');
         const editModalEl = document.getElementById('userEditModal');
         const detailModal = bootstrap.Modal.getOrCreateInstance(detailModalEl);
@@ -138,6 +140,10 @@
                 rows.push(readonlyRow('Vai trò', roleLabel(user.role_name)));
             }
 
+            if (user.is_protected) {
+                rows.push(readonlyRow('Bảo vệ', 'Admin hệ thống'));
+            }
+
             rows.push(readonlyRow('Trạng thái', user.status_label));
 
             if (!user.is_active) {
@@ -146,7 +152,6 @@
 
             if (showAddressFields) {
                 rows.push(readonlyRow('Tỉnh, Thành phố', user.city));
-                rows.push(readonlyRow('Quận, Huyện', user.district));
                 rows.push(readonlyRow('Phường, Xã', user.ward));
                 rows.push(readonlyRow('Số nhà', user.apartment_number));
             }
@@ -220,6 +225,7 @@
 
         function fillEditForm(data, updateUrl) {
             const user = data.user;
+            const isProtectedByOther = Boolean(user.is_protected) && currentUserId !== null && String(user.id) !== String(currentUserId);
 
             editForm.action = updateUrl;
             editForm.dataset.currentUserId = user.id;
@@ -232,72 +238,141 @@
             setField('is_active', user.is_active ? '1' : '0');
             setField('lock_reason', user.lock_reason);
             setField('city', user.city);
-            setField('district', user.district);
             setField('ward', user.ward);
             setField('apartment_number', user.apartment_number);
             setField('password', '');
             setField('password_confirmation', '');
             fillRoleOptions(data.roles, user.role_id);
             syncLockReason();
+
+            if (isStaffPage) {
+                const statusSelect = editForm.elements['is_active'];
+                if (statusSelect) {
+                    for (const opt of statusSelect.options) {
+                        opt.disabled = (opt.value === '1' && !user.is_active);
+                    }
+                }
+            }
+
+            const roleSelect     = editForm.elements['role_id'];
+            const roleLockedNote = editForm.querySelector('[data-role-locked-note]');
+            const roleField      = editForm.querySelector('[data-role-field]');
+            if (roleSelect) {
+                roleSelect.disabled = false;
+                roleLockedNote?.classList.add('d-none');
+                roleField?.classList.remove('role-field--locked');
+                if (isStaffPage && currentUserId !== null && String(user.id) === String(currentUserId)) {
+                    roleSelect.disabled = true;
+                    if (roleLockedNote) {
+                        roleLockedNote.innerHTML = '<i class="fa-solid fa-lock" style="font-size:11px;color:#9ca3af;"></i> Không thể thay đổi vai trò của tài khoản đang đăng nhập';
+                    }
+                    roleLockedNote?.classList.remove('d-none');
+                    roleField?.classList.add('role-field--locked');
+                }
+
+                if (isProtectedByOther) {
+                    roleSelect.disabled = true;
+                    if (roleLockedNote) {
+                        roleLockedNote.innerHTML = '<i class="fa-solid fa-lock" style="font-size:11px;color:#9ca3af;"></i> Admin hệ thống được bảo vệ, không thể đổi vai trò';
+                    }
+                    roleLockedNote?.classList.remove('d-none');
+                    roleField?.classList.add('role-field--locked');
+                }
+            }
+
+            ['password', 'password_confirmation'].forEach(function (fieldName) {
+                const field = editForm.elements[fieldName];
+                if (field) {
+                    field.disabled = isProtectedByOther;
+                }
+            });
         }
 
         function updateTableRow(user) {
             const row = document.querySelector(`[data-user-row="${user.id}"]`);
+            if (!row) return;
 
-            if (!row) {
-                return;
+            row.dataset.userStatus = user.is_active ? '1' : '0';
+            row.dataset.protected = user.is_protected ? '1' : '0';
+
+            const usernameCell = row.querySelector('[data-cell="username"]');
+            if (usernameCell) {
+                usernameCell.dataset.sortValue = user.username;
+                const protectedChip = isStaffPage && user.is_protected
+                    ? '<span class="system-admin-chip">Admin hệ thống</span>'
+                    : '';
+                usernameCell.innerHTML = `<div class="fw-bold text-dark d-flex align-items-center gap-2 flex-wrap"><span>${escapeHtml(user.username)}</span>${protectedChip}</div>`;
             }
 
-            row.querySelector('[data-cell="username"]').innerHTML = `<div class="fw-bold text-dark">${escapeHtml(user.username)}</div>`;
-            row.querySelector('[data-cell="email"]').innerHTML = `<span class="fw-semibold">${escapeHtml(user.email)}</span>`;
-            row.querySelector('[data-cell="phone_number"]').textContent = text(user.phone_number);
-
-            if (showRoleColumn && row.querySelector('[data-cell="role_name"]')) {
-                row.querySelector('[data-cell="role_name"]').textContent = text(roleLabel(user.role_name), 'Chưa có vai trò');
+            const emailCell = row.querySelector('[data-cell="email"]');
+            if (emailCell) {
+                emailCell.dataset.sortValue = user.email;
+                emailCell.innerHTML = `<span class="fw-semibold">${escapeHtml(user.email)}</span>`;
             }
 
-            const statusClass = user.is_active ? 'text-bg-success' : 'text-bg-secondary';
-            row.querySelector('[data-cell="status"]').innerHTML = `
-                <span class="badge status-badge ${statusClass}">
-                    ${escapeHtml(user.status_label)}
-                </span>
-            `;
+            const phoneCell = row.querySelector('[data-cell="phone_number"]');
+            if (phoneCell) {
+                phoneCell.dataset.sortValue = user.phone_number ?? '';
+                phoneCell.textContent = user.phone_number || 'Chưa cập nhật';
+            }
+
+            if (showRoleColumn) {
+                const roleCell = row.querySelector('[data-cell="role_name"]');
+                if (roleCell) {
+                    const rLabel = roleLabel(user.role_name);
+                    roleCell.dataset.sortValue = rLabel;
+                    roleCell.innerHTML = `<span class="role-badge" data-role="${escapeHtml(user.role_name ?? '')}">${escapeHtml(rLabel)}</span>`;
+                }
+            }
+
+            const statusCell = row.querySelector('[data-cell="status"]');
+            if (statusCell) {
+                const isActive = Boolean(user.is_active);
+                const statusClass = isActive ? 'status-badge--active' : 'status-badge--inactive';
+                const statusText  = isActive ? 'Hoạt động' : 'Ngưng hoạt động';
+                statusCell.dataset.sortValue = isActive ? '1' : '0';
+                statusCell.innerHTML = `<span class="status-badge ${statusClass}">${statusText}</span>`;
+            }
 
             row.querySelector('[data-delete-name]')?.setAttribute('data-delete-name', user.username);
         }
 
-        document.querySelectorAll('.js-view-user').forEach(button => {
-            button.addEventListener('click', async function () {
-                setButtonLoading(this, true);
+        document.addEventListener('click', async function (event) {
+            const viewButton = event.target.closest('.js-view-user');
+            if (!viewButton) return;
+
+            event.preventDefault();
+            setButtonLoading(viewButton, true);
                 detailBody.innerHTML = '<div class="account-modal-loading">Đang tải thông tin người dùng...</div>';
                 detailModal.show();
 
                 try {
-                    const data = await fetchUser(this.dataset.showUrl);
+                const data = await fetchUser(viewButton.dataset.showUrl);
                     renderDetail(data.user);
                 } catch (error) {
                     detailModal.hide();
                     showAlert(error.message, 'danger');
                 } finally {
-                    setButtonLoading(this, false);
+                setButtonLoading(viewButton, false);
                 }
-            });
         });
 
-        document.querySelectorAll('.js-edit-user').forEach(button => {
-            button.addEventListener('click', async function () {
-                setButtonLoading(this, true);
+        document.addEventListener('click', async function (event) {
+            const editButton = event.target.closest('.js-edit-user');
+            if (!editButton) return;
+
+            event.preventDefault();
+            setButtonLoading(editButton, true);
 
                 try {
-                    const data = await fetchUser(this.dataset.showUrl);
-                    fillEditForm(data, this.dataset.updateUrl);
+                const data = await fetchUser(editButton.dataset.showUrl);
+                fillEditForm(data, editButton.dataset.updateUrl);
                     editModal.show();
                 } catch (error) {
                     showAlert(error.message, 'danger');
                 } finally {
-                    setButtonLoading(this, false);
+                setButtonLoading(editButton, false);
                 }
-            });
         });
 
         statusSelect.addEventListener('change', syncLockReason);

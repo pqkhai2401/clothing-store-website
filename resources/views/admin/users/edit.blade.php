@@ -31,7 +31,7 @@
                         </div>
 
                         @if($showRoleColumn)
-                            <div class="col-md-6">
+                            <div class="col-md-6" data-role-field>
                                 <label for="modal_role_id" class="form-label">Vai trò</label>
                                 <select name="role_id" id="modal_role_id" class="form-select">
                                     @foreach($roles as $role)
@@ -39,6 +39,10 @@
                                     @endforeach
                                 </select>
                                 <div class="invalid-feedback d-block" data-error-for="role_id"></div>
+                                <small data-role-locked-note class="d-none" style="color:#6b7280;font-size:12px;margin-top:4px;display:flex;align-items:center;gap:4px;">
+                                    <i class="fa-solid fa-lock" style="font-size:11px;color:#9ca3af;"></i>
+                                    Không thể thay đổi vai trò của tài khoản đang đăng nhập
+                                </small>
                             </div>
                         @endif
 
@@ -64,11 +68,6 @@
                                 <div class="invalid-feedback d-block" data-error-for="city"></div>
                             </div>
 
-                            <div class="col-md-6">
-                                <label for="modal_district" class="form-label">Quận, Huyện</label>
-                                <input type="text" name="district" id="modal_district" class="form-control">
-                                <div class="invalid-feedback d-block" data-error-for="district"></div>
-                            </div>
 
                             <div class="col-md-6">
                                 <label for="modal_ward" class="form-label">Phường, Xã</label>

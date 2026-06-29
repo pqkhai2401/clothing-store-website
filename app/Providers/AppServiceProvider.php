@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\View;
@@ -22,6 +23,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Paginator::useBootstrapFive();
         Passport::enablePasswordGrant();
 
         View::composer([
@@ -53,7 +55,7 @@ class AppServiceProvider extends ServiceProvider
                         'permission'     => 'manage-staff',
                         'title'          => 'Quản lý nhân sự',
                         'url'            => $r('admin.staff.list', '/admin/staff'),
-                        'active_pattern' => 'admin/staff*',
+                        'active_pattern' => 'admin/users*',
                         'icon'           => 'fa-solid fa-user-tie',
                         'parent'         => [],
                     ],
