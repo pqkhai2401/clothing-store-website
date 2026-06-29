@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\Size;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -18,6 +19,7 @@ class ProductController extends Controller
         $search     = trim((string) $request->input('search', $request->input('keyword')));
         $keyword    = $search;
         $categoryId = $request->input('category_id');
+        $sizeId     = $request->input('size_id');
         $status     = $request->input('status');
         $sort       = $request->input('sort', 'id');
         $direction  = $request->input('direction', 'desc');
@@ -40,6 +42,10 @@ class ProductController extends Controller
             $query->where('category_id', $categoryId);
         }
 
+        if ($sizeId) {
+            $query->whereHas('productVariants', fn ($variantQuery) => $variantQuery->where('size_id', $sizeId));
+        }
+
         if (in_array($status, ['0', '1'], true)) {
             $query->where('status', (bool) (int) $status);
         }
@@ -55,6 +61,7 @@ class ProductController extends Controller
 
         $products   = $query->paginate($perPage)->withQueryString();
         $categories = Category::whereNull('parent_id')->with('childrenCategories')->get();
+        $sizes      = Size::orderBy('name')->get();
 
         if ($request->ajax()) {
             return response()->json([
@@ -62,7 +69,7 @@ class ProductController extends Controller
             ]);
         }
 
-        return view('admin.products.index', compact('products', 'categories', 'keyword', 'categoryId', 'status', 'perPage'));
+        return view('admin.products.index', compact('products', 'categories', 'sizes', 'keyword', 'categoryId', 'sizeId', 'status', 'perPage'));
     }
 
     public function edit(string $id)

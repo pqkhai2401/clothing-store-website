@@ -171,7 +171,7 @@ html:not([data-theme="dark"]) .category-count-total {
                                         @endif
                                     </td>
                                     <td>
-                                        <span class="fw-semibold">{{ $category->parentCategory?->name ?? 'Danh mục gốc' }}</span>
+                                        <span class="fw-semibold">{{ $category->parentCategory?->name ?? '-' }}</span>
                                     </td>
                                     <td>
                                         <code class="slug-code">{{ $category->slug }}</code>

@@ -30,7 +30,7 @@
                         @method('PUT')
 
                         <div class="edit-field">
-                            <label for="name">Tên kích thước <span class="text-danger">*</span></label>
+                            <label for="name">Số kích thước <span class="text-danger">*</span></label>
                             <input type="text" id="name" name="name"
                                 class="form-control @error('name') is-invalid @enderror"
                                 value="{{ old('name', $size->name) }}" required autofocus>

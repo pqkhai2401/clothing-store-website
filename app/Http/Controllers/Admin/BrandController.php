@@ -19,7 +19,10 @@ class BrandController extends Controller
             ? (int) $request->input('per_page')
             : 10;
 
-        $query = Brand::withCount('products');
+        $query = Brand::withCount([
+            'products',
+            'products as active_products_count' => fn ($q) => $q->where('status', true),
+        ]);
 
         if ($keyword !== '') {
             $query->where('name', 'like', "%{$keyword}%");

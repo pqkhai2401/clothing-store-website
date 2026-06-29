@@ -136,6 +136,15 @@ document.addEventListener('DOMContentLoaded', function () {
         list: 'hkProductStatusList',
         hidden: 'productStatusFilter',
     });
+
+    wireSimpleDropdown({
+        root: 'hkProductSizeFilter',
+        trigger: 'hkProductSizeTrigger',
+        panel: 'hkProductSizePanel',
+        label: 'hkProductSizeLabel',
+        list: 'hkProductSizeList',
+        hidden: 'productSizeFilter',
+    });
 });
 
 document.addEventListener('DOMContentLoaded', function () {

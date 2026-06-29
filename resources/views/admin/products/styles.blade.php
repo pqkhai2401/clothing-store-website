@@ -187,6 +187,11 @@
         gap: 10px;
     }
 
+    .product-tool-actions .product-status-filter {
+        width: 210px;
+        flex: 0 0 210px;
+    }
+
     .product-action-btn {
         min-height: 38px;
         padding: 8px 16px;

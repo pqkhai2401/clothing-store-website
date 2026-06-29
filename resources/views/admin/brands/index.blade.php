@@ -109,6 +109,88 @@
                     close();
                 }
             });
+
+            const tableArea = document.querySelector('[data-admin-table-area]');
+            if (!tableArea) return;
+
+            let activeTooltip = null;
+            let pinnedTooltip = null;
+
+            function positionCountTooltip(container) {
+                const tooltip = container.querySelector('.category-count-box');
+                if (!tooltip) return;
+                container.classList.add('is-open');
+                const triggerRect = container.getBoundingClientRect();
+                const tooltipRect = tooltip.getBoundingClientRect();
+                const gap = 12, spacing = 10;
+                let left = triggerRect.left + (triggerRect.width / 2) - (tooltipRect.width / 2);
+                left = Math.max(gap, Math.min(left, window.innerWidth - tooltipRect.width - gap));
+                let top = triggerRect.top - tooltipRect.height - spacing;
+                if (top < gap) top = triggerRect.bottom + spacing;
+                top = Math.max(gap, Math.min(top, window.innerHeight - tooltipRect.height - gap));
+                tooltip.style.left = `${Math.round(left)}px`;
+                tooltip.style.top = `${Math.round(top)}px`;
+            }
+
+            function closeCountTooltip() {
+                if (!activeTooltip) return;
+                const tooltip = activeTooltip.querySelector('.category-count-box');
+                activeTooltip.classList.remove('is-open');
+                if (tooltip) { tooltip.style.left = ''; tooltip.style.top = ''; }
+                activeTooltip = null;
+                pinnedTooltip = null;
+            }
+
+            function openCountTooltip(container, pinned = false) {
+                if (activeTooltip && activeTooltip !== container) closeCountTooltip();
+                activeTooltip = container;
+                if (pinned) pinnedTooltip = container;
+                positionCountTooltip(container);
+            }
+
+            tableArea.addEventListener('pointerover', function (event) {
+                const container = event.target.closest('.category-count-tooltip');
+                if (!container || !tableArea.contains(container)) return;
+                openCountTooltip(container);
+            });
+
+            tableArea.addEventListener('pointerout', function (event) {
+                const container = event.target.closest('.category-count-tooltip');
+                if (!container || container.contains(event.relatedTarget)) return;
+                if (pinnedTooltip === container) return;
+                closeCountTooltip();
+            });
+
+            tableArea.addEventListener('click', function (event) {
+                const container = event.target.closest('.category-count-tooltip');
+                if (!container || !tableArea.contains(container)) return;
+                event.stopPropagation();
+                if (event.target.closest('.category-count-box')) return;
+                if (pinnedTooltip === container) { closeCountTooltip(); return; }
+                openCountTooltip(container, true);
+            });
+
+            tableArea.addEventListener('focusin', function (event) {
+                const container = event.target.closest('.category-count-tooltip');
+                if (container) openCountTooltip(container);
+            });
+
+            tableArea.addEventListener('focusout', function () {
+                if (!pinnedTooltip) closeCountTooltip();
+            });
+
+            document.addEventListener('click', function (event) {
+                if (!activeTooltip || activeTooltip.contains(event.target)) return;
+                closeCountTooltip();
+            });
+
+            window.addEventListener('scroll', function () {
+                if (activeTooltip) positionCountTooltip(activeTooltip);
+            }, true);
+
+            window.addEventListener('resize', function () {
+                if (activeTooltip) positionCountTooltip(activeTooltip);
+            });
         });
     </script>
 @endpush

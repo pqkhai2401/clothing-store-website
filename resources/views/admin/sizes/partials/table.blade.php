@@ -13,7 +13,7 @@
                                 </th>
                                 <th>
                                     <button type="button" class="product-sort-btn" data-sort-key="name">
-                                        Tên kích thước <span class="product-sort-icon">↑↓</span>
+                                        Số kích thước <span class="product-sort-icon">↑↓</span>
                                     </button>
                                 </th>
                                 <th style="width:200px;">
