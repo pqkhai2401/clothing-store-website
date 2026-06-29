@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Products | NOIR Premium Store')
+@section('title', ($pageTitle ?? 'Products') . ' | HK Store')
 
 @section('css')
 <style>
@@ -220,8 +220,8 @@
     <!-- Breadcrumbs -->
     @include('partials.breadcrumb', [
         'items' => [
-            ['name' => 'Home', 'url' => url('/')],
-            ['name' => 'Products', 'active' => true]
+            ['name' => 'Trang chủ', 'url' => url('/')],
+            ['name' => $pageTitle ?? 'Sản phẩm', 'active' => true]
         ]
     ])
 
@@ -353,8 +353,13 @@
                     
                     <!-- Products Page Header -->
                     <div class="products-header">
-                        <h1 class="products-title">ALL PRODUCTS</h1>
-                        <span class="products-count">Showing 1-9 of 36 products</span>
+                        <h1 class="products-title">{{ $pageTitle ?? 'TẤT CẢ SẢN PHẨM' }}</h1>
+                        @if($products instanceof \Illuminate\Contracts\Pagination\LengthAwarePaginator)
+                            <span class="products-count">
+                                Hiển thị {{ $products->firstItem() ?? 0 }}-{{ $products->lastItem() ?? 0 }}
+                                trên tổng {{ $products->total() }} sản phẩm
+                            </span>
+                        @endif
                     </div>
 
                     <!-- Toolbar Section -->
@@ -396,23 +401,14 @@
                     </div>
 
                     <!-- Product Cards Grid -->
-                    @php
-                        $catalogProducts = [
-                            ['id' => 1, 'name' => 'Premium Oversized Trench', 'category' => 'Outerwear', 'price' => 2450000, 'discount' => 0, 'image' => 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?q=80&w=600&auto=format&fit=crop', 'slug' => 'premium-oversized-trench', 'badge' => 'NEW'],
-                            ['id' => 2, 'name' => 'Structured Cotton Shirt', 'category' => 'Shirts', 'price' => 890000, 'discount' => 0, 'image' => 'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?q=80&w=600&auto=format&fit=crop', 'slug' => 'structured-cotton-shirt'],
-                            ['id' => 3, 'name' => 'Classic Straight Jeans', 'category' => 'Denim', 'price' => 1200000, 'discount' => 0, 'image' => 'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?q=80&w=600&auto=format&fit=crop', 'slug' => 'classic-straight-jeans'],
-                            ['id' => 4, 'name' => 'Tailored Wool Blazer', 'category' => 'Blazers', 'price' => 1950000, 'discount' => 20, 'image' => 'https://images.unsplash.com/photo-1614975058789-41316d0e2e9c?q=80&w=600&auto=format&fit=crop', 'slug' => 'tailored-wool-blazer'],
-                            ['id' => 5, 'name' => 'Organic Linen Dress', 'category' => 'Dresses', 'price' => 1650000, 'discount' => 0, 'image' => 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?q=80&w=600&auto=format&fit=crop', 'slug' => 'organic-linen-dress'],
-                            ['id' => 6, 'name' => 'Relaxed Wool Cardigan', 'category' => 'Knitwear', 'price' => 1450000, 'discount' => 0, 'image' => 'https://images.unsplash.com/photo-1578587018452-892bacefd3f2?q=80&w=600&auto=format&fit=crop', 'slug' => 'relaxed-wool-cardigan'],
-                            ['id' => 7, 'name' => 'Leather Crossbody Bag', 'category' => 'Bags', 'price' => 1800000, 'discount' => 15, 'image' => 'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=600&auto=format&fit=crop', 'slug' => 'leather-crossbody-bag'],
-                            ['id' => 8, 'name' => 'Minimalist Knit Sweater', 'category' => 'Knitwear', 'price' => 980000, 'discount' => 0, 'image' => 'https://images.unsplash.com/photo-1544441893-675973e31985?q=80&w=600&auto=format&fit=crop', 'slug' => 'minimalist-knit-sweater'],
-                            ['id' => 9, 'name' => 'Classic Crewneck Tee', 'category' => 'Basics', 'price' => 350000, 'discount' => 0, 'image' => 'https://images.unsplash.com/photo-1618354691373-d851c5c3a990?q=80&w=600&auto=format&fit=crop', 'slug' => 'classic-crewneck-tee'],
-                        ];
-                    @endphp
-                    @include('partials.product-grid', ['products' => $catalogProducts, 'cols' => 'col-6 col-md-4'])
+                    @include('partials.product-grid', ['products' => $products, 'cols' => 'col-6 col-md-4'])
 
-                    <!-- Pagination -->
-                    @include('partials.pagination')
+                    <!-- Phân trang -->
+                    @if($products instanceof \Illuminate\Contracts\Pagination\LengthAwarePaginator)
+                        @include('partials.pagination', ['paginator' => $products])
+                    @else
+                        @include('partials.pagination')
+                    @endif
 
                 </div>
 

@@ -337,38 +337,42 @@
             row.querySelector('[data-delete-name]')?.setAttribute('data-delete-name', user.username);
         }
 
-        document.querySelectorAll('.js-view-user').forEach(button => {
-            button.addEventListener('click', async function () {
-                setButtonLoading(this, true);
+        document.addEventListener('click', async function (event) {
+            const viewButton = event.target.closest('.js-view-user');
+            if (!viewButton) return;
+
+            event.preventDefault();
+            setButtonLoading(viewButton, true);
                 detailBody.innerHTML = '<div class="account-modal-loading">Đang tải thông tin người dùng...</div>';
                 detailModal.show();
 
                 try {
-                    const data = await fetchUser(this.dataset.showUrl);
+                const data = await fetchUser(viewButton.dataset.showUrl);
                     renderDetail(data.user);
                 } catch (error) {
                     detailModal.hide();
                     showAlert(error.message, 'danger');
                 } finally {
-                    setButtonLoading(this, false);
+                setButtonLoading(viewButton, false);
                 }
-            });
         });
 
-        document.querySelectorAll('.js-edit-user').forEach(button => {
-            button.addEventListener('click', async function () {
-                setButtonLoading(this, true);
+        document.addEventListener('click', async function (event) {
+            const editButton = event.target.closest('.js-edit-user');
+            if (!editButton) return;
+
+            event.preventDefault();
+            setButtonLoading(editButton, true);
 
                 try {
-                    const data = await fetchUser(this.dataset.showUrl);
-                    fillEditForm(data, this.dataset.updateUrl);
+                const data = await fetchUser(editButton.dataset.showUrl);
+                fillEditForm(data, editButton.dataset.updateUrl);
                     editModal.show();
                 } catch (error) {
                     showAlert(error.message, 'danger');
                 } finally {
-                    setButtonLoading(this, false);
+                setButtonLoading(editButton, false);
                 }
-            });
         });
 
         statusSelect.addEventListener('change', syncLockReason);

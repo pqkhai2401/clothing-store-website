@@ -13,7 +13,7 @@ class SizeSeeder extends Seeder
             // Clothing sizes
             'XS', 'S', 'M', 'L', 'XL', 'XXL',
             // Shoe sizes
-            '36', '37', '38', '39', '40', '41', '42', '43', '44',
+            //'36', '37', '38', '39', '40', '41', '42', '43', '44',
         ];
 
         foreach ($sizes as $name) {

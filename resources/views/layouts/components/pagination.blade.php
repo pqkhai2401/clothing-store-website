@@ -3,8 +3,10 @@
     $hkPgId++;
     $uid            = 'hkpg' . $hkPgId;
     $itemLabel      = $itemLabel ?? 'mục';
-    $bulkDeleteUrl  = $bulkDeleteUrl ?? null;
-    $bulkStatusUrl  = $bulkStatusUrl ?? null;
+    $bulkDeleteUrl   = $bulkDeleteUrl ?? null;
+    $bulkDeleteLabel = $bulkDeleteLabel ?? 'Xóa đã chọn';
+    $bulkRestoreUrl  = $bulkRestoreUrl ?? null;
+    $bulkStatusUrl   = $bulkStatusUrl ?? null;
     $currentPerPage = (int) $paginator->perPage();
     $perPageOptions = [10, 25, 50, 100];
     $total          = $paginator->total();
@@ -28,9 +30,14 @@
         <div class="hk-pg-selection" id="{{ $uid }}_sel" style="display:none;">
             <span class="hk-pg-sel-sep"> | </span>
             <span class="hk-pg-sel-count" id="{{ $uid }}_selCount">0 {{ $itemLabel }} được chọn</span>
+            @if ($bulkRestoreUrl)
+                <button type="button" class="hk-pg-sel-restore" id="{{ $uid }}_restoreBtn">
+                    <i class="fa-solid fa-rotate-left"></i> Khôi phục đã chọn
+                </button>
+            @endif
             @if ($bulkDeleteUrl)
                 <button type="button" class="hk-pg-sel-delete" id="{{ $uid }}_selBtn">
-                    <i class="fa-regular fa-trash-can"></i> Xóa đã chọn
+                    <i class="fa-regular fa-trash-can"></i> {{ $bulkDeleteLabel }}
                 </button>
             @endif
             @if ($bulkStatusUrl)
@@ -104,6 +111,12 @@
         </div>
     </div>
 </div>
+
+@if ($bulkRestoreUrl)
+<form id="{{ $uid }}_brf" method="POST" action="{{ $bulkRestoreUrl }}" style="display:none;">
+    @csrf
+</form>
+@endif
 
 @if ($bulkDeleteUrl)
 <form id="{{ $uid }}_bdf" method="POST" action="{{ $bulkDeleteUrl }}" style="display:none;">
@@ -185,6 +198,24 @@
     line-height: 1;
 }
 .hk-pg-sel-delete:hover { background: #fecaca; color: #b91c1c; }
+.hk-pg-sel-restore {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 12px;
+    height: 28px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #047857;
+    background: #ecfdf5;
+    border: 1px solid #86efac;
+    border-radius: 999px;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background 0.15s;
+    line-height: 1;
+}
+.hk-pg-sel-restore:hover { background: #d1fae5; }
 .hk-pg-status-actions {
     display: inline-flex;
     align-items: center;
@@ -322,8 +353,10 @@ tr.hk-row-selected { background-color: #f0f7ff !important; }
 [data-theme="dark"] .hk-pg-info strong     { color: #e2e8f0; }
 [data-theme="dark"] .hk-pg-sel-sep         { color: #334155; }
 [data-theme="dark"] .hk-pg-sel-count       { color: #e2e8f0; }
-[data-theme="dark"] .hk-pg-sel-delete      { color: #f87171; background: #1e1010; border-color: #7f1d1d; }
-[data-theme="dark"] .hk-pg-sel-delete:hover{ background: #2d1111; }
+[data-theme="dark"] .hk-pg-sel-delete       { color: #f87171; background: #1e1010; border-color: #7f1d1d; }
+[data-theme="dark"] .hk-pg-sel-delete:hover { background: #2d1111; }
+[data-theme="dark"] .hk-pg-sel-restore      { color: #4ade80; background: #052e16; border-color: #166534; }
+[data-theme="dark"] .hk-pg-sel-restore:hover{ background: #064e3b; }
 [data-theme="dark"] .hk-pg-pp-label        { color: #94a3b8; }
 [data-theme="dark"] .hk-pg-pp-select       { color: #e2e8f0; border-color: #334155; background: #0f172a; }
 [data-theme="dark"] .hk-pg-pp-select:hover { border-color: #475569; }
@@ -357,6 +390,8 @@ tr.hk-row-selected { background-color: #f0f7ff !important; }
     document.addEventListener('DOMContentLoaded', function () {
 
         document.querySelectorAll('.hk-pagination').forEach(function (pgEl) {
+            if (pgEl.closest('[data-admin-table-area]')) return;
+
             const uid      = pgEl.dataset.uid;
             const label    = pgEl.dataset.label || 'mục';
             const selEl    = document.getElementById(uid + '_sel');
@@ -481,9 +516,29 @@ tr.hk-row-selected { background-color: #f0f7ff !important; }
                 cb.addEventListener('change', handleRowCheckboxChange);
             });
 
+            const restoreBtn = document.getElementById(uid + '_restoreBtn');
+            const restoreForm = document.getElementById(uid + '_brf');
+
+            function handleBulkRestore() {
+                const ids = allRows
+                    .filter(function (cb) { return cb.checked; })
+                    .map(function (cb) { return cb.value; });
+                if (!ids.length || !restoreForm) return;
+                if (!window.confirm('Bạn có chắc chắn muốn khôi phục ' + ids.length + ' ' + label + ' đã chọn không?')) return;
+                restoreForm.querySelectorAll('input[name="ids[]"]').forEach(function (el) { el.remove(); });
+                ids.forEach(function (id) {
+                    var input = document.createElement('input');
+                    input.type = 'hidden'; input.name = 'ids[]'; input.value = id;
+                    restoreForm.appendChild(input);
+                });
+                restoreForm.submit();
+            }
+
             if (cbAll)  cbAll.addEventListener('change', handleSelectAll);
-            if (btnEl) btnEl.addEventListener('click',  handleBulkDelete);
+            if (btnEl)  btnEl.addEventListener('click',  handleBulkDelete);
+            if (restoreBtn) restoreBtn.addEventListener('click', handleBulkRestore);
             statusButtons.forEach(function (button) {
+
                 button.addEventListener('click', function () {
                     handleBulkStatus(this.dataset.status || '1');
                 });

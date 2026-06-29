@@ -21,17 +21,17 @@ class UserController extends Controller
         $this->authorizeContext($request, $context['type']);
 
         $perPage = $this->resolvePerPage($request);
-        $sortBy = $request->input('sort_by', 'id');
-        $sortDir = $request->input('sort_dir', 'asc');
+        $sortBy = $request->input('sort', $request->input('sort_by', 'id'));
+        $sortDir = $request->input('direction', $request->input('sort_dir', 'asc'));
 
         $query = User::with('roles');
         $this->applyTypeFilter($query, $context['type']);
 
-        if ($keyword = trim((string) $request->input('keyword'))) {
-            $query->where(function ($subQuery) use ($keyword) {
-                $subQuery->where('username', 'like', "%{$keyword}%")
-                    ->orWhere('email', 'like', "%{$keyword}%")
-                    ->orWhere('phone_number', 'like', "%{$keyword}%");
+        if ($search = trim((string) $request->input('search', $request->input('keyword')))) {
+            $query->where(function ($subQuery) use ($search) {
+                $subQuery->where('username', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('phone_number', 'like', "%{$search}%");
             });
         }
 
@@ -50,11 +50,22 @@ class UserController extends Controller
             $query->orderBy('id', 'asc');
         }
 
-        $data = $query->paginate($perPage)->appends($request->except('page'));
+        $data = $query->paginate($perPage)->withQueryString();
+        $roles = $this->rolesForContext($context['type']);
+
+        if ($request->ajax()) {
+            return response()->json([
+                'html' => view('admin.users.partials.table', [
+                    'data' => $data,
+                    'roles' => $roles,
+                    ...$context,
+                ])->render(),
+            ]);
+        }
 
         return view('admin.users.index', [
             'data' => $data,
-            'roles' => $this->rolesForContext($context['type']),
+            'roles' => $roles,
             ...$context,
         ]);
     }

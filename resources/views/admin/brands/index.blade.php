@@ -20,10 +20,29 @@
                   class="product-toolbar">
                 <input type="hidden" name="per_page" value="{{ $perPage }}">
                 <div class="product-toolbar-left">
-                    <input type="search" name="keyword" id="brandRealtimeSearch"
+                    <input type="search" name="search" data-admin-search id="brandRealtimeSearch"
                         class="form-control product-search"
                         value="{{ $keyword }}"
                         placeholder="Tìm kiếm theo tên thương hiệu..." autocomplete="off">
+
+                    @php
+                        $statusVal = request('status', '');
+                        $statusLabelMap = ['' => 'Tất cả trạng thái', '1' => 'Hoạt động', '0' => 'Ngưng hoạt động'];
+                    @endphp
+                    <input type="hidden" name="status" data-admin-filter id="brandStatusFilter" value="{{ $statusVal }}">
+                    <div class="hk-cat-filter" id="hkBrandStatusFilter">
+                        <button type="button" class="hk-cat-trigger" id="hkBrandStatusTrigger" aria-haspopup="listbox" aria-expanded="false">
+                            <span class="hk-cat-trigger-label" id="hkBrandStatusLabel">{{ $statusLabelMap[$statusVal] ?? 'Tất cả trạng thái' }}</span>
+                            <i class="fa-solid fa-chevron-down hk-cat-arrow"></i>
+                        </button>
+                        <div class="hk-cat-panel" id="hkBrandStatusPanel" hidden>
+                            <div class="hk-cat-list" id="hkBrandStatusList" role="listbox">
+                                <button type="button" class="hk-cat-item {{ $statusVal === '' ? 'is-active' : '' }}" data-value="" data-label="Tất cả trạng thái">Tất cả trạng thái</button>
+                                <button type="button" class="hk-cat-item {{ $statusVal === '1' ? 'is-active' : '' }}" data-value="1" data-label="Hoạt động">Hoạt động</button>
+                                <button type="button" class="hk-cat-item {{ $statusVal === '0' ? 'is-active' : '' }}" data-value="0" data-label="Ngưng hoạt động">Ngưng hoạt động</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="product-tool-actions">
                     <a href="{{ route('admin.brands.trash') }}" class="btn btn-light border product-action-btn">
@@ -35,96 +54,8 @@
                 </div>
             </form>
 
-            <div class="product-table-wrap">
-                <div class="table-responsive">
-                    <table class="table table-hover product-table align-middle" id="brandTable">
-                        <thead>
-                            <tr>
-                                <th style="width:54px;">
-                                    <input type="checkbox" class="form-check-input product-check" id="brandCheckAll">
-                                </th>
-                                <th style="width:76px;">
-                                    <button type="button" class="product-sort-btn is-active" data-sort-key="id" data-sort-type="number">
-                                        ID <span class="product-sort-icon">↑</span>
-                                    </button>
-                                </th>
-                                <th>
-                                    <button type="button" class="product-sort-btn" data-sort-key="name">
-                                        Tên thương hiệu <span class="product-sort-icon">↑↓</span>
-                                    </button>
-                                </th>
-                                <th style="width:160px;">
-                                    <button type="button" class="product-sort-btn" data-sort-key="products_count" data-sort-type="number">
-                                        Số sản phẩm <span class="product-sort-icon">↑↓</span>
-                                    </button>
-                                </th>
-                                <th style="width:140px;">
-                                    <button type="button" class="product-sort-btn" data-sort-key="created_at">
-                                        Ngày tạo <span class="product-sort-icon">↑↓</span>
-                                    </button>
-                                </th>
-                                <th style="width:120px;">Trạng thái</th>
-                                <th class="text-end pe-4" style="width:90px;">Thao tác</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse($brands as $brand)
-                                <tr data-brand-row="{{ $brand->id }}"
-                                    data-search-text="{{ Str::lower($brand->name) }}">
-                                    <td>
-                                        <input type="checkbox" class="form-check-input product-check brand-row-check" value="{{ $brand->id }}">
-                                    </td>
-                                    <td data-sort-value="{{ $brand->id }}" style="opacity:.55;">{{ $brand->id }}</td>
-                                    <td data-cell="name" data-sort-value="{{ $brand->name }}">
-                                        <div class="fw-bold text-dark">{{ $brand->name }}</div>
-                                    </td>
-                                    <td data-cell="products_count" data-sort-value="{{ $brand->products_count }}">
-                                        <span class="fw-semibold">{{ number_format($brand->products_count) }}</span>
-                                    </td>
-                                    <td data-cell="created_at" data-sort-value="{{ $brand->created_at?->format('Ymd') ?? '0' }}">
-                                        {{ $brand->created_at?->format('d/m/Y') ?? '—' }}
-                                    </td>
-                                    <td>
-                                        <span class="status-badge status-badge--active">Hoạt động</span>
-                                    </td>
-                                    <td class="text-end pe-4">
-                                        <div class="dropdown">
-                                            <button type="button" class="product-more-btn" data-bs-toggle="dropdown" aria-expanded="false">
-                                                <i class="fa-solid fa-ellipsis"></i>
-                                            </button>
-                                            <div class="dropdown-menu dropdown-menu-end product-row-menu">
-                                                <a href="{{ route('admin.brands.edit', $brand->id) }}" class="dropdown-item">
-                                                    <i class="fa-regular fa-pen-to-square"></i> Sửa
-                                                </a>
-                                                <button type="button" class="dropdown-item text-danger"
-                                                    data-delete-url="{{ route('admin.brands.destroy', $brand->id) }}"
-                                                    data-delete-name="{{ $brand->name }}"
-                                                    data-delete-type="thương hiệu">
-                                                    <i class="fa-regular fa-trash-can"></i> Xóa
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr data-empty-row>
-                                    <td colspan="7" class="text-center py-5">
-                                        <i class="fa-solid fa-inbox text-muted mb-3" style="font-size:42px;display:block;"></i>
-                                        <div class="fw-semibold text-muted">Chưa có thương hiệu nào</div>
-                                    </td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div class="bg-white border border-top-0 rounded-bottom px-3 py-2">
-                @include('layouts.components.pagination', [
-                    'paginator'     => $brands,
-                    'itemLabel'     => 'thương hiệu',
-                    'bulkDeleteUrl' => route('admin.brands.bulkDelete'),
-                ])
+            <div data-admin-table-area>
+                @include('admin.brands.partials.table')
             </div>
         </section>
     </div>
@@ -132,67 +63,52 @@
 
 @push('scripts')
     @include('layouts.components.confirm.delete')
+    @include('admin.partials.realtime-table')
     <script>
-    (function () {
-        const table    = document.getElementById('brandTable');
-        const searchEl = document.getElementById('brandRealtimeSearch');
-        const checkAll = document.getElementById('brandCheckAll');
-        if (!table) return;
+        document.addEventListener('DOMContentLoaded', function () {
+            const root = document.getElementById('hkBrandStatusFilter');
+            const trigger = document.getElementById('hkBrandStatusTrigger');
+            const panel = document.getElementById('hkBrandStatusPanel');
+            const label = document.getElementById('hkBrandStatusLabel');
+            const list = document.getElementById('hkBrandStatusList');
+            const hidden = document.getElementById('brandStatusFilter');
+            if (!root || !trigger || !panel || !list || !hidden) return;
 
-        const tbody = table.querySelector('tbody');
-        const rows  = Array.from(tbody.querySelectorAll('tr[data-brand-row]'));
-        let sortState = { key: 'id', dir: 'asc' };
+            function open() {
+                panel.hidden = false;
+                trigger.classList.add('is-open');
+                trigger.setAttribute('aria-expanded', 'true');
+            }
 
-        function normalize(v) { return String(v ?? '').toLowerCase().trim(); }
+            function close() {
+                panel.hidden = true;
+                trigger.classList.remove('is-open');
+                trigger.setAttribute('aria-expanded', 'false');
+            }
 
-        function filterRows() {
-            const kw = normalize(searchEl?.value);
-            rows.forEach(r => { r.hidden = !!(kw && !normalize(r.dataset.searchText).includes(kw)); });
-            if (checkAll) { checkAll.checked = false; checkAll.indeterminate = false; }
-        }
+            trigger.addEventListener('click', function () {
+                panel.hidden ? open() : close();
+            });
 
-        function cellValue(row, key, type) {
-            if (key === 'id') return Number(row.children[1]?.dataset.sortValue || 0);
-            const cell = row.querySelector(`[data-cell="${key}"]`);
-            const val  = cell?.dataset.sortValue ?? cell?.innerText ?? '';
-            return type === 'number' ? Number(val || 0) : normalize(val);
-        }
+            list.addEventListener('click', function (event) {
+                const btn = event.target.closest('.hk-cat-item');
+                if (!btn) return;
 
-        table.querySelectorAll('.product-sort-btn').forEach(btn => {
-            btn.addEventListener('click', function () {
-                const key  = this.dataset.sortKey;
-                const type = this.dataset.sortType || 'text';
-                const dir  = sortState.key === key && sortState.dir === 'asc' ? 'desc' : 'asc';
-                sortState  = { key, dir };
-
-                rows.sort((a, b) => {
-                    const va = cellValue(a, key, type), vb = cellValue(b, key, type);
-                    return va < vb ? (dir === 'asc' ? -1 : 1) : va > vb ? (dir === 'asc' ? 1 : -1) : 0;
-                }).forEach(r => tbody.appendChild(r));
-
-                table.querySelectorAll('.product-sort-btn').forEach(b => {
-                    b.classList.remove('is-active');
-                    const ic = b.querySelector('.product-sort-icon');
-                    if (ic) ic.textContent = '↑↓';
+                list.querySelectorAll('.hk-cat-item').forEach(function (item) {
+                    item.classList.remove('is-active');
                 });
-                this.classList.add('is-active');
-                const ic = this.querySelector('.product-sort-icon');
-                if (ic) ic.textContent = dir === 'asc' ? '↑' : '↓';
-                filterRows();
+                btn.classList.add('is-active');
+                if (label) label.textContent = btn.dataset.label;
+                hidden.value = btn.dataset.value || '';
+                hidden.dispatchEvent(new Event('change', { bubbles: true }));
+                close();
+            });
+
+            document.addEventListener('click', function (event) {
+                if (!panel.hidden && !root.contains(event.target)) {
+                    close();
+                }
             });
         });
-
-        searchEl?.addEventListener('input', filterRows);
-        searchEl?.addEventListener('keydown', function (e) {
-            if (e.key === 'Enter') { e.preventDefault(); document.getElementById('brandSearchForm')?.submit(); }
-        });
-
-        checkAll?.addEventListener('change', function () {
-            rows.filter(r => !r.hidden).forEach(r => {
-                const cb = r.querySelector('.brand-row-check');
-                if (cb) cb.checked = this.checked;
-            });
-        });
-    }());
     </script>
 @endpush
