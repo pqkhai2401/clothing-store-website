@@ -163,10 +163,19 @@ html:not([data-theme="dark"]) .category-count-total {
                                     </td>
                                     <td data-sort-value="{{ $category->id }}" style="opacity:.55;">{{ $category->id }}</td>
                                     <td data-cell="name" data-sort-value="{{ $category->name }}">
-                                        <div class="fw-bold text-dark">{{ $category->name }}</div>
                                         @if(is_null($category->parent_id))
+                                            <a href="{{ route('admin.products.list', ['parent_category_id' => $category->id]) }}"
+                                               class="fw-bold attribute-name-link"
+                                               title="Xem tất cả sản phẩm thuộc danh mục {{ $category->name }} và danh mục con">
+                                                {{ $category->name }}
+                                            </a>
                                             <span class="parent-tag mt-1">Cha</span>
                                         @else
+                                            <a href="{{ route('admin.products.list', ['category_id' => $category->id]) }}"
+                                               class="fw-bold attribute-name-link"
+                                               title="Xem sản phẩm trong danh mục {{ $category->name }}">
+                                                {{ $category->name }}
+                                            </a>
                                             <span class="child-tag mt-1">Con</span>
                                         @endif
                                     </td>

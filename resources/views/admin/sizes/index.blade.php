@@ -14,6 +14,14 @@
             <div>
                 <h1 class="product-header-title mb-2">Quản lý kích thước</h1>
                 <p class="product-header-desc mb-0">Danh sách kích thước dùng cho biến thể sản phẩm.</p>
+                <div class="product-header-actions">
+                    <a href="#" class="btn btn-dark product-action-btn">
+                        <i class="fa-solid fa-plus me-1"></i> Thêm kích thước
+                    </a>
+                    <a href="{{ route('admin.sizes.trash') }}" class="btn btn-light border product-action-btn">
+                        <i class="fa-regular fa-trash-can me-1"></i> Thùng rác
+                    </a>
+                </div>
             </div>
 
             <form method="GET" action="{{ route('admin.sizes.list') }}" id="sizeSearchForm"
@@ -24,14 +32,6 @@
                         class="form-control product-search"
                         value="{{ $keyword }}"
                         placeholder="Tìm kiếm theo tên kích thước..." autocomplete="off">
-                </div>
-                <div class="product-tool-actions">
-                    <a href="{{ route('admin.sizes.trash') }}" class="btn btn-light border product-action-btn">
-                        <i class="fa-regular fa-trash-can me-1"></i> Thùng rác
-                    </a>
-                    <a href="#" class="btn btn-dark product-action-btn">
-                        <i class="fa-solid fa-plus me-1"></i> Thêm kích thước
-                    </a>
                 </div>
             </form>
 

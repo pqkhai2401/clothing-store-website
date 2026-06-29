@@ -38,7 +38,11 @@
                                     </td>
                                     <td data-sort-value="{{ $size->id }}" style="opacity:.55;">{{ $size->id }}</td>
                                     <td data-cell="name" data-sort-value="{{ $size->name }}">
-                                        <div class="fw-bold text-dark">{{ $size->name }}</div>
+                                        <a href="{{ route('admin.products.list', ['size_id' => $size->id]) }}"
+                                            class="fw-bold attribute-name-link"
+                                            title="Lọc sản phẩm theo size {{ $size->name }}">
+                                            {{ $size->name }}
+                                        </a>
                                     </td>
                                     <td data-cell="variants_count" data-sort-value="{{ $size->product_variants_count }}">
                                         <span class="fw-semibold">{{ number_format($size->product_variants_count) }}</span>

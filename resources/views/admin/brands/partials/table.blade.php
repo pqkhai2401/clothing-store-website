@@ -138,7 +138,11 @@ html:not([data-theme="dark"]) .category-count-total { color: #111827 !important;
                                     </td>
                                     <td data-sort-value="{{ $brand->id }}" style="opacity:.55;">{{ $brand->id }}</td>
                                     <td data-cell="name" data-sort-value="{{ $brand->name }}">
-                                        <div class="fw-bold text-dark">{{ $brand->name }}</div>
+                                        <a href="{{ route('admin.products.list', ['brand_id' => $brand->id]) }}"
+                                            class="fw-bold attribute-name-link"
+                                            title="Lọc sản phẩm theo thương hiệu {{ $brand->name }}">
+                                            {{ $brand->name }}
+                                        </a>
                                     </td>
                                     @php
                                         $productsCount = (int) $brand->products_count;

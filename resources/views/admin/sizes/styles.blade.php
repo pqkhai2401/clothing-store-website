@@ -13,6 +13,26 @@
 
 {{-- Styles extracted from index.blade.php --}}
 @include('admin.products.styles')
+<style>
+    .attribute-name-link {
+        color: #0f172a;
+        text-decoration: none;
+    }
+
+    .attribute-name-link:hover {
+        color: #15803d;
+        text-decoration: underline;
+        text-underline-offset: 4px;
+    }
+
+    [data-theme="dark"] .attribute-name-link {
+        color: #f8fafc;
+    }
+
+    [data-theme="dark"] .attribute-name-link:hover {
+        color: #86efac;
+    }
+</style>
 
 
 {{-- Styles extracted from trash.blade.php --}}

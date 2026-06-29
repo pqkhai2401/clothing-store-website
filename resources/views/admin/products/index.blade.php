@@ -14,6 +14,14 @@
             <div>
                 <h1 class="product-header-title mb-2">Quản lý sản phẩm</h1>
                 <p class="product-header-desc mb-0">Danh sách tất cả sản phẩm trong hệ thống.</p>
+                <div class="product-header-actions">
+                    <a href="#" class="btn btn-dark product-action-btn">
+                        <i class="fa-solid fa-plus me-1"></i> Thêm sản phẩm
+                    </a>
+                    <a href="{{ route('admin.products.trash') }}" class="btn btn-light border product-action-btn">
+                        <i class="fa-regular fa-trash-can me-1"></i> Thùng rác
+                    </a>
+                </div>
             </div>
 
             <div class="product-toolbar">
@@ -24,16 +32,22 @@
 
                     @php
                         $selectedCatLabel = 'Tất cả danh mục';
-                        foreach ($categories as $parent) {
-                            foreach ($parent->childrenCategories as $child) {
-                                if ((string)$categoryId === (string)$child->id) {
-                                    $selectedCatLabel = $child->name;
-                                    break 2;
+                        if (!empty($parentCategoryId)) {
+                            $parentCat = $categories->firstWhere('id', $parentCategoryId);
+                            $selectedCatLabel = $parentCat ? $parentCat->name . ' (tất cả)' : 'Tất cả danh mục';
+                        } else {
+                            foreach ($categories as $parent) {
+                                foreach ($parent->childrenCategories as $child) {
+                                    if ((string)$categoryId === (string)$child->id) {
+                                        $selectedCatLabel = $child->name;
+                                        break 2;
+                                    }
                                 }
                             }
                         }
                     @endphp
                     <input type="hidden" name="category_id" data-admin-filter id="productCategoryFilter" value="{{ $categoryId ?? '' }}">
+                    <input type="hidden" name="parent_category_id" data-admin-filter id="productParentCategoryFilter" value="{{ $parentCategoryId ?? '' }}">
                     <div class="hk-cat-filter" id="hkCatFilter">
                         <button type="button" class="hk-cat-trigger" id="hkCatTrigger" aria-haspopup="listbox" aria-expanded="false">
                             <span class="hk-cat-trigger-label" id="hkCatLabel">{{ $selectedCatLabel }}</span>
@@ -70,7 +84,7 @@
                         }
                     @endphp
                     <input type="hidden" name="size_id" data-admin-filter id="productSizeFilter" value="{{ $sizeId ?? '' }}">
-                    <div class="hk-cat-filter" id="hkProductSizeFilter">
+                    <div class="hk-cat-filter product-compact-filter" id="hkProductSizeFilter">
                         <button type="button" class="hk-cat-trigger" id="hkProductSizeTrigger" aria-haspopup="listbox" aria-expanded="false">
                             <span class="hk-cat-trigger-label" id="hkProductSizeLabel">{{ $selectedSizeLabel }}</span>
                             <i class="fa-solid fa-chevron-down hk-cat-arrow"></i>
@@ -89,9 +103,39 @@
                             </div>
                         </div>
                     </div>
+
+                    @php
+                        $selectedColorLabel = 'Tất cả màu';
+                        foreach ($colors as $color) {
+                            if ((string) ($colorId ?? '') === (string) $color->id) {
+                                $selectedColorLabel = $color->name;
+                                break;
+                            }
+                        }
+                    @endphp
+                    <input type="hidden" name="color_id" data-admin-filter id="productColorFilter" value="{{ $colorId ?? '' }}">
+                    <div class="hk-cat-filter product-compact-filter" id="hkProductColorFilter">
+                        <button type="button" class="hk-cat-trigger" id="hkProductColorTrigger" aria-haspopup="listbox" aria-expanded="false">
+                            <span class="hk-cat-trigger-label" id="hkProductColorLabel">{{ $selectedColorLabel }}</span>
+                            <i class="fa-solid fa-chevron-down hk-cat-arrow"></i>
+                        </button>
+                        <div class="hk-cat-panel" id="hkProductColorPanel" hidden>
+                            <div class="hk-cat-list" id="hkProductColorList" role="listbox">
+                                <button type="button" class="hk-cat-item {{ !($colorId ?? '') ? 'is-active' : '' }}" data-value="" data-label="Tất cả màu">Tất cả màu</button>
+                                @foreach($colors as $color)
+                                    <button type="button"
+                                        class="hk-cat-item {{ (string) ($colorId ?? '') === (string) $color->id ? 'is-active' : '' }}"
+                                        data-value="{{ $color->id }}"
+                                        data-label="{{ $color->name }}">
+                                        {{ $color->name }}
+                                    </button>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="product-tool-actions">
+                <div class="product-toolbar-right">
                     @php
                         $statusVal = request('status', $status ?? '');
                         $statusLabelMap = ['' => 'Tất cả trạng thái', '1' => 'Đang bán', '0' => 'Ẩn'];
@@ -110,12 +154,6 @@
                             </div>
                         </div>
                     </div>
-                    <a href="{{ route('admin.products.trash') }}" class="btn btn-light border product-action-btn">
-                        <i class="fa-regular fa-trash-can me-1"></i> Thùng rác
-                    </a>
-                    <a href="#" class="btn btn-dark product-action-btn">
-                        <i class="fa-solid fa-plus me-1"></i> Thêm sản phẩm
-                    </a>
                 </div>
             </div>
 

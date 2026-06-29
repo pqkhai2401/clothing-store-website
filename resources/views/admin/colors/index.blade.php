@@ -14,6 +14,14 @@
             <div>
                 <h1 class="product-header-title mb-2">Quản lý màu sắc</h1>
                 <p class="product-header-desc mb-0">Danh sách màu sắc dùng cho biến thể sản phẩm.</p>
+                <div class="product-header-actions">
+                    <a href="#" class="btn btn-dark product-action-btn">
+                        <i class="fa-solid fa-plus me-1"></i> Thêm màu sắc
+                    </a>
+                    <a href="{{ route('admin.colors.trash') }}" class="btn btn-light border product-action-btn">
+                        <i class="fa-regular fa-trash-can me-1"></i> Thùng rác
+                    </a>
+                </div>
             </div>
 
             <form method="GET" action="{{ route('admin.colors.list') }}" id="colorSearchForm"
@@ -24,14 +32,6 @@
                         class="form-control product-search"
                         value="{{ $keyword }}"
                         placeholder="Tìm kiếm theo tên màu sắc..." autocomplete="off">
-                </div>
-                <div class="product-tool-actions">
-                    <a href="{{ route('admin.colors.trash') }}" class="btn btn-light border product-action-btn">
-                        <i class="fa-regular fa-trash-can me-1"></i> Thùng rác
-                    </a>
-                    <a href="#" class="btn btn-dark product-action-btn">
-                        <i class="fa-solid fa-plus me-1"></i> Thêm màu sắc
-                    </a>
                 </div>
             </form>
 

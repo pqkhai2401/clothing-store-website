@@ -67,6 +67,10 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         btn.classList.add('is-active');
         if (catLabel) catLabel.textContent = btn.dataset.label;
+
+        const parentCategoryFilter = document.getElementById('productParentCategoryFilter');
+        if (parentCategoryFilter) parentCategoryFilter.value = '';
+
         if (categoryFilter) {
             categoryFilter.value = btn.dataset.value || '';
             categoryFilter.dispatchEvent(new Event('change', { bubbles: true }));
@@ -144,6 +148,15 @@ document.addEventListener('DOMContentLoaded', function () {
         label: 'hkProductSizeLabel',
         list: 'hkProductSizeList',
         hidden: 'productSizeFilter',
+    });
+
+    wireSimpleDropdown({
+        root: 'hkProductColorFilter',
+        trigger: 'hkProductColorTrigger',
+        panel: 'hkProductColorPanel',
+        label: 'hkProductColorLabel',
+        list: 'hkProductColorList',
+        hidden: 'productColorFilter',
     });
 });
 
