@@ -1,152 +1,253 @@
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const table          = document.getElementById('productTable');
-        const searchInput    = document.getElementById('productRealtimeSearch');
-        const categoryFilter = document.getElementById('productCategoryFilter');
-        const checkAll       = document.getElementById('productCheckAll');
+document.addEventListener('DOMContentLoaded', function () {
+    const categoryFilter = document.getElementById('productCategoryFilter');
+    const catTrigger = document.getElementById('hkCatTrigger');
+    const catPanel = document.getElementById('hkCatPanel');
+    const catSearch = document.getElementById('hkCatSearch');
+    const catLabel = document.getElementById('hkCatLabel');
+    const catList = document.getElementById('hkCatList');
 
-        if (!table) return;
+    if (!catTrigger || !catPanel || !catList) return;
 
-        const tbody = table.querySelector('tbody');
-        const rows  = Array.from(tbody.querySelectorAll('tr[data-product-row]'));
-        let sortState = { key: 'id', dir: 'asc' };
-
-        function normalize(value) {
-            return String(value || '').toLowerCase().trim();
-        }
-
-        function filterRows() {
-            const keyword    = normalize(searchInput?.value);
-            const categoryId = String(categoryFilter?.value || '');
-
-            rows.forEach(row => {
-                const matchesKeyword  = !keyword || normalize(row.dataset.searchText).includes(keyword);
-                const matchesCategory = !categoryId || String(row.dataset.categoryId || '') === categoryId;
-                row.hidden = !(matchesKeyword && matchesCategory);
-            });
-
-            if (checkAll) {
-                checkAll.checked       = false;
-                checkAll.indeterminate = false;
-            }
-        }
-
-        function cellValue(row, key, type) {
-            if (key === 'id') {
-                return Number(row.children[1]?.dataset.sortValue || 0);
-            }
-            const cell  = row.querySelector(`[data-cell="${key}"]`);
-            const value = cell?.dataset.sortValue ?? cell?.innerText ?? '';
-            return type === 'number' ? Number(value || 0) : normalize(value);
-        }
-
-        function setSortIcon(button, dir) {
-            table.querySelectorAll('.product-sort-btn').forEach(btn => {
-                const icon = btn.querySelector('.product-sort-icon');
-                btn.classList.remove('is-active');
-                if (icon) icon.textContent = '↑↓';
-            });
-            const icon = button.querySelector('.product-sort-icon');
-            button.classList.add('is-active');
-            if (icon) icon.textContent = dir === 'asc' ? '↑' : '↓';
-        }
-
-        table.querySelectorAll('.product-sort-btn').forEach(button => {
-            button.addEventListener('click', function () {
-                const key  = this.dataset.sortKey;
-                const type = this.dataset.sortType || 'text';
-                const dir  = sortState.key === key && sortState.dir === 'asc' ? 'desc' : 'asc';
-                sortState  = { key, dir };
-
-                rows.sort((a, b) => {
-                    const valueA = cellValue(a, key, type);
-                    const valueB = cellValue(b, key, type);
-                    if (valueA < valueB) return dir === 'asc' ? -1 : 1;
-                    if (valueA > valueB) return dir === 'asc' ? 1 : -1;
-                    return 0;
-                }).forEach(row => tbody.appendChild(row));
-
-                setSortIcon(this, dir);
-                filterRows();
-            });
+    function showAllCatItems() {
+        catList.querySelectorAll('.hk-cat-item').forEach(function (btn) {
+            btn.hidden = false;
         });
+        catList.querySelector('.hk-cat-empty')?.remove();
+    }
 
-        searchInput?.addEventListener('input', filterRows);
-        categoryFilter?.addEventListener('change', filterRows);
-
-        /* ── Custom category dropdown ── */
-        const catTrigger = document.getElementById('hkCatTrigger');
-        const catPanel   = document.getElementById('hkCatPanel');
-        const catSearch  = document.getElementById('hkCatSearch');
-        const catLabel   = document.getElementById('hkCatLabel');
-        const catList    = document.getElementById('hkCatList');
-
-        function openCatPanel() {
-            catPanel.hidden = false;
-            catTrigger.classList.add('is-open');
-            catTrigger.setAttribute('aria-expanded', 'true');
+    function openCatPanel() {
+        catPanel.hidden = false;
+        catTrigger.classList.add('is-open');
+        catTrigger.setAttribute('aria-expanded', 'true');
+        if (catSearch) {
             catSearch.value = '';
             showAllCatItems();
             catSearch.focus();
         }
+    }
 
-        function closeCatPanel() {
-            catPanel.hidden = true;
-            catTrigger.classList.remove('is-open');
-            catTrigger.setAttribute('aria-expanded', 'false');
-        }
+    function closeCatPanel() {
+        catPanel.hidden = true;
+        catTrigger.classList.remove('is-open');
+        catTrigger.setAttribute('aria-expanded', 'false');
+    }
 
-        function showAllCatItems() {
-            catList.querySelectorAll('.hk-cat-item').forEach(btn => btn.hidden = false);
-            catList.querySelector('.hk-cat-empty')?.remove();
-        }
-
-        catTrigger?.addEventListener('click', () => catPanel.hidden ? openCatPanel() : closeCatPanel());
-
-        catSearch?.addEventListener('input', function () {
-            const q = this.value.toLowerCase().trim();
-            let visible = 0;
-            catList.querySelectorAll('.hk-cat-item').forEach(btn => {
-                const match = !q || btn.textContent.toLowerCase().includes(q);
-                btn.hidden = !match;
-                if (match) visible++;
-            });
-            const existing = catList.querySelector('.hk-cat-empty');
-            if (visible === 0 && !existing) {
-                const msg = document.createElement('div');
-                msg.className   = 'hk-cat-empty';
-                msg.textContent = 'Không tìm thấy danh mục';
-                catList.appendChild(msg);
-            } else if (visible > 0 && existing) {
-                existing.remove();
-            }
-        });
-
-        catList?.addEventListener('click', function (e) {
-            const btn = e.target.closest('.hk-cat-item');
-            if (!btn) return;
-            catList.querySelectorAll('.hk-cat-item').forEach(b => b.classList.remove('is-active'));
-            btn.classList.add('is-active');
-            catLabel.textContent = btn.dataset.label;
-            if (categoryFilter) {
-                categoryFilter.value = btn.dataset.value;
-                categoryFilter.dispatchEvent(new Event('change'));
-            }
-            closeCatPanel();
-        });
-
-        document.addEventListener('click', function (e) {
-            if (!catPanel?.hidden && !document.getElementById('hkCatFilter')?.contains(e.target)) {
-                closeCatPanel();
-            }
-        });
-
-        /* ── Select-all checkbox ── */
-        checkAll?.addEventListener('change', function () {
-            rows.filter(row => !row.hidden).forEach(row => {
-                const cb = row.querySelector('.product-row-check');
-                if (cb) cb.checked = this.checked;
-            });
-        });
+    catTrigger.addEventListener('click', function () {
+        catPanel.hidden ? openCatPanel() : closeCatPanel();
     });
+
+    catSearch?.addEventListener('input', function () {
+        const q = this.value.toLowerCase().trim();
+        let visible = 0;
+
+        catList.querySelectorAll('.hk-cat-item').forEach(function (btn) {
+            const match = !q || btn.textContent.toLowerCase().includes(q);
+            btn.hidden = !match;
+            if (match) visible++;
+        });
+
+        const existing = catList.querySelector('.hk-cat-empty');
+        if (visible === 0 && !existing) {
+            const msg = document.createElement('div');
+            msg.className = 'hk-cat-empty';
+            msg.textContent = 'Không tìm thấy danh mục';
+            catList.appendChild(msg);
+        } else if (visible > 0 && existing) {
+            existing.remove();
+        }
+    });
+
+    catList.addEventListener('click', function (event) {
+        const btn = event.target.closest('.hk-cat-item');
+        if (!btn) return;
+
+        catList.querySelectorAll('.hk-cat-item').forEach(function (item) {
+            item.classList.remove('is-active');
+        });
+        btn.classList.add('is-active');
+        if (catLabel) catLabel.textContent = btn.dataset.label;
+        if (categoryFilter) {
+            categoryFilter.value = btn.dataset.value || '';
+            categoryFilter.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        closeCatPanel();
+    });
+
+    document.addEventListener('click', function (event) {
+        if (!catPanel.hidden && !document.getElementById('hkCatFilter')?.contains(event.target)) {
+            closeCatPanel();
+        }
+    });
+});
+
+document.addEventListener('DOMContentLoaded', function () {
+    function wireSimpleDropdown(config) {
+        const root = document.getElementById(config.root);
+        const trigger = document.getElementById(config.trigger);
+        const panel = document.getElementById(config.panel);
+        const label = document.getElementById(config.label);
+        const list = document.getElementById(config.list);
+        const hidden = document.getElementById(config.hidden);
+        if (!root || !trigger || !panel || !list || !hidden) return;
+
+        function open() {
+            panel.hidden = false;
+            trigger.classList.add('is-open');
+            trigger.setAttribute('aria-expanded', 'true');
+        }
+
+        function close() {
+            panel.hidden = true;
+            trigger.classList.remove('is-open');
+            trigger.setAttribute('aria-expanded', 'false');
+        }
+
+        trigger.addEventListener('click', function () {
+            panel.hidden ? open() : close();
+        });
+
+        list.addEventListener('click', function (event) {
+            const btn = event.target.closest('.hk-cat-item');
+            if (!btn) return;
+
+            list.querySelectorAll('.hk-cat-item').forEach(function (item) {
+                item.classList.remove('is-active');
+            });
+            btn.classList.add('is-active');
+            if (label) label.textContent = btn.dataset.label;
+            hidden.value = btn.dataset.value || '';
+            hidden.dispatchEvent(new Event('change', { bubbles: true }));
+            close();
+        });
+
+        document.addEventListener('click', function (event) {
+            if (!panel.hidden && !root.contains(event.target)) {
+                close();
+            }
+        });
+    }
+
+    wireSimpleDropdown({
+        root: 'hkProductStatusFilter',
+        trigger: 'hkProductStatusTrigger',
+        panel: 'hkProductStatusPanel',
+        label: 'hkProductStatusLabel',
+        list: 'hkProductStatusList',
+        hidden: 'productStatusFilter',
+    });
+});
+
+document.addEventListener('DOMContentLoaded', function () {
+    const tableArea = document.querySelector('[data-admin-table-area]');
+    if (!tableArea) return;
+
+    let activeTooltip = null;
+    let pinnedTooltip = null;
+
+    function positionStockTooltip(container) {
+        const tooltip = container.querySelector('.tooltip-box');
+        if (!tooltip) return;
+
+        container.classList.add('is-open');
+
+        const triggerRect = container.getBoundingClientRect();
+        const tooltipRect = tooltip.getBoundingClientRect();
+        const viewportGap = 12;
+        const spacing = 10;
+
+        let left = triggerRect.left + (triggerRect.width / 2) - (tooltipRect.width / 2);
+        left = Math.max(viewportGap, Math.min(left, window.innerWidth - tooltipRect.width - viewportGap));
+
+        let top = triggerRect.top - tooltipRect.height - spacing;
+        if (top < viewportGap) {
+            top = triggerRect.bottom + spacing;
+        }
+        top = Math.max(viewportGap, Math.min(top, window.innerHeight - tooltipRect.height - viewportGap));
+
+        tooltip.style.left = `${Math.round(left)}px`;
+        tooltip.style.top = `${Math.round(top)}px`;
+    }
+
+    function closeStockTooltip() {
+        if (!activeTooltip) return;
+
+        const tooltip = activeTooltip.querySelector('.tooltip-box');
+        activeTooltip.classList.remove('is-open');
+        if (tooltip) {
+            tooltip.style.left = '';
+            tooltip.style.top = '';
+        }
+        activeTooltip = null;
+        pinnedTooltip = null;
+    }
+
+    function openStockTooltip(container, pinned = false) {
+        if (activeTooltip && activeTooltip !== container) {
+            closeStockTooltip();
+        }
+
+        activeTooltip = container;
+        if (pinned) pinnedTooltip = container;
+        positionStockTooltip(container);
+    }
+
+    tableArea.addEventListener('pointerover', function (event) {
+        const container = event.target.closest('.tooltip-container');
+        if (!container || !tableArea.contains(container)) return;
+
+        openStockTooltip(container);
+    });
+
+    tableArea.addEventListener('pointerout', function (event) {
+        const container = event.target.closest('.tooltip-container');
+        if (!container || container.contains(event.relatedTarget)) return;
+        if (pinnedTooltip === container) return;
+
+        closeStockTooltip();
+    });
+
+    tableArea.addEventListener('focusin', function (event) {
+        const container = event.target.closest('.tooltip-container');
+        if (!container) return;
+
+        openStockTooltip(container);
+    });
+
+    tableArea.addEventListener('focusout', function () {
+        if (!pinnedTooltip) closeStockTooltip();
+    });
+
+    tableArea.addEventListener('click', function (event) {
+        const container = event.target.closest('.tooltip-container');
+        if (!container || !tableArea.contains(container)) return;
+
+        event.stopPropagation();
+
+        if (event.target.closest('.tooltip-box')) {
+            return;
+        }
+
+        if (pinnedTooltip === container) {
+            closeStockTooltip();
+            return;
+        }
+
+        openStockTooltip(container, true);
+    });
+
+    document.addEventListener('click', function (event) {
+        if (!activeTooltip || activeTooltip.contains(event.target)) return;
+
+        closeStockTooltip();
+    });
+
+    window.addEventListener('scroll', function () {
+        if (activeTooltip) positionStockTooltip(activeTooltip);
+    }, true);
+
+    window.addEventListener('resize', function () {
+        if (activeTooltip) positionStockTooltip(activeTooltip);
+    });
+});
 </script>

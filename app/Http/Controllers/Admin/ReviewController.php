@@ -10,7 +10,8 @@ class ReviewController extends Controller
 {
     public function index(Request $request)
     {
-        $keyword    = trim((string) $request->input('keyword'));
+        $search     = trim((string) $request->input('search', $request->input('keyword')));
+        $keyword    = $search;
         $ratingFilter = $request->input('rating');
         $perPage    = in_array((int) $request->input('per_page'), [10, 25, 50], true)
             ? (int) $request->input('per_page')
@@ -19,11 +20,11 @@ class ReviewController extends Controller
         $query = Review::with(['user', 'product'])
             ->orderBy('created_at', 'desc');
 
-        if ($keyword !== '') {
-            $query->where(function ($q) use ($keyword) {
-                $q->where('comment', 'like', "%{$keyword}%")
-                  ->orWhereHas('product', fn ($p) => $p->where('name', 'like', "%{$keyword}%"))
-                  ->orWhereHas('user', fn ($u) => $u->where('username', 'like', "%{$keyword}%"));
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('comment', 'like', "%{$search}%")
+                  ->orWhereHas('product', fn ($p) => $p->where('name', 'like', "%{$search}%"))
+                  ->orWhereHas('user', fn ($u) => $u->where('username', 'like', "%{$search}%"));
             });
         }
 
@@ -31,7 +32,13 @@ class ReviewController extends Controller
             $query->where('rating', $ratingFilter);
         }
 
-        $reviews = $query->paginate($perPage)->appends($request->except('page'));
+        $reviews = $query->paginate($perPage)->withQueryString();
+
+        if ($request->ajax()) {
+            return response()->json([
+                'html' => view('admin.reviews.partials.table', compact('reviews'))->render(),
+            ]);
+        }
 
         return view('admin.reviews.index', compact('reviews', 'keyword', 'ratingFilter', 'perPage'));
     }

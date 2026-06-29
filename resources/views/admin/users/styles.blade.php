@@ -263,14 +263,13 @@
     }
 
     .account-sort-btn.is-active {
-        padding: 8px 10px;
-        border-radius: 10px;
-        background: #f3f4f6;
+        color: #ffffff;
+        font-weight: 800;
     }
 
     .account-sort-btn.is-active .account-sort-icon {
-        color: #111827;
-        font-size: 16px;
+        color: #ffffff;
+        font-weight: 900;
     }
 
     .role-badge {
@@ -531,7 +530,11 @@
     }
 
     [data-theme="dark"] .account-sort-btn.is-active {
-        background: rgba(59,130,246,0.12) !important;
+        color: #ffffff !important;
+    }
+
+    [data-theme="dark"] .account-sort-btn.is-active .account-sort-icon {
+        color: #ffffff !important;
     }
 
     [data-theme="dark"] .account-sort-icon {
