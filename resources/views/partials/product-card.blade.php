@@ -30,7 +30,7 @@
         <img src="{{ $pImage }}" alt="{{ $pName }}" class="product-img">
         
         <div class="product-actions">
-            <button class="btn-product-action" title="Quick View" data-id="{{ $pId }}"><i class="bi bi-eye"></i></button>
+            <a href="{{ $pUrl }}" class="btn-product-action" title="Xem chi tiết"><i class="bi bi-eye"></i></a>
             <button class="btn-product-action" title="Add to Cart" onclick="addToCart('{{ $pId }}')"><i class="bi bi-bag"></i></button>
         </div>
     </div>
