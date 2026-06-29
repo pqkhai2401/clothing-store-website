@@ -24,7 +24,7 @@ class ProductController extends Controller
             ? (int) $request->input('per_page')
             : 10;
 
-        $query = Product::with(['category', 'brand'])
+        $query = Product::with(['category', 'brand', 'productVariants.size', 'productVariants.color'])
             ->withSum('productVariants', 'stock');
 
         if ($search !== '') {
