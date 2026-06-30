@@ -81,6 +81,7 @@ Route::middleware(['auth.login', 'admin'])
 
         Route::prefix('brands')->name('brands.')->group(function () use ($trashRoutes) {
             Route::get('/', [BrandController::class, 'index'])->name('list');
+            Route::post('/', [BrandController::class, 'store'])->name('store');
             Route::get('/{id}/edit', [BrandController::class, 'edit'])->name('edit');
             Route::put('/{id}', [BrandController::class, 'update'])->name('update');
             Route::patch('/{id}/toggle-status', [BrandController::class, 'toggleStatus'])->name('toggleStatus');
@@ -93,6 +94,7 @@ Route::middleware(['auth.login', 'admin'])
 
         Route::prefix('colors')->name('colors.')->group(function () use ($trashRoutes) {
             Route::get('/', [ColorController::class, 'index'])->name('list');
+            Route::post('/', [ColorController::class, 'store'])->name('store');
             Route::get('/{id}/edit', [ColorController::class, 'edit'])->name('edit');
             Route::put('/{id}', [ColorController::class, 'update'])->name('update');
             Route::delete('/{id}', [ColorController::class, 'destroy'])->name('destroy');
@@ -104,6 +106,7 @@ Route::middleware(['auth.login', 'admin'])
 
         Route::prefix('sizes')->name('sizes.')->group(function () use ($trashRoutes) {
             Route::get('/', [SizeController::class, 'index'])->name('list');
+            Route::post('/', [SizeController::class, 'store'])->name('store');
             Route::get('/{id}/edit', [SizeController::class, 'edit'])->name('edit');
             Route::put('/{id}', [SizeController::class, 'update'])->name('update');
             Route::delete('/{id}', [SizeController::class, 'destroy'])->name('destroy');

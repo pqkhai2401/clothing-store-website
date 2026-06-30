@@ -188,9 +188,13 @@ html:not([data-theme="dark"]) .category-count-total { color: #111827 !important;
                                                 <i class="fa-solid fa-ellipsis"></i>
                                             </button>
                                             <div class="dropdown-menu dropdown-menu-end product-row-menu">
-                                                <a href="{{ route('admin.brands.edit', $brand->id) }}" class="dropdown-item">
+                                                <button type="button" class="dropdown-item"
+                                                    data-bs-toggle="modal" data-bs-target="#editBrandModal"
+                                                    data-edit-id="{{ $brand->id }}"
+                                                    data-edit-name="{{ $brand->name }}"
+                                                    data-edit-url="{{ route('admin.brands.update', $brand->id) }}">
                                                     <i class="fa-regular fa-pen-to-square"></i> Sửa
-                                                </a>
+                                                </button>
                                                 <form method="POST" action="{{ route('admin.brands.toggleStatus', $brand->id) }}" style="margin:0">
                                                     @csrf
                                                     @method('PATCH')

@@ -762,4 +762,88 @@
         [data-theme="dark"] .product-trash-date { color: #94A3B8 !important; }
         [data-theme="dark"] .trash-price-normal { color: #E2E8F0 !important; }
         [data-theme="dark"] .trash-price-original { color: #64748B !important; }
+
+    /* ── Add-item modal (brands / colors / sizes) ───────────── */
+    .hk-add-modal .modal-content {
+        border: 1px solid #d8dee6;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 20px 50px rgba(15,23,42,0.14);
+    }
+    .hk-add-modal .modal-content > form {
+        flex: 1 1 auto;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+    .hk-add-modal .modal-header {
+        background: #ffffff;
+        border-bottom: 1px solid #e2e8f0;
+        padding: 18px 22px 16px;
+        flex-shrink: 0;
+    }
+    .hk-add-modal .modal-title {
+        font-size: 15px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        color: #0f172a;
+    }
+    .hk-add-modal .modal-body {
+        padding: 24px 22px 12px;
+        flex: 1 1 auto;
+        overflow-y: auto;
+    }
+    .hk-add-modal .modal-footer {
+        padding: 12px 22px 18px;
+        border-top: 1px solid #e2e8f0;
+        flex-shrink: 0;
+        gap: 10px;
+    }
+    .hk-add-modal .form-label {
+        font-size: 13px;
+        font-weight: 700;
+        color: #374151;
+        margin-bottom: 6px;
+    }
+    .hk-add-modal .form-control {
+        border-radius: 6px;
+        font-size: 14px;
+        border-color: #d1d5db;
+        min-height: 40px;
+    }
+    .hk-add-modal .form-control:focus {
+        border-color: #16A34A;
+        box-shadow: 0 0 0 3px rgba(22,163,74,.12);
+    }
+    .hk-add-modal .form-text {
+        font-size: 12px;
+        color: #6b7280;
+        margin-top: 5px;
+    }
+    .hk-add-modal .invalid-feedback {
+        font-size: 12px;
+    }
+    [data-theme="dark"] .hk-add-modal .modal-content {
+        background: #111827 !important;
+        border-color: #22324D !important;
+        box-shadow: 0 20px 50px rgba(0,0,0,0.55) !important;
+    }
+    [data-theme="dark"] .hk-add-modal .modal-header {
+        background: #0C1830 !important;
+        border-color: #22324D !important;
+    }
+    [data-theme="dark"] .hk-add-modal .modal-title { color: #F8FAFC !important; }
+    [data-theme="dark"] .hk-add-modal .modal-footer { border-color: #22324D !important; }
+    [data-theme="dark"] .hk-add-modal .form-label { color: #CBD5E1 !important; }
+    [data-theme="dark"] .hk-add-modal .form-control {
+        background: #0F1B31 !important;
+        border-color: #2A3B59 !important;
+        color: #E2E8F0 !important;
+    }
+    [data-theme="dark"] .hk-add-modal .form-control:focus {
+        border-color: #3B82F6 !important;
+        box-shadow: 0 0 0 3px rgba(59,130,246,.15) !important;
+    }
+    [data-theme="dark"] .hk-add-modal .form-text { color: #64748B !important; }
     </style>

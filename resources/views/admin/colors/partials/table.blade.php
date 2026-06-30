@@ -11,6 +11,7 @@
                                         ID <span class="product-sort-icon">↑</span>
                                     </button>
                                 </th>
+                                <th style="width:60px;">Màu thực tế</th>
                                 <th>
                                     <button type="button" class="product-sort-btn" data-sort-key="name">
                                         Tên màu sắc <span class="product-sort-icon">↑↓</span>
@@ -32,17 +33,33 @@
                         </thead>
                         <tbody>
                             @forelse($colors as $color)
+                                @php
+                                    $displayHexCode = $color->display_hex_code;
+                                @endphp
                                 <tr>
                                     <td>
                                         <input type="checkbox" class="form-check-input product-check hk-cb-row" value="{{ $color->id }}">
                                     </td>
                                     <td data-sort-value="{{ $color->id }}" style="opacity:.55;">{{ $color->id }}</td>
+                                    <td class="text-center">
+                                        @if($displayHexCode)
+                                            <span class="color-swatch"
+                                                style="background-color: {{ $displayHexCode }};"
+                                                title="{{ $displayHexCode }}">
+                                            </span>
+                                        @else
+                                            <span class="color-swatch color-swatch--empty" title="Chưa có mã màu"></span>
+                                        @endif
+                                    </td>
                                     <td data-cell="name" data-sort-value="{{ $color->name }}">
                                         <a href="{{ route('admin.products.list', ['color_id' => $color->id]) }}"
                                             class="fw-bold attribute-name-link"
                                             title="Lọc sản phẩm theo màu {{ $color->name }}">
                                             {{ $color->name }}
                                         </a>
+                                        @if($displayHexCode)
+                                            <code class="ms-1 text-muted" style="font-size:11px;">{{ $displayHexCode }}</code>
+                                        @endif
                                     </td>
                                     <td data-cell="variants_count" data-sort-value="{{ $color->product_variants_count }}">
                                         <span class="fw-semibold">{{ number_format($color->product_variants_count) }}</span>
@@ -59,9 +76,14 @@
                                                 <i class="fa-solid fa-ellipsis"></i>
                                             </button>
                                             <div class="dropdown-menu dropdown-menu-end product-row-menu">
-                                                <a href="{{ route('admin.colors.edit', $color->id) }}" class="dropdown-item">
+                                                <button type="button" class="dropdown-item"
+                                                    data-bs-toggle="modal" data-bs-target="#editColorModal"
+                                                    data-edit-id="{{ $color->id }}"
+                                                    data-edit-name="{{ $color->name }}"
+                                                    data-edit-hex="{{ $color->hex_code ?? '' }}"
+                                                    data-edit-url="{{ route('admin.colors.update', $color->id) }}">
                                                     <i class="fa-regular fa-pen-to-square"></i> Sửa
-                                                </a>
+                                                </button>
                                                 <button type="button" class="dropdown-item text-danger"
                                                     data-delete-url="{{ route('admin.colors.destroy', $color->id) }}"
                                                     data-delete-name="{{ $color->name }}"
@@ -74,7 +96,7 @@
                                 </tr>
                             @empty
                                 <tr data-empty-row>
-                                    <td colspan="7" class="text-center py-5">
+                                    <td colspan="8" class="text-center py-5">
                                         <i class="fa-solid fa-inbox text-muted mb-3" style="font-size:42px;display:block;"></i>
                                         <div class="fw-semibold text-muted">Chưa có màu sắc nào</div>
                                     </td>

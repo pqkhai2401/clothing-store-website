@@ -35,6 +35,45 @@
 </style>
 
 
+{{-- Color swatch & hex picker --}}
+<style>
+    .color-swatch {
+        display: inline-block;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        border: 1.5px solid rgba(0, 0, 0, 0.13);
+        flex-shrink: 0;
+        vertical-align: middle;
+    }
+    .color-swatch--empty {
+        background: repeating-linear-gradient(
+            45deg, #e5e7eb, #e5e7eb 3px, #f9fafb 3px, #f9fafb 6px
+        );
+    }
+    [data-theme="dark"] .color-swatch { border-color: rgba(255, 255, 255, 0.18); }
+    [data-theme="dark"] .color-swatch--empty {
+        background: repeating-linear-gradient(
+            45deg, #374151, #374151 3px, #1f2937 3px, #1f2937 6px
+        );
+    }
+    .color-hex-picker {
+        width: 44px;
+        height: 36px;
+        padding: 2px 4px;
+        cursor: pointer;
+        border: 1px solid var(--hk-border, #ced4da);
+        border-radius: 4px;
+        background: none;
+        flex-shrink: 0;
+    }
+    .color-hex-input {
+        font-family: monospace;
+        max-width: 130px;
+        letter-spacing: 0.04em;
+    }
+</style>
+
 {{-- Styles extracted from trash.blade.php --}}
 <style>
         .mgmt-table thead th { background:#fff; color:#111827; font-size:12px; font-weight:800; white-space:nowrap; }

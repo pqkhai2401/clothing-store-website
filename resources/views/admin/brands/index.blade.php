@@ -15,9 +15,10 @@
                 <h1 class="product-header-title mb-2">Quản lý thương hiệu</h1>
                 <p class="product-header-desc mb-0">Danh sách tất cả thương hiệu sản phẩm trong hệ thống.</p>
                 <div class="product-header-actions">
-                    <a href="#" class="btn btn-dark product-action-btn">
+                    <button type="button" class="btn btn-dark product-action-btn"
+                        data-bs-toggle="modal" data-bs-target="#addBrandModal">
                         <i class="fa-solid fa-plus me-1"></i> Thêm thương hiệu
-                    </a>
+                    </button>
                     <a href="{{ route('admin.brands.trash') }}" class="btn btn-light border product-action-btn">
                         <i class="fa-regular fa-trash-can me-1"></i> Thùng rác
                     </a>
@@ -64,6 +65,27 @@
 @push('scripts')
     @include('layouts.components.confirm.delete')
     @include('admin.partials.realtime-table')
+    @include('admin.partials.edit-item-modal', [
+        'modalId'          => 'editBrandModal',
+        'submitBtnId'      => 'editBrandSubmitBtn',
+        'modalTitle'       => 'Sửa thương hiệu',
+        'fieldLabel'       => 'Tên thương hiệu',
+        'fieldId'          => 'edit_brand_name',
+        'fieldPlaceholder' => 'Nhập tên thương hiệu...',
+        'submitLabel'      => 'Lưu thay đổi',
+    ])
+    @include('admin.partials.add-item-modal', [
+        'modalId'          => 'addBrandModal',
+        'formId'           => 'addBrandForm',
+        'submitBtnId'      => 'addBrandSubmitBtn',
+        'modalTitle'       => 'Thêm thương hiệu mới',
+        'fieldLabel'       => 'Tên thương hiệu',
+        'fieldName'        => 'name',
+        'fieldId'          => 'add_brand_name',
+        'fieldPlaceholder' => 'Nhập tên thương hiệu...',
+        'storeUrl'         => route('admin.brands.store'),
+        'submitLabel'      => 'Thêm thương hiệu',
+    ])
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const root = document.getElementById('hkBrandStatusFilter');

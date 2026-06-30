@@ -9,25 +9,11 @@ class ColorSeeder extends Seeder
 {
     public function run(): void
     {
-        $colors = [
-            'Đen',
-            'Trắng',
-            'Xám',
-            'Xanh navy',
-            'Xanh dương',
-            'Đỏ',
-            'Xanh lá',
-            'Vàng',
-            'Cam',
-            'Hồng',
-            'Tím',
-            'Nâu',
-            'Be',
-            'Xanh rêu',
-        ];
-
-        foreach ($colors as $name) {
-            Color::firstOrCreate(['name' => $name]);
+        foreach (Color::defaultHexMap() as $name => $hexCode) {
+            Color::updateOrCreate(
+                ['name' => $name],
+                ['hex_code' => $hexCode]
+            );
         }
     }
 }
