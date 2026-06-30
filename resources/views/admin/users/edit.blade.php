@@ -92,6 +92,27 @@
                             <label for="modal_password_confirmation" class="form-label">Xác nhận mật khẩu mới</label>
                             <input type="password" name="password_confirmation" id="modal_password_confirmation" class="form-control" autocomplete="new-password">
                         </div>
+
+                        @if(auth()->user()?->isAdmin() && (bool) auth()->user()?->is_protected)
+                        <div class="col-12 d-none" data-protected-row>
+                            <div class="d-flex align-items-start gap-3 p-3 rounded border" style="background:var(--bs-warning-bg-subtle,#fff3cd);">
+                                <div class="form-check mb-0">
+                                    <input type="hidden" name="is_protected" value="0" data-protected-hidden>
+                                    <input type="checkbox" name="is_protected" value="1"
+                                        id="modal_is_protected" class="form-check-input">
+                                    <label for="modal_is_protected" class="form-check-label fw-semibold">
+                                        Admin hệ thống được bảo vệ
+                                    </label>
+                                </div>
+                                <small class="text-muted lh-sm mt-1">Kích hoạt để bảo vệ tài khoản khỏi bị thay đổi role, mật khẩu, hoặc khóa bởi admin thường.</small>
+                            </div>
+                            <div class="invalid-feedback d-block" data-error-for="is_protected"></div>
+                        </div>
+                        @endif
+
+                        <div class="col-12 d-none" data-permission-error-row>
+                            <div class="alert alert-danger py-2 mb-0" role="alert" data-error-for="permission"></div>
+                        </div>
                     </div>
                 </div>
 
