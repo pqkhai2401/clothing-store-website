@@ -28,11 +28,15 @@
         </button>
         
         <img src="{{ $pImage }}" alt="{{ $pName }}" class="product-img">
-        
+
         <div class="product-actions">
             <button class="btn-product-action" title="Quick View" data-id="{{ $pId }}"><i class="bi bi-eye"></i></button>
-            <button class="btn-product-action" title="Add to Cart" onclick="addToCart('{{ $pId }}')"><i class="bi bi-bag"></i></button>
         </div>
+
+        <button class="product-add-cart-bar" type="button" data-add-to-cart data-product-id="{{ $pId }}">
+            <span class="add-cart-label"><i class="bi bi-bag me-2"></i>Thêm vào giỏ</span>
+            <span class="add-cart-spinner spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+        </button>
     </div>
     <div class="product-info">
         <div class="product-category">{{ $pCategory }}</div>
@@ -47,3 +51,48 @@
         </div>
     </div>
 </div>
+
+@once
+    @push('scripts')
+        <script>
+            document.addEventListener('click', async function (event) {
+                const btn = event.target.closest('[data-add-to-cart]');
+                if (!btn || btn.disabled) return;
+
+                btn.disabled = true;
+                btn.classList.add('is-loading');
+
+                try {
+                    const response = await fetch('{{ route('cart.add') }}', {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                        },
+                        body: JSON.stringify({ product_id: btn.dataset.productId }),
+                    });
+
+                    if (response.status === 401) {
+                        window.location.href = '{{ route('auth.loginpage') }}';
+                        return;
+                    }
+
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        alert(data.message || 'Không thể thêm sản phẩm vào giỏ hàng.');
+                        return;
+                    }
+
+                    window.location.href = data.cart_url;
+                } catch (error) {
+                    alert('Đã có lỗi xảy ra. Vui lòng thử lại.');
+                } finally {
+                    btn.disabled = false;
+                    btn.classList.remove('is-loading');
+                }
+            });
+        </script>
+    @endpush
+@endonce
