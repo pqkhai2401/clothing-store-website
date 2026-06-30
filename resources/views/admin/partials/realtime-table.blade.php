@@ -286,5 +286,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     wireBulkActions();
     updateSortState();
+
+    window.reloadAdminTable = function () { requestTable(false); };
 });
 </script>
