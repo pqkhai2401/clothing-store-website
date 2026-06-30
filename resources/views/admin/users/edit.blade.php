@@ -1,4 +1,4 @@
-<div class="modal fade account-modal" id="userEditModal" tabindex="-1" aria-hidden="true">
+﻿<div class="modal fade account-modal" id="userEditModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
             <form id="userEditForm" method="POST" autocomplete="off">
@@ -49,7 +49,7 @@
                         <div class="col-md-6">
                             <label for="modal_is_active" class="form-label">Trạng thái</label>
                             <select name="is_active" id="modal_is_active" class="form-select">
-                                <option value="1">Đang hoạt động</option>
+                                <option value="1">Hoạt động</option>
                                 <option value="0">Ngưng hoạt động</option>
                             </select>
                             <div class="invalid-feedback d-block" data-error-for="is_active"></div>

@@ -14,7 +14,7 @@ class BrandController extends Controller
         $keyword = trim((string) $request->input('search', $request->input('keyword')));
         $status = $request->input('status');
         $sort = $request->input('sort', 'id');
-        $direction = in_array($request->input('direction'), ['asc', 'asc'], true) ? $request->input('direction') : 'asc';
+        $direction = in_array($request->input('direction'), ['asc', 'desc'], true) ? $request->input('direction') : 'asc';
         $perPage = in_array((int) $request->input('per_page'), [10, 25, 50], true)
             ? (int) $request->input('per_page')
             : 10;

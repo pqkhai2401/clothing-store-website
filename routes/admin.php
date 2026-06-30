@@ -69,6 +69,7 @@ Route::middleware(['auth.login', 'admin'])
 
         Route::prefix('categories')->name('categories.')->group(function () use ($trashRoutes) {
             Route::get('/', [CategoryController::class, 'index'])->name('list');
+            Route::post('/', [CategoryController::class, 'store'])->name('store');
             Route::get('/{id}/edit', [CategoryController::class, 'edit'])->name('edit');
             Route::put('/{id}', [CategoryController::class, 'update'])->name('update');
             Route::patch('/{id}/toggle-status', [CategoryController::class, 'toggleStatus'])->name('toggleStatus');

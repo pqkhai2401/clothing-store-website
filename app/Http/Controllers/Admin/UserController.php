@@ -208,15 +208,15 @@ class UserController extends Controller
             return $this->validationErrorResponse($request, 'role_id', 'Bạn không thể tự thay đổi vai trò của chính mình.');
         }
 
-        if ($isProtectedEditedByOther && ($statusChanged || $roleChanged || $passwordChanged)) {
+        if ($isProtectedEditedByOther && ($roleChanged || $passwordChanged)) {
             return $this->validationErrorResponse(
                 $request,
-                'is_active',
-                'Không thể thay đổi vai trò, trạng thái hoặc mật khẩu của admin hệ thống.'
+                'role_id',
+                'Không thể thay đổi vai trò hoặc mật khẩu của admin hệ thống.'
             );
         }
 
-        $canChangeStatus = ! $isProtectedEditedByOther && ! ($isSelf && $context['type'] === 'staff');
+        $canChangeStatus = ! ($isSelf && $context['type'] === 'staff');
         $canChangeRole = ! $isProtectedEditedByOther && ! $isSelf;
         $canChangePassword = ! $isProtectedEditedByOther;
 
