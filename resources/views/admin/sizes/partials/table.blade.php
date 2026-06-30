@@ -11,12 +11,12 @@
                             ID <span class="product-sort-icon">↑↓</span>
                         </button>
                     </th>
-                    <th style="min-width:150px;">
+                    <th style="width:130px; min-width:130px;">
                         <button type="button" class="product-sort-btn" data-sort-key="name">
                             Tên kích thước <span class="product-sort-icon">↑↓</span>
                         </button>
                     </th>
-                    <th style="width:170px;">
+                    <th style="width:330px; min-width:330px;">
                         <button type="button" class="product-sort-btn" data-sort-key="category_group">
                             Nhóm danh mục <span class="product-sort-icon">↑↓</span>
                         </button>
