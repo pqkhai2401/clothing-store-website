@@ -23,7 +23,6 @@ class ProfileController extends Controller
             'full_name' => ['required', 'string', 'min:2', 'max:255', "regex:/^[\p{L}\s.'-]+$/u"],
             'phone_number' => ['required', 'string', 'regex:/^(0|\+84)(3|5|7|8|9)[0-9]{8}$/'],
             'gender' => ['required', 'in:nam,nu,khac'],
-            'email' => ['required', 'email', 'max:255', 'unique:users,email,' . $user->id],
         ], [
             'full_name.required' => 'Vui lòng nhập họ và tên.',
             'full_name.min' => 'Họ và tên phải có ít nhất 2 ký tự.',
@@ -33,10 +32,6 @@ class ProfileController extends Controller
             'phone_number.regex' => 'Số điện thoại không hợp lệ.',
             'gender.required' => 'Vui lòng chọn giới tính.',
             'gender.in' => 'Giới tính không hợp lệ.',
-            'email.required' => 'Vui lòng nhập email.',
-            'email.email' => 'Email không hợp lệ.',
-            'email.max' => 'Email không được vượt quá 255 ký tự.',
-            'email.unique' => 'Email đã được sử dụng.',
         ]);
 
         if ($validator->fails()) {
@@ -57,7 +52,6 @@ class ProfileController extends Controller
             'full_name' => trim($request->input('full_name')),
             'phone_number' => $phoneNumber,
             'gender' => $request->input('gender'),
-            'email' => trim($request->input('email')),
         ]);
 
         return back()->with('success', 'Cập nhật thông tin thành công!');
