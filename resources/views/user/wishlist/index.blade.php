@@ -693,13 +693,85 @@
 
     .wl-toast.success { background: #28a745; }
     .wl-toast.error   { background: #d9534f; }
+
+    /* =============================================
+       PAGINATION — override Bootstrap 5
+       Tông đen/trắng đồng bộ với ecommerce.css
+       ============================================= */
+    .wishlist-pagination-wrap {
+        margin-top: 48px;
+        padding-top: 32px;
+        border-top: 1px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Ẩn "Previous / Next" text — dùng icon thay thế */
+    .wishlist-pagination-wrap .pagination {
+        gap: 4px;
+        margin: 0;
+    }
+
+    .wishlist-pagination-wrap .page-item .page-link {
+        min-width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        border: 1px solid var(--border-color);
+        border-radius: 0 !important;        /* góc vuông theo thiết kế */
+        color: var(--text-color);
+        background: #fff;
+        padding: 0 10px;
+        transition: all 0.2s ease;
+        text-decoration: none;
+    }
+
+    .wishlist-pagination-wrap .page-item .page-link:hover {
+        background: var(--hover-bg);
+        border-color: var(--primary-color);
+        color: var(--primary-color);
+        z-index: 1;
+    }
+
+    /* Trang đang active */
+    .wishlist-pagination-wrap .page-item.active .page-link {
+        background: var(--primary-color);
+        border-color: var(--primary-color);
+        color: #fff;
+        z-index: 2;
+    }
+
+    /* Disabled (trang đầu/cuối) */
+    .wishlist-pagination-wrap .page-item.disabled .page-link {
+        color: var(--border-color);
+        background: var(--hover-bg);
+        border-color: var(--border-color);
+        cursor: not-allowed;
+    }
+
+    /* Focus ring tắt */
+    .wishlist-pagination-wrap .page-link:focus {
+        box-shadow: none;
+        outline: none;
+    }
 </style>
 @endsection
 
 @section('content')
 
-    {{-- Tính số lượng wishlist một lần, dùng cho toàn bộ template --}}
-    @php $totalCount = isset($wishlistItems) ? $wishlistItems->count() : 0; @endphp
+    {{-- $totalCount được truyền từ controller (tổng TẤT CẢ trang, không chỉ trang hiện tại) --}}
+    @php
+        $totalCount  = $totalCount  ?? 0;
+        $currentFrom = $wishlistItems->firstItem() ?? 0;   // vd: 1, 11, 21...
+        $currentTo   = $wishlistItems->lastItem()  ?? 0;   // vd: 10, 20, 30...
+        $lastPage    = $wishlistItems->lastPage()  ?? 1;
+        $currentPage = $wishlistItems->currentPage() ?? 1;
+    @endphp
 
     {{-- ===== Breadcrumb ===== --}}
     @include('partials.breadcrumb', [
@@ -715,7 +787,6 @@
              PAGE HEADER
              ============================================= --}}
         <div class="wishlist-page-header">
-            <div class="page-label">HK Store</div>
             <h1>
                 Sản phẩm yêu thích của bạn
                 @if($totalCount > 0)
@@ -732,7 +803,7 @@
             {{-- Action bar --}}
             <div class="wishlist-actions-bar">
                 <p class="wishlist-sort-label mb-0">
-                    Hiển thị <strong id="itemCountText">{{ $totalCount }}</strong> sản phẩm
+                    <strong id="itemTotalText">{{ $totalCount }}</strong> sản phẩm yêu thích
                 </p>
                 <button class="btn-clear-wishlist" id="btnClearAll">
                     <i class="bi bi-trash me-1"></i> Xóa tất cả
@@ -850,6 +921,14 @@
                 @endforelse
 
             </div>{{-- /wishlist-grid --}}
+
+            {{-- ===== PHÂN TRANG ===== --}}
+            @if($wishlistItems->hasPages())
+                <div class="wishlist-pagination-wrap" id="wishlistPagination">
+                    {{ $wishlistItems->links() }}
+                </div>
+            @endif
+
         </div>{{-- /wishlistHasItems --}}
 
         {{-- =============================================
@@ -887,10 +966,6 @@
 
             <div class="ai-rec-header">
                 <div>
-                    <div class="ai-rec-label">
-                        <span class="ai-badge-icon"><i class="bi bi-stars"></i></span>
-                        Gợi ý thông minh bởi AI
-                    </div>
                     <h2 class="ai-rec-title">Sản phẩm tương tự bạn có thể thích</h2>
                     <p class="ai-rec-subtitle">
                         Dựa trên những sản phẩm bạn đã yêu thích — được phân tích và gợi ý bởi hệ thống AI của HK Store
@@ -1088,11 +1163,20 @@
     /* ================================================
        Xóa một sản phẩm khỏi Wishlist (AJAX)
        ================================================ */
+    const WISHLIST_PER_PAGE = 10;
+
+    function getCurrentPage() {
+        return parseInt(new URLSearchParams(window.location.search).get('page') || '1');
+    }
+
+    function getTotalPages(total) {
+        return Math.max(1, Math.ceil(total / WISHLIST_PER_PAGE));
+    }
+
     window.removeFromWishlist = function(productId, btnEl) {
         const card = document.getElementById('wl-card-' + productId);
         if (!card) return;
 
-        // Disabled tạm thời
         btnEl.disabled = true;
 
         fetch('/wishlist/remove/' + productId, {
@@ -1104,18 +1188,49 @@
         })
         .then(r => r.json())
         .then(data => {
-            // Animate xóa card
             card.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
             card.style.opacity    = '0';
             card.style.transform  = 'scale(0.95)';
 
             setTimeout(() => {
                 card.remove();
-                toggleEmptyState();
 
-                const remaining = document.querySelectorAll('.wishlist-card').length;
-                updateWishlistBadge(remaining);
-                updateInPageCount(remaining);
+                const serverTotal     = data.count ?? 0;
+                const currentPage     = getCurrentPage();
+                const prevPages       = getTotalPages(serverTotal + 1); // số trang trước khi xóa
+                const newPages        = getTotalPages(serverTotal);
+                const remainingOnPage = document.querySelectorAll('.wishlist-card').length;
+
+                // [Bug 1] Trang hiện tại đã hết sản phẩm và không phải trang 1
+                // → redirect về trang trước để hiển thị sản phẩm còn lại
+                if (remainingOnPage === 0 && currentPage > 1) {
+                    updateWishlistBadge(serverTotal);
+                    showToast('Đã xóa sản phẩm khỏi danh sách yêu thích', 'success');
+                    setTimeout(() => {
+                        const params = new URLSearchParams(window.location.search);
+                        params.set('page', currentPage - 1);
+                        window.location.href = '/wishlist?' + params.toString();
+                    }, 400);
+                    return;
+                }
+
+                updateWishlistBadge(serverTotal);
+                updateInPageCount(serverTotal);
+
+                // [Bug 2] Số trang giảm (vd: 2 trang → 1 trang), pagination links trong DOM
+                // đã lỗi thời vì được render server-side → reload về trang 1 để cập nhật
+                if (newPages < prevPages) {
+                    showToast('Đã xóa sản phẩm khỏi danh sách yêu thích', 'success');
+                    setTimeout(() => {
+                        const params = new URLSearchParams(window.location.search);
+                        params.delete('page');
+                        const qs = params.toString();
+                        window.location.href = '/wishlist' + (qs ? '?' + qs : '');
+                    }, 400);
+                    return;
+                }
+
+                toggleEmptyState();
 
                 // Nếu sản phẩm này tồn tại trong AI rec grid, reset icon trái tim về rỗng
                 const aiRecCard = document.getElementById('ai-rec-card-' + productId);
@@ -1281,21 +1396,34 @@
             if (data.count !== undefined) updateWishlistBadge(data.count);
 
             // 3. Xây dựng wishlist card mới từ data-* của AI rec card
-            if (recCard) {
+            const currentOnPage = document.querySelectorAll('.wishlist-card').length;
+
+            if (currentOnPage >= WISHLIST_PER_PAGE) {
+                // Trang hiện tại đã đầy → reload để server render đúng trang + pagination
+                showToast('Đã thêm vào danh sách yêu thích!', 'success');
+                setTimeout(() => {
+                    const params = new URLSearchParams(window.location.search);
+                    const currentPage = getCurrentPage();
+                    params.set('page', currentPage + 1);
+                    window.location.href = '/wishlist?' + params.toString();
+                }, 600);
+            } else if (recCard) {
                 const d = recCard.dataset;
                 appendWishlistCard({
-                    id:       productId,
-                    name:     d.name,
-                    category: d.category,
-                    url:      d.url,
-                    image:    d.image,
-                    price:    d.price,
-                    final:    d.final,       // rỗng nếu không có giảm giá
-                    discount: parseInt(d.discount) || 0,
+                    id:          productId,
+                    name:        d.name,
+                    category:    d.category,
+                    url:         d.url,
+                    image:       d.image,
+                    price:       d.price,
+                    final:       d.final,
+                    discount:    parseInt(d.discount) || 0,
+                    serverCount: data.count,
                 });
+                showToast('Đã thêm vào danh sách yêu thích!', 'success');
+            } else {
+                showToast('Đã thêm vào danh sách yêu thích!', 'success');
             }
-
-            showToast('Đã thêm vào danh sách yêu thích!', 'success');
         })
         .catch(() => {
             btnEl.disabled = false;
@@ -1368,26 +1496,37 @@
             });
         });
 
-        // Cập nhật bộ đếm nội trang
-        updateInPageCount(grid.querySelectorAll('.wishlist-card').length);
+        // Cập nhật bộ đếm nội trang bằng tổng từ server (truyền vào từ caller)
+        if (p.serverCount !== undefined) {
+            updateInPageCount(p.serverCount);
+        }
 
         // Đảm bảo khu vực "có sản phẩm" hiển thị (ẩn empty state nếu đang hiện)
         toggleEmptyState();
     }
 
     /* ================================================
-       Cập nhật text đếm nội trang (chip + "Hiển thị X")
+       Cập nhật text đếm nội trang sau thao tác AJAX
+       — Chỉ cập nhật tổng số (itemTotalText) và chip tiêu đề.
+         Từ/Đến (itemFromText/itemToText) không đổi vì không reload trang.
        ================================================ */
-    function updateInPageCount(count) {
-        const chip     = document.getElementById('headerCountChip');
-        const countTxt = document.getElementById('itemCountText');
-
-        if (countTxt) countTxt.textContent = count;
-
+    function updateInPageCount(newTotal) {
+        // Chip đen cạnh tiêu đề
+        const chip = document.getElementById('headerCountChip');
         if (chip) {
-            chip.textContent = count;
-            // Hiện chip nếu count > 0, ẩn nếu = 0
-            chip.style.display = count > 0 ? '' : 'none';
+            chip.textContent   = newTotal;
+            chip.style.display = newTotal > 0 ? '' : 'none';
+        }
+
+        // Tổng số trong thanh action bar
+        const totalTxt = document.getElementById('itemTotalText');
+        if (totalTxt) totalTxt.textContent = newTotal;
+
+        // Cập nhật To nếu xóa sản phẩm làm To giảm xuống
+        const toTxt = document.getElementById('itemToText');
+        if (toTxt) {
+            const currentTo = parseInt(toTxt.textContent) || 0;
+            if (currentTo > newTotal) toTxt.textContent = newTotal;
         }
     }
 

@@ -23,8 +23,13 @@
             <span class="product-badge badge-sale">-{{ $pDiscount }}%</span>
         @endif
         
-        <button class="product-wishlist-btn" title="Add to Wishlist" data-id="{{ $pId }}">
-            <i class="bi bi-heart"></i>
+        @php $inWishlist = in_array($pId, $userWishlistIds ?? []); @endphp
+        <button class="product-wishlist-btn wl-toggle-btn"
+                title="{{ $inWishlist ? 'Xóa khỏi yêu thích' : 'Thêm vào yêu thích' }}"
+                data-product-id="{{ $pId }}"
+                data-in-wishlist="{{ $inWishlist ? 'true' : 'false' }}">
+            <i class="bi {{ $inWishlist ? 'bi-heart-fill' : 'bi-heart' }}"
+               style="{{ $inWishlist ? 'color:#d9534f;' : '' }}"></i>
         </button>
         
         <img src="{{ $pImage }}" alt="{{ $pName }}" class="product-img">

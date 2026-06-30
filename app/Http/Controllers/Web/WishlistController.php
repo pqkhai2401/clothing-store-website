@@ -16,7 +16,16 @@ class WishlistController extends Controller
     {
         $userId = Auth::id();
 
-        // Lấy tất cả wishlist items kèm thông tin sản phẩm
+        // Lấy tất cả product_id trong wishlist trước (dùng cho AI gợi ý và chip tổng)
+        $allWishlistRows = Wishlist::where('user_id', $userId)
+            ->with(['product:id,category_id'])
+            ->latest()
+            ->get();
+
+        $wishlistProductIds = $allWishlistRows->pluck('product.id')->filter();
+        $totalCount         = $allWishlistRows->count();
+
+        // Phân trang: tối đa 10 sản phẩm mỗi trang
         $wishlistItems = Wishlist::where('user_id', $userId)
             ->with([
                 'product.category',
@@ -24,16 +33,14 @@ class WishlistController extends Controller
                 'product.productVariants.size',
             ])
             ->latest()
-            ->get();
+            ->paginate(10)
+            ->withQueryString();
 
-        // Lấy danh sách product_id trong wishlist để lọc gợi ý AI
-        $wishlistProductIds = $wishlistItems->pluck('product.id')->filter();
-
-        // Sản phẩm tương tự: lấy sản phẩm cùng danh mục với các sản phẩm đã yêu thích,
+        // AI gợi ý: sản phẩm cùng danh mục, loại trừ đã có trong wishlist
         $recommendedProducts = collect();
 
         if ($wishlistProductIds->isNotEmpty()) {
-            $categoryIds = $wishlistItems
+            $categoryIds = $allWishlistRows
                 ->pluck('product.category_id')
                 ->filter()
                 ->unique()
@@ -48,7 +55,11 @@ class WishlistController extends Controller
                 ->get();
         }
 
-        return view('user.wishlist.index', compact('wishlistItems', 'recommendedProducts'));
+        return view('user.wishlist.index', compact(
+            'wishlistItems',
+            'recommendedProducts',
+            'totalCount'
+        ));
     }
 
     /**

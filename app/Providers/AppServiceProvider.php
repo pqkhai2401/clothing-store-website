@@ -27,12 +27,18 @@ class AppServiceProvider extends ServiceProvider
         Paginator::useBootstrapFive();
         Passport::enablePasswordGrant();
 
-        // Cung cấp số lượng wishlist thực tế cho header mỗi khi trang được render
-        View::composer('partials.header', function ($view): void {
-            $wishlistCount = Auth::check()
-                ? Wishlist::where('user_id', Auth::id())->count()
-                : 0;
-            $view->with('wishlistCount', $wishlistCount);
+        // Cung cấp số lượng + danh sách id wishlist cho header và product-card
+        View::composer(['partials.header', 'partials.product-card'], function ($view): void {
+            if (Auth::check()) {
+                $rows = Wishlist::where('user_id', Auth::id())
+                    ->pluck('product_id')
+                    ->all();
+                $view->with('wishlistCount', count($rows));
+                $view->with('userWishlistIds', $rows);
+            } else {
+                $view->with('wishlistCount', 0);
+                $view->with('userWishlistIds', []);
+            }
         });
 
         View::composer([
