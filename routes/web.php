@@ -14,13 +14,14 @@ Route::name('404-not-found')->get('404-not-found', function () {
     return view('404');
 });
 
-Route::get('/products', function () {
-    return view('user.products.index');
-});
+Route::get('/products', [ProductController::class, 'index'])->name('products.index');
 
-Route::get('/products/premium-oversized-trench', function () {
-    return view('user.products.show');
-});
+// Route chi tiết sản phẩm: /san-pham/{slug}
+Route::get('/san-pham/{slug}', [ProductController::class, 'show'])->name('products.show');
+
+// Route danh mục sản phẩm: /danh-muc/{slug}?gender=men|women
+Route::get('/danh-muc/{slug}', [ProductController::class, 'getProductsByCategory'])
+    ->name('category.products');
 
 Route::middleware('auth')->group(function () {
     Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
@@ -38,6 +39,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'index'])->name('profile.index');
     Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::put('/profile/change-password', [ProfileController::class, 'changePassword'])->name('profile.change-password');
+});
+
+// Wishlist (yêu cầu đăng nhập)
+Route::middleware('auth')->group(function () {
+    Route::get('/wishlist', [WishlistController::class, 'index'])->name('wishlist.index');
+    Route::post('/wishlist/toggle/{productId}', [WishlistController::class, 'toggle'])->name('wishlist.toggle');
+    Route::delete('/wishlist/remove/{productId}', [WishlistController::class, 'remove'])->name('wishlist.remove');
+    Route::delete('/wishlist/clear', [WishlistController::class, 'clear'])->name('wishlist.clear');
 });
 
 // Auth

@@ -20,23 +20,18 @@ class ProfileController extends Controller
         $user = Auth::user();
 
         $validator = Validator::make($request->all(), [
-            'full_name' => ['required', 'string', 'min:2', 'max:255', "regex:/^[\p{L}\s.'-]+$/u"],
+            'username' => ['required', 'string', 'min:2', 'max:255', "regex:/^[\p{L}\s.'-]+$/u"],
             'phone_number' => ['required', 'string', 'regex:/^(0|\+84)(3|5|7|8|9)[0-9]{8}$/'],
             'gender' => ['required', 'in:nam,nu,khac'],
-            'email' => ['required', 'email', 'max:255', 'unique:users,email,' . $user->id],
         ], [
-            'full_name.required' => 'Vui lòng nhập họ và tên.',
-            'full_name.min' => 'Họ và tên phải có ít nhất 2 ký tự.',
-            'full_name.max' => 'Họ và tên không được vượt quá 255 ký tự.',
-            'full_name.regex' => 'Họ và tên không hợp lệ.',
+            'username.required' => 'Vui lòng nhập họ và tên.',
+            'username.min' => 'Họ và tên phải có ít nhất 2 ký tự.',
+            'username.max' => 'Họ và tên không được vượt quá 255 ký tự.',
+            'username.regex' => 'Họ và tên không hợp lệ.',
             'phone_number.required' => 'Vui lòng nhập số điện thoại.',
             'phone_number.regex' => 'Số điện thoại không hợp lệ.',
             'gender.required' => 'Vui lòng chọn giới tính.',
             'gender.in' => 'Giới tính không hợp lệ.',
-            'email.required' => 'Vui lòng nhập email.',
-            'email.email' => 'Email không hợp lệ.',
-            'email.max' => 'Email không được vượt quá 255 ký tự.',
-            'email.unique' => 'Email đã được sử dụng.',
         ]);
 
         if ($validator->fails()) {
@@ -54,10 +49,9 @@ class ProfileController extends Controller
         }
 
         $user->update([
-            'full_name' => trim($request->input('full_name')),
+            'username' => trim($request->input('username')),
             'phone_number' => $phoneNumber,
             'gender' => $request->input('gender'),
-            'email' => trim($request->input('email')),
         ]);
 
         return back()->with('success', 'Cập nhật thông tin thành công!');

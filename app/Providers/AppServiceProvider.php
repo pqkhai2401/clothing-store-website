@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Models\Wishlist;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\View;
@@ -22,7 +24,22 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Paginator::useBootstrapFive();
         Passport::enablePasswordGrant();
+
+        // Cung cấp số lượng + danh sách id wishlist cho header và product-card
+        View::composer(['partials.header', 'partials.product-card'], function ($view): void {
+            if (Auth::check()) {
+                $rows = Wishlist::where('user_id', Auth::id())
+                    ->pluck('product_id')
+                    ->all();
+                $view->with('wishlistCount', count($rows));
+                $view->with('userWishlistIds', $rows);
+            } else {
+                $view->with('wishlistCount', 0);
+                $view->with('userWishlistIds', []);
+            }
+        });
 
         View::composer([
             'layouts.partial.sidebar',

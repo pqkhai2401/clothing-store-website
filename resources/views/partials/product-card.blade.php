@@ -12,7 +12,7 @@
     $pFinalPrice = $pDiscount > 0 ? $pPrice * (100 - $pDiscount) / 100 : null;
 
     // Resolve URL
-    $pUrl = $pSlug !== '#' ? url('/products/' . $pSlug) : '#';
+    $pUrl = $pSlug !== '#' ? url('/san-pham/' . $pSlug) : '#';
 @endphp
 
 <div class="product-grid-card">
@@ -23,14 +23,20 @@
             <span class="product-badge badge-sale">-{{ $pDiscount }}%</span>
         @endif
         
-        <button class="product-wishlist-btn" title="Add to Wishlist" data-id="{{ $pId }}">
-            <i class="bi bi-heart"></i>
+        @php $inWishlist = in_array($pId, $userWishlistIds ?? []); @endphp
+        <button class="product-wishlist-btn wl-toggle-btn"
+                title="{{ $inWishlist ? 'Xóa khỏi yêu thích' : 'Thêm vào yêu thích' }}"
+                data-product-id="{{ $pId }}"
+                data-in-wishlist="{{ $inWishlist ? 'true' : 'false' }}">
+            <i class="bi {{ $inWishlist ? 'bi-heart-fill' : 'bi-heart' }}"
+               style="{{ $inWishlist ? 'color:#d9534f;' : '' }}"></i>
         </button>
         
         <img src="{{ $pImage }}" alt="{{ $pName }}" class="product-img">
 
         <div class="product-actions">
             <button class="btn-product-action" title="Quick View" data-id="{{ $pId }}"><i class="bi bi-eye"></i></button>
+            <button class="btn-product-action" title="Add to Cart" onclick="addToCart('{{ $pId }}')"><i class="bi bi-bag"></i></button>
         </div>
 
         <button class="product-add-cart-bar" type="button" data-add-to-cart data-product-id="{{ $pId }}">

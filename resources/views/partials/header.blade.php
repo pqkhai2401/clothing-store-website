@@ -38,32 +38,39 @@
                                 <!-- Cột Nam -->
                                 <div class="mega-col">
                                     <h6 class="mega-heading">
-                                        <a href="{{ url('/products?gender=nam') }}" class="mega-heading-link">NAM</a>
+                                        <a href="{{ route('category.products', 'ao') }}?gender=men" class="mega-heading-link">NAM</a>
                                     </h6>
                                     <hr class="mega-divider">
                                     <ul class="mega-list">
-                                        <li><a href="{{ url('/products?gender=nam&category=ao-thun') }}">Áo thun</a></li>
-                                        <li><a href="{{ url('/products?gender=nam&category=ao-so-mi') }}">Áo sơ mi</a></li>
-                                        <li><a href="{{ url('/products?gender=nam&category=ao-polo') }}">Áo polo</a></li>
-                                        <li><a href="{{ url('/products?gender=nam&category=quan-tay') }}">Quần tây</a></li>
-                                        <li><a href="{{ url('/products?gender=nam&category=quan-jean') }}">Quần jean</a></li>
-                                        <li><a href="{{ url('/products?gender=nam&category=quan-short') }}">Quần short</a></li>
+                                        <li><a href="{{ route('category.products', 'ao-thun') }}?gender=men">Áo thun</a></li>
+                                        <li><a href="{{ route('category.products', 'ao-so-mi') }}?gender=men">Áo sơ mi</a></li>
+                                        <li><a href="{{ route('category.products', 'ao-polo') }}?gender=men">Áo polo</a></li>
+                                        <li><a href="{{ route('category.products', 'ao-hoodie-sweatshirt') }}?gender=men">Áo hoodie</a></li>
+                                        <li><a href="{{ route('category.products', 'ao-khoac') }}?gender=men">Áo khoác</a></li>
+                                        <li><a href="{{ route('category.products', 'ao-blazer') }}?gender=men">Áo blazer</a></li>
+                                        <li><a href="{{ route('category.products', 'quan-jeans') }}?gender=men">Quần jeans</a></li>
+                                        <li><a href="{{ route('category.products', 'quan-tay') }}?gender=men">Quần tây</a></li>
+                                        <li><a href="{{ route('category.products', 'quan-short') }}?gender=men">Quần short</a></li>
+                                        <li><a href="{{ route('category.products', 'quan-jogger') }}?gender=men">Quần jogger</a></li>
                                     </ul>
                                 </div>
                                 <!-- Cột Nữ -->
                                 <div class="mega-col">
                                     <h6 class="mega-heading">
-                                        <a href="{{ url('/products?gender=nu') }}" class="mega-heading-link">NỮ</a>
+                                        <a href="{{ route('category.products', 'ao') }}?gender=women" class="mega-heading-link">NỮ</a>
                                     </h6>
                                     <hr class="mega-divider">
                                     <ul class="mega-list">
-                                        <li><a href="{{ url('/products?gender=nu&category=ao-thun') }}">Áo thun</a></li>
-                                        <li><a href="{{ url('/products?gender=nu&category=ao-polo') }}">Áo polo</a></li>
-                                        <li><a href="{{ url('/products?gender=nu&category=ao-croptop') }}">Áo croptop</a></li>
-                                        <li><a href="{{ url('/products?gender=nu&category=ao-dai-tay') }}">Áo dài tay</a></li>
-                                        <li><a href="{{ url('/products?gender=nu&category=quan-tay') }}">Quần tây</a></li>
-                                        <li><a href="{{ url('/products?gender=nu&category=vay') }}">Váy</a></li>
-                                        <li><a href="{{ url('/products?gender=nu&category=dam') }}">Đầm</a></li>
+                                        <li><a href="{{ route('category.products', 'ao-thun') }}?gender=women">Áo thun</a></li>
+                                        <li><a href="{{ route('category.products', 'ao-so-mi') }}?gender=women">Áo sơ mi</a></li>
+                                        <li><a href="{{ route('category.products', 'ao-polo') }}?gender=women">Áo polo</a></li>
+                                        <li><a href="{{ route('category.products', 'ao-hoodie-sweatshirt') }}?gender=women">Áo hoodie</a></li>
+                                        <li><a href="{{ route('category.products', 'ao-khoac') }}?gender=women">Áo khoác</a></li>
+                                        <li><a href="{{ route('category.products', 'ao-len') }}?gender=women">Áo len</a></li>
+                                        <li><a href="{{ route('category.products', 'quan-jeans') }}?gender=women">Quần jeans</a></li>
+                                        <li><a href="{{ route('category.products', 'quan-tay') }}?gender=women">Quần tây</a></li>
+                                        <li><a href="{{ route('category.products', 'dam') }}?gender=women">Đầm</a></li>
+                                        <li><a href="{{ route('category.products', 'vay') }}?gender=women">Váy</a></li>
                                     </ul>
                                 </div>
                             </div>
@@ -88,7 +95,7 @@
                 <!-- Wishlist -->
                 <a href="{{ url('/wishlist') }}" class="btn-icon" title="Danh sách yêu thích">
                     <i class="bi bi-heart"></i>
-                    <span class="badge-count">0</span>
+                    <span class="badge-count">{{ $wishlistCount ?? 0 }}</span>
                 </a>
 
                 <!-- Cart -->
