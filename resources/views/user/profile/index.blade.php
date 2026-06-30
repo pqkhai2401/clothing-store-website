@@ -172,8 +172,8 @@
 
         <div class="mb-3">
             <label for="full_name" class="form-label">Họ và tên</label>
-            <input type="text" class="form-control @error('full_name') is-invalid @enderror" id="full_name" name="full_name" value="{{ old('full_name', $user->full_name ?? $user->username) }}">
-            @error('full_name')
+            <input type="text" class="form-control @error('username') is-invalid @enderror" id="username" name="username" value="{{ old('username', $user->username) }}">
+            @error('username')
                 <div class="invalid-feedback">{{ $message }}</div>
             @enderror
         </div>

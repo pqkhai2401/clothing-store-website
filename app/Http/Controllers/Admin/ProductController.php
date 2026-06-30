@@ -18,13 +18,14 @@ class ProductController extends Controller
         $search     = trim((string) $request->input('search', $request->input('keyword')));
         $keyword    = $search;
         $categoryId = $request->input('category_id');
+        $status     = $request->input('status');
         $sort       = $request->input('sort', 'id');
         $direction  = $request->input('direction', 'desc');
         $perPage    = in_array((int) $request->input('per_page'), [10, 25, 50], true)
             ? (int) $request->input('per_page')
             : 10;
 
-        $query = Product::with(['category', 'brand'])
+        $query = Product::with(['category', 'brand', 'productVariants.size', 'productVariants.color'])
             ->withSum('productVariants', 'stock');
 
         if ($search !== '') {
@@ -37,6 +38,10 @@ class ProductController extends Controller
 
         if ($categoryId) {
             $query->where('category_id', $categoryId);
+        }
+
+        if (in_array($status, ['0', '1'], true)) {
+            $query->where('status', (bool) (int) $status);
         }
 
         $direction = in_array($direction, ['asc', 'desc'], true) ? $direction : 'desc';
@@ -57,7 +62,7 @@ class ProductController extends Controller
             ]);
         }
 
-        return view('admin.products.index', compact('products', 'categories', 'keyword', 'categoryId', 'perPage'));
+        return view('admin.products.index', compact('products', 'categories', 'keyword', 'categoryId', 'status', 'perPage'));
     }
 
     public function edit(string $id)

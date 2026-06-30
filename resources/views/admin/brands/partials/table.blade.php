@@ -46,8 +46,10 @@
                                     <td data-cell="created_at" data-sort-value="{{ $brand->created_at?->format('Ymd') ?? '0' }}">
                                         {{ $brand->created_at?->format('d/m/Y') ?? '—' }}
                                     </td>
-                                    <td>
-                                        <span class="status-badge status-badge--active">Hoạt động</span>
+                                    <td data-cell="status" data-sort-value="{{ $brand->status ? 1 : 0 }}">
+                                        <span class="status-badge {{ $brand->status ? 'status-badge--active' : 'status-badge--inactive' }}">
+                                            {{ $brand->status ? 'Hoạt động' : 'Ngưng hoạt động' }}
+                                        </span>
                                     </td>
                                     <td class="text-end pe-4">
                                         <div class="dropdown">
@@ -58,6 +60,18 @@
                                                 <a href="{{ route('admin.brands.edit', $brand->id) }}" class="dropdown-item">
                                                     <i class="fa-regular fa-pen-to-square"></i> Sửa
                                                 </a>
+                                                <form method="POST" action="{{ route('admin.brands.toggleStatus', $brand->id) }}" style="margin:0">
+                                                    @csrf
+                                                    @method('PATCH')
+                                                    <button type="submit" class="dropdown-item">
+                                                        @if($brand->status)
+                                                            <i class="fa-regular fa-eye-slash"></i> Ẩn thương hiệu
+                                                        @else
+                                                            <i class="fa-regular fa-eye"></i> Hiện lại thương hiệu
+                                                        @endif
+                                                    </button>
+                                                </form>
+                                                <div class="dropdown-divider my-1"></div>
                                                 <button type="button" class="dropdown-item text-danger"
                                                     data-delete-url="{{ route('admin.brands.destroy', $brand->id) }}"
                                                     data-delete-name="{{ $brand->name }}"

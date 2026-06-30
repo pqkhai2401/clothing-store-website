@@ -1,3 +1,183 @@
+<style>
+.tooltip-container {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+}
+
+.tooltip-box {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: min(400px, calc(100vw - 24px));
+    max-height: min(380px, calc(100vh - 32px));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 10px;
+    padding: 12px 14px;
+    z-index: 3000;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.12s ease, visibility 0.12s ease;
+    box-shadow: 0 18px 45px rgba(15, 23, 42, 0.18);
+    font-size: 14px;
+    line-height: 1.4;
+    text-align: left;
+}
+
+.stock-total {
+    text-decoration-line: underline;
+    text-decoration-style: dotted;
+    text-underline-offset: 4px;
+}
+
+.tooltip-container.is-open .tooltip-box {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+
+.stock-tooltip-product,
+.stock-tooltip-heading,
+.stock-tooltip-size,
+.stock-tooltip-total {
+    font-weight: 700;
+}
+
+.stock-tooltip-product {
+    margin-bottom: 4px;
+    color: var(--stock-tip-heading);
+    font-weight: 400;
+    word-break: break-word;
+}
+
+.stock-tooltip-heading {
+    margin-bottom: 8px;
+    color: var(--stock-tip-heading);
+}
+
+.stock-tooltip-group {
+    padding: 7px 0;
+    border-top: 1px solid var(--stock-tip-divider);
+}
+
+.stock-tooltip-group:first-of-type {
+    border-top: 0;
+    padding-top: 0;
+}
+
+.stock-tooltip-size {
+    margin-bottom: 4px;
+    color: var(--stock-tip-heading);
+}
+
+.stock-tooltip-color {
+    position: relative;
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    padding: 2px 0 3px 18px;
+}
+
+.stock-tooltip-color::before {
+    content: "•";
+    position: absolute;
+    left: 6px;
+    top: 2px;
+    color: var(--stock-tip-bullet);
+}
+
+.stock-tooltip-color-name {
+    display: inline;
+    color: var(--stock-tip-muted);
+}
+
+.stock-tooltip-count {
+    display: inline;
+    color: var(--stock-tip-count);
+    font-weight: 800;
+    text-align: left;
+}
+
+.stock-tooltip-total {
+    display: flex;
+    justify-content: flex-start;
+    gap: 6px;
+    margin-top: 7px;
+    padding: 8px 10px;
+    border: 1px solid var(--stock-tip-divider);
+    border-radius: 8px;
+    background: var(--stock-tip-total-bg);
+    color: var(--stock-tip-heading);
+    font-size: 13px;
+}
+
+html:not([data-theme="dark"]) .tooltip-box {
+    --stock-tip-heading: #111827;
+    --stock-tip-muted: #374151;
+    --stock-tip-count: #0f172a;
+    --stock-tip-divider: #e5e7eb;
+    --stock-tip-bullet: #64748b;
+    --stock-tip-total-bg: #eef2f7;
+    background: #ffffff;
+    color: #111827;
+    border: 1px solid #d7dde8;
+}
+
+html:not([data-theme="dark"]) .tooltip-box::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+}
+
+html:not([data-theme="dark"]) .stock-tooltip-muted {
+    color: #6b7280;
+}
+
+html:not([data-theme="dark"]) .stock-total {
+    color: #111827 !important;
+}
+
+[data-theme="dark"] .tooltip-box {
+    --stock-tip-heading: #f8fafc;
+    --stock-tip-muted: #cbd5e1;
+    --stock-tip-count: #ffffff;
+    --stock-tip-divider: #2a3b59;
+    --stock-tip-bullet: #93c5fd;
+    --stock-tip-total-bg: rgba(148, 163, 184, 0.18);
+    background: #111827;
+    color: #f8fafc;
+    border: 1px solid #334155;
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+}
+
+[data-theme="dark"] .tooltip-box::-webkit-scrollbar-thumb {
+    background: #475569;
+}
+
+[data-theme="dark"] .stock-tooltip-muted {
+    color: #94a3b8;
+}
+
+[data-theme="dark"] .stock-total {
+    color: #f8fafc !important;
+}
+
+.tooltip-box::-webkit-scrollbar {
+    width: 6px;
+}
+
+.tooltip-box::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.tooltip-box::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+}
+</style>
+
 <div class="product-table-wrap">
                 <div class="table-responsive">
                     <table class="table table-hover product-table align-middle" id="productTable">
@@ -92,11 +272,49 @@
                                         @endif
                                     </td>
 
-                                    @php $totalStock = (int) ($product->product_variants_sum_stock ?? 0); @endphp
+                                    {{-- Số lượng tồn kho --}}
+                                    @php
+                                        $totalStock = (int) ($product->product_variants_sum_stock ?? 0);
+                                        $variantsBySize = $product->productVariants->groupBy(fn ($variant) => $variant->size?->name ?? 'No size');
+                                    @endphp
                                     <td data-cell="stock" data-sort-value="{{ $totalStock }}">
-                                        <span class="{{ $totalStock > 0 ? 'fw-semibold text-dark' : 'text-danger fw-semibold' }}">
-                                            {{ number_format($totalStock) }}
-                                        </span>
+                                        <div class="tooltip-container" tabindex="0" aria-label="Xem chi tiết tồn kho theo size và màu">
+                                            <span class="{{ $totalStock > 0 ? 'fw-semibold text-dark' : 'text-danger fw-semibold' }} stock-total">
+                                                {{ number_format($totalStock) }}
+                                            </span>
+                                            <i class="fa-regular fa-circle-question ms-1 text-muted"></i>
+
+                                            <div class="tooltip-box">
+                                                <h5 class="stock-tooltip-heading">
+                                                    Chi tiết tồn kho theo size và màu
+                                                </h5>
+                                                <div class="stock-tooltip-product">
+                                                    <strong>Tên sản phẩm:</strong> {{ $product->name }}
+                                                </div>
+                                                @forelse($variantsBySize as $sizeName => $variants)
+                                                    <div class="stock-tooltip-group">
+                                                        <div class="stock-tooltip-size">Size {{ $sizeName }}</div>
+                                                        @foreach($variants as $variant)
+                                                            <div class="stock-tooltip-color">
+                                                                <span class="stock-tooltip-color-name">
+                                                                    Màu: {{ $variant->color?->name ?? 'Không màu' }}
+                                                                </span>
+                                                                <span class="stock-tooltip-count">
+                                                                    {{ number_format($variant->stock) }}
+                                                                </span>
+                                                            </div>
+                                                        @endforeach
+                                                    </div>
+                                                @empty
+                                                    <div class="stock-tooltip-muted">Chưa có biến thể</div>
+                                                @endforelse
+
+                                                <div class="stock-tooltip-total">
+                                                    <span>Tổng tồn kho: </span>
+                                                    <span>{{ number_format($totalStock) }}</span>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </td>
 
                                     <td data-cell="status" data-sort-value="{{ $product->status ? 1 : 0 }}">
@@ -148,7 +366,6 @@
                     </table>
                 </div>
             </div>
-
             <div class="bg-white border border-top-0 rounded-bottom px-3 py-2">
                 @include('layouts.components.pagination', [
                     'paginator'     => $products,

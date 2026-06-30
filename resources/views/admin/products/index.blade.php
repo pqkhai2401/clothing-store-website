@@ -23,6 +23,25 @@
                         placeholder="Tìm kiếm theo tên sản phẩm, danh mục,..." autocomplete="off">
 
                     @php
+                        $statusVal = request('status', $status ?? '');
+                        $statusLabelMap = ['' => 'Tất cả trạng thái', '1' => 'Đang bán', '0' => 'Ẩn'];
+                    @endphp
+                    <input type="hidden" name="status" data-admin-filter id="productStatusFilter" value="{{ $statusVal }}">
+                    <div class="hk-cat-filter" id="hkProductStatusFilter">
+                        <button type="button" class="hk-cat-trigger" id="hkProductStatusTrigger" aria-haspopup="listbox" aria-expanded="false">
+                            <span class="hk-cat-trigger-label" id="hkProductStatusLabel">{{ $statusLabelMap[$statusVal] ?? 'Tất cả trạng thái' }}</span>
+                            <i class="fa-solid fa-chevron-down hk-cat-arrow"></i>
+                        </button>
+                        <div class="hk-cat-panel" id="hkProductStatusPanel" hidden>
+                            <div class="hk-cat-list" id="hkProductStatusList" role="listbox">
+                                <button type="button" class="hk-cat-item {{ $statusVal === '' ? 'is-active' : '' }}" data-value="" data-label="Tất cả trạng thái">Tất cả trạng thái</button>
+                                <button type="button" class="hk-cat-item {{ $statusVal === '1' ? 'is-active' : '' }}" data-value="1" data-label="Đang bán">Đang bán</button>
+                                <button type="button" class="hk-cat-item {{ $statusVal === '0' ? 'is-active' : '' }}" data-value="0" data-label="Ẩn">Ẩn</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    @php
                         $selectedCatLabel = 'Tất cả danh mục';
                         foreach ($categories as $parent) {
                             foreach ($parent->childrenCategories as $child) {
