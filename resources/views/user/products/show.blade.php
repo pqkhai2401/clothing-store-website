@@ -481,8 +481,13 @@
                             <button class="quantity-btn" type="button" id="btnIncrease">+</button>
                         </div>
 
-                        <button class="btn-wishlist-action" type="button" title="Thêm vào yêu thích">
-                            <i class="bi bi-heart"></i>
+                        <button class="btn-wishlist-action" type="button"
+                                id="btnToggleWishlist"
+                                title="Thêm vào yêu thích"
+                                data-product-id="{{ $product->id }}"
+                                data-in-wishlist="{{ $isInWishlist ?? false ? 'true' : 'false' }}">
+                            <i class="bi {{ ($isInWishlist ?? false) ? 'bi-heart-fill' : 'bi-heart' }}"
+                               style="{{ ($isInWishlist ?? false) ? 'color:#d9534f;' : '' }}"></i>
                         </button>
                     </div>
 
@@ -725,5 +730,55 @@
         thumbEl.classList.add('active');
         document.getElementById('mainProductImage').src = thumbEl.src;
     }
+
+    // ===== AJAX: Toggle Wishlist (real-time badge update) =====
+    (function () {
+        const btn = document.getElementById('btnToggleWishlist');
+        if (!btn) return;
+
+        btn.addEventListener('click', function () {
+            const productId  = btn.getAttribute('data-product-id');
+            const inWishlist = btn.getAttribute('data-in-wishlist') === 'true';
+            const icon       = btn.querySelector('i');
+
+            btn.disabled = true;
+
+            fetch('/wishlist/toggle/' + productId, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                }
+            })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                btn.disabled = false;
+
+                if (data.added) {
+                    // Đã thêm vào wishlist
+                    icon.className = 'bi bi-heart-fill';
+                    icon.style.color = '#d9534f';
+                    btn.setAttribute('data-in-wishlist', 'true');
+                    btn.setAttribute('title', 'Xóa khỏi yêu thích');
+                } else {
+                    // Đã xóa khỏi wishlist
+                    icon.className = 'bi bi-heart';
+                    icon.style.color = '';
+                    btn.setAttribute('data-in-wishlist', 'false');
+                    btn.setAttribute('title', 'Thêm vào yêu thích');
+                }
+
+                // Cập nhật badge số lượng trên header (real-time, không reload)
+                if (data.count !== undefined) {
+                    document.querySelectorAll('.utility-icons a[href*="wishlist"] .badge-count').forEach(function (el) {
+                        el.textContent = data.count;
+                    });
+                }
+            })
+            .catch(function () {
+                btn.disabled = false;
+            });
+        });
+    })();
 </script>
 @endpush

@@ -95,7 +95,7 @@
                 <!-- Wishlist -->
                 <a href="{{ url('/wishlist') }}" class="btn-icon" title="Danh sách yêu thích">
                     <i class="bi bi-heart"></i>
-                    <span class="badge-count">0</span>
+                    <span class="badge-count">{{ $wishlistCount ?? 0 }}</span>
                 </a>
 
                 <!-- Cart -->

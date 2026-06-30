@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Models\Wishlist;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -25,6 +26,14 @@ class AppServiceProvider extends ServiceProvider
     {
         Paginator::useBootstrapFive();
         Passport::enablePasswordGrant();
+
+        // Cung cấp số lượng wishlist thực tế cho header mỗi khi trang được render
+        View::composer('partials.header', function ($view): void {
+            $wishlistCount = Auth::check()
+                ? Wishlist::where('user_id', Auth::id())->count()
+                : 0;
+            $view->with('wishlistCount', $wishlistCount);
+        });
 
         View::composer([
             'layouts.partial.sidebar',

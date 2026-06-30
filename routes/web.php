@@ -3,6 +3,7 @@
 use App\Http\Controllers\Web\AuthController;
 use App\Http\Controllers\Web\ProductController;
 use App\Http\Controllers\Web\ProfileController;
+use App\Http\Controllers\Web\WishlistController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -36,6 +37,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'index'])->name('profile.index');
     Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::put('/profile/change-password', [ProfileController::class, 'changePassword'])->name('profile.change-password');
+});
+
+// Wishlist (yêu cầu đăng nhập)
+Route::middleware('auth')->group(function () {
+    Route::get('/wishlist', [WishlistController::class, 'index'])->name('wishlist.index');
+    Route::post('/wishlist/toggle/{productId}', [WishlistController::class, 'toggle'])->name('wishlist.toggle');
+    Route::delete('/wishlist/remove/{productId}', [WishlistController::class, 'remove'])->name('wishlist.remove');
+    Route::delete('/wishlist/clear', [WishlistController::class, 'clear'])->name('wishlist.clear');
 });
 
 // Auth

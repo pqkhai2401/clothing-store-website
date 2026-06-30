@@ -7,6 +7,7 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\ProductView;
+use App\Models\Wishlist;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -83,12 +84,18 @@ class ProductController extends Controller
             ->limit(4)
             ->get();
 
+        // Kiểm tra sản phẩm có trong wishlist của user không (dùng cho nút ❤️ real-time)
+        $isInWishlist = Auth::check()
+            ? Wishlist::where('user_id', Auth::id())->where('product_id', $product->id)->exists()
+            : false;
+
         return view('user.products.show', compact(
             'product',
             'colors',
             'sizes',
             'defaultVariant',
-            'relatedProducts'
+            'relatedProducts',
+            'isInWishlist'
         ));
     }
 
