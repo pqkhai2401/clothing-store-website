@@ -31,35 +31,46 @@ class CartController extends Controller
     {
         $validated = $request->validate([
             'product_id' => ['required', 'integer', 'exists:products,id'],
+            'color_id'   => ['nullable', 'integer', 'exists:colors,id'],
+            'size_id'    => ['nullable', 'integer', 'exists:sizes,id'],
+            'quantity'   => ['nullable', 'integer', 'min:1'],
         ]);
 
         $product = Product::with(['productVariants' => function ($query) {
             $query->where('stock', '>', 0)->orderBy('id');
         }])->findOrFail($validated['product_id']);
 
-        $variant = $product->productVariants->first();
+        if (!empty($validated['color_id']) && !empty($validated['size_id'])) {
+            $variant = $product->productVariants
+                ->where('color_id', $validated['color_id'])
+                ->where('size_id', $validated['size_id'])
+                ->first();
+        } else {
+            $variant = $product->productVariants->first();
+        }
 
         if (! $variant) {
             return response()->json([
-                'message' => 'Sản phẩm hiện đã hết hàng.',
+                'message' => 'Sản phẩm này hiện đã hết hàng.',
             ], 422);
         }
 
+        $requestedQty = $validated['quantity'] ?? 1;
         $user = $request->user();
 
-        DB::transaction(function () use ($user, $variant) {
+        DB::transaction(function () use ($user, $variant, $requestedQty) {
             $cart = $user->cart()->firstOrCreate(['user_id' => $user->id]);
 
             $cartItem = $cart->cartItems()->where('product_variant_id', $variant->id)->first();
 
             if ($cartItem) {
                 $cartItem->update([
-                    'quantity' => min($cartItem->quantity + 1, $variant->stock),
+                    'quantity' => min($cartItem->quantity + $requestedQty, $variant->stock),
                 ]);
             } else {
                 $cart->cartItems()->create([
                     'product_variant_id' => $variant->id,
-                    'quantity'           => 1,
+                    'quantity'           => min($requestedQty, $variant->stock),
                 ]);
             }
         });

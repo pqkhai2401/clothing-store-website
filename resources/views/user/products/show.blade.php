@@ -720,6 +720,56 @@
                 qtyInput.value = val - 1;
             }
         });
+
+        // ===== Xử lý nút "Thêm vào giỏ hàng" =====
+        btnAddCart.addEventListener('click', function () {
+            if (!selectedColorId || !selectedSizeId) {
+                alert('Vui lòng chọn Màu sắc và Kích thước trước khi thêm vào giỏ hàng.');
+                return;
+            }
+
+            btnAddCart.disabled = true;
+
+            fetch('{{ route('cart.add') }}', {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                },
+                body: JSON.stringify({
+                    product_id: productId,
+                    color_id: selectedColorId,
+                    size_id: selectedSizeId,
+                    quantity: parseInt(qtyInput.value) || 1,
+                }),
+            })
+            .then(function (response) {
+                if (response.status === 401) {
+                    window.location.href = '{{ route('auth.loginpage') }}';
+                    return Promise.reject('unauthenticated');
+                }
+                return response.json().then(function (data) {
+                    return { ok: response.ok, data: data };
+                });
+            })
+            .then(function (result) {
+                if (!result) return;
+                if (!result.ok) {
+                    alert(result.data.message || 'Không thể thêm sản phẩm vào giỏ hàng.');
+                    return;
+                }
+                window.location.href = result.data.cart_url;
+            })
+            .catch(function (err) {
+                if (err !== 'unauthenticated') {
+                    alert('Đã có lỗi xảy ra. Vui lòng thử lại.');
+                }
+            })
+            .finally(function () {
+                btnAddCart.disabled = false;
+            });
+        });
     })();
 
     // ===== Chuyển ảnh chính khi click vào thumbnail =====
