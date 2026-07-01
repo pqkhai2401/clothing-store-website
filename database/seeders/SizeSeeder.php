@@ -9,15 +9,13 @@ class SizeSeeder extends Seeder
 {
     public function run(): void
     {
-        $sizes = $this->catalogSizes();
-
-        foreach ($sizes as $size) {
+        foreach ($this->catalogSizes() as $size) {
             Size::updateOrCreate(
+                ['name' => $size['name']],
                 [
-                    'name' => $size['name'],
-                    'category_group' => $size['category_group'],
-                ],
-                $size + ['status' => 1]
+                    'sort_weight' => $size['sort_weight'],
+                    'status' => 1,
+                ]
             );
         }
     }
@@ -25,39 +23,26 @@ class SizeSeeder extends Seeder
     private function catalogSizes(): array
     {
         return [
-            // Cụm 1: Nhóm áo nam, form nam cần dải lớn hơn.
-            ['name' => 'S', 'category_group' => 'ao_nam', 'sort_weight' => 20],
-            ['name' => 'M', 'category_group' => 'ao_nam', 'sort_weight' => 30],
-            ['name' => 'L', 'category_group' => 'ao_nam', 'sort_weight' => 40],
-            ['name' => 'XL', 'category_group' => 'ao_nam', 'sort_weight' => 50],
-            ['name' => 'XXL', 'category_group' => 'ao_nam', 'sort_weight' => 60],
-            ['name' => 'XXXL', 'category_group' => 'ao_nam', 'sort_weight' => 70],
-
-            // Cụm 1: Nhóm áo nữ, cần dải nhỏ cho croptop và form ôm.
-            ['name' => 'XXS', 'category_group' => 'ao_nu', 'sort_weight' => 5],
-            ['name' => 'XS', 'category_group' => 'ao_nu', 'sort_weight' => 10],
-            ['name' => 'S', 'category_group' => 'ao_nu', 'sort_weight' => 20],
-            ['name' => 'M', 'category_group' => 'ao_nu', 'sort_weight' => 30],
-            ['name' => 'L', 'category_group' => 'ao_nu', 'sort_weight' => 40],
-            ['name' => 'XL', 'category_group' => 'ao_nu', 'sort_weight' => 50],
-
-            // Cụm 2: Quần nam quy đổi từ size số sang size chữ.
-            ['name' => 'S', 'category_group' => 'quan_nam', 'sort_weight' => 20],
-            ['name' => 'M', 'category_group' => 'quan_nam', 'sort_weight' => 30],
-            ['name' => 'L', 'category_group' => 'quan_nam', 'sort_weight' => 40],
-            ['name' => 'XL', 'category_group' => 'quan_nam', 'sort_weight' => 50],
-
-            // Cụm 2: Quần/váy nữ theo vòng eo.
-            ['name' => 'XS', 'category_group' => 'quan_vay_nu', 'sort_weight' => 10],
-            ['name' => 'S', 'category_group' => 'quan_vay_nu', 'sort_weight' => 20],
-            ['name' => 'M', 'category_group' => 'quan_vay_nu', 'sort_weight' => 30],
-            ['name' => 'L', 'category_group' => 'quan_vay_nu', 'sort_weight' => 40],
-
-            // Cụm 3: Đầm nữ.
-            ['name' => 'XS', 'category_group' => 'dam_nu', 'sort_weight' => 10],
-            ['name' => 'S', 'category_group' => 'dam_nu', 'sort_weight' => 20],
-            ['name' => 'M', 'category_group' => 'dam_nu', 'sort_weight' => 30],
-            ['name' => 'L', 'category_group' => 'dam_nu', 'sort_weight' => 40],
+            ['name' => 'XXS', 'sort_weight' => 5],
+            ['name' => 'XS', 'sort_weight' => 10],
+            ['name' => 'S', 'sort_weight' => 20],
+            ['name' => 'M', 'sort_weight' => 30],
+            ['name' => 'L', 'sort_weight' => 40],
+            ['name' => 'XL', 'sort_weight' => 50],
+            ['name' => 'XXL', 'sort_weight' => 60],
+            ['name' => 'XXXL', 'sort_weight' => 70],
+            ['name' => '4XL', 'sort_weight' => 80],
+            ['name' => '5XL', 'sort_weight' => 90],
+            
+            ['name' => '38', 'sort_weight' => 380],
+            ['name' => '39', 'sort_weight' => 390],
+            ['name' => '40', 'sort_weight' => 400],
+            ['name' => '41', 'sort_weight' => 410],
+            ['name' => '42', 'sort_weight' => 420],
+            ['name' => '43', 'sort_weight' => 430],
+            ['name' => '44', 'sort_weight' => 440],
+            ['name' => '45', 'sort_weight' => 450],
+            
         ];
     }
 }

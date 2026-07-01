@@ -18,8 +18,16 @@
                 </h1>
             </div>
             <div class="d-flex align-items-center gap-2">
-                @php $badgeClass = $statusBadge[$order->status] ?? 'text-bg-secondary'; @endphp
-                <span class="badge status-badge {{ $badgeClass }}">
+                @php
+                    $orderBadgeCss = [
+                        'pending'    => 'order-badge--pending',
+                        'processing' => 'order-badge--processing',
+                        'shipping'   => 'order-badge--shipping',
+                        'completed'  => 'order-badge--completed',
+                        'cancelled'  => 'order-badge--cancelled',
+                    ];
+                @endphp
+                <span class="order-badge {{ $orderBadgeCss[$order->status] ?? '' }}">
                     {{ $statusLabels[$order->status] ?? $order->status }}
                 </span>
                 <a href="{{ route('admin.orders.list') }}" class="btn btn-outline-secondary btn-sm fw-semibold">
@@ -51,7 +59,11 @@
                             </tr>
                             <tr>
                                 <td class="info-label ps-0">Trạng thái</td>
-                                <td><span class="badge status-badge {{ $badgeClass }}">{{ $statusLabels[$order->status] ?? $order->status }}</span></td>
+                                <td>
+                                    <span class="order-badge {{ $orderBadgeCss[$order->status] ?? '' }}">
+                                        {{ $statusLabels[$order->status] ?? $order->status }}
+                                    </span>
+                                </td>
                             </tr>
                             <tr>
                                 <td class="info-label ps-0">Thanh toán</td>
@@ -184,6 +196,7 @@
                 </div>
             </div>
         </div>
+
         {{-- Form cập nhật trạng thái đơn hàng --}}
         <div class="card border shadow-sm mt-4 update-card">
             <div class="card-header bg-white border-bottom">

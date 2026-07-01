@@ -5,6 +5,7 @@ use App\Http\Controllers\User\AddressController;
 use App\Http\Controllers\User\AuthController;
 use App\Http\Controllers\User\CartController;
 use App\Http\Controllers\User\CheckoutController;
+use App\Http\Controllers\User\OrderController;
 use App\Http\Controllers\User\ProfileController;
 
 use Illuminate\Support\Facades\Route;
@@ -44,6 +45,14 @@ Route::middleware('auth')->group(function () {
     Route::delete('/user/addresses/{address}', [AddressController::class, 'destroy'])->name('addresses.destroy');
 });
 
+
+// Orders
+Route::middleware('auth')->group(function () {
+    Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
+    Route::get('/orders/{id}/detail', [OrderController::class, 'detail'])->name('orders.detail');
+    Route::patch('/orders/{id}/cancel', [OrderController::class, 'cancelOrder'])->name('orders.cancel');
+    Route::get('/orders/{id}', [OrderController::class, 'show'])->name('orders.show');
+});
 
 // Profile
 Route::middleware('auth')->group(function () {

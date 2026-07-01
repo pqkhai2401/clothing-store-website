@@ -48,6 +48,8 @@
     }
 
     .checkout-block-title .btn-link-sm {
+        appearance: none;
+        -webkit-appearance: none;
         font-size: 12px;
         color: #2563eb;
         text-decoration: none;
@@ -55,10 +57,23 @@
         display: flex;
         align-items: center;
         gap: 4px;
+        border: 0 !important;
+        background: none !important;
+        padding: 0 !important;
+        outline: none !important;
+        box-shadow: none !important;
     }
 
     .checkout-block-title .btn-link-sm:hover {
         text-decoration: underline;
+    }
+
+    .checkout-block-title .btn-link-sm:focus,
+    .checkout-block-title .btn-link-sm:focus-visible,
+    .checkout-block-title .btn-link-sm:active {
+        border: 0 !important;
+        outline: 0 !important;
+        box-shadow: none !important;
     }
 
     /* ── Form ── */
@@ -1188,11 +1203,11 @@
 
                 <!-- Policy + Submit -->
                 <div class="checkout-policy-row">
-                    <input type="checkbox" id="agree_policy_btn" form="checkoutForm" name="agree_policy_mirror"
-                        @checked(old('agree_policy'))>
+                    <input type="checkbox" id="agree_policy_btn" form="checkoutForm" name="agree_policy"
+                        value="1" @checked(old('agree_policy'))>
                     <label for="agree_policy_btn" style="cursor:pointer;">
-                        Bạn không hài lòng với sản phẩm của chúng tôi? Bạn hoàn toàn có thể trả lại sản phẩm.
-                        <a href="#" class="text-primary text-decoration-underline">Tìm hiểu thêm Tại đây</a>
+                        Nếu bạn không hài lòng với sản phẩm của chúng tôi? Liên hệ ngay qua Page Facebook hoặc số điện thoại hotline để được hỗ trợ đổi trả trong vòng 7 ngày kể từ khi nhận hàng.
+                        {{-- <a href="#" class="text-primary text-decoration-underline">Tìm hiểu thêm Tại đây</a> --}}
                     </label>
                 </div>
 
@@ -1333,7 +1348,7 @@
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         const cards        = document.querySelectorAll('[data-payment-card]');
-        const policyTop    = document.getElementById('agree_policy_top');
+        const policyTop    = document.getElementById('agree_policy_btn');
         const placeOrderBtn = document.getElementById('placeOrderBtn');
 
         /* ── Payment card active state ── */

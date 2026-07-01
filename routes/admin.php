@@ -120,7 +120,7 @@ Route::middleware(['auth.login', 'admin'])
 
         Route::prefix('orders')->name('orders.')->group(function () {
             Route::get('/', [OrderController::class, 'index'])->name('list');
-            Route::get('/{id}', [OrderController::class, 'show'])->name('show');
+            Route::get('/{id}/detail', [OrderController::class, 'detail'])->name('detail');
             Route::put('/{id}', [OrderController::class, 'update'])->name('update');
         });
 

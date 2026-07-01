@@ -115,7 +115,7 @@
                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenuButton">
                         @auth
                             <li><a class="dropdown-item" href="{{ route('profile.index') }}">Thông tin cá nhân</a></li>
-                            <li><a class="dropdown-item" href="{{ url('/orders') }}">Đơn hàng của tôi</a></li>
+                            <li><a class="dropdown-item" href="{{ route('orders.index') }}">Đơn hàng của tôi</a></li>
                             @if(auth()->user()->can('access-admin'))
                                 <li><a class="dropdown-item text-primary" href="{{ route('admin.dashboard') }}">Trang Quản Trị</a></li>
                             @endif

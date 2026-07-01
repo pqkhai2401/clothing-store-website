@@ -53,15 +53,23 @@ class CategorySeeder extends Seeder
         ];
 
         foreach ($structure as $parentData) {
-            $parent = Category::firstOrCreate(
+            $parent = Category::updateOrCreate(
                 ['slug' => $parentData['slug']],
-                ['name' => $parentData['name']]
+                [
+                    'name' => $parentData['name'],
+                    'parent_id' => null,
+                    'status' => true,
+                ]
             );
 
             foreach ($parentData['children'] as $child) {
-                Category::firstOrCreate(
+                Category::updateOrCreate(
                     ['slug' => $child['slug']],
-                    ['name' => $child['name'], 'parent_id' => $parent->id]
+                    [
+                        'name' => $child['name'],
+                        'parent_id' => $parent->id,
+                        'status' => true,
+                    ]
                 );
             }
         }
