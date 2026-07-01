@@ -75,9 +75,12 @@ class CartController extends Controller
             }
         });
 
+        $cartCount = (int) $user->cart()->first()?->cartItems()->sum('quantity');
+
         return response()->json([
-            'message'  => 'Đã thêm sản phẩm vào giỏ hàng.',
-            'cart_url' => route('cart.index'),
+            'message'    => 'Đã thêm sản phẩm vào giỏ hàng.',
+            'cart_url'   => route('cart.index'),
+            'cart_count' => $cartCount,
         ]);
     }
 

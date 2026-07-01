@@ -101,7 +101,7 @@
                 <!-- Cart -->
                 <a href="{{ url('/cart') }}" class="btn-icon" title="Giỏ hàng">
                     <i class="bi bi-bag"></i>
-                    <span class="badge-count">0</span>
+                    <span class="badge-count" id="cartCountBadge">{{ $cartCount ?? 0 }}</span>
                 </a>
 
                 <!-- User Account Dropdown -->

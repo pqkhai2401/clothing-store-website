@@ -756,14 +756,17 @@
             .then(function (result) {
                 if (!result) return;
                 if (!result.ok) {
-                    alert(result.data.message || 'Không thể thêm sản phẩm vào giỏ hàng.');
+                    window.showToast(result.data.message || 'Không thể thêm sản phẩm vào giỏ hàng.', 'error');
                     return;
                 }
-                window.location.href = result.data.cart_url;
+                window.showToast(result.data.message || 'Đã thêm vào giỏ hàng!', 'success');
+                if (result.data.cart_count !== undefined) {
+                    window.updateCartBadge(result.data.cart_count);
+                }
             })
             .catch(function (err) {
                 if (err !== 'unauthenticated') {
-                    alert('Đã có lỗi xảy ra. Vui lòng thử lại.');
+                    window.showToast('Đã có lỗi xảy ra. Vui lòng thử lại.', 'error');
                 }
             })
             .finally(function () {

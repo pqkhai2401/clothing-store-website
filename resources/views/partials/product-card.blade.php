@@ -90,13 +90,16 @@
                     const data = await response.json();
 
                     if (!response.ok) {
-                        alert(data.message || 'Không thể thêm sản phẩm vào giỏ hàng.');
+                        window.showToast(data.message || 'Không thể thêm sản phẩm vào giỏ hàng.', 'error');
                         return;
                     }
 
-                    window.location.href = data.cart_url;
+                    window.showToast(data.message || 'Đã thêm vào giỏ hàng!', 'success');
+                    if (data.cart_count !== undefined) {
+                        window.updateCartBadge(data.cart_count);
+                    }
                 } catch (error) {
-                    alert('Đã có lỗi xảy ra. Vui lòng thử lại.');
+                    window.showToast('Đã có lỗi xảy ra. Vui lòng thử lại.', 'error');
                 } finally {
                     btn.disabled = false;
                     btn.classList.remove('is-loading');
