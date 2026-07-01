@@ -419,7 +419,12 @@ body.nav-search-open {
             navSearchPanel.classList.add('is-active');
             navSearchBackdrop.classList.add('is-active');
             document.body.classList.add('nav-search-open');
-            setTimeout(() => searchInput && searchInput.focus(), 320);
+            setTimeout(() => {
+                if (!searchInput) return;
+                searchInput.focus();
+                const len = searchInput.value.length;
+                searchInput.setSelectionRange(len, len);
+            }, 320);
         }
 
         function closeSearch() {
