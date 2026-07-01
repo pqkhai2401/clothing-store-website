@@ -14,6 +14,15 @@
             <div>
                 <h1 class="product-header-title mb-2">Quản lý thương hiệu</h1>
                 <p class="product-header-desc mb-0">Danh sách tất cả thương hiệu sản phẩm trong hệ thống.</p>
+                <div class="product-header-actions">
+                    <button type="button" class="btn btn-dark product-action-btn"
+                        data-bs-toggle="modal" data-bs-target="#addBrandModal">
+                        <i class="fa-solid fa-plus me-1"></i> Thêm thương hiệu
+                    </button>
+                    <a href="{{ route('admin.brands.trash') }}" class="btn btn-light border product-action-btn">
+                        <i class="fa-regular fa-trash-can me-1"></i> Thùng rác
+                    </a>
+                </div>
             </div>
 
             <form method="GET" action="{{ route('admin.brands.list') }}" id="brandSearchForm"
@@ -44,14 +53,6 @@
                         </div>
                     </div>
                 </div>
-                <div class="product-tool-actions">
-                    <a href="{{ route('admin.brands.trash') }}" class="btn btn-light border product-action-btn">
-                        <i class="fa-regular fa-trash-can me-1"></i> Thùng rác
-                    </a>
-                    <a href="#" class="btn btn-dark product-action-btn">
-                        <i class="fa-solid fa-plus me-1"></i> Thêm thương hiệu
-                    </a>
-                </div>
             </form>
 
             <div data-admin-table-area>
@@ -64,6 +65,27 @@
 @push('scripts')
     @include('layouts.components.confirm.delete')
     @include('admin.partials.realtime-table')
+    @include('admin.partials.edit-item-modal', [
+        'modalId'          => 'editBrandModal',
+        'submitBtnId'      => 'editBrandSubmitBtn',
+        'modalTitle'       => 'Sửa thương hiệu',
+        'fieldLabel'       => 'Tên thương hiệu',
+        'fieldId'          => 'edit_brand_name',
+        'fieldPlaceholder' => 'Nhập tên thương hiệu...',
+        'submitLabel'      => 'Lưu thay đổi',
+    ])
+    @include('admin.partials.add-item-modal', [
+        'modalId'          => 'addBrandModal',
+        'formId'           => 'addBrandForm',
+        'submitBtnId'      => 'addBrandSubmitBtn',
+        'modalTitle'       => 'Thêm thương hiệu mới',
+        'fieldLabel'       => 'Tên thương hiệu',
+        'fieldName'        => 'name',
+        'fieldId'          => 'add_brand_name',
+        'fieldPlaceholder' => 'Nhập tên thương hiệu...',
+        'storeUrl'         => route('admin.brands.store'),
+        'submitLabel'      => 'Thêm thương hiệu',
+    ])
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const root = document.getElementById('hkBrandStatusFilter');
@@ -108,6 +130,88 @@
                 if (!panel.hidden && !root.contains(event.target)) {
                     close();
                 }
+            });
+
+            const tableArea = document.querySelector('[data-admin-table-area]');
+            if (!tableArea) return;
+
+            let activeTooltip = null;
+            let pinnedTooltip = null;
+
+            function positionCountTooltip(container) {
+                const tooltip = container.querySelector('.category-count-box');
+                if (!tooltip) return;
+                container.classList.add('is-open');
+                const triggerRect = container.getBoundingClientRect();
+                const tooltipRect = tooltip.getBoundingClientRect();
+                const gap = 12, spacing = 10;
+                let left = triggerRect.left + (triggerRect.width / 2) - (tooltipRect.width / 2);
+                left = Math.max(gap, Math.min(left, window.innerWidth - tooltipRect.width - gap));
+                let top = triggerRect.top - tooltipRect.height - spacing;
+                if (top < gap) top = triggerRect.bottom + spacing;
+                top = Math.max(gap, Math.min(top, window.innerHeight - tooltipRect.height - gap));
+                tooltip.style.left = `${Math.round(left)}px`;
+                tooltip.style.top = `${Math.round(top)}px`;
+            }
+
+            function closeCountTooltip() {
+                if (!activeTooltip) return;
+                const tooltip = activeTooltip.querySelector('.category-count-box');
+                activeTooltip.classList.remove('is-open');
+                if (tooltip) { tooltip.style.left = ''; tooltip.style.top = ''; }
+                activeTooltip = null;
+                pinnedTooltip = null;
+            }
+
+            function openCountTooltip(container, pinned = false) {
+                if (activeTooltip && activeTooltip !== container) closeCountTooltip();
+                activeTooltip = container;
+                if (pinned) pinnedTooltip = container;
+                positionCountTooltip(container);
+            }
+
+            tableArea.addEventListener('pointerover', function (event) {
+                const container = event.target.closest('.category-count-tooltip');
+                if (!container || !tableArea.contains(container)) return;
+                openCountTooltip(container);
+            });
+
+            tableArea.addEventListener('pointerout', function (event) {
+                const container = event.target.closest('.category-count-tooltip');
+                if (!container || container.contains(event.relatedTarget)) return;
+                if (pinnedTooltip === container) return;
+                closeCountTooltip();
+            });
+
+            tableArea.addEventListener('click', function (event) {
+                const container = event.target.closest('.category-count-tooltip');
+                if (!container || !tableArea.contains(container)) return;
+                event.stopPropagation();
+                if (event.target.closest('.category-count-box')) return;
+                if (pinnedTooltip === container) { closeCountTooltip(); return; }
+                openCountTooltip(container, true);
+            });
+
+            tableArea.addEventListener('focusin', function (event) {
+                const container = event.target.closest('.category-count-tooltip');
+                if (container) openCountTooltip(container);
+            });
+
+            tableArea.addEventListener('focusout', function () {
+                if (!pinnedTooltip) closeCountTooltip();
+            });
+
+            document.addEventListener('click', function (event) {
+                if (!activeTooltip || activeTooltip.contains(event.target)) return;
+                closeCountTooltip();
+            });
+
+            window.addEventListener('scroll', function () {
+                if (activeTooltip) positionCountTooltip(activeTooltip);
+            }, true);
+
+            window.addEventListener('resize', function () {
+                if (activeTooltip) positionCountTooltip(activeTooltip);
             });
         });
     </script>

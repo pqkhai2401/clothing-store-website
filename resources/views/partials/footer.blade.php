@@ -33,10 +33,15 @@
                     <li class="text-muted"><i class="bi bi-envelope me-2"></i> #### </li>
                 </ul>
                 <div class="footer-socials mt-4">
-                    <a href="#" aria-label="Facebook"><i class="bi bi-facebook"></i></a>
-                    <a href="#" aria-label="Instagram"><i class="bi bi-instagram"></i></a>
-                    <a href="#" aria-label="Twitter"><i class="bi bi-twitter-x"></i></a>
-                    <a href="#" aria-label="Pinterest"><i class="bi bi-pinterest"></i></a>
+                    <a href="https://www.facebook.com/kha.rea.19" target="_blank" rel="noopener noreferrer" aria-label="Facebook">
+                        <img src="{{ asset('images/Facebook.png') }}" alt="Facebook" loading="lazy">
+                    </a>
+                    <a href="https://www.instagram.com/kha_rea.19/?hl=en" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
+                        <img src="{{ asset('images/Instagram.png') }}" alt="Instagram" loading="lazy">
+                    </a>
+                    <a href="https://zalo.me/0357989856" target="_blank" rel="noopener noreferrer" aria-label="Zalo">
+                        <img src="{{ asset('images/Zalo.png') }}" alt="Zalo" loading="lazy">
+                    </a>
                 </div>
             </div>
         </div>

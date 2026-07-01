@@ -101,6 +101,12 @@
     color: var(--stock-tip-count);
     font-weight: 800;
     text-align: left;
+    text-decoration: none;
+}
+
+.stock-tooltip-count:hover {
+    color: var(--stock-tip-link-hover);
+    text-decoration: underline;
 }
 
 .stock-tooltip-total {
@@ -123,6 +129,7 @@ html:not([data-theme="dark"]) .tooltip-box {
     --stock-tip-divider: #e5e7eb;
     --stock-tip-bullet: #64748b;
     --stock-tip-total-bg: #eef2f7;
+    --stock-tip-link-hover: #15803d;
     background: #ffffff;
     color: #111827;
     border: 1px solid #d7dde8;
@@ -147,6 +154,7 @@ html:not([data-theme="dark"]) .stock-total {
     --stock-tip-divider: #2a3b59;
     --stock-tip-bullet: #93c5fd;
     --stock-tip-total-bg: rgba(148, 163, 184, 0.18);
+    --stock-tip-link-hover: #86efac;
     background: #111827;
     color: #f8fafc;
     border: 1px solid #334155;
@@ -299,9 +307,17 @@ html:not([data-theme="dark"]) .stock-total {
                                                                 <span class="stock-tooltip-color-name">
                                                                     Màu: {{ $variant->color?->name ?? 'Không màu' }}
                                                                 </span>
-                                                                <span class="stock-tooltip-count">
-                                                                    {{ number_format($variant->stock) }}
-                                                                </span>
+                                                                @if($variant->size_id)
+                                                                    <a href="{{ route('admin.products.list', ['size_id' => $variant->size_id]) }}"
+                                                                        class="stock-tooltip-count"
+                                                                        title="Lọc sản phẩm theo size {{ $variant->size?->name ?? '' }}">
+                                                                        {{ number_format($variant->stock) }}
+                                                                    </a>
+                                                                @else
+                                                                    <span class="stock-tooltip-count">
+                                                                        {{ number_format($variant->stock) }}
+                                                                    </span>
+                                                                @endif
                                                             </div>
                                                         @endforeach
                                                     </div>

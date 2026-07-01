@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Web;
+namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
 use App\Models\Product;
@@ -60,6 +60,43 @@ class WishlistController extends Controller
             'recommendedProducts',
             'totalCount'
         ));
+    }
+
+    /**
+     * Thêm sản phẩm vào wishlist nếu chưa có (không xóa nếu đã tồn tại).
+     * Trả về JSON: { added: bool, already: bool, count: int }
+     */
+    public function add(int $productId): JsonResponse
+    {
+        $userId = Auth::id();
+
+        $exists = Wishlist::where('user_id', $userId)
+            ->where('product_id', $productId)
+            ->exists();
+
+        if ($exists) {
+            return response()->json([
+                'added'   => false,
+                'already' => true,
+                'count'   => Wishlist::where('user_id', $userId)->count(),
+            ]);
+        }
+
+        $product = Product::where('id', $productId)->where('status', true)->first();
+        if (!$product) {
+            return response()->json(['message' => 'Sản phẩm không tồn tại.'], 404);
+        }
+
+        Wishlist::create([
+            'user_id'    => $userId,
+            'product_id' => $productId,
+        ]);
+
+        return response()->json([
+            'added'   => true,
+            'already' => false,
+            'count'   => Wishlist::where('user_id', $userId)->count(),
+        ]);
     }
 
     /**

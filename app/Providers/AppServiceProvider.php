@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Models\Cart;
 use App\Models\Wishlist;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Auth;
@@ -39,6 +40,15 @@ class AppServiceProvider extends ServiceProvider
                 $view->with('wishlistCount', 0);
                 $view->with('userWishlistIds', []);
             }
+        });
+
+        // Cung cấp số lượng sản phẩm trong giỏ hàng cho header
+        View::composer('partials.header', function ($view): void {
+            $cartCount = Auth::check()
+                ? (int) (Cart::where('user_id', Auth::id())->first()?->cartItems()->sum('quantity') ?? 0)
+                : 0;
+
+            $view->with('cartCount', $cartCount);
         });
 
         View::composer([

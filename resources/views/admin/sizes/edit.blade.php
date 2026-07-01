@@ -13,13 +13,17 @@
     <div class="d-flex align-items-center justify-content-between gap-3 mb-4 flex-wrap">
         <div>
             <h1 class="h4 fw-bold mb-1" style="color:#174761;">Sửa kích thước</h1>
-            <p class="mb-0 text-muted" style="font-size:13px;">ID: {{ $size->id }} — <strong>{{ $size->name }}</strong></p>
+            <p class="mb-0 text-muted" style="font-size:13px;">ID: {{ $size->id }} - <strong>{{ $size->name }}</strong></p>
         </div>
-        <div class="small text-muted">Trang chủ <span class="mx-1">/</span> <a href="{{ route('admin.sizes.list') }}" class="text-decoration-none">Kích thước</a> <span class="mx-1">/</span> Sửa</div>
+        <div class="small text-muted">
+            Trang chủ <span class="mx-1">/</span>
+            <a href="{{ route('admin.sizes.list') }}" class="text-decoration-none">Kích thước</a>
+            <span class="mx-1">/</span> Sửa
+        </div>
     </div>
 
     <div class="row justify-content-center">
-        <div class="col-lg-6 col-md-8">
+        <div class="col-lg-7 col-md-9">
             <div class="card edit-card shadow-sm">
                 <div class="card-header">
                     <span class="fw-bold" style="font-size:14px;">Thông tin kích thước</span>
@@ -35,6 +39,28 @@
                                 class="form-control @error('name') is-invalid @enderror"
                                 value="{{ old('name', $size->name) }}" required autofocus>
                             @error('name')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="edit-field">
+                            <label for="sort_weight">Thứ tự hiển thị <span class="text-danger">*</span></label>
+                            <input type="number" min="0" id="sort_weight" name="sort_weight"
+                                class="form-control @error('sort_weight') is-invalid @enderror"
+                                value="{{ old('sort_weight', $size->sort_weight) }}" required>
+                            @error('sort_weight')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="edit-field">
+                            <label for="status">Trạng thái <span class="text-danger">*</span></label>
+                            <select id="status" name="status"
+                                class="form-select @error('status') is-invalid @enderror" required>
+                                <option value="1" @selected((string) old('status', $size->status) === '1')>Hoạt động</option>
+                                <option value="0" @selected((string) old('status', $size->status) === '0')>Ẩn</option>
+                            </select>
+                            @error('status')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
