@@ -205,7 +205,8 @@ a:hover {
 
 .btn-black:hover {
     background-color: #ffffff;
-    color: var(--primary-color);
+    color: #000000;
+    border: 1px solid #000000;
 }
 
 /* Footer */
