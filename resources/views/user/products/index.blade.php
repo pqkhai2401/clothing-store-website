@@ -219,10 +219,15 @@
 
     <!-- Breadcrumbs -->
     @include('partials.breadcrumb', [
-        'items' => [
-            ['name' => 'Trang chủ', 'url' => url('/')],
-            ['name' => $pageTitle ?? 'Sản phẩm', 'active' => true]
-        ]
+        'items' => isset($q)
+            ? [
+                ['name' => 'Trang chủ', 'url' => url('/')],
+                ['name' => 'Tìm kiếm', 'active' => true],
+              ]
+            : [
+                ['name' => 'Trang chủ', 'url' => url('/')],
+                ['name' => $pageTitle ?? 'Sản phẩm', 'active' => true],
+              ]
     ])
 
     <!-- Products Page Body -->
@@ -401,7 +406,15 @@
                     </div>
 
                     <!-- Product Cards Grid -->
-                    @include('partials.product-grid', ['products' => $products, 'cols' => 'col-6 col-md-4'])
+                    @if(isset($q) && $products->total() === 0)
+                        <div class="text-center py-5">
+                            <i class="bi bi-search" style="font-size:48px; color:#ccc;"></i>
+                            <p class="mt-3 mb-1" style="font-size:18px; font-weight:500;">Không tìm thấy sản phẩm nào</p>
+                            <p class="text-muted" style="font-size:14px;">Thử tìm với từ khóa khác hoặc <a href="{{ url('/products') }}">xem tất cả sản phẩm</a></p>
+                        </div>
+                    @else
+                        @include('partials.product-grid', ['products' => $products, 'cols' => 'col-6 col-md-4'])
+                    @endif
 
                     <!-- Phân trang -->
                     @if($products instanceof \Illuminate\Contracts\Pagination\LengthAwarePaginator)

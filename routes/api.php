@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Web\WishlistController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/test', function () {
@@ -15,6 +16,5 @@ Route::prefix('auth')->group(function () {
    
 });
 
-Route::middleware("auth:api")->group(function () {
-    
-});
+// Wishlist count — không cần auth middleware, controller tự kiểm tra Auth::check()
+Route::get('/wishlist/count', [WishlistController::class, 'count'])->name('api.wishlist.count');

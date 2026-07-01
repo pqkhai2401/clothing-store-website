@@ -6,19 +6,17 @@ use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\ProductView;
+use App\Models\Wishlist;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class ProductController extends Controller
 {
-    /**
-     * Trang chi tiết sản phẩm: /san-pham/{slug}
-     *
-     * - Tìm sản phẩm theo slug, eager load biến thể kèm quan hệ color và size.
-     * - Trích xuất danh sách Màu sắc duy nhất và Size duy nhất mà sản phẩm đang có.
-     * - Lấy biến thể đầu tiên làm biến thể mặc định (hiển thị SKU, giá ban đầu).
-     * - Query 4 sản phẩm liên quan cùng danh mục, loại trừ sản phẩm hiện tại.
-     */
+    
+     //Trang chi tiết sản phẩm
     public function show(string $slug)
     {
         // Tìm sản phẩm theo slug, kèm theo ảnh và biến thể (với color, size)
@@ -26,6 +24,41 @@ class ProductController extends Controller
             ->where('status', true)
             ->with(['category', 'brand', 'productImages', 'productVariants.color', 'productVariants.size'])
             ->firstOrFail();
+
+        // Tăng lượt xem cho mọi lượt truy cập
+        $product->increment('views_count');
+
+        // Chỉ ghi nhận hành vi xem sản phẩm vào bảng product_views khi user đã đăng nhập.
+        if (Auth::check()) {
+            $userId = Auth::id();
+
+            // Khoảng thời gian tối thiểu giữa 2 lần ghi nhận (đơn vị: phút)
+            $antiSpamMinutes = 10;
+
+            // Tìm bản ghi xem gần nhất của user này cho sản phẩm này
+            $lastView = ProductView::where('user_id', $userId)
+                ->where('product_id', $product->id)
+                ->orderBy('viewed_at', 'desc')
+                ->first();
+
+            // Kiểm tra điều kiện ghi nhận:
+            // - $lastView === null: User chưa từng xem sản phẩm này -> ghi nhận lần đầu.
+            // - Carbon::parse($lastView->viewed_at)->diffInMinutes(now()) >= 10:
+            //   Lần xem gần nhất đã cách đây >= 10 phút -> đây là lượt xem hợp lệ, ghi nhận.
+            $shouldRecord = !$lastView
+                || Carbon::parse($lastView->viewed_at)->diffInMinutes(now()) >= $antiSpamMinutes;
+
+            if ($shouldRecord) {
+                // Tạo bản ghi mới trong bảng product_views
+                // với viewed_at = thời điểm hiện tại, phục vụ cho việc
+                // phân tích xu hướng xem sản phẩm theo thời gian của hệ thống AI.
+                ProductView::create([
+                    'user_id'    => $userId,
+                    'product_id' => $product->id,
+                    'viewed_at'  => now(),
+                ]);
+            }
+        }
 
         // Lấy danh sách Màu sắc duy nhất từ các biến thể thực tế của sản phẩm
         $colors = $product->productVariants
@@ -42,7 +75,7 @@ class ProductController extends Controller
         // Biến thể mặc định (đầu tiên) để hiển thị SKU và giá ban đầu
         $defaultVariant = $product->productVariants->first();
 
-        // Lấy 4 sản phẩm liên quan cùng danh mục, loại trừ sản phẩm hiện tại
+        // Lấy 4 sản phẩm liên quan cùng danh mục
         $relatedProducts = Product::where('category_id', $product->category_id)
             ->where('id', '!=', $product->id)
             ->where('status', true)
@@ -51,21 +84,22 @@ class ProductController extends Controller
             ->limit(4)
             ->get();
 
+        // Kiểm tra sản phẩm có trong wishlist của user không (dùng cho nút ❤️ real-time)
+        $isInWishlist = Auth::check()
+            ? Wishlist::where('user_id', Auth::id())->where('product_id', $product->id)->exists()
+            : false;
+
         return view('user.products.show', compact(
             'product',
             'colors',
             'sizes',
             'defaultVariant',
-            'relatedProducts'
+            'relatedProducts',
+            'isInWishlist'
         ));
     }
 
-    /**
-     * API kiểm tra biến thể sản phẩm theo cặp Màu + Size.
-     *
-     * Nhận vào product_id, color_id, size_id.
-     * Trả về JSON chứa: stock, sku, price, discount, final_price.
-     */
+   //kiểm tra biến thể sản phẩm theo cặp Màu + Size
     public function checkVariant(Request $request): JsonResponse
     {
         $request->validate([
@@ -101,9 +135,7 @@ class ProductController extends Controller
         ]);
     }
 
-    /**
-     * Trang danh sách tất cả sản phẩm: /products
-     */
+    //Trang danh sách sp
     public function index(Request $request)
     {
         $query = Product::where('status', true);
@@ -126,23 +158,66 @@ class ProductController extends Controller
         return view('user.products.index', compact('products', 'pageTitle'));
     }
 
-    /**
-     * Hiển thị danh sách sản phẩm theo danh mục (slug) và giới tính (gender).
-     *
-     * Logic xử lý:
-     * - Nếu slug thuộc danh mục CHA (có con): lấy tất cả sản phẩm của các danh mục con.
-     * - Nếu slug thuộc danh mục CON (không có con): lấy sản phẩm của chính danh mục đó.
-     * - Lọc theo gender: nếu gender=men -> lấy sản phẩm 'men' + 'unisex'.
-     *                     nếu gender=women -> lấy sản phẩm 'women' + 'unisex'.
-     * - Chỉ lấy sản phẩm đang hoạt động (status = 1).
-     * - Sắp xếp theo mới nhất, phân trang 12 sản phẩm/trang.
-     */
+    // Tìm kiếm sản phẩm theo từ khóa
+    public function search(Request $request)
+    {
+        $q = trim($request->query('q', ''));
+
+        $query = Product::where('status', true);
+
+        if ($q !== '') {
+            $query->where(function ($sub) use ($q) {
+                $sub->where('name', 'LIKE', "%{$q}%")
+                    ->orWhereHas('category', fn ($c) => $c->where('name', 'LIKE', "%{$q}%"));
+            });
+        }
+
+        $products = $query->with('category')
+            ->latest()
+            ->paginate(12)
+            ->appends($request->query());
+
+        $pageTitle = $q !== ''
+            ? "Kết quả cho: \"{$q}\""
+            : 'Tìm kiếm sản phẩm';
+
+        return view('user.products.index', compact('products', 'pageTitle', 'q'));
+    }
+
+    // Gợi ý tìm kiếm nhanh (AJAX autocomplete)
+    public function suggestions(Request $request): JsonResponse
+    {
+        $q = trim($request->query('q', ''));
+
+        if (mb_strlen($q) < 2) {
+            return response()->json([]);
+        }
+
+        $items = Product::where('status', true)
+            ->where('name', 'LIKE', "%{$q}%")
+            ->with('category')
+            ->latest()
+            ->limit(6)
+            ->get(['id', 'name', 'slug', 'price', 'discount', 'thumbnail', 'category_id']);
+
+        return response()->json($items->map(fn ($p) => [
+            'name'     => $p->name,
+            'url'      => url('/san-pham/' . $p->slug),
+            'price'    => number_format($p->price, 0, ',', '.') . 'đ',
+            'final'    => $p->discount > 0
+                            ? number_format($p->price * (100 - $p->discount) / 100, 0, ',', '.') . 'đ'
+                            : null,
+            'category' => $p->category->name ?? '',
+            'image'    => $p->thumbnail,
+            'discount' => $p->discount,
+        ]));
+    }
+
+    // Hiển thị danh sách sản phẩm theo danh mục (slug) và giới tính (gender)
     public function getProductsByCategory(Request $request, string $slug)
     {
-        // Tìm danh mục theo slug, nếu không tồn tại -> 404
         $category = Category::where('slug', $slug)->firstOrFail();
 
-        // Xác định danh sách category_id cần truy vấn
         $childrenIds = $category->childrenCategories()->pluck('id');
 
         if ($childrenIds->isNotEmpty()) {
@@ -153,11 +228,11 @@ class ProductController extends Controller
             $categoryIds = collect([$category->id]);
         }
 
-        // Khởi tạo query: lọc theo danh mục + trạng thái active
+        // lọc theo danh mục + trạng thái active
         $query = Product::whereIn('category_id', $categoryIds)
             ->where('status', true);
 
-        // Lọc theo giới tính (nếu có tham số gender trên URL)
+        // Lọc theo giới tính 
         $gender = $request->query('gender');
         if ($gender === 'men') {
             $query->whereIn('gender', ['men', 'unisex']);
@@ -166,7 +241,6 @@ class ProductController extends Controller
         }
 
         // Sắp xếp theo mới nhất + phân trang 12 sản phẩm/trang
-        // appends() giữ lại các query string (gender) khi chuyển trang
         $products = $query->with('category')
             ->latest()
             ->paginate(12)
