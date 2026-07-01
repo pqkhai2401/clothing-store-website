@@ -19,7 +19,11 @@ Route::name('404-not-found')->get('404-not-found', function () {
     return view('404');
 });
 
+Route::view('/about', 'user.about.index')->name('about');
+
 Route::get('/products', [ProductController::class, 'index'])->name('products.index');
+Route::get('/new-arrivals', [ProductController::class, 'index'])->name('new-arrivals');
+Route::get('/collections', [ProductController::class, 'index'])->name('collections');
 Route::get('/search', [ProductController::class, 'search'])->name('search');
 Route::get('/api/search/suggestions', [ProductController::class, 'suggestions'])->name('search.suggestions');
 
@@ -64,6 +68,7 @@ Route::middleware('auth')->group(function () {
 // Wishlist (yêu cầu đăng nhập)
 Route::middleware('auth')->group(function () {
     Route::get('/wishlist', [WishlistController::class, 'index'])->name('wishlist.index');
+    Route::post('/wishlist/add/{productId}', [WishlistController::class, 'add'])->name('wishlist.add');
     Route::post('/wishlist/toggle/{productId}', [WishlistController::class, 'toggle'])->name('wishlist.toggle');
     Route::delete('/wishlist/remove/{productId}', [WishlistController::class, 'remove'])->name('wishlist.remove');
     Route::delete('/wishlist/clear', [WishlistController::class, 'clear'])->name('wishlist.clear');

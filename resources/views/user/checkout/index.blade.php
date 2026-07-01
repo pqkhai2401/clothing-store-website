@@ -969,7 +969,7 @@
 
                         <!-- Street address -->
                         <div class="col-12">
-                            <label for="apartment_number" class="form-label">Địa chỉ (trước sắp nhập)</label>
+                            <label for="apartment_number" class="form-label">Địa chỉ (sau khi sắp nhập)</label>
                             <input type="text" name="apartment_number" id="apartment_number"
                                 class="form-control @error('apartment_number') is-invalid @enderror"
                                 value="{{ old('apartment_number', $address->apartment_number ?? '') }}"
@@ -990,18 +990,7 @@
                                 <div class="invalid-feedback d-block">{{ $message }}</div>
                             @enderror
                         </div>
-
-                        <div class="col-md-6">
-                            <label for="district" class="form-label">Quận/Huyện</label>
-                            <input type="text" name="district" id="district"
-                                class="form-control @error('district') is-invalid @enderror"
-                                value="{{ old('district', $address->district ?? '') }}"
-                                placeholder="Nhập quận/huyện" required>
-                            @error('district')
-                                <div class="invalid-feedback d-block">{{ $message }}</div>
-                            @enderror
-                        </div>
-
+                     
                         <!-- City -->
                         <div class="col-12">
                             <label for="city" class="form-label">Tỉnh/Thành phố</label>

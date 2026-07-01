@@ -35,8 +35,11 @@
         <img src="{{ $pImage }}" alt="{{ $pName }}" class="product-img">
 
         <div class="product-actions">
-            <button class="btn-product-action" title="Quick View" data-id="{{ $pId }}"><i class="bi bi-eye"></i></button>
-            <button class="btn-product-action" title="Add to Cart" onclick="addToCart('{{ $pId }}')"><i class="bi bi-bag"></i></button>
+            <a class="btn-product-action" title="Xem chi tiết" href="{{ $pUrl }}"><i class="bi bi-eye"></i></a>
+            <button class="btn-product-action" type="button" title="Thêm vào giỏ" data-add-to-cart data-product-id="{{ $pId }}">
+                <i class="bi bi-bag add-cart-label"></i>
+                <span class="add-cart-spinner spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+            </button>
         </div>
 
         <button class="product-add-cart-bar" type="button" data-add-to-cart data-product-id="{{ $pId }}">
@@ -87,13 +90,16 @@
                     const data = await response.json();
 
                     if (!response.ok) {
-                        alert(data.message || 'Không thể thêm sản phẩm vào giỏ hàng.');
+                        window.showToast(data.message || 'Không thể thêm sản phẩm vào giỏ hàng.', 'error');
                         return;
                     }
 
-                    window.location.href = data.cart_url;
+                    window.showToast(data.message || 'Đã thêm vào giỏ hàng!', 'success');
+                    if (data.cart_count !== undefined) {
+                        window.updateCartBadge(data.cart_count);
+                    }
                 } catch (error) {
-                    alert('Đã có lỗi xảy ra. Vui lòng thử lại.');
+                    window.showToast('Đã có lỗi xảy ra. Vui lòng thử lại.', 'error');
                 } finally {
                     btn.disabled = false;
                     btn.classList.remove('is-loading');

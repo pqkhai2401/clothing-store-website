@@ -77,10 +77,10 @@
                         </div>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url('/new-arrivals') }}">Hàng mới về</a>
+                        <a class="nav-link" href="{{ route('new-arrivals') }}">Hàng mới về</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url('/collections') }}">Bộ sưu tập</a>
+                        <a class="nav-link" href="{{ route('collections') }}">Bộ sưu tập</a>
                     </li>
                 </ul>
             </div>
@@ -101,7 +101,7 @@
                 <!-- Cart -->
                 <a href="{{ url('/cart') }}" class="btn-icon" title="Giỏ hàng">
                     <i class="bi bi-bag"></i>
-                    <span class="badge-count">0</span>
+                    <span class="badge-count" id="cartCountBadge">{{ $cartCount ?? 0 }}</span>
                 </a>
 
                 <!-- User Account Dropdown -->
@@ -125,9 +125,7 @@
                             </li>
                         @else
                             <li><a class="dropdown-item" href="{{ route('auth.loginpage') }}">Đăng nhập</a></li>
-                            @if (Route::has('register'))
-                                <li><a class="dropdown-item" href="{{ route('register') }}">Đăng ký</a></li>
-                            @endif
+                            <li><a class="dropdown-item" href="{{ route('auth.registerpage') }}">Đăng ký</a></li>
                         @endauth
                     </ul>
                 </div>

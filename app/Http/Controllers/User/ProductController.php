@@ -148,12 +148,27 @@ class ProductController extends Controller
             $query->whereIn('gender', ['women', 'unisex']);
         }
 
+        // Xác định tiêu đề và thứ tự sắp xếp
+        $routeName = $request->route()?->getName();
+        $sort      = $request->query('sort', '');
+
+        if ($routeName === 'new-arrivals' || $sort === 'newest') {
+            $query->latest();
+            $pageTitle = 'Hàng mới về';
+        } elseif ($sort === 'best-selling') {
+            $query->orderBy('views_count', 'desc');
+            $pageTitle = 'Bán chạy nhất';
+        } elseif ($routeName === 'collections') {
+            $query->where('is_featured', true)->latest();
+            $pageTitle = 'Bộ sưu tập';
+        } else {
+            $query->latest();
+            $pageTitle = 'Tất cả sản phẩm';
+        }
+
         $products = $query->with('category')
-            ->latest()
             ->paginate(12)
             ->appends($request->query());
-
-        $pageTitle = 'Tất cả sản phẩm';
 
         return view('user.products.index', compact('products', 'pageTitle'));
     }

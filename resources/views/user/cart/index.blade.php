@@ -468,6 +468,24 @@
         .bar-total-amount { font-size: 15px; }
         .bar-checkout-btn { padding: 0 16px; font-size: 12px; }
     }
+
+    .continue-shopping-link {
+        display: inline-flex;
+        align-items: center;
+        font-size: 13px;
+        color: #6b7280;
+        text-decoration: none;
+        padding: 8px 16px;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+    }
+
+    .continue-shopping-link:hover {
+        color: var(--primary-color);
+        border-color: var(--primary-color);
+        background: var(--hover-bg);
+    }
 </style>
 @endsection
 
@@ -478,7 +496,7 @@
     <div class="d-flex align-items-center justify-content-between mb-4">
         <h1 class="cart-page-title">Giỏ hàng</h1>
         @if($cartItems->isNotEmpty())
-            <a href="{{ url('/products') }}" class="text-muted text-decoration-none" style="font-size:13px;">
+            <a href="{{ url('/products') }}" class="continue-shopping-link">
                 <i class="bi bi-arrow-left me-1"></i> Tiếp tục mua sắm
             </a>
         @endif
@@ -520,6 +538,7 @@
                     @endphp
                     <div class="cart-item-row"
                          data-cart-item="{{ $item->id }}"
+                         data-product-id="{{ $product->id }}"
                          data-unit-price="{{ $unitPrice }}"
                          data-unit-original="{{ $unitOriginal }}"
                          data-quantity="{{ $item->quantity }}"
@@ -692,7 +711,7 @@
 
         <!-- Save to wishlist -->
         <button type="button" class="bar-action-btn btn-wishlist" id="barWishlistBtn">
-            <i class="bi bi-heart"></i> Lưu vào mục đã thích
+            <i class="bi bi-heart"></i> Lưu vào mục yêu thích
         </button>
 
         <div class="bar-spacer"></div>
@@ -911,6 +930,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
                 }
                 recalcSelected();
+                if (data.cart_count !== undefined) window.updateCartBadge?.(data.cart_count);
             } catch (err) { alert(err.message); }
             return;
         }
@@ -919,10 +939,11 @@ document.addEventListener('DOMContentLoaded', function () {
         if (removeBtn) {
             removeBtn.disabled = true;
             try {
-                await apiDelete(removeBtn.dataset.itemId);
+                const data = await apiDelete(removeBtn.dataset.itemId);
                 removeRowFromDOM(removeBtn.dataset.itemId);
                 recalcSelected();
                 showEmptyIfNeeded();
+                if (data.cart_count !== undefined) window.updateCartBadge?.(data.cart_count);
             } catch (err) {
                 alert(err.message);
                 removeBtn.disabled = false;
@@ -937,23 +958,67 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!confirm(`Xóa ${rows.length} sản phẩm đã chọn?`)) return;
 
         this.disabled = true;
+        let lastData = null;
         for (const row of rows) {
             const itemId = row.dataset.cartItem;
             try {
-                await apiDelete(itemId);
+                lastData = await apiDelete(itemId);
                 removeRowFromDOM(itemId);
             } catch (err) { /* skip */ }
         }
         recalcSelected();
         showEmptyIfNeeded();
+        if (lastData?.cart_count !== undefined) window.updateCartBadge?.(lastData.cart_count);
         this.disabled = false;
     });
 
-    /* ── Bar: wishlist (stub) ── */
-    document.getElementById('barWishlistBtn')?.addEventListener('click', function () {
+    /* ── Bar: save selected items to wishlist ── */
+    async function apiWishlistAdd(productId) {
+        const r = await fetch(`/wishlist/add/${productId}`, {
+            method: 'POST',
+            headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+        });
+        if (!r.ok) throw new Error('Không thể lưu sản phẩm vào mục yêu thích.');
+        return r.json();
+    }
+
+    document.getElementById('barWishlistBtn')?.addEventListener('click', async function () {
         const rows = checkedItemRows();
-        if (rows.length === 0) { alert('Bạn chưa chọn sản phẩm nào.'); return; }
-        alert('Tính năng "Lưu vào mục đã thích" sẽ sớm ra mắt!');
+        if (rows.length === 0) {
+            window.showToast?.('Bạn chưa chọn sản phẩm nào.', 'error');
+            return;
+        }
+
+        this.disabled = true;
+
+        let addedCount = 0;
+        let alreadyCount = 0;
+        let lastCount;
+
+        for (const row of rows) {
+            const productId = row.dataset.productId;
+            try {
+                const data = await apiWishlistAdd(productId);
+                if (data.added) addedCount++; else alreadyCount++;
+                lastCount = data.count;
+            } catch (err) { /* skip */ }
+        }
+
+        if (lastCount !== undefined) {
+            document.querySelectorAll('.utility-icons a[href*="wishlist"] .badge-count').forEach(function (el) {
+                el.textContent = lastCount;
+            });
+        }
+
+        if (addedCount > 0 && alreadyCount === 0) {
+            window.showToast?.('Đã thêm vào mục yêu thích', 'success');
+        } else if (addedCount === 0 && alreadyCount > 0) {
+            window.showToast?.('Sản phẩm đã có trong mục yêu thích', 'default');
+        } else if (addedCount > 0 && alreadyCount > 0) {
+            window.showToast?.(`Đã thêm ${addedCount} sản phẩm vào mục yêu thích, ${alreadyCount} sản phẩm đã có sẵn`, 'default');
+        }
+
+        this.disabled = false;
     });
 
     /* ══ Variant chip dropdowns ══ */
