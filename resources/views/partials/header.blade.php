@@ -189,8 +189,6 @@
     visibility: visible;
 }
 
-/* Panel is pinned to the viewport (not the header) so it overlays the header
-   entirely from the very top of the screen, above both the navbar and the backdrop. */
 .nav-search-panel {
     position: fixed;
     top: 0;
