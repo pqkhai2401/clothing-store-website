@@ -174,6 +174,7 @@
 
 <style>
 /* ===== Site Navigation Search ===== */
+
 .nav-search-backdrop {
     position: fixed;
     inset: 0;
@@ -188,15 +189,17 @@
     visibility: visible;
 }
 
+/* Panel is pinned to the viewport (not the header) so it overlays the header
+   entirely from the very top of the screen, above both the navbar and the backdrop. */
 .nav-search-panel {
-    position: absolute;
-    top: 100%;
+    position: fixed;
+    top: 0;
     left: 0;
     width: 100%;
     background: var(--background-color);
     border-bottom: 1px solid var(--border-color);
     box-shadow: 0 24px 48px rgba(0, 0, 0, 0.08);
-    z-index: 1016;
+    z-index: 1080;
     opacity: 0;
     visibility: hidden;
     transform: translateY(-16px);
