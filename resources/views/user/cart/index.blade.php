@@ -468,6 +468,24 @@
         .bar-total-amount { font-size: 15px; }
         .bar-checkout-btn { padding: 0 16px; font-size: 12px; }
     }
+
+    .continue-shopping-link {
+        display: inline-flex;
+        align-items: center;
+        font-size: 13px;
+        color: #6b7280;
+        text-decoration: none;
+        padding: 8px 16px;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+    }
+
+    .continue-shopping-link:hover {
+        color: var(--primary-color);
+        border-color: var(--primary-color);
+        background: var(--hover-bg);
+    }
 </style>
 @endsection
 
@@ -478,7 +496,7 @@
     <div class="d-flex align-items-center justify-content-between mb-4">
         <h1 class="cart-page-title">Giỏ hàng</h1>
         @if($cartItems->isNotEmpty())
-            <a href="{{ url('/products') }}" class="text-muted text-decoration-none" style="font-size:13px;">
+            <a href="{{ url('/products') }}" class="continue-shopping-link">
                 <i class="bi bi-arrow-left me-1"></i> Tiếp tục mua sắm
             </a>
         @endif
