@@ -520,6 +520,7 @@
                     @endphp
                     <div class="cart-item-row"
                          data-cart-item="{{ $item->id }}"
+                         data-product-id="{{ $product->id }}"
                          data-unit-price="{{ $unitPrice }}"
                          data-unit-original="{{ $unitOriginal }}"
                          data-quantity="{{ $item->quantity }}"
@@ -692,7 +693,7 @@
 
         <!-- Save to wishlist -->
         <button type="button" class="bar-action-btn btn-wishlist" id="barWishlistBtn">
-            <i class="bi bi-heart"></i> Lưu vào mục đã thích
+            <i class="bi bi-heart"></i> Lưu vào mục yêu thích
         </button>
 
         <div class="bar-spacer"></div>
@@ -953,11 +954,53 @@ document.addEventListener('DOMContentLoaded', function () {
         this.disabled = false;
     });
 
-    /* ── Bar: wishlist (stub) ── */
-    document.getElementById('barWishlistBtn')?.addEventListener('click', function () {
+    /* ── Bar: save selected items to wishlist ── */
+    async function apiWishlistAdd(productId) {
+        const r = await fetch(`/wishlist/add/${productId}`, {
+            method: 'POST',
+            headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+        });
+        if (!r.ok) throw new Error('Không thể lưu sản phẩm vào mục yêu thích.');
+        return r.json();
+    }
+
+    document.getElementById('barWishlistBtn')?.addEventListener('click', async function () {
         const rows = checkedItemRows();
-        if (rows.length === 0) { alert('Bạn chưa chọn sản phẩm nào.'); return; }
-        alert('Tính năng "Lưu vào mục đã thích" sẽ sớm ra mắt!');
+        if (rows.length === 0) {
+            window.showToast?.('Bạn chưa chọn sản phẩm nào.', 'error');
+            return;
+        }
+
+        this.disabled = true;
+
+        let addedCount = 0;
+        let alreadyCount = 0;
+        let lastCount;
+
+        for (const row of rows) {
+            const productId = row.dataset.productId;
+            try {
+                const data = await apiWishlistAdd(productId);
+                if (data.added) addedCount++; else alreadyCount++;
+                lastCount = data.count;
+            } catch (err) { /* skip */ }
+        }
+
+        if (lastCount !== undefined) {
+            document.querySelectorAll('.utility-icons a[href*="wishlist"] .badge-count').forEach(function (el) {
+                el.textContent = lastCount;
+            });
+        }
+
+        if (addedCount > 0 && alreadyCount === 0) {
+            window.showToast?.('Đã thêm vào mục yêu thích', 'success');
+        } else if (addedCount === 0 && alreadyCount > 0) {
+            window.showToast?.('Sản phẩm đã có trong mục yêu thích', 'default');
+        } else if (addedCount > 0 && alreadyCount > 0) {
+            window.showToast?.(`Đã thêm ${addedCount} sản phẩm vào mục yêu thích, ${alreadyCount} sản phẩm đã có sẵn`, 'default');
+        }
+
+        this.disabled = false;
     });
 
     /* ══ Variant chip dropdowns ══ */

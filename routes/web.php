@@ -57,6 +57,7 @@ Route::middleware('auth')->group(function () {
 // Wishlist (yêu cầu đăng nhập)
 Route::middleware('auth')->group(function () {
     Route::get('/wishlist', [WishlistController::class, 'index'])->name('wishlist.index');
+    Route::post('/wishlist/add/{productId}', [WishlistController::class, 'add'])->name('wishlist.add');
     Route::post('/wishlist/toggle/{productId}', [WishlistController::class, 'toggle'])->name('wishlist.toggle');
     Route::delete('/wishlist/remove/{productId}', [WishlistController::class, 'remove'])->name('wishlist.remove');
     Route::delete('/wishlist/clear', [WishlistController::class, 'clear'])->name('wishlist.clear');
