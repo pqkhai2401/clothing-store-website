@@ -158,6 +158,61 @@ class ProductController extends Controller
         return view('user.products.index', compact('products', 'pageTitle'));
     }
 
+    // Tìm kiếm sản phẩm theo từ khóa
+    public function search(Request $request)
+    {
+        $q = trim($request->query('q', ''));
+
+        $query = Product::where('status', true);
+
+        if ($q !== '') {
+            $query->where(function ($sub) use ($q) {
+                $sub->where('name', 'LIKE', "%{$q}%")
+                    ->orWhereHas('category', fn ($c) => $c->where('name', 'LIKE', "%{$q}%"));
+            });
+        }
+
+        $products = $query->with('category')
+            ->latest()
+            ->paginate(12)
+            ->appends($request->query());
+
+        $pageTitle = $q !== ''
+            ? "Kết quả cho: \"{$q}\""
+            : 'Tìm kiếm sản phẩm';
+
+        return view('user.products.index', compact('products', 'pageTitle', 'q'));
+    }
+
+    // Gợi ý tìm kiếm nhanh (AJAX autocomplete)
+    public function suggestions(Request $request): JsonResponse
+    {
+        $q = trim($request->query('q', ''));
+
+        if (mb_strlen($q) < 2) {
+            return response()->json([]);
+        }
+
+        $items = Product::where('status', true)
+            ->where('name', 'LIKE', "%{$q}%")
+            ->with('category')
+            ->latest()
+            ->limit(6)
+            ->get(['id', 'name', 'slug', 'price', 'discount', 'thumbnail', 'category_id']);
+
+        return response()->json($items->map(fn ($p) => [
+            'name'     => $p->name,
+            'url'      => url('/san-pham/' . $p->slug),
+            'price'    => number_format($p->price, 0, ',', '.') . 'đ',
+            'final'    => $p->discount > 0
+                            ? number_format($p->price * (100 - $p->discount) / 100, 0, ',', '.') . 'đ'
+                            : null,
+            'category' => $p->category->name ?? '',
+            'image'    => $p->thumbnail,
+            'discount' => $p->discount,
+        ]));
+    }
+
     // Hiển thị danh sách sản phẩm theo danh mục (slug) và giới tính (gender)
     public function getProductsByCategory(Request $request, string $slug)
     {

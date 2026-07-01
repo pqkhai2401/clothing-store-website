@@ -19,6 +19,8 @@ Route::name('404-not-found')->get('404-not-found', function () {
 });
 
 Route::get('/products', [ProductController::class, 'index'])->name('products.index');
+Route::get('/search', [ProductController::class, 'search'])->name('search');
+Route::get('/api/search/suggestions', [ProductController::class, 'suggestions'])->name('search.suggestions');
 
 // Route chi tiết sản phẩm: /san-pham/{slug}
 Route::get('/san-pham/{slug}', [ProductController::class, 'show'])->name('products.show');
