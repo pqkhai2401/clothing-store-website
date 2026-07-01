@@ -655,46 +655,6 @@
     }
 
     /* =============================================
-       TOAST NOTIFICATION
-       ============================================= */
-    .wl-toast-container {
-        position: fixed;
-        bottom: 28px;
-        right: 28px;
-        z-index: 9999;
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        pointer-events: none;
-    }
-
-    .wl-toast {
-        background: var(--primary-color);
-        color: #fff;
-        padding: 12px 20px;
-        font-size: 12px;
-        font-weight: 500;
-        letter-spacing: 0.5px;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        min-width: 240px;
-        box-shadow: 0 6px 20px rgba(0,0,0,0.18);
-        opacity: 0;
-        transform: translateX(20px);
-        transition: opacity 0.3s ease, transform 0.3s ease;
-        pointer-events: auto;
-    }
-
-    .wl-toast.show {
-        opacity: 1;
-        transform: translateX(0);
-    }
-
-    .wl-toast.success { background: #28a745; }
-    .wl-toast.error   { background: #d9534f; }
-
-    /* =============================================
        PAGINATION — override Bootstrap 5
        Tông đen/trắng đồng bộ với ecommerce.css
        ============================================= */
@@ -1072,9 +1032,6 @@
 
     </div>{{-- /container-fluid --}}
 
-    {{-- ===== TOAST CONTAINER ===== --}}
-    <div class="wl-toast-container" id="wlToastContainer"></div>
-
 @endsection
 
 @push('scripts')
@@ -1090,24 +1047,10 @@
     }
 
     /* ================================================
-       Toast Notification
+       Toast Notification — dùng chung window.showToast
+       (định nghĩa trong layouts/app.blade.php, neo góc phải trên)
        ================================================ */
-    function showToast(message, type = 'default') {
-        const container = document.getElementById('wlToastContainer');
-        const toast     = document.createElement('div');
-        toast.className = 'wl-toast ' + type;
-        toast.innerHTML = `<i class="bi ${type === 'success' ? 'bi-check-circle' : type === 'error' ? 'bi-x-circle' : 'bi-info-circle'}"></i> ${message}`;
-        container.appendChild(toast);
-
-        requestAnimationFrame(() => {
-            requestAnimationFrame(() => toast.classList.add('show'));
-        });
-
-        setTimeout(() => {
-            toast.classList.remove('show');
-            setTimeout(() => toast.remove(), 350);
-        }, 3000);
-    }
+    const showToast = window.showToast;
 
     /* ================================================
        Cập nhật badge header (Wishlist & Cart)
@@ -1318,7 +1261,7 @@
         btnEl.disabled    = true;
         btnEl.textContent = 'Đang thêm...';
 
-        fetch('/api/cart/add', {
+        fetch('{{ route('cart.add') }}', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -1332,19 +1275,16 @@
                 quantity:   1
             })
         })
-        .then(r => r.json())
-        .then(data => {
-            if (data.success || data.cart_count !== undefined) {
-                showToast('Đã thêm vào giỏ hàng!', 'success');
+        .then(r => r.json().then(data => ({ ok: r.ok, data })))
+        .then(({ ok, data }) => {
+            if (ok) {
+                showToast(data.message || 'Đã thêm vào giỏ hàng!', 'success');
                 if (data.cart_count !== undefined) updateCartBadge(data.cart_count);
-                // Reset nút
-                btnEl.disabled = false;
-                btnEl.innerHTML = '<i class="bi bi-bag"></i> Thêm vào giỏ hàng';
             } else {
-                showToast(data.message || 'Vui lòng chọn màu và size.', 'error');
-                btnEl.disabled = false;
-                btnEl.innerHTML = '<i class="bi bi-bag"></i> Thêm vào giỏ hàng';
+                showToast(data.message || 'Không thể thêm sản phẩm vào giỏ hàng.', 'error');
             }
+            btnEl.disabled = false;
+            btnEl.innerHTML = '<i class="bi bi-bag"></i> Thêm vào giỏ hàng';
         })
         .catch(() => {
             showToast('Có lỗi xảy ra. Vui lòng thử lại.', 'error');
@@ -1534,7 +1474,7 @@
        Thêm vào giỏ nhanh từ AI Rec (không cần biến thể)
        ================================================ */
     window.addToCartQuick = function(productId) {
-        fetch('/api/cart/add', {
+        fetch('{{ route('cart.add') }}', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -1543,10 +1483,14 @@
             },
             body: JSON.stringify({ product_id: productId, quantity: 1 })
         })
-        .then(r => r.json())
-        .then(data => {
-            showToast('Đã thêm vào giỏ hàng!', 'success');
-            if (data.cart_count !== undefined) updateCartBadge(data.cart_count);
+        .then(r => r.json().then(data => ({ ok: r.ok, data })))
+        .then(({ ok, data }) => {
+            if (ok) {
+                showToast(data.message || 'Đã thêm vào giỏ hàng!', 'success');
+                if (data.cart_count !== undefined) updateCartBadge(data.cart_count);
+            } else {
+                showToast(data.message || 'Không thể thêm sản phẩm vào giỏ hàng.', 'error');
+            }
         })
         .catch(() => showToast('Có lỗi xảy ra.', 'error'));
     };
