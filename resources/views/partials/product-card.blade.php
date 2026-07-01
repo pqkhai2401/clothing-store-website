@@ -35,8 +35,11 @@
         <img src="{{ $pImage }}" alt="{{ $pName }}" class="product-img">
 
         <div class="product-actions">
-            <button class="btn-product-action" title="Quick View" data-id="{{ $pId }}"><i class="bi bi-eye"></i></button>
-            <button class="btn-product-action" title="Add to Cart" onclick="addToCart('{{ $pId }}')"><i class="bi bi-bag"></i></button>
+            <a class="btn-product-action" title="Xem chi tiết" href="{{ $pUrl }}"><i class="bi bi-eye"></i></a>
+            <button class="btn-product-action" type="button" title="Thêm vào giỏ" data-add-to-cart data-product-id="{{ $pId }}">
+                <i class="bi bi-bag add-cart-label"></i>
+                <span class="add-cart-spinner spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+            </button>
         </div>
 
         <button class="product-add-cart-bar" type="button" data-add-to-cart data-product-id="{{ $pId }}">
