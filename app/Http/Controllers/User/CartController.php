@@ -179,6 +179,7 @@ class CartController extends Controller
             'shipping_fee'  => $shippingFee,
             'total'         => $total,
             'is_empty'      => $cartItems->isEmpty(),
+            'cart_count'    => (int) $cartItems->sum('quantity'),
         ]);
     }
 

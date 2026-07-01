@@ -911,6 +911,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
                 }
                 recalcSelected();
+                if (data.cart_count !== undefined) window.updateCartBadge?.(data.cart_count);
             } catch (err) { alert(err.message); }
             return;
         }
@@ -919,10 +920,11 @@ document.addEventListener('DOMContentLoaded', function () {
         if (removeBtn) {
             removeBtn.disabled = true;
             try {
-                await apiDelete(removeBtn.dataset.itemId);
+                const data = await apiDelete(removeBtn.dataset.itemId);
                 removeRowFromDOM(removeBtn.dataset.itemId);
                 recalcSelected();
                 showEmptyIfNeeded();
+                if (data.cart_count !== undefined) window.updateCartBadge?.(data.cart_count);
             } catch (err) {
                 alert(err.message);
                 removeBtn.disabled = false;
@@ -937,15 +939,17 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!confirm(`Xóa ${rows.length} sản phẩm đã chọn?`)) return;
 
         this.disabled = true;
+        let lastData = null;
         for (const row of rows) {
             const itemId = row.dataset.cartItem;
             try {
-                await apiDelete(itemId);
+                lastData = await apiDelete(itemId);
                 removeRowFromDOM(itemId);
             } catch (err) { /* skip */ }
         }
         recalcSelected();
         showEmptyIfNeeded();
+        if (lastData?.cart_count !== undefined) window.updateCartBadge?.(lastData.cart_count);
         this.disabled = false;
     });
 
