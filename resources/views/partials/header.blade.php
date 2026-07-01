@@ -80,7 +80,7 @@
                         <a class="nav-link" href="{{ url('/new-arrivals') }}">Hàng mới về</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url('/contact') }}">Liên hệ</a>
+                        <a class="nav-link" href="{{ url('/collections') }}">Bộ sưu tập</a>
                     </li>
                 </ul>
             </div>
