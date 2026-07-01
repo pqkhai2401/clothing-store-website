@@ -61,6 +61,21 @@
             color: #94A3B8 !important;
             background: #162843 !important;
         }
+        .attribute-name-link {
+            color: #0f172a;
+            text-decoration: none;
+        }
+        .attribute-name-link:hover {
+            color: #15803d;
+            text-decoration: underline;
+            text-underline-offset: 4px;
+        }
+        [data-theme="dark"] .attribute-name-link {
+            color: #f8fafc;
+        }
+        [data-theme="dark"] .attribute-name-link:hover {
+            color: #86efac;
+        }
     </style>
 
 

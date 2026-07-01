@@ -1,6 +1,6 @@
 <?php
 
-use App\Http\Controllers\Web\WishlistController;
+use App\Http\Controllers\User\WishlistController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/test', function () {
@@ -8,7 +8,7 @@ Route::get('/test', function () {
 });
 
 // API kiểm tra biến thể sản phẩm (màu + size) để lấy tồn kho, SKU, giá
-Route::post('/products/check-variant', [\App\Http\Controllers\Web\ProductController::class, 'checkVariant']);
+Route::post('/products/check-variant', [\App\Http\Controllers\User\ProductController::class, 'checkVariant']);
 
 
 // Auth

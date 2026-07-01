@@ -13,6 +13,13 @@ class Size extends Model
 
     protected $fillable = [
         'name',
+        'sort_weight',
+        'status',
+    ];
+
+    protected $casts = [
+        'sort_weight' => 'integer',
+        'status' => 'integer',
     ];
 
     /**

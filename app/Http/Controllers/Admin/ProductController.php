@@ -6,7 +6,9 @@ use App\Enums\Gender;
 use App\Http\Controllers\Controller;
 use App\Models\Brand;
 use App\Models\Category;
+use App\Models\Color;
 use App\Models\Product;
+use App\Models\Size;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -15,10 +17,14 @@ class ProductController extends Controller
 {
     public function index(Request $request)
     {
-        $search     = trim((string) $request->input('search', $request->input('keyword')));
-        $keyword    = $search;
-        $categoryId = $request->input('category_id');
-        $status     = $request->input('status');
+        $search           = trim((string) $request->input('search', $request->input('keyword')));
+        $keyword          = $search;
+        $categoryId       = $request->input('category_id');
+        $parentCategoryId = $request->input('parent_category_id');
+        $brandId          = $request->input('brand_id');
+        $sizeId           = $request->input('size_id');
+        $colorId          = $request->input('color_id');
+        $status           = $request->input('status');
         $sort       = $request->input('sort', 'id');
         $direction  = $request->input('direction', 'desc');
         $perPage    = in_array((int) $request->input('per_page'), [10, 25, 50], true)
@@ -36,8 +42,24 @@ class ProductController extends Controller
             });
         }
 
-        if ($categoryId) {
+        if ($parentCategoryId) {
+            $childIds = Category::where('parent_id', $parentCategoryId)->pluck('id');
+            $allIds = $childIds->push((int) $parentCategoryId)->unique()->values();
+            $query->whereIn('category_id', $allIds);
+        } elseif ($categoryId) {
             $query->where('category_id', $categoryId);
+        }
+
+        if ($brandId) {
+            $query->where('brand_id', $brandId);
+        }
+
+        if ($sizeId) {
+            $query->whereHas('productVariants', fn ($variantQuery) => $variantQuery->where('size_id', $sizeId));
+        }
+
+        if ($colorId) {
+            $query->whereHas('productVariants', fn ($variantQuery) => $variantQuery->where('color_id', $colorId));
         }
 
         if (in_array($status, ['0', '1'], true)) {
@@ -55,6 +77,8 @@ class ProductController extends Controller
 
         $products   = $query->paginate($perPage)->withQueryString();
         $categories = Category::whereNull('parent_id')->with('childrenCategories')->get();
+        $sizes      = Size::where('status', 1)->orderBy('sort_weight')->orderBy('name')->get();
+        $colors     = Color::orderBy('name')->get();
 
         if ($request->ajax()) {
             return response()->json([
@@ -62,7 +86,7 @@ class ProductController extends Controller
             ]);
         }
 
-        return view('admin.products.index', compact('products', 'categories', 'keyword', 'categoryId', 'status', 'perPage'));
+        return view('admin.products.index', compact('products', 'categories', 'sizes', 'colors', 'keyword', 'categoryId', 'parentCategoryId', 'brandId', 'sizeId', 'colorId', 'status', 'perPage'));
     }
 
     public function edit(string $id)

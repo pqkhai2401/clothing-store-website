@@ -7,7 +7,7 @@
 @endpush
 
 @section('content')
-<div class="container-fluid py-4">
+<main class="app-main container-fluid py-4">
     <x-notification />
 
     <div class="d-flex align-items-center justify-content-between gap-3 mb-4 flex-wrap">
@@ -52,5 +52,5 @@
             </div>
         </div>
     </div>
-</div>
+</main>
 @endsection

@@ -1,14 +1,18 @@
 <?php
+use App\Http\Controllers\User\ProductController;
+use App\Http\Controllers\User\WishlistController;
+use App\Http\Controllers\User\AddressController;
+use App\Http\Controllers\User\AuthController;
+use App\Http\Controllers\User\CartController;
+use App\Http\Controllers\User\CheckoutController;
+use App\Http\Controllers\User\ProfileController;
 
-use App\Http\Controllers\Web\AuthController;
-use App\Http\Controllers\Web\ProductController;
-use App\Http\Controllers\Web\ProfileController;
-use App\Http\Controllers\Web\WishlistController;
 use Illuminate\Support\Facades\Route;
+
 
 Route::get('/', function () {
     return view('user.home.index');
-});
+})->name('home');
 
 Route::name('404-not-found')->get('404-not-found', function () {
     return view('404');
@@ -27,12 +31,19 @@ Route::get('/san-pham/{slug}', [ProductController::class, 'show'])->name('produc
 Route::get('/danh-muc/{slug}', [ProductController::class, 'getProductsByCategory'])
     ->name('category.products');
 
-Route::get('/cart', function () {
-    return view('user.cart.index');
-});
+Route::middleware('auth')->group(function () {
+    Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
+    Route::post('/cart/add', [CartController::class, 'store'])->name('cart.add');
+    Route::patch('/cart/{cartItem}', [CartController::class, 'update'])->name('cart.update');
+    Route::patch('/cart/{cartItem}/variant', [CartController::class, 'switchVariant'])->name('cart.variant');
+    Route::delete('/cart/{cartItem}', [CartController::class, 'destroy'])->name('cart.destroy');
 
-Route::get('/checkout', function () {
-    return view('user.checkout.index');
+    Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout.index');
+    Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');
+
+    Route::get('/user/addresses', [AddressController::class, 'index'])->name('addresses.index');
+    Route::post('/user/addresses', [AddressController::class, 'store'])->name('addresses.store');
+    Route::delete('/user/addresses/{address}', [AddressController::class, 'destroy'])->name('addresses.destroy');
 });
 
 
