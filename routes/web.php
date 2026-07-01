@@ -1,11 +1,14 @@
 <?php
-
+use App\Http\Controllers\User\ProductController;
+use App\Http\Controllers\User\WishlistController;
 use App\Http\Controllers\User\AddressController;
 use App\Http\Controllers\User\AuthController;
 use App\Http\Controllers\User\CartController;
 use App\Http\Controllers\User\CheckoutController;
 use App\Http\Controllers\User\ProfileController;
+
 use Illuminate\Support\Facades\Route;
+
 
 Route::get('/', function () {
     return view('user.home.index');
@@ -28,6 +31,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
     Route::post('/cart/add', [CartController::class, 'store'])->name('cart.add');
     Route::patch('/cart/{cartItem}', [CartController::class, 'update'])->name('cart.update');
+    Route::patch('/cart/{cartItem}/variant', [CartController::class, 'switchVariant'])->name('cart.variant');
     Route::delete('/cart/{cartItem}', [CartController::class, 'destroy'])->name('cart.destroy');
 
     Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout.index');

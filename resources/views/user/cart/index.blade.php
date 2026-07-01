@@ -155,6 +155,92 @@
     .cart-item-remove:hover { color: #ef4444; }
     .cart-item-remove:disabled { opacity: 0.4; cursor: not-allowed; }
 
+    /* ── Variant chips ── */
+    .cart-variant-selectors {
+        display: flex;
+        gap: 8px;
+        margin-top: 8px;
+        flex-wrap: wrap;
+    }
+
+    .cart-variant-chip-wrap {
+        position: relative;
+    }
+
+    .cart-variant-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 4px 10px;
+        border: 1px solid #d1d5db;
+        border-radius: 20px;
+        background: #fff;
+        font-size: 12px;
+        font-weight: 600;
+        color: #374151;
+        cursor: pointer;
+        transition: border-color 0.15s, background 0.15s;
+        white-space: nowrap;
+    }
+
+    .cart-variant-chip:hover { border-color: #111; }
+    .cart-variant-chip.is-loading { opacity: 0.5; pointer-events: none; }
+
+    .cart-variant-chip i {
+        font-size: 10px;
+        transition: transform 0.15s;
+    }
+
+    .cart-variant-chip.open i { transform: rotate(180deg); }
+
+    .cart-variant-dropdown {
+        position: absolute;
+        top: calc(100% + 6px);
+        left: 0;
+        min-width: 140px;
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+        z-index: 200;
+        padding: 6px 0;
+        animation: dropIn 0.12s ease;
+    }
+
+    @keyframes dropIn {
+        from { opacity: 0; transform: translateY(-4px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .cart-variant-option {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 14px;
+        font-size: 13px;
+        cursor: pointer;
+        color: #374151;
+        transition: background 0.1s;
+    }
+
+    .cart-variant-option:hover { background: #f9fafb; }
+
+    .cart-variant-option.active {
+        font-weight: 700;
+        color: #111;
+    }
+
+    .cart-variant-option .check-icon {
+        color: #111;
+        font-size: 12px;
+    }
+
+    .cart-variant-option.out-of-stock {
+        color: #9ca3af;
+        text-decoration: line-through;
+        cursor: not-allowed;
+    }
+
     /* Price column */
     .cart-item-price-col {
         text-align: right;
@@ -423,12 +509,24 @@
                         $linePrice    = $unitPrice * $item->quantity;
                         $lineOriginal = $unitOriginal * $item->quantity;
                         $savings      = $lineOriginal - $linePrice;
+                        $allVariants  = $product->productVariants->map(fn($v) => [
+                            'id'         => $v->id,
+                            'color_id'   => $v->color_id,
+                            'color_name' => $v->color?->name,
+                            'size_id'    => $v->size_id,
+                            'size_name'  => $v->size?->name,
+                            'stock'      => $v->stock,
+                        ])->values();
                     @endphp
                     <div class="cart-item-row"
                          data-cart-item="{{ $item->id }}"
                          data-unit-price="{{ $unitPrice }}"
                          data-unit-original="{{ $unitOriginal }}"
-                         data-quantity="{{ $item->quantity }}">
+                         data-quantity="{{ $item->quantity }}"
+                         data-variant-id="{{ $variant->id }}"
+                         data-color-id="{{ $variant->color_id }}"
+                         data-size-id="{{ $variant->size_id }}"
+                         data-variants='@json($allVariants)'>
 
                         <!-- Checkbox -->
                         <input type="checkbox"
@@ -447,10 +545,30 @@
                             <h3 class="cart-item-name">
                                 <a href="{{ url('/products/'.$product->slug) }}">{{ $product->name }}</a>
                             </h3>
-                            <div class="cart-item-variant">
-                                @if($variant->color)<span>Màu: <strong>{{ $variant->color->name }}</strong></span>@endif
-                                @if($variant->color && $variant->size)<span class="mx-1">·</span>@endif
-                                @if($variant->size)<span>Size: <strong>{{ $variant->size->name }}</strong></span>@endif
+                            <div class="cart-item-variant" data-variant-label>
+                                @if($variant->color)<span>{{ $variant->color->name }}</span>@endif
+                                @if($variant->color && $variant->size)<span class="mx-1">/</span>@endif
+                                @if($variant->size)<span>{{ $variant->size->name }}</span>@endif
+                            </div>
+
+                            {{-- Variant selectors --}}
+                            <div class="cart-variant-selectors">
+                                @if($variant->color)
+                                <div class="cart-variant-chip-wrap" data-chip-type="color">
+                                    <button class="cart-variant-chip" data-chip-btn>
+                                        {{ $variant->color->name }} <i class="bi bi-chevron-down"></i>
+                                    </button>
+                                    <div class="cart-variant-dropdown" style="display:none;" data-chip-dropdown></div>
+                                </div>
+                                @endif
+                                @if($variant->size)
+                                <div class="cart-variant-chip-wrap" data-chip-type="size">
+                                    <button class="cart-variant-chip" data-chip-btn>
+                                        {{ $variant->size->name }} <i class="bi bi-chevron-down"></i>
+                                    </button>
+                                    <div class="cart-variant-dropdown" style="display:none;" data-chip-dropdown></div>
+                                </div>
+                                @endif
                             </div>
 
                             <div class="cart-quantity-selector"
@@ -837,6 +955,177 @@ document.addEventListener('DOMContentLoaded', function () {
         if (rows.length === 0) { alert('Bạn chưa chọn sản phẩm nào.'); return; }
         alert('Tính năng "Lưu vào mục đã thích" sẽ sớm ra mắt!');
     });
+
+    /* ══ Variant chip dropdowns ══ */
+
+    function getVariants(row) {
+        try { return JSON.parse(row.dataset.variants || '[]'); } catch { return []; }
+    }
+
+    function buildDropdown(dropdown, options, activeId) {
+        dropdown.innerHTML = options.map(opt => `
+            <div class="cart-variant-option${opt.id === activeId ? ' active' : ''}${opt.stock === 0 ? ' out-of-stock' : ''}"
+                 data-variant-opt="${opt.variantId}"
+                 title="${opt.stock === 0 ? 'Hết hàng' : ''}">
+                ${opt.name}
+                ${opt.id === activeId ? '<i class="bi bi-check2 check-icon"></i>' : ''}
+            </div>
+        `).join('');
+    }
+
+    function openDropdown(row, chipWrap, type) {
+        const btn      = chipWrap.querySelector('[data-chip-btn]');
+        const dropdown = chipWrap.querySelector('[data-chip-dropdown]');
+        const variants = getVariants(row);
+        const colorId  = parseInt(row.dataset.colorId) || null;
+        const sizeId   = parseInt(row.dataset.sizeId) || null;
+
+        if (type === 'color') {
+            // Unique colors, pick variant matching current size when possible
+            const seen = new Set();
+            const options = [];
+            variants.forEach(v => {
+                if (v.color_id && !seen.has(v.color_id)) {
+                    seen.add(v.color_id);
+                    // prefer matching size
+                    const preferred = variants.find(x => x.color_id === v.color_id && x.size_id === sizeId && x.stock > 0)
+                                   || variants.find(x => x.color_id === v.color_id && x.stock > 0)
+                                   || variants.find(x => x.color_id === v.color_id);
+                    options.push({ id: v.color_id, name: v.color_name, stock: preferred?.stock ?? 0, variantId: preferred?.id });
+                }
+            });
+            buildDropdown(dropdown, options, colorId);
+        } else {
+            // Unique sizes, pick variant matching current color when possible
+            const seen = new Set();
+            const options = [];
+            variants.forEach(v => {
+                if (v.size_id && !seen.has(v.size_id)) {
+                    seen.add(v.size_id);
+                    const preferred = variants.find(x => x.size_id === v.size_id && x.color_id === colorId && x.stock > 0)
+                                   || variants.find(x => x.size_id === v.size_id && x.stock > 0)
+                                   || variants.find(x => x.size_id === v.size_id);
+                    options.push({ id: v.size_id, name: v.size_name, stock: preferred?.stock ?? 0, variantId: preferred?.id });
+                }
+            });
+            buildDropdown(dropdown, options, sizeId);
+        }
+
+        dropdown.style.display = '';
+        btn.classList.add('open');
+    }
+
+    function closeAllDropdowns() {
+        document.querySelectorAll('[data-chip-dropdown]').forEach(d => {
+            d.style.display = 'none';
+        });
+        document.querySelectorAll('[data-chip-btn]').forEach(b => {
+            b.classList.remove('open');
+        });
+    }
+
+    // Click chip btn → open/close dropdown
+    wrapper.addEventListener('click', function (e) {
+        const btn      = e.target.closest('[data-chip-btn]');
+        const optEl    = e.target.closest('[data-variant-opt]');
+
+        if (btn) {
+            e.stopPropagation();
+            const chipWrap = btn.closest('[data-chip-type]');
+            const dropdown = chipWrap.querySelector('[data-chip-dropdown]');
+            const row      = btn.closest('[data-cart-item]');
+            const type     = chipWrap.dataset.chipType;
+            const isOpen   = dropdown.style.display !== 'none';
+
+            closeAllDropdowns();
+            if (!isOpen) openDropdown(row, chipWrap, type);
+            return;
+        }
+
+        if (optEl) {
+            e.stopPropagation();
+            if (optEl.classList.contains('out-of-stock')) return;
+
+            const newVariantId = parseInt(optEl.dataset.variantOpt);
+            if (!newVariantId) return;
+
+            const row      = optEl.closest('[data-cart-item]');
+            const itemId   = row.dataset.cartItem;
+            const chipWrap = optEl.closest('[data-chip-type]');
+            const btn      = chipWrap.querySelector('[data-chip-btn]');
+
+            if (parseInt(row.dataset.variantId) === newVariantId) {
+                closeAllDropdowns();
+                return;
+            }
+
+            closeAllDropdowns();
+            btn.classList.add('is-loading');
+
+            fetch(`/cart/${itemId}/variant`, {
+                method: 'PATCH',
+                headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+                body: JSON.stringify({ product_variant_id: newVariantId }),
+            })
+            .then(r => r.json().then(data => ({ ok: r.ok, data })))
+            .then(({ ok, data }) => {
+                if (!ok) { alert(data.message || 'Không thể đổi variant.'); return; }
+
+                // If merged into another row, remove this row and update the other
+                if (data.merged) {
+                    row.remove();
+                    recalcSelected();
+                    showEmptyIfNeeded();
+                    return;
+                }
+
+                // Update row datasets
+                row.dataset.variantId = data.variant_id;
+                row.dataset.colorId   = data.color_id || '';
+                row.dataset.sizeId    = data.size_id  || '';
+                row.dataset.quantity  = data.item_quantity;
+
+                // Update image
+                const img = row.querySelector('.cart-item-img');
+                if (img && data.variant_image) img.src = data.variant_image;
+
+                // Update variant label text
+                const label = row.querySelector('[data-variant-label]');
+                if (label) {
+                    const parts = [data.color_name, data.size_name].filter(Boolean);
+                    label.innerHTML = parts.join(' <span class="mx-1">/</span> ');
+                }
+
+                // Update chip text (both chips since both may change)
+                const chips = row.querySelectorAll('[data-chip-type]');
+                chips.forEach(wrap => {
+                    const t   = wrap.dataset.chipType;
+                    const b   = wrap.querySelector('[data-chip-btn]');
+                    const txt = t === 'color' ? data.color_name : data.size_name;
+                    if (txt && b) {
+                        b.childNodes[0].textContent = txt + ' ';
+                    }
+                });
+
+                // Update quantity selector stock
+                const sel = row.querySelector('[data-quantity-selector]');
+                if (sel) sel.dataset.stock = data.stock;
+
+                // Update price display
+                const priceEl = row.querySelector('[data-item-price]');
+                if (priceEl) priceEl.textContent = money(data.item_subtotal);
+
+                recalcSelected();
+            })
+            .catch(() => alert('Đã có lỗi. Vui lòng thử lại.'))
+            .finally(() => btn.classList.remove('is-loading'));
+
+            return;
+        }
+    });
+
+    // Close dropdowns on outside click
+    document.addEventListener('click', closeAllDropdowns);
 
     /* initial render */
     recalcSelected();

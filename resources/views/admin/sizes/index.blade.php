@@ -59,27 +59,11 @@
                             <div class="invalid-feedback d-block" data-error-for="name"></div>
                         </div>
 
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="edit-field">
-                                    <label for="edit_size_category_group">Nhóm danh mục <span class="text-danger">*</span></label>
-                                    <select id="edit_size_category_group" name="category_group" class="form-select">
-                                        @foreach($categoryGroups as $value => $label)
-                                            <option value="{{ $value }}">{{ $label }}</option>
-                                        @endforeach
-                                    </select>
-                                    <div class="invalid-feedback d-block" data-error-for="category_group"></div>
-                                </div>
-                            </div>
-
-                            <div class="col-md-6">
-                                <div class="edit-field">
-                                    <label for="edit_size_sort_weight">Thứ tự hiển thị</label>
-                                    <input type="number" min="0" id="edit_size_sort_weight" name="sort_weight"
-                                        class="form-control" value="0">
-                                    <div class="invalid-feedback d-block" data-error-for="sort_weight"></div>
-                                </div>
-                            </div>
+                        <div class="edit-field">
+                            <label for="edit_size_sort_weight">Thứ tự hiển thị</label>
+                            <input type="number" min="0" id="edit_size_sort_weight" name="sort_weight"
+                                class="form-control" value="0">
+                            <div class="invalid-feedback d-block" data-error-for="sort_weight"></div>
                         </div>
 
                         <div class="edit-field mb-0">
@@ -125,35 +109,14 @@
                                 @enderror
                             </div>
 
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="edit-field">
-                                        <label for="add_size_category_group">Nhóm danh mục <span class="text-danger">*</span></label>
-                                        <select id="add_size_category_group" name="category_group"
-                                            class="form-select @error('category_group') is-invalid @enderror" required>
-                                            @foreach($categoryGroups as $value => $label)
-                                                <option value="{{ $value }}" @selected(old('category_group', 'quan_ao') === $value)>
-                                                    {{ $label }}
-                                                </option>
-                                            @endforeach
-                                        </select>
-                                        @error('category_group')
-                                            <div class="invalid-feedback">{{ $message }}</div>
-                                        @enderror
-                                    </div>
-                                </div>
-
-                                <div class="col-md-6">
-                                    <div class="edit-field">
-                                        <label for="add_size_sort_weight">Thứ tự hiển thị</label>
-                                        <input type="number" min="0" id="add_size_sort_weight" name="sort_weight"
-                                            class="form-control @error('sort_weight') is-invalid @enderror"
-                                            value="{{ old('sort_weight', 0) }}">
-                                        @error('sort_weight')
-                                            <div class="invalid-feedback">{{ $message }}</div>
-                                        @enderror
-                                    </div>
-                                </div>
+                            <div class="edit-field">
+                                <label for="add_size_sort_weight">Thứ tự hiển thị</label>
+                                <input type="number" min="0" id="add_size_sort_weight" name="sort_weight"
+                                    class="form-control @error('sort_weight') is-invalid @enderror"
+                                    value="{{ old('sort_weight', 0) }}">
+                                @error('sort_weight')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
                             </div>
 
                             <div class="edit-field mb-0">
@@ -188,9 +151,8 @@
     <script>
     (function () {
         const modalEl       = document.getElementById('editSizeModal');
-        const nameInput     = document.getElementById('edit_size_name');
-        const groupSelect   = document.getElementById('edit_size_category_group');
-        const weightInput   = document.getElementById('edit_size_sort_weight');
+        const nameInput    = document.getElementById('edit_size_name');
+        const weightInput  = document.getElementById('edit_size_sort_weight');
         const statusSelect  = document.getElementById('edit_size_status');
         const submitBtn     = document.getElementById('editSizeSubmitBtn');
         if (!modalEl || !nameInput || !submitBtn) return;
@@ -250,9 +212,8 @@
         modalEl.addEventListener('show.bs.modal', function (event) {
             const btn = event.relatedTarget;
             if (!btn) return;
-            nameInput.value             = btn.dataset.editName          || '';
-            groupSelect.value           = btn.dataset.editCategoryGroup || '';
-            weightInput.value           = btn.dataset.editSortWeight    ?? '0';
+            nameInput.value   = btn.dataset.editName       || '';
+            weightInput.value = btn.dataset.editSortWeight ?? '0';
             statusSelect.value          = btn.dataset.editStatus        ?? '1';
             currentUpdateUrl            = btn.dataset.editUrl           || '';
             resetErrors();
@@ -275,11 +236,10 @@
             submitBtn.innerHTML = 'Đang lưu...';
 
             const formData = new FormData();
-            formData.append('_method',        'PUT');
-            formData.append('name',           nameInput.value.trim());
-            formData.append('category_group', groupSelect.value);
-            formData.append('sort_weight',    weightInput.value);
-            formData.append('status',         statusSelect.value);
+            formData.append('_method',     'PUT');
+            formData.append('name',        nameInput.value.trim());
+            formData.append('sort_weight', weightInput.value);
+            formData.append('status',      statusSelect.value);
 
             try {
                 const res  = await fetch(currentUpdateUrl, {

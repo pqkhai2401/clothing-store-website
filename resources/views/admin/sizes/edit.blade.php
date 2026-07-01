@@ -43,35 +43,14 @@
                             @enderror
                         </div>
 
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="edit-field">
-                                    <label for="category_group">Nhóm danh mục <span class="text-danger">*</span></label>
-                                    <select id="category_group" name="category_group"
-                                        class="form-select @error('category_group') is-invalid @enderror" required>
-                                        @foreach($categoryGroups as $value => $label)
-                                            <option value="{{ $value }}" @selected(old('category_group', $size->category_group) === $value)>
-                                                {{ $label }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                    @error('category_group')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                            </div>
-
-                            <div class="col-md-6">
-                                <div class="edit-field">
-                                    <label for="sort_weight">Thứ tự hiển thị <span class="text-danger">*</span></label>
-                                    <input type="number" min="0" id="sort_weight" name="sort_weight"
-                                        class="form-control @error('sort_weight') is-invalid @enderror"
-                                        value="{{ old('sort_weight', $size->sort_weight) }}" required>
-                                    @error('sort_weight')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                            </div>
+                        <div class="edit-field">
+                            <label for="sort_weight">Thứ tự hiển thị <span class="text-danger">*</span></label>
+                            <input type="number" min="0" id="sort_weight" name="sort_weight"
+                                class="form-control @error('sort_weight') is-invalid @enderror"
+                                value="{{ old('sort_weight', $size->sort_weight) }}" required>
+                            @error('sort_weight')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
                         </div>
 
                         <div class="edit-field">

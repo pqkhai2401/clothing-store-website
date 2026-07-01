@@ -86,6 +86,56 @@ class CartController extends Controller
         return $this->cartSummaryResponse($request->user(), $cartItem);
     }
 
+    public function switchVariant(Request $request, CartItem $cartItem): JsonResponse
+    {
+        $this->authorizeOwnership($request, $cartItem);
+
+        $validated = $request->validate([
+            'product_variant_id' => ['required', 'integer', 'exists:product_variants,id'],
+        ]);
+
+        $newVariant = \App\Models\ProductVariant::with(['color', 'size'])->findOrFail($validated['product_variant_id']);
+
+        abort_unless($newVariant->product_id === $cartItem->productVariant->product_id, 422, 'Variant không thuộc sản phẩm này.');
+        abort_unless($newVariant->stock > 0, 422, 'Variant này đã hết hàng.');
+
+        // If the target variant already exists in cart, merge quantities
+        $existing = $cartItem->cart->cartItems()
+            ->where('product_variant_id', $newVariant->id)
+            ->where('id', '!=', $cartItem->id)
+            ->first();
+
+        if ($existing) {
+            $mergedQty = min($cartItem->quantity + $existing->quantity, $newVariant->stock);
+            $existing->update(['quantity' => $mergedQty]);
+            $cartItem->delete();
+            $cartItem = $existing->fresh(['productVariant.product', 'productVariant.color', 'productVariant.size']);
+        } else {
+            $cartItem->update([
+                'product_variant_id' => $newVariant->id,
+                'quantity'           => min($cartItem->quantity, $newVariant->stock),
+            ]);
+            $cartItem = $cartItem->fresh(['productVariant.product', 'productVariant.color', 'productVariant.size']);
+        }
+
+        $variant = $cartItem->productVariant;
+
+        return response()->json([
+            'item_id'          => $cartItem->id,
+            'item_quantity'    => $cartItem->quantity,
+            'item_subtotal'    => $variant->product->final_price * $cartItem->quantity,
+            'variant_id'       => $variant->id,
+            'color_id'         => $variant->color_id,
+            'color_name'       => $variant->color?->name,
+            'size_id'          => $variant->size_id,
+            'size_name'        => $variant->size?->name,
+            'variant_image'    => $variant->image ?: $variant->product->thumbnail,
+            'stock'            => $variant->stock,
+            'merged'           => isset($existing),
+            'merged_item_id'   => isset($existing) ? $existing->id : null,
+        ]);
+    }
+
     public function destroy(Request $request, CartItem $cartItem): JsonResponse
     {
         $this->authorizeOwnership($request, $cartItem);
@@ -121,7 +171,8 @@ class CartController extends Controller
     private function cartItems($user)
     {
         $cart = $user->cart()->with([
-            'cartItems.productVariant.product',
+            'cartItems.productVariant.product.productVariants.color',
+            'cartItems.productVariant.product.productVariants.size',
             'cartItems.productVariant.color',
             'cartItems.productVariant.size',
         ])->first();

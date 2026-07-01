@@ -8,7 +8,7 @@ class CartPricingService
 {
     public const FREE_SHIPPING_THRESHOLD = 500000;
 
-    public const SHIPPING_FEE = 35000;
+    public const SHIPPING_FEE = 0;
 
     /**
      * @param  Collection<int, \App\Models\CartItem>  $cartItems

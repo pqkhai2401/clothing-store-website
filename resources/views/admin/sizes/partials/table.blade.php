@@ -16,11 +16,6 @@
                             Tên kích thước <span class="product-sort-icon">↑↓</span>
                         </button>
                     </th>
-                    <th style="width:170px;">
-                        <button type="button" class="product-sort-btn" data-sort-key="category_group">
-                            Nhóm danh mục <span class="product-sort-icon">↑↓</span>
-                        </button>
-                    </th>
                     <th style="width:150px;">
                         <button type="button" class="product-sort-btn is-active" data-sort-key="sort_weight" data-sort-type="number">
                             Thứ tự hiển thị <span class="product-sort-icon">↑</span>
@@ -46,11 +41,6 @@
             </thead>
             <tbody>
                 @forelse($sizes as $size)
-                    @php
-                        $groupLabel = isset($categoryGroupLabel)
-                            ? $categoryGroupLabel($size->category_group)
-                            : ($categoryGroups[$size->category_group] ?? $size->category_group);
-                    @endphp
                     <tr>
                         <td>
                             <input type="checkbox" class="form-check-input product-check hk-cb-row" value="{{ $size->id }}">
@@ -62,9 +52,6 @@
                                 title="Lọc sản phẩm theo size {{ $size->name }}">
                                 {{ $size->name }}
                             </a>
-                        </td>
-                        <td data-cell="category_group" data-sort-value="{{ $size->category_group }}">
-                            <span class="size-group-badge">{{ $groupLabel }}</span>
                         </td>
                         <td data-cell="sort_weight" data-sort-value="{{ $size->sort_weight }}">
                             <span class="size-weight-chip">{{ $size->sort_weight }}</span>
@@ -96,7 +83,6 @@
                                         data-bs-toggle="modal" data-bs-target="#editSizeModal"
                                         data-edit-id="{{ $size->id }}"
                                         data-edit-name="{{ $size->name }}"
-                                        data-edit-category-group="{{ $size->category_group }}"
                                         data-edit-sort-weight="{{ $size->sort_weight }}"
                                         data-edit-status="{{ (int) $size->status }}"
                                         data-edit-url="{{ route('admin.sizes.update', $size->id) }}">
@@ -114,7 +100,7 @@
                     </tr>
                 @empty
                     <tr data-empty-row>
-                        <td colspan="9" class="text-center py-5">
+                        <td colspan="8" class="text-center py-5">
                             <i class="fa-solid fa-inbox text-muted mb-3" style="font-size:42px;display:block;"></i>
                             <div class="fw-semibold text-muted">Chưa có kích thước nào</div>
                         </td>

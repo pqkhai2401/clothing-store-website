@@ -13,8 +13,8 @@ class SizeController extends Controller
 {
     public function index(Request $request)
     {
-        $keyword = trim((string) $request->input('search', $request->input('keyword')));
-        $sort = $request->input('sort', 'sort_weight');
+        $keyword   = trim((string) $request->input('search', $request->input('keyword')));
+        $sort      = $request->input('sort', 'sort_weight');
         $direction = in_array($request->input('direction'), ['asc', 'desc'], true)
             ? $request->input('direction')
             : 'asc';
@@ -25,36 +25,29 @@ class SizeController extends Controller
         $query = $this->sizeIndexQuery();
 
         if ($keyword !== '') {
-            $query->where(function ($subQuery) use ($keyword) {
-                $subQuery->where('name', 'like', "%{$keyword}%")
-                    ->orWhere('category_group', 'like', "%{$keyword}%");
-            });
+            $query->where('name', 'like', "%{$keyword}%");
         }
 
-        // sort_weight là ưu tiên chính để frontend luôn nhận size theo thứ tự nghiệp vụ.
         $query->orderBy('sort_weight', 'asc');
 
         match ($sort) {
-            'id' => $query->orderBy('id', $direction),
-            'name' => $query->orderBy('name', $direction),
-            'category_group' => $query->orderBy('category_group', $direction),
-            'used_products_count' => $query->orderBy('used_products_count', $direction),
-            'created_at' => $query->orderBy('created_at', $direction),
-            'status' => $query->orderBy('status', $direction),
-            default => $query->orderBy('name', 'asc'),
+            'id'                 => $query->orderBy('id', $direction),
+            'name'               => $query->orderBy('name', $direction),
+            'used_products_count'=> $query->orderBy('used_products_count', $direction),
+            'created_at'         => $query->orderBy('created_at', $direction),
+            'status'             => $query->orderBy('status', $direction),
+            default              => $query->orderBy('name', 'asc'),
         };
 
         $sizes = $query->paginate($perPage)->withQueryString();
-        $categoryGroups = $this->categoryGroups();
-        $categoryGroupLabel = fn (?string $group): string => $this->categoryGroupLabel($group);
 
         if ($request->ajax()) {
             return response()->json([
-                'html' => view('admin.sizes.partials.table', compact('sizes', 'categoryGroups', 'categoryGroupLabel'))->render(),
+                'html' => view('admin.sizes.partials.table', compact('sizes'))->render(),
             ]);
         }
 
-        return view('admin.sizes.index', compact('sizes', 'keyword', 'perPage', 'categoryGroups', 'categoryGroupLabel'));
+        return view('admin.sizes.index', compact('sizes', 'keyword', 'perPage'));
     }
 
     public function store(Request $request)
@@ -67,7 +60,7 @@ class SizeController extends Controller
         if ($request->ajax()) {
             return response()->json([
                 'message' => "Thêm kích thước \"{$size->name}\" thành công.",
-                'size' => $size,
+                'size'    => $size,
             ], 201);
         }
 
@@ -78,9 +71,8 @@ class SizeController extends Controller
     public function edit(string $id)
     {
         $size = Size::findOrFail($id);
-        $categoryGroups = $this->categoryGroups();
 
-        return view('admin.sizes.edit', compact('size', 'categoryGroups'));
+        return view('admin.sizes.edit', compact('size'));
     }
 
     public function update(Request $request, string $id)
@@ -120,9 +112,7 @@ class SizeController extends Controller
             return back()->with('error', 'Vui lòng chọn ít nhất một kích thước để xóa.');
         }
 
-        $hasUsedSize = Size::whereIn('id', $ids)->whereHas('productVariants')->exists();
-
-        if ($hasUsedSize) {
+        if (Size::whereIn('id', $ids)->whereHas('productVariants')->exists()) {
             return back()->with('error', 'Kích thước này đang được sử dụng, không thể xóa!');
         }
 
@@ -208,58 +198,29 @@ class SizeController extends Controller
             ]);
     }
 
-    private function categoryGroups(): array
-    {
-        return [
-            'ao_nam' => 'Áo nam - Áo thun / Sơ mi / Polo',
-            'ao_nu' => 'Áo nữ - Áo thun / Polo / Croptop / Áo dài tay',
-            'quan_nam' => 'Quần nam - Quần tây / Jean / Short',
-            'quan_vay_nu' => 'Quần & váy nữ - Quần tây / Váy',
-            'dam_nu' => 'Đầm nữ',
-        ];
-    }
-
-    private function categoryGroupLabel(?string $group): string
-    {
-        $groups = $this->categoryGroups();
-
-        return $groups[$group] ?? match ($group) {
-            'quan_ao' => 'Quần áo',
-            'giay_dep' => 'Giày dép (không kinh doanh)',
-            'phu_kien' => 'Phụ kiện (không kinh doanh)',
-            'vay_dam_nu' => 'Váy / Đầm nữ',
-            default => $group ?: 'Chưa phân nhóm',
-        };
-    }
-
     private function validationRules(?string $ignoreId = null): array
     {
         return [
-            'name' => [
-                'required',
-                'string',
-                'max:50',
+            'name'        => [
+                'required', 'string', 'max:50',
                 Rule::unique('sizes', 'name')
-                    ->where(fn ($query) => $query->where('category_group', request('category_group')))
+                    ->whereNull('deleted_at')
                     ->ignore($ignoreId),
             ],
-            'category_group' => ['required', Rule::in(array_keys($this->categoryGroups()))],
             'sort_weight' => ['nullable', 'integer', 'min:0'],
-            'status' => ['required', Rule::in([0, 1])],
+            'status'      => ['required', Rule::in([0, 1, '0', '1'])],
         ];
     }
 
     private function validationMessages(): array
     {
         return [
-            'name.required' => 'Tên kích thước không được để trống.',
-            'name.max' => 'Tên kích thước không được quá 50 ký tự.',
-            'name.unique' => 'Tên kích thước này đã tồn tại trong nhóm danh mục đã chọn.',
-            'category_group.required' => 'Vui lòng chọn nhóm danh mục.',
-            'category_group.in' => 'Nhóm danh mục không hợp lệ.',
+            'name.required'    => 'Tên kích thước không được để trống.',
+            'name.max'         => 'Tên kích thước không được quá 50 ký tự.',
+            'name.unique'      => 'Tên kích thước này đã tồn tại.',
             'sort_weight.integer' => 'Thứ tự hiển thị phải là số nguyên.',
-            'sort_weight.min' => 'Thứ tự hiển thị không được nhỏ hơn 0.',
-            'status.required' => 'Vui lòng chọn trạng thái.',
+            'sort_weight.min'     => 'Thứ tự hiển thị không được nhỏ hơn 0.',
+            'status.required'  => 'Vui lòng chọn trạng thái.',
         ];
     }
 }
