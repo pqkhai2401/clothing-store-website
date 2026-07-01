@@ -266,14 +266,22 @@ a:hover {
 }
 
 .footer-socials a {
-    font-size: 18px;
+    display: inline-block;
     margin-right: 15px;
-    color: #D9D9D9;
-    transition: color 0.3s;
 }
 
-.footer-socials a:hover {
-    color: #FFFFFF;
+.footer-socials a img {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+    border-radius: 50%;
+    opacity: 0.85;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.footer-socials a:hover img {
+    opacity: 1;
+    transform: translateY(-2px);
 }
 
 /* Product Grid Cards */

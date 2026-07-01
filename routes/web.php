@@ -14,6 +14,8 @@ Route::name('404-not-found')->get('404-not-found', function () {
     return view('404');
 });
 
+Route::view('/about', 'user.about.index')->name('about');
+
 Route::get('/products', [ProductController::class, 'index'])->name('products.index');
 Route::get('/search', [ProductController::class, 'search'])->name('search');
 Route::get('/api/search/suggestions', [ProductController::class, 'suggestions'])->name('search.suggestions');
