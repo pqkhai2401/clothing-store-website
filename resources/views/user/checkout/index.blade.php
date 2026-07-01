@@ -129,6 +129,58 @@
         font-size: 13px;
         color: #374151;
         margin-top: 14px;
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .extra-option-row input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        accent-color: #2563eb;
+        flex-shrink: 0;
+    }
+
+    /* Alt-receiver expandable panel */
+    .alt-receiver-panel {
+        overflow: hidden;
+        max-height: 0;
+        opacity: 0;
+        transition: max-height 0.32s ease, opacity 0.25s ease, margin-top 0.25s ease;
+        margin-top: 0;
+    }
+
+    .alt-receiver-panel.open {
+        max-height: 200px;
+        opacity: 1;
+        margin-top: 16px;
+    }
+
+    .alt-receiver-inner {
+        background: #f9fafb;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 18px 20px;
+    }
+
+    .alt-receiver-gender {
+        display: flex;
+        gap: 24px;
+        margin-bottom: 14px;
+    }
+
+    .alt-receiver-gender label {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+    }
+
+    .alt-receiver-gender input[type="radio"] {
+        width: 16px;
+        height: 16px;
+        accent-color: #2563eb;
     }
 
     /* ── Payment method cards ── */
@@ -373,6 +425,475 @@
     /* scrollbar thin */
     .checkout-cart-items-list::-webkit-scrollbar { width: 4px; }
     .checkout-cart-items-list::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 2px; }
+
+    /* ══ Address Book Modal ══ */
+
+    @keyframes addrOverlayIn {
+        from { opacity: 0; }
+        to   { opacity: 1; }
+    }
+
+    @keyframes addrCardIn {
+        from { opacity: 0; transform: translateY(28px) scale(0.97); }
+        to   { opacity: 1; transform: translateY(0)    scale(1);    }
+    }
+
+    @keyframes addrStepFadeIn {
+        from { opacity: 0; transform: translateX(12px); }
+        to   { opacity: 1; transform: translateX(0); }
+    }
+
+    #addressBookOverlay.is-open {
+        animation: addrOverlayIn 0.22s ease forwards;
+    }
+
+    .addr-modal-card {
+        background: #ffffff;
+        border-radius: 24px;
+        width: 100%;
+        max-width: 500px;
+        position: relative;
+        max-height: 88vh;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 32px 80px rgba(0,0,0,0.22), 0 8px 24px rgba(0,0,0,0.10);
+        animation: addrCardIn 0.3s cubic-bezier(0.34, 1.28, 0.64, 1) forwards;
+        overflow: hidden;
+    }
+
+    /* ── Header bar ── */
+    .addr-modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px 28px 20px;
+        border-bottom: 1px solid #f0f0f0;
+        position: relative;
+        flex-shrink: 0;
+    }
+
+    .addr-modal-title {
+        font-family: var(--font-serif);
+        font-size: 20px;
+        font-weight: 700;
+        text-align: center;
+        margin: 0;
+        letter-spacing: 0.3px;
+    }
+
+    .addr-modal-close {
+        position: absolute;
+        top: 50%;
+        right: 18px;
+        transform: translateY(-50%);
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: #f3f4f6;
+        color: #374151;
+        border: none;
+        font-size: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: background 0.2s, color 0.2s, transform 0.2s;
+        line-height: 1;
+    }
+
+    .addr-modal-close:hover {
+        background: #111;
+        color: #fff;
+        transform: translateY(-50%) rotate(90deg);
+    }
+
+    /* ── Back button (step 2 header) ── */
+    .addr-modal-back {
+        position: absolute;
+        top: 50%;
+        left: 18px;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        color: #6b7280;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        cursor: pointer;
+        padding: 4px 8px;
+        border-radius: 6px;
+        transition: background 0.2s, color 0.2s;
+    }
+
+    .addr-modal-back:hover { background: #f3f4f6; color: #111; }
+
+    /* ── Body (scrollable) ── */
+    .addr-modal-body {
+        padding: 22px 28px 26px;
+        overflow-y: auto;
+        flex: 1;
+    }
+
+    .addr-modal-body::-webkit-scrollbar { width: 4px; }
+    .addr-modal-body::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 2px; }
+
+    /* ── Steps ── */
+    .addr-step { animation: addrStepFadeIn 0.22s ease forwards; }
+
+    /* ── Loading skeleton ── */
+    .addr-loading {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 4px 0;
+    }
+
+    .addr-skeleton {
+        height: 72px;
+        border-radius: 12px;
+        background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%);
+        background-size: 200% 100%;
+        animation: shimmer 1.4s infinite;
+    }
+
+    @keyframes shimmer {
+        0%   { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+    }
+
+    /* ── Address list item ── */
+    .addr-list-item {
+        border: 1.5px solid #e5e7eb;
+        border-radius: 14px;
+        padding: 14px 16px;
+        margin-bottom: 10px;
+        cursor: pointer;
+        transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .addr-list-item:hover {
+        border-color: #111;
+        background: #fafafa;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    }
+
+    .addr-list-item.selected {
+        border-color: #111;
+        background: #f9f9f7;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    }
+
+    .addr-list-radio {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        border: 2px solid #d1d5db;
+        flex-shrink: 0;
+        margin-top: 2px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: border-color 0.2s;
+    }
+
+    .addr-list-item.selected .addr-list-radio {
+        border-color: #111;
+    }
+
+    .addr-list-radio-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #111;
+        opacity: 0;
+        transition: opacity 0.15s;
+    }
+
+    .addr-list-item.selected .addr-list-radio-dot { opacity: 1; }
+
+    .addr-list-content { flex: 1; min-width: 0; }
+
+    .addr-list-item-top {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 4px;
+    }
+
+    .addr-list-item-main {
+        font-size: 13px;
+        font-weight: 600;
+        color: #111;
+        flex: 1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .addr-list-item-detail {
+        font-size: 12px;
+        color: #6b7280;
+        line-height: 1.5;
+    }
+
+    .addr-default-badge {
+        font-size: 10px;
+        font-weight: 600;
+        background: #f0fdf4;
+        color: #16a34a;
+        border: 1px solid #bbf7d0;
+        border-radius: 20px;
+        padding: 2px 8px;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+
+    .addr-item-delete {
+        background: none;
+        border: none;
+        color: #d1d5db;
+        cursor: pointer;
+        padding: 4px;
+        font-size: 14px;
+        flex-shrink: 0;
+        border-radius: 6px;
+        transition: color 0.2s, background 0.2s;
+        line-height: 1;
+        margin-top: -2px;
+    }
+
+    .addr-item-delete:hover { color: #ef4444; background: #fef2f2; }
+
+    /* ── Empty state ── */
+    .addr-empty-state {
+        text-align: center;
+        padding: 32px 0 16px;
+    }
+
+    .addr-empty-icon {
+        width: 56px;
+        height: 56px;
+        background: #f3f4f6;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 14px;
+        font-size: 22px;
+        color: #9ca3af;
+    }
+
+    .addr-empty-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 4px;
+    }
+
+    .addr-empty-sub {
+        font-size: 12px;
+        color: #9ca3af;
+    }
+
+    /* ── Footer (add button) ── */
+    .addr-modal-footer {
+        padding: 16px 28px 24px;
+        border-top: 1px solid #f0f0f0;
+        flex-shrink: 0;
+    }
+
+    .addr-add-btn {
+        width: 100%;
+        height: 48px;
+        border-radius: 12px;
+        border: 1.5px dashed #d1d5db;
+        background: #fafafa;
+        color: #374151;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        transition: border-color 0.2s, background 0.2s, color 0.2s;
+    }
+
+    .addr-add-btn:hover {
+        border-color: #111;
+        background: #fff;
+        color: #111;
+    }
+
+    /* ── Form inputs (floating label style — matches login) ── */
+    .addr-field {
+        position: relative;
+        margin-bottom: 0;
+    }
+
+    .addr-input {
+        width: 100%;
+        height: 52px;
+        padding: 0 16px;
+        border: 1.5px solid #d1d5db;
+        border-radius: 12px;
+        font-size: 15px;
+        font-weight: 500;
+        color: #111;
+        background: #fff;
+        outline: none;
+        transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    .addr-input::placeholder { color: transparent; }
+
+    .addr-field-label {
+        position: absolute;
+        top: 26px;
+        left: 14px;
+        z-index: 2;
+        max-width: calc(100% - 32px);
+        padding: 0 5px;
+        color: #9ca3af;
+        background: #fff;
+        font-size: 15px;
+        font-weight: 500;
+        line-height: 1;
+        pointer-events: none;
+        transform: translateY(-50%);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .addr-input:focus + .addr-field-label,
+    .addr-input:not(:placeholder-shown) + .addr-field-label {
+        top: 0;
+        font-size: 12px;
+        color: #555;
+        font-weight: 600;
+    }
+
+    .addr-input:focus { border-color: #111; box-shadow: 0 0 0 3px rgba(0,0,0,0.07); }
+
+    .addr-input.is-invalid { border-color: #ef4444; }
+    .addr-input.is-invalid + .addr-field-label { color: #ef4444; }
+    .addr-input.is-invalid:focus { box-shadow: 0 0 0 3px rgba(239,68,68,0.12); }
+
+    .addr-err {
+        font-size: 11px;
+        color: #ef4444;
+        margin-top: 5px;
+        padding-left: 4px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .addr-err:not(:empty)::before { content: '⚠'; font-size: 10px; }
+
+    /* ── Checkbox (default) ── */
+    .addr-default-label {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 13px;
+        cursor: pointer;
+        padding: 12px 14px;
+        border: 1.5px solid #e5e7eb;
+        border-radius: 12px;
+        transition: border-color 0.2s, background 0.2s;
+    }
+
+    .addr-default-label:hover { border-color: #9ca3af; }
+    .addr-default-label:has(input:checked) { border-color: #111; background: #fafafa; }
+
+    .addr-default-label input {
+        width: 16px;
+        height: 16px;
+        accent-color: #111;
+        flex-shrink: 0;
+    }
+
+    /* ── Action buttons ── */
+    .addr-form-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-top: 20px;
+    }
+
+    .addr-btn {
+        height: 48px;
+        border-radius: 12px;
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        cursor: pointer;
+        border: 1.5px solid #e5e7eb;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+    }
+
+    .addr-btn-outline {
+        background: #fff;
+        color: #374151;
+        border-color: #e5e7eb;
+    }
+
+    .addr-btn-outline:hover { background: #f3f4f6; border-color: #d1d5db; }
+
+    .addr-btn-black {
+        background: #111;
+        color: #fff;
+        border-color: #111;
+    }
+
+    .addr-btn-black:hover { background: #333; border-color: #333; }
+    .addr-btn-black:disabled { background: #9ca3af; border-color: #9ca3af; cursor: not-allowed; }
+
+    /* ── Success toast ── */
+    .addr-toast {
+        position: fixed;
+        bottom: 28px;
+        left: 50%;
+        transform: translateX(-50%) translateY(20px);
+        background: #111;
+        color: #fff;
+        padding: 12px 22px;
+        border-radius: 50px;
+        font-size: 13px;
+        font-weight: 500;
+        opacity: 0;
+        transition: opacity 0.25s, transform 0.25s;
+        z-index: 2000;
+        pointer-events: none;
+        white-space: nowrap;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    }
+
+    .addr-toast.show {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+
+    /* ── Apply flash on checkout fields ── */
+    @keyframes fieldFlash {
+        0%   { background: #fef9c3; }
+        100% { background: transparent; }
+    }
+
+    .field-flash { animation: fieldFlash 1s ease forwards; }
 </style>
 @endsection
 
@@ -390,9 +911,9 @@
                 <div class="checkout-block">
                     <div class="checkout-block-title">
                         <span>Thông tin vận chuyển</span>
-                        <a href="#" class="btn-link-sm">
+                        <button type="button" class="btn-link-sm" id="openAddressBookBtn">
                             <i class="bi bi-book"></i> Chọn từ sổ địa chỉ
-                        </a>
+                        </button>
                     </div>
                     @error('agree_policy')
                         <div class="invalid-feedback d-block mb-2">{{ $message }}</div>
@@ -409,7 +930,7 @@
                                     <option value="chi">Chị</option>
                                 </select>
                                 <input type="text" class="form-control"
-                                    value="{{ auth()->user()->username }}" readonly>
+                                    value="{{ auth()->user()->username }}">
                             </div>
                         </div>
 
@@ -492,12 +1013,37 @@
                     </div>
 
                     <!-- Extra UI options -->
-                    <label class="extra-option-row">
-                        <input type="checkbox" name="_alt_receiver">
-                        <span>Gọi người khác nhận hàng (nếu có)</span>
+                    <label class="extra-option-row" for="altReceiverCb">
+                        <input type="checkbox" id="altReceiverCb" name="_alt_receiver">
+                        <span style="font-weight:600;">Gọi người khác nhận hàng (nếu có)</span>
                     </label>
-                    <label class="extra-option-row">
-                        <input type="checkbox" name="_vat_invoice">
+
+                    <!-- Expandable alt-receiver panel -->
+                    <div class="alt-receiver-panel" id="altReceiverPanel">
+                        <div class="alt-receiver-inner">
+                            <div class="alt-receiver-gender">
+                                <label>
+                                    <input type="radio" name="_alt_gender" value="nam" checked> Nam
+                                </label>
+                                <label>
+                                    <input type="radio" name="_alt_gender" value="nu"> Nữ
+                                </label>
+                            </div>
+                            <div class="row g-2">
+                                <div class="col-md-6">
+                                    <input type="text" name="_alt_name" class="form-control"
+                                           placeholder="Họ và tên người nhận">
+                                </div>
+                                <div class="col-md-6">
+                                    <input type="tel" name="_alt_phone" class="form-control"
+                                           placeholder="Số điện thoại người nhận">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <label class="extra-option-row" for="vatInvoiceCb">
+                        <input type="checkbox" id="vatInvoiceCb" name="_vat_invoice">
                         <span>Xuất hoá đơn VAT <i class="bi bi-info-circle" style="font-size:12px; color:#9ca3af;"></i></span>
                     </label>
                 </div>
@@ -554,11 +1100,6 @@
                     </a>
                 </div>
 
-                <!-- Promo notice -->
-                <div class="promo-notice-bar">
-                    <i class="bi bi-info-circle-fill"></i>
-                    Yên tâm 60 ngày đổi trả · Miễn phí giao hàng đơn từ {{ number_format(\App\Services\CartPricingService::FREE_SHIPPING_THRESHOLD, 0, ',', '.') }}đ
-                </div>
 
                 <!-- Items list -->
                 <div class="checkout-cart-items-list">
@@ -664,6 +1205,128 @@
 
     </div><!-- /checkout-grid -->
 </div>
+
+{{-- ══ Address Book Modal ══ --}}
+<div id="addressBookOverlay"
+     style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); backdrop-filter:blur(3px); z-index:1050; align-items:center; justify-content:center; padding:16px;">
+
+    <div class="addr-modal-card" id="addressBookCard">
+
+        {{-- ── Step 1: List ── --}}
+        <div id="addrStepList" class="addr-step" style="display:flex; flex-direction:column; height:100%;">
+            <div class="addr-modal-header">
+                <h3 class="addr-modal-title">Sổ địa chỉ</h3>
+                <button class="addr-modal-close" id="closeAddressBookBtn" type="button" title="Đóng">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+
+            <div class="addr-modal-body" id="addrListBody">
+                <div class="addr-loading">
+                    <div class="addr-skeleton"></div>
+                    <div class="addr-skeleton" style="opacity:.6;"></div>
+                </div>
+            </div>
+
+            <div class="addr-modal-footer">
+                <button type="button" class="addr-add-btn" id="openAddFormBtn">
+                    <i class="bi bi-plus-circle"></i> Thêm địa chỉ mới
+                </button>
+            </div>
+        </div>
+
+        {{-- ── Step 2: Add form ── --}}
+        <div id="addrStepForm" class="addr-step" style="display:none; flex-direction:column; height:100%;">
+            <div class="addr-modal-header">
+                <button class="addr-modal-back" id="backToListBtn" type="button">
+                    <i class="bi bi-arrow-left"></i> Quay lại
+                </button>
+                <h3 class="addr-modal-title">Thêm địa chỉ</h3>
+                <button class="addr-modal-close" id="closeAddressBookBtn2" type="button" title="Đóng">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+
+            <div class="addr-modal-body">
+                <form id="addAddressForm" novalidate>
+                    @csrf
+                    <div class="row g-3">
+                        {{-- Name --}}
+                        <div class="col-6">
+                            <div class="addr-field">
+                                <input type="text" class="addr-input" id="addrFormName"
+                                       placeholder=" " autocomplete="off">
+                                <label class="addr-field-label" for="addrFormName">Họ tên</label>
+                            </div>
+                        </div>
+                        {{-- Phone --}}
+                        <div class="col-6">
+                            <div class="addr-field">
+                                <input type="tel" class="addr-input" id="addrFormPhone"
+                                       placeholder=" " autocomplete="off">
+                                <label class="addr-field-label" for="addrFormPhone">Số điện thoại</label>
+                            </div>
+                        </div>
+                        {{-- Street address --}}
+                        <div class="col-12">
+                            <div class="addr-field">
+                                <input type="text" class="addr-input" name="apartment_number" id="addrFormApartment"
+                                       placeholder=" " required>
+                                <label class="addr-field-label" for="addrFormApartment">Địa chỉ (số nhà, tên đường)</label>
+                            </div>
+                            <div class="addr-err" id="errApartment"></div>
+                        </div>
+                        {{-- Ward + District --}}
+                        <div class="col-6">
+                            <div class="addr-field">
+                                <input type="text" class="addr-input" name="ward" id="addrFormWard"
+                                       placeholder=" " required>
+                                <label class="addr-field-label" for="addrFormWard">Phường/Xã</label>
+                            </div>
+                            <div class="addr-err" id="errWard"></div>
+                        </div>
+                        <div class="col-6">
+                            <div class="addr-field">
+                                <input type="text" class="addr-input" name="district" id="addrFormDistrict"
+                                       placeholder=" " required>
+                                <label class="addr-field-label" for="addrFormDistrict">Quận/Huyện</label>
+                            </div>
+                            <div class="addr-err" id="errDistrict"></div>
+                        </div>
+                        {{-- City --}}
+                        <div class="col-12">
+                            <div class="addr-field">
+                                <input type="text" class="addr-input" name="city" id="addrFormCity"
+                                       placeholder=" " required>
+                                <label class="addr-field-label" for="addrFormCity">Tỉnh/Thành phố</label>
+                            </div>
+                            <div class="addr-err" id="errCity"></div>
+                        </div>
+                        {{-- Default --}}
+                        <div class="col-12">
+                            <label class="addr-default-label">
+                                <input type="checkbox" id="addrFormDefault" name="is_default" value="1">
+                                <span>Đặt làm địa chỉ mặc định</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="addr-form-actions">
+                        <button type="button" class="addr-btn addr-btn-outline" id="cancelFormBtn">Huỷ</button>
+                        <button type="submit" class="addr-btn addr-btn-black" id="saveAddressBtn">
+                            <i class="bi bi-check2"></i> Lưu địa chỉ
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+{{-- Success toast --}}
+<div class="addr-toast" id="addrToast"></div>
+
 @endsection
 
 @push('scripts')
@@ -691,6 +1354,16 @@
 
         syncActiveCards();
 
+        /* ── Alt-receiver panel toggle ── */
+        const altCb    = document.getElementById('altReceiverCb');
+        const altPanel = document.getElementById('altReceiverPanel');
+
+        if (altCb && altPanel) {
+            altCb.addEventListener('change', function () {
+                altPanel.classList.toggle('open', altCb.checked);
+            });
+        }
+
         /* ── Submit button gating (policy checkbox) ── */
         function syncSubmitState() {
             placeOrderBtn.disabled = !(policyTop && policyTop.checked);
@@ -702,5 +1375,295 @@
 
         syncSubmitState();
     });
+</script>
+
+<script>
+/* ══ Address Book Modal ══ */
+(function () {
+    const csrf     = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    const overlay  = document.getElementById('addressBookOverlay');
+    const stepList = document.getElementById('addrStepList');
+    const stepForm = document.getElementById('addrStepForm');
+    const listBody = document.getElementById('addrListBody');
+    const toast    = document.getElementById('addrToast');
+
+    /* ── Open / close ── */
+    function openModal() {
+        overlay.style.display = 'flex';
+        overlay.classList.add('is-open');
+        showStep('list');
+        loadAddresses();
+    }
+
+    function closeModal() {
+        overlay.style.display = 'none';
+        overlay.classList.remove('is-open');
+        resetForm();
+    }
+
+    function showStep(step) {
+        if (step === 'list') {
+            stepList.style.display = 'flex';
+            stepForm.style.display = 'none';
+        } else {
+            stepList.style.display = 'none';
+            stepForm.style.display = 'flex';
+            setTimeout(() => document.getElementById('addrFormApartment')?.focus(), 80);
+        }
+    }
+
+    /* ── Triggers ── */
+    document.getElementById('openAddressBookBtn')?.addEventListener('click', openModal);
+    document.getElementById('closeAddressBookBtn')?.addEventListener('click', closeModal);
+    document.getElementById('closeAddressBookBtn2')?.addEventListener('click', closeModal);
+    document.getElementById('openAddFormBtn')?.addEventListener('click', () => showStep('form'));
+    document.getElementById('backToListBtn')?.addEventListener('click', () => { resetForm(); showStep('list'); });
+    document.getElementById('cancelFormBtn')?.addEventListener('click', () => { resetForm(); showStep('list'); });
+
+    overlay?.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape' && overlay?.style.display === 'flex') closeModal();
+    });
+
+    /* ── Toast notification ── */
+    let toastTimer;
+    function showToast(msg, icon = '✓') {
+        if (!toast) return;
+        toast.innerHTML = `<span>${icon}</span> ${msg}`;
+        toast.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => toast.classList.remove('show'), 2800);
+    }
+
+    /* ── Flash checkout fields after apply ── */
+    function flashField(id) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.classList.remove('field-flash');
+        void el.offsetWidth;
+        el.classList.add('field-flash');
+        el.addEventListener('animationend', () => el.classList.remove('field-flash'), { once: true });
+    }
+
+    /* ── Load address list ── */
+    async function loadAddresses() {
+        listBody.innerHTML = `
+            <div class="addr-loading">
+                <div class="addr-skeleton"></div>
+                <div class="addr-skeleton" style="opacity:.55;"></div>
+            </div>`;
+
+        try {
+            const res  = await fetch('{{ route('addresses.index') }}', {
+                headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf },
+            });
+            const data = await res.json();
+            renderList(data);
+        } catch {
+            listBody.innerHTML = `<div class="addr-empty-state">
+                <div class="addr-empty-icon"><i class="bi bi-wifi-off"></i></div>
+                <div class="addr-empty-title">Không thể tải danh sách</div>
+                <div class="addr-empty-sub">Vui lòng kiểm tra kết nối và thử lại.</div>
+            </div>`;
+        }
+    }
+
+    function renderList(addresses) {
+        if (!addresses.length) {
+            listBody.innerHTML = `
+                <div class="addr-empty-state">
+                    <div class="addr-empty-icon"><i class="bi bi-geo-alt"></i></div>
+                    <div class="addr-empty-title">Chưa có địa chỉ nào</div>
+                    <div class="addr-empty-sub">Thêm địa chỉ để thanh toán nhanh hơn.</div>
+                </div>`;
+            return;
+        }
+
+        listBody.innerHTML = addresses.map(addr => `
+            <div class="addr-list-item" tabindex="0"
+                 data-addr-id="${addr.id}"
+                 data-city="${esc(addr.city)}"
+                 data-district="${esc(addr.district || '')}"
+                 data-ward="${esc(addr.ward)}"
+                 data-apartment="${esc(addr.apartment_number)}">
+
+                <div class="addr-list-radio">
+                    <div class="addr-list-radio-dot"></div>
+                </div>
+
+                <div class="addr-list-content">
+                    <div class="addr-list-item-top">
+                        <div class="addr-list-item-main">${esc(addr.apartment_number)}</div>
+                        ${addr.is_default ? '<span class="addr-default-badge">Mặc định</span>' : ''}
+                        <button class="addr-item-delete" data-delete-addr="${addr.id}" title="Xóa địa chỉ">
+                            <i class="bi bi-trash3"></i>
+                        </button>
+                    </div>
+                    <div class="addr-list-item-detail">
+                        ${[addr.ward, addr.district, addr.city].filter(Boolean).join(' · ')}
+                    </div>
+                </div>
+            </div>
+        `).join('');
+
+        /* click/Enter to apply */
+        listBody.querySelectorAll('.addr-list-item').forEach(item => {
+            const apply = e => {
+                if (e.target.closest('[data-delete-addr]')) return;
+                /* deselect all, select this */
+                listBody.querySelectorAll('.addr-list-item').forEach(i => i.classList.remove('selected'));
+                item.classList.add('selected');
+
+                setTimeout(() => {
+                    applyAddress(item);
+                    closeModal();
+                }, 180);
+            };
+
+            item.addEventListener('click', apply);
+            item.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); apply(e); } });
+        });
+
+        /* delete */
+        listBody.querySelectorAll('[data-delete-addr]').forEach(btn => {
+            btn.addEventListener('click', async e => {
+                e.stopPropagation();
+                const item = btn.closest('.addr-list-item');
+
+                /* shake animation */
+                item.style.transition = 'transform 0.1s';
+                item.style.transform  = 'translateX(-6px)';
+                setTimeout(() => item.style.transform = 'translateX(0)', 120);
+
+                if (!confirm('Xóa địa chỉ này?')) return;
+
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+                btn.disabled  = true;
+
+                try {
+                    await fetch(`/user/addresses/${btn.dataset.deleteAddr}`, {
+                        method: 'DELETE',
+                        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf },
+                    });
+
+                    item.style.transition = 'opacity 0.25s, transform 0.25s';
+                    item.style.opacity    = '0';
+                    item.style.transform  = 'translateX(16px)';
+                    setTimeout(() => {
+                        item.remove();
+                        if (!listBody.querySelectorAll('.addr-list-item').length) {
+                            listBody.innerHTML = `
+                                <div class="addr-empty-state">
+                                    <div class="addr-empty-icon"><i class="bi bi-geo-alt"></i></div>
+                                    <div class="addr-empty-title">Chưa có địa chỉ nào</div>
+                                    <div class="addr-empty-sub">Thêm địa chỉ để thanh toán nhanh hơn.</div>
+                                </div>`;
+                        }
+                    }, 260);
+                } catch {
+                    showToast('Không thể xóa địa chỉ.', '✕');
+                    btn.innerHTML = '<i class="bi bi-trash3"></i>';
+                    btn.disabled  = false;
+                }
+            });
+        });
+    }
+
+    function applyAddress(item) {
+        setVal('apartment_number', item.dataset.apartment);
+        setVal('ward',             item.dataset.ward);
+        setVal('district',         item.dataset.district);
+        setVal('city',             item.dataset.city);
+        ['apartment_number', 'ward', 'district', 'city'].forEach(flashField);
+        showToast('Đã áp dụng địa chỉ');
+    }
+
+    function setVal(id, value) {
+        const el = document.getElementById(id);
+        if (el) el.value = value;
+    }
+
+    function esc(str) {
+        return String(str)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    /* ── Save new address ── */
+    document.getElementById('addAddressForm')?.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        clearErrors();
+
+        const body = {
+            apartment_number: val('addrFormApartment'),
+            ward:             val('addrFormWard'),
+            district:         val('addrFormDistrict'),
+            city:             val('addrFormCity'),
+            is_default:       document.getElementById('addrFormDefault')?.checked ? 1 : 0,
+        };
+
+        const saveBtn = document.getElementById('saveAddressBtn');
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Đang lưu...';
+
+        try {
+            const res  = await fetch('{{ route('addresses.store') }}', {
+                method: 'POST',
+                headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
+                body: JSON.stringify(body),
+            });
+            const data = await res.json();
+
+            if (!res.ok) {
+                if (data.errors) {
+                    Object.entries(data.errors).forEach(([field, msgs]) => {
+                        const key    = capitalise(field);
+                        const errEl  = document.getElementById('err' + key);
+                        const inpEl  = document.getElementById('addrForm' + key);
+                        if (errEl) errEl.textContent = msgs[0];
+                        if (inpEl) inpEl.classList.add('is-invalid');
+                    });
+                }
+                return;
+            }
+
+            const addr = data.address;
+            setVal('apartment_number', addr.apartment_number);
+            setVal('ward',             addr.ward);
+            setVal('district',         addr.district || '');
+            setVal('city',             addr.city);
+
+            const phoneInput = document.getElementById('addrFormPhone');
+            if (phoneInput?.value) setVal('phone', phoneInput.value);
+
+            ['apartment_number', 'ward', 'district', 'city'].forEach(flashField);
+            closeModal();
+            showToast('Địa chỉ đã được lưu và áp dụng');
+        } catch {
+            showToast('Đã có lỗi. Vui lòng thử lại.', '✕');
+        } finally {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = '<i class="bi bi-check2"></i> Lưu địa chỉ';
+        }
+    });
+
+    function val(id) { return (document.getElementById(id)?.value || '').trim(); }
+
+    function capitalise(str) {
+        return str.replace(/_([a-z])/g, (_, c) => c.toUpperCase())
+                  .replace(/^[a-z]/, c => c.toUpperCase());
+    }
+
+    function clearErrors() {
+        document.querySelectorAll('.addr-err').forEach(el => el.textContent = '');
+        document.querySelectorAll('.addr-input.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+    }
+
+    function resetForm() {
+        document.getElementById('addAddressForm')?.reset();
+        clearErrors();
+    }
+})();
 </script>
 @endpush

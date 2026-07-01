@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\User\AddressController;
 use App\Http\Controllers\User\AuthController;
 use App\Http\Controllers\User\CartController;
 use App\Http\Controllers\User\CheckoutController;
@@ -31,6 +32,10 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout.index');
     Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');
+
+    Route::get('/user/addresses', [AddressController::class, 'index'])->name('addresses.index');
+    Route::post('/user/addresses', [AddressController::class, 'store'])->name('addresses.store');
+    Route::delete('/user/addresses/{address}', [AddressController::class, 'destroy'])->name('addresses.destroy');
 });
 
 
