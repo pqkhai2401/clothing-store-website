@@ -5,6 +5,7 @@ namespace App\Http\Controllers\User;
 use App\Http\Controllers\Controller;
 use App\Models\CartItem;
 use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Services\CartPricingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -31,42 +32,67 @@ class CartController extends Controller
     {
         $validated = $request->validate([
             'product_id' => ['required', 'integer', 'exists:products,id'],
+            'color_id'   => ['nullable', 'integer', 'exists:colors,id'],
+            'size_id'    => ['nullable', 'integer', 'exists:sizes,id'],
+            'quantity'   => ['nullable', 'integer', 'min:1'],
         ]);
 
-        $product = Product::with(['productVariants' => function ($query) {
-            $query->where('stock', '>', 0)->orderBy('id');
-        }])->findOrFail($validated['product_id']);
+        $quantity = (int) ($validated['quantity'] ?? 1);
+        $product = Product::where('status', true)->findOrFail($validated['product_id']);
 
-        $variant = $product->productVariants->first();
+        $variantQuery = ProductVariant::query()
+            ->where('product_id', $product->id)
+            ->where('stock', '>', 0);
+
+        if (! empty($validated['color_id']) || ! empty($validated['size_id'])) {
+            if (empty($validated['color_id']) || empty($validated['size_id'])) {
+                return response()->json([
+                    'message' => 'Vui lòng chọn đầy đủ màu sắc và kích thước.',
+                ], 422);
+            }
+
+            $variantQuery
+                ->where('color_id', $validated['color_id'])
+                ->where('size_id', $validated['size_id']);
+        }
+
+        $variant = $variantQuery->orderBy('id')->first();
 
         if (! $variant) {
             return response()->json([
-                'message' => 'Sản phẩm hiện đã hết hàng.',
+                'message' => 'Biến thể sản phẩm đã chọn hiện đã hết hàng hoặc không tồn tại.',
+            ], 422);
+        }
+
+        if ($quantity > $variant->stock) {
+            return response()->json([
+                'message' => "Số lượng vượt quá tồn kho hiện có ({$variant->stock}).",
             ], 422);
         }
 
         $user = $request->user();
 
-        DB::transaction(function () use ($user, $variant) {
+        DB::transaction(function () use ($user, $variant, $quantity) {
             $cart = $user->cart()->firstOrCreate(['user_id' => $user->id]);
 
             $cartItem = $cart->cartItems()->where('product_variant_id', $variant->id)->first();
 
             if ($cartItem) {
                 $cartItem->update([
-                    'quantity' => min($cartItem->quantity + 1, $variant->stock),
+                    'quantity' => min($cartItem->quantity + $quantity, $variant->stock),
                 ]);
             } else {
                 $cart->cartItems()->create([
                     'product_variant_id' => $variant->id,
-                    'quantity'           => 1,
+                    'quantity'           => $quantity,
                 ]);
             }
         });
 
         return response()->json([
-            'message'  => 'Đã thêm sản phẩm vào giỏ hàng.',
-            'cart_url' => route('cart.index'),
+            'message'      => 'Đã thêm sản phẩm vào giỏ hàng.',
+            'cart_url'     => route('cart.index'),
+            'checkout_url' => route('checkout.index'),
         ]);
     }
 
@@ -94,12 +120,11 @@ class CartController extends Controller
             'product_variant_id' => ['required', 'integer', 'exists:product_variants,id'],
         ]);
 
-        $newVariant = \App\Models\ProductVariant::with(['color', 'size'])->findOrFail($validated['product_variant_id']);
+        $newVariant = ProductVariant::with(['color', 'size'])->findOrFail($validated['product_variant_id']);
 
         abort_unless($newVariant->product_id === $cartItem->productVariant->product_id, 422, 'Variant không thuộc sản phẩm này.');
         abort_unless($newVariant->stock > 0, 422, 'Variant này đã hết hàng.');
 
-        // If the target variant already exists in cart, merge quantities
         $existing = $cartItem->cart->cartItems()
             ->where('product_variant_id', $newVariant->id)
             ->where('id', '!=', $cartItem->id)
