@@ -11,43 +11,43 @@ class CategorySeeder extends Seeder
     {
         $structure = [
             [
-                'name' => 'Áo',
-                'slug' => 'ao',
+                'name'     => 'Nam',
+                'slug'     => 'nam',
                 'children' => [
-                    ['name' => 'Áo thun', 'slug' => 'ao-thun'],
-                    ['name' => 'Áo polo', 'slug' => 'ao-polo'],
-                    ['name' => 'Áo sơ mi', 'slug' => 'ao-so-mi'],
-                    ['name' => 'Áo hoodie & Sweatshirt', 'slug' => 'ao-hoodie-sweatshirt'],
-                    ['name' => 'Áo khoác', 'slug' => 'ao-khoac'],
-                    ['name' => 'Áo len', 'slug' => 'ao-len'],
-                    ['name' => 'Áo blazer', 'slug' => 'ao-blazer'],
+                    ['name' => 'Áo thun',    'slug' => 'nam-ao-thun'],
+                    ['name' => 'Áo sơ mi',   'slug' => 'nam-ao-so-mi'],
+                    ['name' => 'Áo polo',    'slug' => 'nam-ao-polo'],
+                    ['name' => 'Áo hoodie',  'slug' => 'nam-ao-hoodie'],
+                    ['name' => 'Áo khoác',   'slug' => 'nam-ao-khoac'],
+                    ['name' => 'Áo blazer',  'slug' => 'nam-ao-blazer'],
+                    ['name' => 'Quần jeans', 'slug' => 'nam-quan-jeans'],
+                    ['name' => 'Quần tây',   'slug' => 'nam-quan-tay'],
+                    ['name' => 'Quần short', 'slug' => 'nam-quan-short'],
+                    ['name' => 'Quần jogger','slug' => 'nam-quan-jogger'],
                 ],
             ],
             [
-                'name' => 'Quần',
-                'slug' => 'quan',
+                'name'     => 'Nữ',
+                'slug'     => 'nu',
                 'children' => [
-                    ['name' => 'Quần jeans', 'slug' => 'quan-jeans'],
-                    ['name' => 'Quần short', 'slug' => 'quan-short'],
-                    ['name' => 'Quần tây', 'slug' => 'quan-tay'],
-                    ['name' => 'Quần jogger', 'slug' => 'quan-jogger'],
+                    ['name' => 'Áo thun',    'slug' => 'nu-ao-thun'],
+                    ['name' => 'Áo sơ mi',   'slug' => 'nu-ao-so-mi'],
+                    ['name' => 'Áo polo',    'slug' => 'nu-ao-polo'],
+                    ['name' => 'Áo hoodie',  'slug' => 'nu-ao-hoodie'],
+                    ['name' => 'Áo khoác',   'slug' => 'nu-ao-khoac'],
+                    ['name' => 'Áo len',     'slug' => 'nu-ao-len'],
+                    ['name' => 'Quần jeans', 'slug' => 'nu-quan-jeans'],
+                    ['name' => 'Quần tây',   'slug' => 'nu-quan-tay'],
+                    ['name' => 'Đầm',        'slug' => 'nu-dam'],
+                    ['name' => 'Váy',        'slug' => 'nu-vay'],
                 ],
             ],
             [
-                'name' => 'Đầm & Váy',
-                'slug' => 'dam-vay',
-                'children' => [
-                    ['name' => 'Đầm', 'slug' => 'dam'],
-                    ['name' => 'Váy', 'slug' => 'vay'],
-                ],
-            ],
-            [
-                'name' => 'Phụ kiện',
-                'slug' => 'phu-kien',
+                'name'     => 'Phụ kiện',
+                'slug'     => 'phu-kien',
                 'children' => [
                     ['name' => 'Mũ & Nón', 'slug' => 'mu-non'],
                     ['name' => 'Túi xách', 'slug' => 'tui-xach'],
-                    ['name' => 'Thắt lưng', 'slug' => 'that-lung'],
                 ],
             ],
         ];
@@ -56,9 +56,9 @@ class CategorySeeder extends Seeder
             $parent = Category::updateOrCreate(
                 ['slug' => $parentData['slug']],
                 [
-                    'name' => $parentData['name'],
+                    'name'      => $parentData['name'],
                     'parent_id' => null,
-                    'status' => true,
+                    'status'    => true,
                 ]
             );
 
@@ -66,9 +66,9 @@ class CategorySeeder extends Seeder
                 Category::updateOrCreate(
                     ['slug' => $child['slug']],
                     [
-                        'name' => $child['name'],
+                        'name'      => $child['name'],
                         'parent_id' => $parent->id,
-                        'status' => true,
+                        'status'    => true,
                     ]
                 );
             }

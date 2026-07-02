@@ -26,6 +26,14 @@ class CheckoutController extends Controller
             return redirect()->route('cart.index')->with('warning', 'Giỏ hàng của bạn đang trống.');
         }
 
+        // Xóa sản phẩm đã bị ẩn khỏi giỏ và báo user
+        $inactive = $cartItems->filter(fn ($item) => ! (bool) ($item->productVariant?->product?->status));
+        if ($inactive->isNotEmpty()) {
+            $inactive->each(fn ($item) => $item->delete());
+            return redirect()->route('cart.index')
+                ->with('warning', 'Một số sản phẩm trong giỏ hàng đã ngừng bán và đã được xóa. Vui lòng kiểm tra lại.');
+        }
+
         [$subtotal, $shippingFee, $total] = CartPricingService::totals($cartItems);
 
         return view('user.checkout.index', [
@@ -45,7 +53,6 @@ class CheckoutController extends Controller
         $validated = $request->validate([
             'phone'             => ['required', 'string', 'max:20'],
             'city'              => ['required', 'string', 'max:255'],
-            'district'          => ['required', 'string', 'max:255'],
             'ward'              => ['required', 'string', 'max:255'],
             'apartment_number'  => ['required', 'string', 'max:255'],
             'note'              => ['nullable', 'string', 'max:1000'],
@@ -54,7 +61,6 @@ class CheckoutController extends Controller
         ], [
             'phone.required'             => 'Vui lòng nhập số điện thoại.',
             'city.required'              => 'Vui lòng nhập tỉnh/thành phố.',
-            'district.required'          => 'Vui lòng nhập quận/huyện.',
             'ward.required'              => 'Vui lòng nhập phường/xã.',
             'apartment_number.required'  => 'Vui lòng nhập địa chỉ cụ thể.',
             'payment_method_id.required' => 'Vui lòng chọn phương thức thanh toán.',
@@ -76,13 +82,19 @@ class CheckoutController extends Controller
             return redirect()->route('cart.index')->with('warning', 'Giỏ hàng của bạn đang trống.');
         }
 
+        // Backend recheck: từ chối nếu có sản phẩm bị ẩn (tránh bypass qua Postman)
+        $hasInactive = $cartItems->contains(fn ($item) => ! (bool) ($item->productVariant?->product?->status));
+        if ($hasInactive) {
+            return redirect()->route('checkout.index')
+                ->with('warning', 'Một số sản phẩm không còn hoạt động. Vui lòng kiểm tra lại giỏ hàng.');
+        }
+
         [, $shippingFee, $total] = CartPricingService::totals($cartItems);
 
         $order = DB::transaction(function () use ($user, $validated, $paymentMethod, $cartItems, $shippingFee, $total) {
             $address = Address::firstOrCreate([
                 'user_id'          => $user->id,
                 'city'             => $validated['city'],
-                'district'         => $validated['district'],
                 'ward'             => $validated['ward'],
                 'apartment_number' => $validated['apartment_number'],
             ]);

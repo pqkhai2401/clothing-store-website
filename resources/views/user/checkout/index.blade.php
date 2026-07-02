@@ -979,8 +979,8 @@
                             @enderror
                         </div>
 
-                        <!-- Ward + District -->
-                        <div class="col-md-6">
+                        <!-- Ward -->
+                        <div class="col-12">
                             <label for="ward" class="form-label">Phường/Xã</label>
                             <input type="text" name="ward" id="ward"
                                 class="form-control @error('ward') is-invalid @enderror"
@@ -1280,22 +1280,14 @@
                             </div>
                             <div class="addr-err" id="errApartment"></div>
                         </div>
-                        {{-- Ward + District --}}
-                        <div class="col-6">
+                        {{-- Ward --}}
+                        <div class="col-12">
                             <div class="addr-field">
                                 <input type="text" class="addr-input" name="ward" id="addrFormWard"
                                        placeholder=" " required>
                                 <label class="addr-field-label" for="addrFormWard">Phường/Xã</label>
                             </div>
                             <div class="addr-err" id="errWard"></div>
-                        </div>
-                        <div class="col-6">
-                            <div class="addr-field">
-                                <input type="text" class="addr-input" name="district" id="addrFormDistrict"
-                                       placeholder=" " required>
-                                <label class="addr-field-label" for="addrFormDistrict">Quận/Huyện</label>
-                            </div>
-                            <div class="addr-err" id="errDistrict"></div>
                         </div>
                         {{-- City --}}
                         <div class="col-12">
@@ -1577,9 +1569,8 @@
     function applyAddress(item) {
         setVal('apartment_number', item.dataset.apartment);
         setVal('ward',             item.dataset.ward);
-        setVal('district',         item.dataset.district);
         setVal('city',             item.dataset.city);
-        ['apartment_number', 'ward', 'district', 'city'].forEach(flashField);
+        ['apartment_number', 'ward', 'city'].forEach(flashField);
         showToast('Đã áp dụng địa chỉ');
     }
 
@@ -1602,7 +1593,6 @@
         const body = {
             apartment_number: val('addrFormApartment'),
             ward:             val('addrFormWard'),
-            district:         val('addrFormDistrict'),
             city:             val('addrFormCity'),
             is_default:       document.getElementById('addrFormDefault')?.checked ? 1 : 0,
         };
@@ -1635,13 +1625,12 @@
             const addr = data.address;
             setVal('apartment_number', addr.apartment_number);
             setVal('ward',             addr.ward);
-            setVal('district',         addr.district || '');
             setVal('city',             addr.city);
 
             const phoneInput = document.getElementById('addrFormPhone');
             if (phoneInput?.value) setVal('phone', phoneInput.value);
 
-            ['apartment_number', 'ward', 'district', 'city'].forEach(flashField);
+            ['apartment_number', 'ward', 'city'].forEach(flashField);
             closeModal();
             showToast('Địa chỉ đã được lưu và áp dụng');
         } catch {

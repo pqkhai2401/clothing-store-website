@@ -156,6 +156,7 @@ class CartController extends Controller
             'size_name'        => $variant->size?->name,
             'variant_image'    => $variant->image ?: $variant->product->thumbnail,
             'stock'            => $variant->stock,
+            //Xử lý biến thể trong giỏ hàng trùng nhau (cùng màu + size) → gộp lại
             'merged'           => isset($existing),
             'merged_item_id'   => isset($existing) ? $existing->id : null,
         ]);
