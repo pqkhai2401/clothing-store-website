@@ -57,6 +57,8 @@ Route::middleware(['auth.login', 'admin'])
 
         Route::prefix('products')->name('products.')->group(function () use ($trashRoutes) {
             Route::get('/', [ProductController::class, 'index'])->name('list');
+            Route::get('/create', [ProductController::class, 'create'])->name('create');
+            Route::post('/', [ProductController::class, 'store'])->name('store');
             Route::get('/{id}/edit', [ProductController::class, 'edit'])->name('edit');
             Route::put('/{id}', [ProductController::class, 'update'])->name('update');
             Route::patch('/{id}/toggle-status', [ProductController::class, 'toggleStatus'])->name('toggleStatus');
@@ -119,7 +121,7 @@ Route::middleware(['auth.login', 'admin'])
 
         Route::prefix('orders')->name('orders.')->group(function () {
             Route::get('/', [OrderController::class, 'index'])->name('list');
-            Route::get('/{id}', [OrderController::class, 'show'])->name('show');
+            Route::get('/{id}/detail', [OrderController::class, 'detail'])->name('detail');
             Route::put('/{id}', [OrderController::class, 'update'])->name('update');
         });
 

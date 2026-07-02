@@ -28,8 +28,8 @@ enum Gender: string
     public static function labels(): array
     {
         return [
-            self::MEN->value => 'Men',
-            self::WOMEN->value => 'Women',
+            self::MEN->value    => 'Nam',
+            self::WOMEN->value  => 'Nữ',
             self::UNISEX->value => 'Unisex',
         ];
     }

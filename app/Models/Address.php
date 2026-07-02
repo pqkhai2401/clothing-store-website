@@ -17,6 +17,11 @@ class Address extends Model
         'district',
         'ward',
         'apartment_number',
+        'is_default',
+    ];
+
+    protected $casts = [
+        'is_default' => 'boolean',
     ];
 
     /**

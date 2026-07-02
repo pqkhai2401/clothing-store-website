@@ -8,8 +8,11 @@ use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Color;
 use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Models\Size;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
@@ -89,21 +92,146 @@ class ProductController extends Controller
         return view('admin.products.index', compact('products', 'categories', 'sizes', 'colors', 'keyword', 'categoryId', 'parentCategoryId', 'brandId', 'sizeId', 'colorId', 'status', 'perPage'));
     }
 
+    public function create()
+    {
+        $categories     = Category::with('childrenCategories')->orderBy('name')->get();
+        $brands         = Brand::orderBy('name')->get();
+        $genders        = Gender::labels();
+        $colors         = Color::orderBy('name')->get();
+        $sizes          = Size::where('status', 1)->orderBy('sort_weight')->orderBy('name')->get();
+        $existingVariants = [];
+
+        return view('admin.products.create', compact(
+            'categories', 'brands', 'genders', 'colors', 'sizes', 'existingVariants'
+        ));
+    }
+
+    public function store(Request $request)
+    {
+        $request->validate([
+            'name'        => ['required', 'string', 'max:255'],
+            'slug'        => ['nullable', 'string', 'max:255', Rule::unique('products', 'slug')],
+            'category_id' => ['required', 'integer', Rule::exists('categories', 'id')],
+            'brand_id'    => ['required', 'integer', Rule::exists('brands', 'id')],
+            'price'       => ['required', 'numeric', 'min:0'],
+            'discount'    => ['required', 'integer', 'min:0', 'max:100'],
+            'gender'      => ['required', Rule::in(Gender::values())],
+            'description' => ['required', 'string'],
+            'thumbnail'   => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
+            'image_2'     => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
+            'image_3'     => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
+            'is_featured' => ['boolean'],
+            'status'      => ['boolean'],
+        ], [
+            'name.required'        => 'Tên sản phẩm không được để trống.',
+            'slug.unique'          => 'Slug này đã tồn tại.',
+            'category_id.required' => 'Vui lòng chọn danh mục.',
+            'brand_id.required'    => 'Vui lòng chọn thương hiệu.',
+            'price.required'       => 'Giá sản phẩm không được để trống.',
+            'discount.min'         => 'Giảm giá không được âm.',
+            'discount.max'         => 'Giảm giá không được vượt quá 100%.',
+            'gender.required'      => 'Vui lòng chọn giới tính.',
+            'description.required' => 'Mô tả sản phẩm không được để trống.',
+            'thumbnail.image'      => 'File ảnh chính không hợp lệ.',
+            'thumbnail.max'        => 'Ảnh chính không được vượt quá 2MB.',
+            'image_2.image'        => 'Ảnh phụ 2 không hợp lệ.',
+            'image_2.max'          => 'Ảnh phụ 2 không được vượt quá 2MB.',
+            'image_3.image'        => 'Ảnh phụ 3 không hợp lệ.',
+            'image_3.max'          => 'Ảnh phụ 3 không được vượt quá 2MB.',
+        ]);
+
+        $slug = $request->filled('slug')
+            ? Str::slug($request->input('slug'))
+            : Str::slug($request->input('name'));
+
+        if (Product::where('slug', $slug)->exists()) {
+            $slug = $slug . '-' . time();
+        }
+
+        // Upload tất cả ảnh trước khi mở transaction
+        $uploadedPaths = [];
+        $storeImage = function (string $field) use ($request, &$uploadedPaths): ?string {
+            if (!$request->hasFile($field)) return null;
+            $path = $request->file($field)->store('products', 'public');
+            $uploadedPaths[] = $path;
+            return 'storage/' . $path;
+        };
+
+        $thumbnailPath = $storeImage('thumbnail');
+        $image2Path    = $storeImage('image_2');
+        $image3Path    = $storeImage('image_3');
+
+        try {
+            $product = DB::transaction(function () use ($request, $slug, $thumbnailPath, $image2Path, $image3Path) {
+                $product = Product::create([
+                    'name'        => $request->input('name'),
+                    'slug'        => $slug,
+                    'category_id' => $request->input('category_id'),
+                    'brand_id'    => $request->input('brand_id'),
+                    'price'       => $request->input('price'),
+                    'discount'    => $request->input('discount'),
+                    'gender'      => $request->input('gender'),
+                    'description' => $request->input('description'),
+                    'thumbnail'   => $thumbnailPath,
+                    'is_featured' => $request->boolean('is_featured'),
+                    'status'      => $request->boolean('status'),
+                ]);
+
+                // Lưu ảnh phụ vào bảng product_images nếu có
+                foreach (array_filter([$image2Path, $image3Path]) as $imgPath) {
+                    $product->productImages()->create(['image' => $imgPath]);
+                }
+
+                // Lưu biến thể: variants[color_id][size_id] = stock
+                foreach ($request->input('variants', []) as $colorId => $sizes) {
+                    foreach ($sizes as $sizeId => $stock) {
+                        $product->productVariants()->create([
+                            'color_id' => $colorId,
+                            'size_id'  => $sizeId,
+                            'stock'    => max(0, (int) $stock),
+                        ]);
+                    }
+                }
+
+                return $product;
+            });
+        } catch (\Throwable $e) {
+            // Xóa ảnh đã upload nếu DB thất bại
+            foreach ($uploadedPaths as $path) {
+                Storage::disk('public')->delete($path);
+            }
+            throw $e;
+        }
+
+        return redirect()->route('admin.products.list')
+            ->with('success', "Thêm sản phẩm \"{$product->name}\" thành công.");
+    }
+
     public function edit(string $id)
     {
-        $product    = Product::findOrFail($id);
-        $categories = Category::orderBy('name')->get();
+        $product    = Product::with(['productVariants', 'productImages'])->findOrFail($id);
+        $categories = Category::with('childrenCategories')->orderBy('name')->get();
         $brands     = Brand::orderBy('name')->get();
         $genders    = Gender::labels();
+        $colors     = Color::orderBy('name')->get();
+        $sizes      = Size::where('status', 1)->orderBy('sort_weight')->orderBy('name')->get();
 
-        return view('admin.products.edit', compact('product', 'categories', 'brands', 'genders'));
+        $existingVariants = $product->productVariants
+            ->groupBy('color_id')
+            ->map(fn ($variants) => $variants->pluck('stock', 'size_id')->toArray())
+            ->toArray();
+
+        return view('admin.products.edit', compact(
+            'product', 'categories', 'brands', 'genders',
+            'colors', 'sizes', 'existingVariants'
+        ));
     }
 
     public function update(Request $request, string $id)
     {
-        $product = Product::findOrFail($id);
+        $product = Product::with('productImages')->findOrFail($id);
 
-        $validated = $request->validate([
+        $request->validate([
             'name'        => ['required', 'string', 'max:255'],
             'slug'        => ['nullable', 'string', 'max:255', Rule::unique('products', 'slug')->ignore($id)],
             'category_id' => ['required', 'integer', Rule::exists('categories', 'id')],
@@ -112,56 +240,95 @@ class ProductController extends Controller
             'discount'    => ['required', 'integer', 'min:0', 'max:100'],
             'gender'      => ['required', Rule::in(Gender::values())],
             'description' => ['required', 'string'],
-            'thumbnail'   => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:3072'],
+            'thumbnail'   => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
+            'image_2'     => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
+            'image_3'     => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
             'is_featured' => ['boolean'],
             'status'      => ['boolean'],
         ], [
             'name.required'        => 'Tên sản phẩm không được để trống.',
             'slug.unique'          => 'Slug này đã tồn tại.',
             'category_id.required' => 'Vui lòng chọn danh mục.',
-            'category_id.exists'   => 'Danh mục không hợp lệ.',
             'brand_id.required'    => 'Vui lòng chọn thương hiệu.',
-            'brand_id.exists'      => 'Thương hiệu không hợp lệ.',
             'price.required'       => 'Giá sản phẩm không được để trống.',
-            'price.min'            => 'Giá sản phẩm không được âm.',
             'discount.min'         => 'Giảm giá không được âm.',
             'discount.max'         => 'Giảm giá không được vượt quá 100%.',
             'gender.required'      => 'Vui lòng chọn giới tính.',
-            'gender.in'            => 'Giới tính không hợp lệ.',
             'description.required' => 'Mô tả sản phẩm không được để trống.',
-            'thumbnail.image'      => 'File tải lên phải là hình ảnh.',
-            'thumbnail.max'        => 'Ảnh không được vượt quá 3MB.',
+            'thumbnail.image'      => 'File ảnh chính không hợp lệ.',
+            'thumbnail.max'        => 'Ảnh chính không được vượt quá 2MB.',
+            'image_2.max'          => 'Ảnh phụ 2 không được vượt quá 2MB.',
+            'image_3.max'          => 'Ảnh phụ 3 không được vượt quá 2MB.',
         ]);
 
-        // Tạo slug: dùng slug nhập tay (nếu có) hoặc sinh từ tên
-        $slug = $validated['slug']
-            ? Str::slug($validated['slug'])
-            : Str::slug($validated['name']);
+        $slug = $request->filled('slug')
+            ? Str::slug($request->input('slug'))
+            : Str::slug($request->input('name'));
 
         if (Product::where('slug', $slug)->where('id', '!=', $id)->exists()) {
             $slug = $slug . '-' . $id;
         }
 
-        // Xử lý ảnh thumbnail: chỉ cập nhật nếu admin upload ảnh mới
-        $thumbnailPath = $product->thumbnail;
-        if ($request->hasFile('thumbnail')) {
-            $thumbnailPath = $request->file('thumbnail')->store('products', 'public');
-            $thumbnailPath = 'storage/' . $thumbnailPath;
-        }
+        // Upload ảnh mới (nếu có) trước transaction
+        $uploadedPaths = [];
+        $storeImage = function (string $field) use ($request, &$uploadedPaths): ?string {
+            if (!$request->hasFile($field)) return null;
+            $path = $request->file($field)->store('products', 'public');
+            $uploadedPaths[] = $path;
+            return 'storage/' . $path;
+        };
 
-        $product->update([
-            'name'        => $validated['name'],
-            'slug'        => $slug,
-            'category_id' => $validated['category_id'],
-            'brand_id'    => $validated['brand_id'],
-            'price'       => $validated['price'],
-            'discount'    => $validated['discount'],
-            'gender'      => $validated['gender'],
-            'description' => $validated['description'],
-            'thumbnail'   => $thumbnailPath,
-            'is_featured' => $request->boolean('is_featured'),
-            'status'      => $request->boolean('status'),
-        ]);
+        $newThumbnail = $storeImage('thumbnail');
+        $newImage2    = $storeImage('image_2');
+        $newImage3    = $storeImage('image_3');
+
+        try {
+            DB::transaction(function () use ($request, $product, $id, $slug, $newThumbnail, $newImage2, $newImage3) {
+                $product->update([
+                    'name'        => $request->input('name'),
+                    'slug'        => $slug,
+                    'category_id' => $request->input('category_id'),
+                    'brand_id'    => $request->input('brand_id'),
+                    'price'       => $request->input('price'),
+                    'discount'    => $request->input('discount'),
+                    'gender'      => $request->input('gender'),
+                    'description' => $request->input('description'),
+                    'thumbnail'   => $newThumbnail ?? $product->thumbnail,
+                    'is_featured' => $request->boolean('is_featured'),
+                    'status'      => $request->boolean('status'),
+                ]);
+
+                // Cập nhật ảnh phụ: slot 1 → index 0, slot 2 → index 1
+                $extraImages = $product->productImages->values();
+                foreach ([0 => $newImage2, 1 => $newImage3] as $idx => $newPath) {
+                    if ($newPath === null) continue;
+                    $existing = $extraImages->get($idx);
+                    if ($existing) {
+                        $existing->update(['image' => $newPath]);
+                    } else {
+                        $product->productImages()->create(['image' => $newPath]);
+                    }
+                }
+
+                // Sync biến thể
+                $keep = [];
+                foreach ($request->input('variants', []) as $colorId => $sizes) {
+                    foreach ($sizes as $sizeId => $stock) {
+                        $variant = ProductVariant::updateOrCreate(
+                            ['product_id' => $product->id, 'color_id' => $colorId, 'size_id' => $sizeId],
+                            ['stock' => max(0, (int) $stock)]
+                        );
+                        $keep[] = $variant->id;
+                    }
+                }
+                $product->productVariants()->whereNotIn('id', $keep)->delete();
+            });
+        } catch (\Throwable $e) {
+            foreach ($uploadedPaths as $path) {
+                Storage::disk('public')->delete($path);
+            }
+            throw $e;
+        }
 
         return redirect()->route('admin.products.list')
             ->with('success', "Cập nhật sản phẩm \"{$product->name}\" thành công.");

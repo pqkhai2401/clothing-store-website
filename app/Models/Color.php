@@ -45,9 +45,6 @@ class Color extends Model
         ];
     }
 
-    /**
-     * Get the product variants associated with this color.
-     */
     public function productVariants(): HasMany
     {
         return $this->hasMany(ProductVariant::class);

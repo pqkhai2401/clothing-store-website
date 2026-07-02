@@ -15,7 +15,7 @@
                 <h1 class="product-header-title mb-2">Quản lý sản phẩm</h1>
                 <p class="product-header-desc mb-0">Danh sách tất cả sản phẩm trong hệ thống.</p>
                 <div class="product-header-actions">
-                    <a href="#" class="btn btn-dark product-action-btn">
+                    <a href="{{ route('admin.products.create') }}" class="btn btn-dark product-action-btn">
                         <i class="fa-solid fa-plus me-1"></i> Thêm sản phẩm
                     </a>
                     <a href="{{ route('admin.products.trash') }}" class="btn btn-light border product-action-btn">
