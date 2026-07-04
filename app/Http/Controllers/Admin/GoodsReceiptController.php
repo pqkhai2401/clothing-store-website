@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\GoodsReceipt;
 use App\Models\ProductVariant;
+use App\Models\StockIssue;
 use App\Models\Supplier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -24,9 +25,50 @@ class GoodsReceiptController extends Controller
 
         return match ($tab) {
             'inbound'  => $this->inboundIndex($request),
-            'outbound' => view('admin.goods-receipts.index', ['tab' => 'outbound']),
+            'outbound' => $this->outboundIndex($request),
             default    => $this->overviewIndex($request),
         };
+    }
+
+    private function outboundIndex(Request $request)
+    {
+        $keyword = trim((string) $request->input('search', $request->input('keyword')));
+        $status  = $request->input('status');
+        $sort = $request->input('sort', 'id');
+        $direction = in_array($request->input('direction'), ['asc', 'desc'], true) ? $request->input('direction') : 'desc';
+        $perPage = in_array((int) $request->input('per_page'), [10, 25, 50], true)
+            ? (int) $request->input('per_page')
+            : 10;
+
+        $query = StockIssue::with('creator')->withCount('items')
+            ->withSum('items as items_quantity_sum', 'quantity');
+
+        if ($keyword !== '') {
+            $query->where(function ($q) use ($keyword) {
+                $q->where('code', 'like', "%{$keyword}%")
+                    ->orWhere('reason', 'like', "%{$keyword}%");
+            });
+        }
+
+        if (in_array($status, [StockIssue::STATUS_DRAFT, StockIssue::STATUS_ISSUED], true)) {
+            $query->where('status', $status);
+        }
+
+        match ($sort) {
+            'total_amount' => $query->orderBy('total_amount', $direction),
+            'created_at'   => $query->orderBy('created_at', $direction),
+            default        => $query->orderBy('id', $direction),
+        };
+
+        $stockIssues = $query->paginate($perPage)->withQueryString();
+
+        if ($request->ajax()) {
+            return response()->json([
+                'html' => view('admin.goods-receipts.partials.outbound-table', compact('stockIssues'))->render(),
+            ]);
+        }
+
+        return view('admin.goods-receipts.index', compact('stockIssues', 'keyword', 'status', 'perPage') + ['tab' => 'outbound']);
     }
 
     private function overviewIndex(Request $request)
@@ -84,6 +126,8 @@ class GoodsReceiptController extends Controller
 
         $categories = Category::whereNull('parent_id')->with('childrenCategories')->orderBy('name')->get();
 
+        $activeVariants = ProductVariant::whereHas('product', fn ($q) => $q->whereNull('deleted_at'));
+
         return view('admin.goods-receipts.index', [
             'tab'           => 'overview',
             'variants'      => $variants,
@@ -92,9 +136,9 @@ class GoodsReceiptController extends Controller
             'stockStatus'   => $stockStatus,
             'perPage'       => $perPage,
             'categories'    => $categories,
-            'totalStock'    => (int) ProductVariant::sum('stock'),
-            'totalValue'    => (float) (ProductVariant::selectRaw('SUM(stock * cost_price) as v')->value('v') ?? 0),
-            'lowStockCount' => ProductVariant::where('stock', '>', 0)->where('stock', '<=', self::LOW_STOCK_THRESHOLD)->count(),
+            'totalStock'    => (int) $activeVariants->clone()->sum('stock'),
+            'totalValue'    => (float) ($activeVariants->clone()->selectRaw('SUM(stock * cost_price) as v')->value('v') ?? 0),
+            'lowStockCount' => $activeVariants->clone()->where('stock', '>', 0)->where('stock', '<=', self::LOW_STOCK_THRESHOLD)->count(),
         ]);
     }
 

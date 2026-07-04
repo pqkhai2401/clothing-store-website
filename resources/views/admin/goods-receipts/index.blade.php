@@ -5,7 +5,7 @@
 @push('styles')
     @include('admin.suppliers.styles')
     <style>
-    .gr-badge { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 99px; text-transform: uppercase; letter-spacing: .03em; }
+    .gr-badge { display: inline-block; white-space: nowrap; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 99px; text-transform: uppercase; letter-spacing: .03em; }
     .gr-badge--draft { background: #fef3c7; color: #92400e; }
     .gr-badge--completed { background: #dcfce7; color: #166534; }
     .gr-badge--in-stock { background: #dcfce7; color: #166534; }
@@ -90,6 +90,9 @@
     }
     .gr-filter-icon-btn:hover { background: #f9fafb; }
 
+    .gr-status-filter { width: 160px; flex: 0 0 160px; }
+    .gr-status-filter .hk-cat-panel { width: 160px; }
+
     /* ── Row product cell ── */
     .gr-ov-product { display: flex; align-items: center; gap: 10px; }
     .gr-ov-thumb { width: 42px; height: 42px; border-radius: 8px; object-fit: cover; flex-shrink: 0; background: #f3f4f6; }
@@ -120,6 +123,10 @@
                     @elseif($tab === 'inbound')
                         <a href="{{ route('admin.goods-receipts.create') }}" class="btn btn-dark product-action-btn">
                             <i class="fa-solid fa-plus me-1"></i> Tạo phiếu nhập kho
+                        </a>
+                    @elseif($tab === 'outbound')
+                        <a href="{{ route('admin.stock-issues.create') }}" class="btn gr-btn-emerald product-action-btn">
+                            <i class="fa-solid fa-plus me-1"></i> Tạo phiếu xuất kho
                         </a>
                     @endif
                 </div>
@@ -181,21 +188,56 @@
                             class="form-control product-search"
                             value="{{ $keyword }}"
                             placeholder="Tìm kiếm sản phẩm, màu, SKU..." autocomplete="off">
-                        <select name="category_id" class="form-select" style="max-width:200px;" data-admin-filter>
-                            <option value="">Tất cả danh mục</option>
-                            @foreach($categories as $cat)
-                                <option value="{{ $cat->id }}" {{ (string) $categoryId === (string) $cat->id ? 'selected' : '' }}>{{ $cat->name }}</option>
-                                @foreach($cat->childrenCategories as $child)
-                                    <option value="{{ $child->id }}" {{ (string) $categoryId === (string) $child->id ? 'selected' : '' }}>&nbsp;&nbsp;{{ $child->name }}</option>
-                                @endforeach
-                            @endforeach
-                        </select>
-                        <select name="stock_status" id="grStockStatusFilter" class="form-select" style="max-width:170px;" data-admin-filter>
-                            <option value="">Tất cả trạng thái</option>
-                            <option value="in_stock" {{ $stockStatus === 'in_stock' ? 'selected' : '' }}>Còn hàng</option>
-                            <option value="low_stock" {{ $stockStatus === 'low_stock' ? 'selected' : '' }}>Sắp hết hàng</option>
-                            <option value="out_of_stock" {{ $stockStatus === 'out_of_stock' ? 'selected' : '' }}>Hết hàng</option>
-                        </select>
+                        @php
+                            $categoryLabel = 'Tất cả danh mục';
+                            foreach ($categories as $cat) {
+                                if ((string) $categoryId === (string) $cat->id) { $categoryLabel = $cat->name; break; }
+                                foreach ($cat->childrenCategories as $child) {
+                                    if ((string) $categoryId === (string) $child->id) { $categoryLabel = $child->name; break 2; }
+                                }
+                            }
+                        @endphp
+                        <input type="hidden" name="category_id" id="grCategoryFilter" data-admin-filter value="{{ $categoryId }}">
+                        <div class="hk-cat-filter" id="hkGrCategoryFilter">
+                            <button type="button" class="hk-cat-trigger" id="hkGrCategoryTrigger" aria-haspopup="listbox" aria-expanded="false">
+                                <span class="hk-cat-trigger-label" id="hkGrCategoryLabel">{{ $categoryLabel }}</span>
+                                <i class="fa-solid fa-chevron-down hk-cat-arrow"></i>
+                            </button>
+                            <div class="hk-cat-panel" id="hkGrCategoryPanel" hidden>
+                                <div class="hk-cat-search-wrap">
+                                    <i class="fa-solid fa-magnifying-glass hk-cat-search-icon"></i>
+                                    <input type="text" class="hk-cat-search-input" id="hkGrCategorySearch" placeholder="Tìm danh mục..." autocomplete="off">
+                                </div>
+                                <div class="hk-cat-list" id="hkGrCategoryList" role="listbox">
+                                    <button type="button" class="hk-cat-item {{ !$categoryId ? 'is-active' : '' }}" data-value="" data-label="Tất cả danh mục">Tất cả danh mục</button>
+                                    @foreach($categories as $cat)
+                                        <button type="button" class="hk-cat-item {{ (string) $categoryId === (string) $cat->id ? 'is-active' : '' }}" data-value="{{ $cat->id }}" data-label="{{ $cat->name }}">{{ $cat->name }}</button>
+                                        @foreach($cat->childrenCategories as $child)
+                                            <button type="button" class="hk-cat-item ps-4" data-value="{{ $child->id }}" data-label="{{ $child->name }}">&nbsp;&nbsp;{{ $child->name }}</button>
+                                        @endforeach
+                                    @endforeach
+                                </div>
+                            </div>
+                        </div>
+
+                        @php
+                            $stockStatusLabelMap = ['' => 'Tất cả trạng thái', 'in_stock' => 'Còn hàng', 'low_stock' => 'Sắp hết hàng', 'out_of_stock' => 'Hết hàng'];
+                        @endphp
+                        <input type="hidden" name="stock_status" id="grStockStatusFilter" data-admin-filter value="{{ $stockStatus }}">
+                        <div class="hk-cat-filter gr-status-filter" id="hkGrStockStatusFilter">
+                            <button type="button" class="hk-cat-trigger" id="hkGrStockStatusTrigger" aria-haspopup="listbox" aria-expanded="false">
+                                <span class="hk-cat-trigger-label" id="hkGrStockStatusLabel">{{ $stockStatusLabelMap[$stockStatus] ?? 'Tất cả trạng thái' }}</span>
+                                <i class="fa-solid fa-chevron-down hk-cat-arrow"></i>
+                            </button>
+                            <div class="hk-cat-panel" id="hkGrStockStatusPanel" hidden>
+                                <div class="hk-cat-list" id="hkGrStockStatusList" role="listbox">
+                                    @foreach($stockStatusLabelMap as $value => $label)
+                                        <button type="button" class="hk-cat-item {{ $stockStatus === $value ? 'is-active' : '' }}" data-value="{{ $value }}" data-label="{{ $label }}">{{ $label }}</button>
+                                    @endforeach
+                                </div>
+                            </div>
+                        </div>
+
                         <button type="button" class="gr-filter-icon-btn" title="Bộ lọc nâng cao (đang phát triển)"
                             onclick="alert('Bộ lọc nâng cao đang được phát triển.')">
                             <i class="fa-solid fa-sliders"></i>
@@ -218,11 +260,23 @@
                             class="form-control product-search"
                             value="{{ $keyword }}"
                             placeholder="Tìm theo mã phiếu hoặc tên nhà cung cấp..." autocomplete="off">
-                        <select name="status" class="form-select" style="max-width:180px;" data-admin-filter>
-                            <option value="">Tất cả trạng thái</option>
-                            <option value="draft" {{ $status === 'draft' ? 'selected' : '' }}>Nháp</option>
-                            <option value="completed" {{ $status === 'completed' ? 'selected' : '' }}>Hoàn tất</option>
-                        </select>
+                        @php
+                            $inboundStatusLabelMap = ['' => 'Tất cả trạng thái', 'draft' => 'Nháp', 'completed' => 'Hoàn tất'];
+                        @endphp
+                        <input type="hidden" name="status" id="grInboundStatusFilter" data-admin-filter value="{{ $status }}">
+                        <div class="hk-cat-filter gr-status-filter" id="hkGrInboundStatusFilter">
+                            <button type="button" class="hk-cat-trigger" id="hkGrInboundStatusTrigger" aria-haspopup="listbox" aria-expanded="false">
+                                <span class="hk-cat-trigger-label" id="hkGrInboundStatusLabel">{{ $inboundStatusLabelMap[$status] ?? 'Tất cả trạng thái' }}</span>
+                                <i class="fa-solid fa-chevron-down hk-cat-arrow"></i>
+                            </button>
+                            <div class="hk-cat-panel" id="hkGrInboundStatusPanel" hidden>
+                                <div class="hk-cat-list" id="hkGrInboundStatusList" role="listbox">
+                                    @foreach($inboundStatusLabelMap as $value => $label)
+                                        <button type="button" class="hk-cat-item {{ $status === $value ? 'is-active' : '' }}" data-value="{{ $value }}" data-label="{{ $label }}">{{ $label }}</button>
+                                    @endforeach
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </form>
 
@@ -230,12 +284,39 @@
                     @include('admin.goods-receipts.partials.table')
                 </div>
 
-            @else
+            @elseif($tab === 'outbound')
 
-                <div class="text-center py-5">
-                    <i class="fa-solid fa-truck-ramp-box text-muted mb-3" style="font-size:48px;display:block;"></i>
-                    <h5 class="fw-bold text-muted">Tính năng Đơn xuất kho đang được phát triển</h5>
-                    <p class="text-muted mb-0">Chức năng theo dõi hàng xuất kho sẽ sớm ra mắt.</p>
+                <form method="GET" action="{{ route('admin.goods-receipts.list') }}" id="stockIssueSearchForm"
+                      class="product-toolbar">
+                    <input type="hidden" name="tab" value="outbound">
+                    <input type="hidden" name="per_page" value="{{ $perPage }}">
+                    <div class="product-toolbar-left">
+                        <input type="search" name="search" data-admin-search id="stockIssueRealtimeSearch"
+                            class="form-control product-search"
+                            value="{{ $keyword }}"
+                            placeholder="Tìm theo mã phiếu xuất..." autocomplete="off">
+                        @php
+                            $outboundStatusLabelMap = ['' => 'Tất cả trạng thái', 'draft' => 'Nháp', 'issued' => 'Đã xuất kho'];
+                        @endphp
+                        <input type="hidden" name="status" id="grOutboundStatusFilter" data-admin-filter value="{{ $status }}">
+                        <div class="hk-cat-filter gr-status-filter" id="hkGrOutboundStatusFilter">
+                            <button type="button" class="hk-cat-trigger" id="hkGrOutboundStatusTrigger" aria-haspopup="listbox" aria-expanded="false">
+                                <span class="hk-cat-trigger-label" id="hkGrOutboundStatusLabel">{{ $outboundStatusLabelMap[$status] ?? 'Tất cả trạng thái' }}</span>
+                                <i class="fa-solid fa-chevron-down hk-cat-arrow"></i>
+                            </button>
+                            <div class="hk-cat-panel" id="hkGrOutboundStatusPanel" hidden>
+                                <div class="hk-cat-list" id="hkGrOutboundStatusList" role="listbox">
+                                    @foreach($outboundStatusLabelMap as $value => $label)
+                                        <button type="button" class="hk-cat-item {{ $status === $value ? 'is-active' : '' }}" data-value="{{ $value }}" data-label="{{ $label }}">{{ $label }}</button>
+                                    @endforeach
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+
+                <div data-admin-table-area>
+                    @include('admin.goods-receipts.partials.outbound-table')
                 </div>
 
             @endif
@@ -248,13 +329,116 @@
     @include('admin.partials.realtime-table')
     <script>
     (function () {
+        /* ── Generic pill dropdown wiring (rounded trigger, panel opens from the right) ── */
+        function wireHkFilterDropdown(config) {
+            const root    = document.getElementById(config.root);
+            const trigger = document.getElementById(config.trigger);
+            const panel   = document.getElementById(config.panel);
+            const label   = document.getElementById(config.label);
+            const list    = document.getElementById(config.list);
+            const hidden  = document.getElementById(config.hidden);
+            const search  = config.search ? document.getElementById(config.search) : null;
+            if (!root || !trigger || !panel || !list || !hidden) return null;
+
+            function showAllItems() {
+                list.querySelectorAll('.hk-cat-item').forEach(function (item) { item.hidden = false; });
+                list.querySelector('.hk-cat-empty')?.remove();
+            }
+
+            function open() {
+                panel.hidden = false;
+                trigger.classList.add('is-open');
+                trigger.setAttribute('aria-expanded', 'true');
+                if (search) {
+                    search.value = '';
+                    showAllItems();
+                    search.focus();
+                }
+            }
+
+            function close() {
+                panel.hidden = true;
+                trigger.classList.remove('is-open');
+                trigger.setAttribute('aria-expanded', 'false');
+            }
+
+            trigger.addEventListener('click', function () {
+                panel.hidden ? open() : close();
+            });
+
+            function select(value, itemLabel) {
+                list.querySelectorAll('.hk-cat-item').forEach(function (item) {
+                    item.classList.toggle('is-active', item.dataset.value === String(value));
+                });
+                if (label) label.textContent = itemLabel;
+                hidden.value = value || '';
+            }
+
+            list.addEventListener('click', function (event) {
+                const btn = event.target.closest('.hk-cat-item');
+                if (!btn) return;
+                select(btn.dataset.value, btn.dataset.label);
+                hidden.dispatchEvent(new Event('change', { bubbles: true }));
+                close();
+            });
+
+            search?.addEventListener('input', function () {
+                const q = this.value.toLowerCase().trim();
+                let visible = 0;
+
+                list.querySelectorAll('.hk-cat-item').forEach(function (item) {
+                    const match = !q || item.textContent.toLowerCase().includes(q);
+                    item.hidden = !match;
+                    if (match) visible++;
+                });
+
+                const existing = list.querySelector('.hk-cat-empty');
+                if (visible === 0 && !existing) {
+                    const msg = document.createElement('div');
+                    msg.className = 'hk-cat-empty';
+                    msg.textContent = 'Không tìm thấy danh mục';
+                    list.appendChild(msg);
+                } else if (visible > 0 && existing) {
+                    existing.remove();
+                }
+            });
+
+            document.addEventListener('click', function (event) {
+                if (!panel.hidden && !root.contains(event.target)) close();
+            });
+
+            return { select: select };
+        }
+
+        const categoryDropdown = wireHkFilterDropdown({
+            root: 'hkGrCategoryFilter', trigger: 'hkGrCategoryTrigger', panel: 'hkGrCategoryPanel',
+            label: 'hkGrCategoryLabel', list: 'hkGrCategoryList', hidden: 'grCategoryFilter', search: 'hkGrCategorySearch',
+        });
+
+        const stockStatusDropdown = wireHkFilterDropdown({
+            root: 'hkGrStockStatusFilter', trigger: 'hkGrStockStatusTrigger', panel: 'hkGrStockStatusPanel',
+            label: 'hkGrStockStatusLabel', list: 'hkGrStockStatusList', hidden: 'grStockStatusFilter',
+        });
+
+        wireHkFilterDropdown({
+            root: 'hkGrInboundStatusFilter', trigger: 'hkGrInboundStatusTrigger', panel: 'hkGrInboundStatusPanel',
+            label: 'hkGrInboundStatusLabel', list: 'hkGrInboundStatusList', hidden: 'grInboundStatusFilter',
+        });
+
+        wireHkFilterDropdown({
+            root: 'hkGrOutboundStatusFilter', trigger: 'hkGrOutboundStatusTrigger', panel: 'hkGrOutboundStatusPanel',
+            label: 'hkGrOutboundStatusLabel', list: 'hkGrOutboundStatusList', hidden: 'grOutboundStatusFilter',
+        });
+
+        /* ── Low-stock alert card: click to filter table by "Sắp hết hàng" ── */
         var card   = document.getElementById('grLowStockCard');
         var filter = document.getElementById('grStockStatusFilter');
-        if (!card || !filter) return;
+        if (!card || !filter || !stockStatusDropdown) return;
 
         card.addEventListener('click', function () {
             var next = filter.value === 'low_stock' ? '' : 'low_stock';
-            filter.value = next;
+            var nextLabel = next === 'low_stock' ? 'Sắp hết hàng' : 'Tất cả trạng thái';
+            stockStatusDropdown.select(next, nextLabel);
             card.classList.toggle('is-active', next === 'low_stock');
             filter.dispatchEvent(new Event('change'));
         });
