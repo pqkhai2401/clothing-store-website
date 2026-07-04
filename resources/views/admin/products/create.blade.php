@@ -4,6 +4,7 @@
 
 @push('styles')
     @include('admin.products.styles')
+    <link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet">
     <style>
     /* ── Page header ── */
     .create-header-title {
@@ -18,52 +19,78 @@
         margin: 0;
     }
 
-    /* ── Hình ảnh 3 slots ── */
-    .img-slots {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 10px;
+    /* ── Rich text editor (Quill) ── */
+    #descriptionEditor {
+        min-height: 220px;
+        background: #fff;
+        font-size: 14px;
     }
-    .img-slot {
+    .ql-toolbar.ql-snow {
+        border-radius: 6px 6px 0 0;
+        background: #f9fafb;
+    }
+    .ql-container.ql-snow {
+        border-radius: 0 0 6px 6px;
+    }
+    .edit-field.is-invalid .ql-toolbar,
+    .edit-field.is-invalid .ql-container {
+        border-color: #dc3545;
+    }
+
+    /* ── Media dropzone ── */
+    .media-dropzone {
         border: 2px dashed #d1d5db;
         border-radius: 10px;
-        aspect-ratio: 1 / 1;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
+        padding: 28px 16px;
+        text-align: center;
         cursor: pointer;
         transition: border-color 0.15s, background 0.15s;
-        overflow: hidden;
-        position: relative;
         background: #fafafa;
     }
-    .img-slot:hover, .img-slot.drag-over { border-color: #174761; background: #f0f9ff; }
-    .img-slot .slot-placeholder { text-align: center; padding: 8px; pointer-events: none; }
-    .img-slot .slot-placeholder i { font-size: 22px; color: #9ca3af; }
-    .img-slot .slot-placeholder p { font-size: 11px; color: #9ca3af; margin: 4px 0 0; }
-    .img-slot .slot-badge {
-        position: absolute; top: 6px; left: 6px;
-        background: #174761; color: #fff;
-        font-size: 10px; font-weight: 700;
-        padding: 2px 7px; border-radius: 99px;
+    .media-dropzone:hover, .media-dropzone.drag-over {
+        border-color: #174761;
+        background: #f0f9ff;
     }
-    .img-slot img.slot-preview {
-        width: 100%; height: 100%;
-        object-fit: cover;
-        position: absolute; inset: 0;
+    .media-dropzone i { font-size: 26px; color: #9ca3af; }
+    .media-dropzone p { margin: 8px 0 0; font-size: 13px; color: #6b7280; }
+    .media-dropzone p strong { color: #174761; }
+
+    .media-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+        gap: 10px;
+        margin-top: 14px;
     }
-    .img-slot .slot-remove {
-        display: none;
-        position: absolute; top: 6px; right: 6px;
+    .media-item {
+        position: relative;
+        aspect-ratio: 1 / 1;
+        border-radius: 8px;
+        overflow: hidden;
+        border: 1.5px solid #e5e7eb;
+        background: #f3f4f6;
+    }
+    .media-item img {
+        width: 100%; height: 100%; object-fit: cover; display: block;
+    }
+    .media-item .media-remove {
+        position: absolute; top: 5px; right: 5px;
         width: 22px; height: 22px; border-radius: 50%;
-        background: rgba(0,0,0,0.55); color: #fff;
+        background: rgba(0,0,0,0.6); color: #fff;
         border: 0; font-size: 11px;
-        align-items: center; justify-content: center;
-        cursor: pointer; z-index: 2;
+        display: flex; align-items: center; justify-content: center;
+        cursor: pointer; z-index: 2; transition: background 0.15s;
     }
-    .img-slot.has-image .slot-remove { display: flex; }
-    .img-slot.has-image .slot-placeholder { display: none; }
+    .media-item .media-remove:hover { background: #dc2626; }
+    .media-item .media-primary-badge {
+        position: absolute; top: 5px; left: 5px;
+        background: #6b7280; color: #fff;
+        font-size: 10px; font-weight: 700;
+        padding: 2px 8px; border-radius: 99px;
+        cursor: pointer; z-index: 2; transition: background 0.15s;
+        border: 0;
+    }
+    .media-item.is-primary .media-primary-badge { background: #174761; }
+    .media-item.is-primary { border-color: #174761; box-shadow: 0 0 0 2px rgba(23,71,97,0.15); }
 
     /* ── hk-cat trigger inside form (form-select height) ── */
     .hk-cat-form .hk-cat-trigger {
@@ -81,6 +108,26 @@
     }
     .hk-cat-form.is-invalid .hk-cat-trigger {
         border-color: #dc3545;
+    }
+
+    /* ── Sticky action bar ── */
+    .sticky-action-bar {
+        position: sticky;
+        bottom: 16px;
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        background: #fff;
+        border: 1.5px solid #e5e7eb;
+        border-radius: 10px;
+        padding: 12px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+        z-index: 20;
+    }
+    .sticky-action-bar .btn { min-height: 42px; min-width: 150px; }
+    @media (max-width: 991px) {
+        .sticky-action-bar { flex-direction: column; }
+        .sticky-action-bar .btn { width: 100%; }
     }
     </style>
 @endpush
@@ -102,7 +149,7 @@
 
         <div class="row g-4">
 
-            {{-- ── CỘT TRÁI ── --}}
+            {{-- ── CỘT TRÁI (70%) ── --}}
             <div class="col-lg-8">
 
                 {{-- Thông tin chung --}}
@@ -131,14 +178,11 @@
                             <div class="form-text">Để trống để tự động tạo từ tên sản phẩm.</div>
                         </div>
 
-                        <div class="edit-field mb-0">
-                            <label for="description">Mô tả <span class="text-danger">*</span></label>
-                            <textarea id="description" name="description" rows="10"
-                                class="form-control @error('description') is-invalid @enderror"
-                                placeholder="Nhập mô tả chi tiết sản phẩm..."
-                                style="min-height: 220px; resize: vertical;"
-                                required>{{ old('description') }}</textarea>
-                            @error('description') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        <div class="edit-field mb-0 @error('description') is-invalid @enderror">
+                            <label for="descriptionEditor">Mô tả <span class="text-danger">*</span></label>
+                            <div id="descriptionEditor">{!! old('description') !!}</div>
+                            <textarea id="description" name="description" class="d-none" required>{{ old('description') }}</textarea>
+                            @error('description') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                         </div>
                     </div>
                 </div>
@@ -155,7 +199,7 @@
 
             </div>
 
-            {{-- ── CỘT PHẢI ── --}}
+            {{-- ── CỘT PHẢI (30%) ── --}}
             <div class="col-lg-4">
 
                 {{-- Phân loại --}}
@@ -273,7 +317,17 @@
                             @error('gender') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
 
-                        {{-- Giá --}}
+                        {{-- Giá vốn (đứng riêng, dùng cho phân tích tài chính) --}}
+                        <div class="edit-field">
+                            <label for="cost_price">Giá vốn (₫)</label>
+                            <input type="number" id="cost_price" name="cost_price" min="0" step="1000"
+                                class="form-control @error('cost_price') is-invalid @enderror"
+                                value="{{ old('cost_price', 0) }}">
+                            @error('cost_price') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                            <div class="form-text">Dùng làm giá vốn mặc định cho các biến thể &amp; phân tích lợi nhuận.</div>
+                        </div>
+
+                        {{-- Giá bán --}}
                         <div class="row g-3">
                             <div class="col-7">
                                 <div class="edit-field mb-0">
@@ -305,51 +359,19 @@
                     </div>
                     <div class="card-body p-4">
 
-                        <div class="img-slots mb-3">
-                            {{-- Slot 1: Ảnh chính --}}
-                            <div class="img-slot" id="slot0" data-slot="0">
-                                <span class="slot-badge">Chính</span>
-                                <div class="slot-placeholder">
-                                    <i class="fa-regular fa-image"></i>
-                                    <p>Ảnh chính</p>
-                                </div>
-                                <img src="" alt="" class="slot-preview d-none">
-                                <button type="button" class="slot-remove" data-slot="0" title="Xóa ảnh">
-                                    <i class="fa-solid fa-xmark"></i>
-                                </button>
-                            </div>
-                            {{-- Slot 2 --}}
-                            <div class="img-slot" id="slot1" data-slot="1">
-                                <span class="slot-badge" style="background:#6b7280;">2</span>
-                                <div class="slot-placeholder">
-                                    <i class="fa-regular fa-image"></i>
-                                    <p>Ảnh phụ</p>
-                                </div>
-                                <img src="" alt="" class="slot-preview d-none">
-                                <button type="button" class="slot-remove" data-slot="1" title="Xóa ảnh">
-                                    <i class="fa-solid fa-xmark"></i>
-                                </button>
-                            </div>
-                            {{-- Slot 3 --}}
-                            <div class="img-slot" id="slot2" data-slot="2">
-                                <span class="slot-badge" style="background:#6b7280;">3</span>
-                                <div class="slot-placeholder">
-                                    <i class="fa-regular fa-image"></i>
-                                    <p>Ảnh phụ</p>
-                                </div>
-                                <img src="" alt="" class="slot-preview d-none">
-                                <button type="button" class="slot-remove" data-slot="2" title="Xóa ảnh">
-                                    <i class="fa-solid fa-xmark"></i>
-                                </button>
-                            </div>
+                        <div class="media-dropzone" id="mediaDropzone">
+                            <i class="fa-solid fa-cloud-arrow-up"></i>
+                            <p><strong>Kéo thả ảnh vào đây</strong> hoặc bấm để chọn file</p>
+                            <p class="mb-0">JPEG, PNG, WebP · Tối đa 2MB mỗi ảnh · Không giới hạn số lượng</p>
                         </div>
+                        <input type="file" id="mediaFileInput" accept="image/*" multiple class="d-none">
 
-                        {{-- Hidden file inputs --}}
-                        <input type="file" id="fileInput0" name="thumbnail" accept="image/*" class="d-none @error('thumbnail') is-invalid @enderror">
-                        <input type="file" id="fileInput1" name="image_2"   accept="image/*" class="d-none">
-                        <input type="file" id="fileInput2" name="image_3"   accept="image/*" class="d-none">
-                        @error('thumbnail') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
-                        <div class="form-text">JPEG, PNG, WebP · Tối đa 2MB mỗi ảnh</div>
+                        <div class="media-grid" id="mediaGrid"></div>
+
+                        <input type="hidden" name="primary_index" id="primaryIndexInput" value="0">
+                        @error('images') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                        @error('images.*') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                        <div class="form-text mt-2">Bấm nhãn <strong>Ảnh chính</strong> trên một ảnh để đặt làm ảnh đại diện sản phẩm.</div>
 
                     </div>
                 </div>
@@ -379,14 +401,14 @@
                     </div>
                 </div>
 
-                {{-- Nút hành động --}}
-                <div class="d-grid gap-2">
-                    <button type="submit" class="btn btn-primary fw-bold" style="min-height:42px;">
-                        <i class="fa-solid fa-plus me-1"></i> Lưu sản phẩm
-                    </button>
-                    <a href="{{ route('admin.products.list') }}" class="btn btn-light border fw-bold" style="min-height:42px;">
+                {{-- Nút hành động (sticky) --}}
+                <div class="sticky-action-bar">
+                    <a href="{{ route('admin.products.list') }}" class="btn btn-light border fw-bold">
                         <i class="fa-solid fa-xmark me-1"></i> Hủy bỏ
                     </a>
+                    <button type="submit" class="btn btn-primary fw-bold">
+                        <i class="fa-solid fa-plus me-1"></i> Lưu sản phẩm
+                    </button>
                 </div>
 
             </div>
@@ -396,72 +418,117 @@
 @endsection
 
 @push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
 <script>
 (function () {
 
     /* ═══════════════════════════════════════════
-       1. IMAGE SLOTS
+       1. RICH TEXT EDITOR (Quill)
     ═══════════════════════════════════════════ */
-    const slots = document.querySelectorAll('.img-slot');
+    const descTextarea = document.getElementById('description');
+    const quill = new Quill('#descriptionEditor', {
+        theme: 'snow',
+        placeholder: 'Nhập mô tả chi tiết sản phẩm...',
+        modules: {
+            toolbar: [
+                ['bold', 'italic', 'underline', 'strike'],
+                [{ 'header': [1, 2, 3, false] }],
+                [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+                ['link', 'image'],
+                [{ 'align': [] }],
+                ['clean'],
+            ],
+        },
+    });
 
-    slots.forEach(function (slot) {
-        const idx     = slot.dataset.slot;
-        const input   = document.getElementById('fileInput' + idx);
-        const preview = slot.querySelector('.slot-preview');
-        const removeBtn = slot.querySelector('.slot-remove');
-
-        function setPreview(file) {
-            if (!file || !file.type.startsWith('image/')) return;
-            const reader = new FileReader();
-            reader.onload = function (e) {
-                preview.src = e.target.result;
-                preview.classList.remove('d-none');
-                slot.classList.add('has-image');
-            };
-            reader.readAsDataURL(file);
-        }
-
-        slot.addEventListener('click', function (e) {
-            if (e.target.closest('.slot-remove')) return;
-            input.click();
-        });
-
-        input.addEventListener('change', function () {
-            if (this.files[0]) setPreview(this.files[0]);
-        });
-
-        slot.addEventListener('dragover', function (e) {
-            e.preventDefault();
-            slot.classList.add('drag-over');
-        });
-
-        slot.addEventListener('dragleave', function () {
-            slot.classList.remove('drag-over');
-        });
-
-        slot.addEventListener('drop', function (e) {
-            e.preventDefault();
-            slot.classList.remove('drag-over');
-            const file = e.dataTransfer.files[0];
-            if (file) {
-                const dt = new DataTransfer();
-                dt.items.add(file);
-                input.files = dt.files;
-                setPreview(file);
-            }
-        });
-
-        removeBtn.addEventListener('click', function (e) {
-            e.stopPropagation();
-            preview.src = '';
-            preview.classList.add('d-none');
-            slot.classList.remove('has-image');
-            input.value = '';
-        });
+    quill.on('text-change', function () {
+        descTextarea.value = quill.root.innerHTML === '<p><br></p>' ? '' : quill.root.innerHTML;
     });
 
     /* ═══════════════════════════════════════════
-       2. HK-CAT DROPDOWNS (form mode)
+       2. MEDIA DROPZONE (unlimited images + primary)
+    ═══════════════════════════════════════════ */
+    const dropzone      = document.getElementById('mediaDropzone');
+    const fileInput      = document.getElementById('mediaFileInput');
+    const grid           = document.getElementById('mediaGrid');
+    const primaryInput   = document.getElementById('primaryIndexInput');
+    let mediaFiles       = []; // { file, previewUrl }
+    let primaryIndex     = 0;
+
+    function renderGrid() {
+        grid.innerHTML = '';
+        mediaFiles.forEach(function (item, index) {
+            const cell = document.createElement('div');
+            cell.className = 'media-item' + (index === primaryIndex ? ' is-primary' : '');
+            cell.innerHTML = `
+                <img src="${item.previewUrl}" alt="">
+                <button type="button" class="media-primary-badge" data-index="${index}">
+                    ${index === primaryIndex ? 'Ảnh chính' : 'Đặt làm chính'}
+                </button>
+                <button type="button" class="media-remove" data-index="${index}" title="Xóa ảnh">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            `;
+            grid.appendChild(cell);
+        });
+        primaryInput.value = primaryIndex;
+        syncFileInput();
+    }
+
+    function syncFileInput() {
+        const dt = new DataTransfer();
+        mediaFiles.forEach(item => dt.items.add(item.file));
+        fileInput.files = dt.files;
+    }
+
+    function addFiles(fileList) {
+        Array.from(fileList).forEach(function (file) {
+            if (!file.type.startsWith('image/')) return;
+            mediaFiles.push({ file: file, previewUrl: URL.createObjectURL(file) });
+        });
+        renderGrid();
+    }
+
+    dropzone.addEventListener('click', () => fileInput.click());
+
+    fileInput.addEventListener('change', function () {
+        addFiles(this.files);
+    });
+
+    dropzone.addEventListener('dragover', function (e) {
+        e.preventDefault();
+        dropzone.classList.add('drag-over');
+    });
+    dropzone.addEventListener('dragleave', function () {
+        dropzone.classList.remove('drag-over');
+    });
+    dropzone.addEventListener('drop', function (e) {
+        e.preventDefault();
+        dropzone.classList.remove('drag-over');
+        addFiles(e.dataTransfer.files);
+    });
+
+    grid.addEventListener('click', function (e) {
+        const removeBtn  = e.target.closest('.media-remove');
+        const primaryBtn = e.target.closest('.media-primary-badge');
+
+        if (removeBtn) {
+            const idx = parseInt(removeBtn.dataset.index, 10);
+            mediaFiles.splice(idx, 1);
+            if (primaryIndex >= mediaFiles.length) primaryIndex = 0;
+            else if (primaryIndex > idx) primaryIndex--;
+            renderGrid();
+            return;
+        }
+
+        if (primaryBtn) {
+            primaryIndex = parseInt(primaryBtn.dataset.index, 10);
+            renderGrid();
+        }
+    });
+
+    /* ═══════════════════════════════════════════
+       3. HK-CAT DROPDOWNS (form mode)
     ═══════════════════════════════════════════ */
     function setupHkCat(opts) {
         /* opts: { triggerId, panelId, labelId, searchId, listId, hiddenId, wrapId } */
@@ -565,7 +632,7 @@
         wrapId:    'hkBrandWrap',
     });
 
-    /* validate required dropdowns on submit */
+    /* validate required fields on submit */
     document.getElementById('createProductForm').addEventListener('submit', function (e) {
         let ok = true;
         if (!document.getElementById('categoryId').value) {
@@ -574,6 +641,11 @@
         }
         if (!document.getElementById('brandId').value) {
             document.getElementById('hkBrandWrap').classList.add('is-invalid');
+            ok = false;
+        }
+        if (!descTextarea.value.trim()) {
+            document.querySelector('.ql-toolbar').style.borderColor = '#dc3545';
+            document.querySelector('.ql-container').style.borderColor = '#dc3545';
             ok = false;
         }
         if (!ok) e.preventDefault();

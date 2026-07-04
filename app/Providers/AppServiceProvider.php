@@ -101,6 +101,14 @@ class AppServiceProvider extends ServiceProvider
                         'parent'         => [],
                     ],
                     [
+                        'permission'     => 'manage-goods-receipts',
+                        'title'          => 'Quản lý nhập kho',
+                        'url'            => $r('admin.goods-receipts.list', '/admin/goods-receipts'),
+                        'active_pattern' => 'admin/goods-receipts*',
+                        'icon'           => 'fa-solid fa-box-open',
+                        'parent'         => [],
+                    ],
+                    [
                         'permission'     => 'manage-categories',
                         'title'          => 'Quản lý danh mục',
                         'url'            => $r('admin.categories.list', '/admin/categories'),
@@ -114,6 +122,14 @@ class AppServiceProvider extends ServiceProvider
                         'url'            => $r('admin.brands.list', '/admin/brands'),
                         'active_pattern' => 'admin/brands*',
                         'icon'           => 'fa-solid fa-tags',
+                        'parent'         => [],
+                    ],
+                    [
+                        'permission'     => 'manage-suppliers',
+                        'title'          => 'Quản lý nhà cung cấp',
+                        'url'            => $r('admin.suppliers.list', '/admin/suppliers'),
+                        'active_pattern' => 'admin/suppliers*',
+                        'icon'           => 'fa-solid fa-truck',
                         'parent'         => [],
                     ],
                     [
