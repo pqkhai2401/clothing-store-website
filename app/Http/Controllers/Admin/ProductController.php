@@ -109,19 +109,20 @@ class ProductController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'name'        => ['required', 'string', 'max:255'],
-            'slug'        => ['nullable', 'string', 'max:255', Rule::unique('products', 'slug')],
-            'category_id' => ['required', 'integer', Rule::exists('categories', 'id')],
-            'brand_id'    => ['required', 'integer', Rule::exists('brands', 'id')],
-            'price'       => ['required', 'numeric', 'min:0'],
-            'discount'    => ['required', 'integer', 'min:0', 'max:100'],
-            'gender'      => ['required', Rule::in(Gender::values())],
-            'description' => ['required', 'string'],
-            'thumbnail'   => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
-            'image_2'     => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
-            'image_3'     => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
-            'is_featured' => ['boolean'],
-            'status'      => ['boolean'],
+            'name'          => ['required', 'string', 'max:255'],
+            'slug'          => ['nullable', 'string', 'max:255', Rule::unique('products', 'slug')],
+            'category_id'   => ['required', 'integer', Rule::exists('categories', 'id')],
+            'brand_id'      => ['required', 'integer', Rule::exists('brands', 'id')],
+            'price'         => ['required', 'numeric', 'min:0'],
+            'cost_price'    => ['nullable', 'numeric', 'min:0'],
+            'discount'      => ['required', 'integer', 'min:0', 'max:100'],
+            'gender'        => ['required', Rule::in(Gender::values())],
+            'description'   => ['required', 'string'],
+            'images'        => ['required', 'array', 'min:1'],
+            'images.*'      => ['image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
+            'primary_index' => ['nullable', 'integer', 'min:0'],
+            'is_featured'   => ['boolean'],
+            'status'        => ['boolean'],
         ], [
             'name.required'        => 'Tên sản phẩm không được để trống.',
             'slug.unique'          => 'Slug này đã tồn tại.',
@@ -132,12 +133,10 @@ class ProductController extends Controller
             'discount.max'         => 'Giảm giá không được vượt quá 100%.',
             'gender.required'      => 'Vui lòng chọn giới tính.',
             'description.required' => 'Mô tả sản phẩm không được để trống.',
-            'thumbnail.image'      => 'File ảnh chính không hợp lệ.',
-            'thumbnail.max'        => 'Ảnh chính không được vượt quá 2MB.',
-            'image_2.image'        => 'Ảnh phụ 2 không hợp lệ.',
-            'image_2.max'          => 'Ảnh phụ 2 không được vượt quá 2MB.',
-            'image_3.image'        => 'Ảnh phụ 3 không hợp lệ.',
-            'image_3.max'          => 'Ảnh phụ 3 không được vượt quá 2MB.',
+            'images.required'      => 'Vui lòng tải lên ít nhất một ảnh sản phẩm.',
+            'images.min'           => 'Vui lòng tải lên ít nhất một ảnh sản phẩm.',
+            'images.*.image'       => 'File ảnh không hợp lệ.',
+            'images.*.max'         => 'Mỗi ảnh không được vượt quá 2MB.',
         ]);
 
         $slug = $request->filled('slug')
@@ -149,26 +148,30 @@ class ProductController extends Controller
         }
 
         // Upload tất cả ảnh trước khi mở transaction
-        $uploadedPaths = [];
-        $storeImage = function (string $field) use ($request, &$uploadedPaths): ?string {
-            if (!$request->hasFile($field)) return null;
-            $path = $request->file($field)->store('products', 'public');
+        $uploadedPaths  = [];
+        $imagePaths     = [];
+        foreach ($request->file('images', []) as $file) {
+            $path = $file->store('products', 'public');
             $uploadedPaths[] = $path;
-            return 'storage/' . $path;
-        };
+            $imagePaths[]    = 'storage/' . $path;
+        }
 
-        $thumbnailPath = $storeImage('thumbnail');
-        $image2Path    = $storeImage('image_2');
-        $image3Path    = $storeImage('image_3');
+        $primaryIndex = (int) $request->input('primary_index', 0);
+        if (!isset($imagePaths[$primaryIndex])) {
+            $primaryIndex = 0;
+        }
 
         try {
-            $product = DB::transaction(function () use ($request, $slug, $thumbnailPath, $image2Path, $image3Path) {
+            $product = DB::transaction(function () use ($request, $slug, $imagePaths, $primaryIndex) {
+                $thumbnailPath = $imagePaths[$primaryIndex] ?? null;
+
                 $product = Product::create([
                     'name'        => $request->input('name'),
                     'slug'        => $slug,
                     'category_id' => $request->input('category_id'),
                     'brand_id'    => $request->input('brand_id'),
                     'price'       => $request->input('price'),
+                    'cost_price'  => $request->input('cost_price', 0),
                     'discount'    => $request->input('discount'),
                     'gender'      => $request->input('gender'),
                     'description' => $request->input('description'),
@@ -177,18 +180,23 @@ class ProductController extends Controller
                     'status'      => $request->boolean('status'),
                 ]);
 
-                // Lưu ảnh phụ vào bảng product_images nếu có
-                foreach (array_filter([$image2Path, $image3Path]) as $imgPath) {
+                // Lưu các ảnh còn lại (không phải ảnh chính) vào bảng product_images
+                foreach ($imagePaths as $index => $imgPath) {
+                    if ($index === $primaryIndex) continue;
                     $product->productImages()->create(['image' => $imgPath]);
                 }
 
-                // Lưu biến thể: variants[color_id][size_id] = stock
+                // Lưu biến thể: variants[color_id][size_id] = {sku, cost_price, sale_price, stock}
                 foreach ($request->input('variants', []) as $colorId => $sizes) {
-                    foreach ($sizes as $sizeId => $stock) {
+                    foreach ($sizes as $sizeId => $data) {
+                        $sku = trim((string) ($data['sku'] ?? ''));
                         $product->productVariants()->create([
-                            'color_id' => $colorId,
-                            'size_id'  => $sizeId,
-                            'stock'    => max(0, (int) $stock),
+                            'color_id'   => $colorId,
+                            'size_id'    => $sizeId,
+                            'sku'        => $sku !== '' ? $sku : Str::upper(Str::random(10)),
+                            'cost_price' => max(0, (float) ($data['cost_price'] ?? 0)),
+                            'sale_price' => max(0, (float) ($data['sale_price'] ?? 0)),
+                            'stock'      => max(0, (int) ($data['stock'] ?? 0)),
                         ]);
                     }
                 }
@@ -218,7 +226,12 @@ class ProductController extends Controller
 
         $existingVariants = $product->productVariants
             ->groupBy('color_id')
-            ->map(fn ($variants) => $variants->pluck('stock', 'size_id')->toArray())
+            ->map(fn ($variants) => $variants->keyBy('size_id')->map(fn ($v) => [
+                'sku'        => $v->sku,
+                'cost_price' => (float) $v->cost_price,
+                'sale_price' => (float) $v->sale_price,
+                'stock'      => $v->stock,
+            ])->toArray())
             ->toArray();
 
         return view('admin.products.edit', compact(
@@ -237,6 +250,7 @@ class ProductController extends Controller
             'category_id' => ['required', 'integer', Rule::exists('categories', 'id')],
             'brand_id'    => ['required', 'integer', Rule::exists('brands', 'id')],
             'price'       => ['required', 'numeric', 'min:0'],
+            'cost_price'  => ['nullable', 'numeric', 'min:0'],
             'discount'    => ['required', 'integer', 'min:0', 'max:100'],
             'gender'      => ['required', Rule::in(Gender::values())],
             'description' => ['required', 'string'],
@@ -290,6 +304,7 @@ class ProductController extends Controller
                     'category_id' => $request->input('category_id'),
                     'brand_id'    => $request->input('brand_id'),
                     'price'       => $request->input('price'),
+                    'cost_price'  => $request->input('cost_price', $product->cost_price),
                     'discount'    => $request->input('discount'),
                     'gender'      => $request->input('gender'),
                     'description' => $request->input('description'),
@@ -310,13 +325,19 @@ class ProductController extends Controller
                     }
                 }
 
-                // Sync biến thể
+                // Sync biến thể: variants[color_id][size_id] = {sku, cost_price, sale_price, stock}
                 $keep = [];
                 foreach ($request->input('variants', []) as $colorId => $sizes) {
-                    foreach ($sizes as $sizeId => $stock) {
+                    foreach ($sizes as $sizeId => $data) {
+                        $sku = trim((string) ($data['sku'] ?? ''));
                         $variant = ProductVariant::updateOrCreate(
                             ['product_id' => $product->id, 'color_id' => $colorId, 'size_id' => $sizeId],
-                            ['stock' => max(0, (int) $stock)]
+                            [
+                                'sku'        => $sku !== '' ? $sku : Str::upper(Str::random(10)),
+                                'cost_price' => max(0, (float) ($data['cost_price'] ?? 0)),
+                                'sale_price' => max(0, (float) ($data['sale_price'] ?? 0)),
+                                'stock'      => max(0, (int) ($data['stock'] ?? 0)),
+                            ]
                         );
                         $keep[] = $variant->id;
                     }

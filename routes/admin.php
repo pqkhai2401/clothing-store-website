@@ -5,10 +5,13 @@ use App\Http\Controllers\Admin\BrandController;
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\ColorController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\GoodsReceiptController;
 use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\ReviewController;
 use App\Http\Controllers\Admin\SizeController;
+use App\Http\Controllers\Admin\StockIssueController;
+use App\Http\Controllers\Admin\SupplierController;
 use App\Http\Controllers\Admin\ProfileController;
 use App\Http\Controllers\Admin\UserController;
 
@@ -118,6 +121,39 @@ Route::middleware(['auth.login', 'admin'])
             Route::post('/trash/bulk-force-delete', [SizeController::class, 'bulkForceDelete'])->name('bulkForceDelete');
             $trashRoutes(SizeController::class)();
         });
+
+        Route::middleware('permission:manage-suppliers')
+            ->prefix('suppliers')->name('suppliers.')->group(function () use ($trashRoutes) {
+                Route::get('/', [SupplierController::class, 'index'])->name('list');
+                Route::post('/', [SupplierController::class, 'store'])->name('store');
+                Route::get('/{id}/edit', [SupplierController::class, 'edit'])->name('edit');
+                Route::put('/{id}', [SupplierController::class, 'update'])->name('update');
+                Route::patch('/{id}/toggle-status', [SupplierController::class, 'toggleStatus'])->name('toggleStatus');
+                Route::delete('/{id}', [SupplierController::class, 'destroy'])->name('destroy');
+                Route::post('/bulk-delete', [SupplierController::class, 'bulkDelete'])->name('bulkDelete');
+                Route::post('/trash/bulk-restore', [SupplierController::class, 'bulkRestore'])->name('bulkRestore');
+                Route::post('/trash/bulk-force-delete', [SupplierController::class, 'bulkForceDelete'])->name('bulkForceDelete');
+                $trashRoutes(SupplierController::class)();
+            });
+
+        Route::middleware('permission:manage-goods-receipts')
+            ->prefix('goods-receipts')->name('goods-receipts.')->group(function () {
+                Route::get('/', [GoodsReceiptController::class, 'index'])->name('list');
+                Route::get('/create', [GoodsReceiptController::class, 'create'])->name('create');
+                Route::post('/', [GoodsReceiptController::class, 'store'])->name('store');
+                Route::get('/{id}', [GoodsReceiptController::class, 'show'])->name('show');
+                Route::patch('/{id}/complete', [GoodsReceiptController::class, 'complete'])->name('complete');
+                Route::delete('/{id}', [GoodsReceiptController::class, 'destroy'])->name('destroy');
+            });
+
+        Route::middleware('permission:manage-goods-receipts')
+            ->prefix('stock-issues')->name('stock-issues.')->group(function () {
+                Route::get('/create', [StockIssueController::class, 'create'])->name('create');
+                Route::post('/', [StockIssueController::class, 'store'])->name('store');
+                Route::get('/{id}', [StockIssueController::class, 'show'])->name('show');
+                Route::patch('/{id}/issue', [StockIssueController::class, 'issue'])->name('issue');
+                Route::delete('/{id}', [StockIssueController::class, 'destroy'])->name('destroy');
+            });
 
         Route::prefix('orders')->name('orders.')->group(function () {
             Route::get('/', [OrderController::class, 'index'])->name('list');

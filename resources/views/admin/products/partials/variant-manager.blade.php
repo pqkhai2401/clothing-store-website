@@ -2,8 +2,8 @@
     Variant Manager Partial
     Variables expected:
       $colors  — Collection<Color>  (id, name, display_hex_code)
-      $sizes   — Collection<Size>   (id, name)
-      $existingVariants — optional, array keyed [color_id][size_id] = stock (for edit mode)
+      $sizes   — Collection<Size>   (id, name) — mixed letter sizes (S,M,L..) and number sizes (38,39..)
+      $existingVariants — optional, nested [color_id][size_id] = ['sku'=>, 'cost_price'=>, 'sale_price'=>, 'stock'=>] (edit mode)
 --}}
 @php
     $existingVariants = $existingVariants ?? [];
@@ -14,8 +14,7 @@
     {{-- ── SECTION HEADER ── --}}
     <div class="vm-section-header">
         <p class="vm-section-sub mb-0">
-            {{-- <i class="fa-solid fa-circle-info me-1" style="color:#000000;"></i> --}}
-            <strong>Hướng dẫn:</strong> Chọn màu → tích size → nhập số lượng tồn kho
+            <strong>Hướng dẫn:</strong> Chọn màu → chọn hệ size → tích size → bảng biến thể sẽ tự sinh bên dưới
         </p>
         <span class="vm-selected-summary" id="vmSummary" style="display:none;"></span>
     </div>
@@ -53,23 +52,93 @@
         </div>
     </div>
 
-    {{-- ── BƯỚC 2: CẤU HÌNH SIZE & KHO ── --}}
-    <div class="vm-step" id="vmStep2" style="{{ empty($existingVariants) ? 'display:none;' : '' }}">
+    {{-- ── BƯỚC 2: HỆ SIZE + CHỌN SIZE ── --}}
+    <div class="vm-step">
         <div class="vm-step-label">
             <span class="vm-step-num">2.</span>
-            Cấu hình size &amp; kho hàng
+            Hệ size &amp; chọn size
         </div>
 
-        <div class="vm-boxes-wrap" id="vmBoxesWrap">
-            {{-- Boxes are injected by JS; pre-render for existing variants in edit mode --}}
+        <div class="vm-size-system-tabs" id="vmSizeSystemTabs" role="tablist">
+            <button type="button" class="vm-size-system-tab is-active" data-system="letters">Size chữ (S, M, L...)</button>
+            <button type="button" class="vm-size-system-tab" data-system="numbers">Size số (38, 39, 40...)</button>
+        </div>
+
+        <div class="vm-size-pick-grid" id="vmSizePickGrid">
+            @forelse($sizes as $size)
+                @php
+                    $system  = preg_match('/^\d+$/', trim($size->name)) ? 'numbers' : 'letters';
+                    $checked = false;
+                    foreach ($existingVariants as $colorVariants) {
+                        if (isset($colorVariants[$size->id])) { $checked = true; break; }
+                    }
+                @endphp
+                <label class="vm-size-pick-chip vm-size-system-{{ $system }} {{ $checked ? 'is-checked' : '' }}"
+                       data-system="{{ $system }}">
+                    <input type="checkbox"
+                           class="vm-size-pick-cb"
+                           data-size-id="{{ $size->id }}"
+                           data-size-name="{{ $size->name }}"
+                           {{ $checked ? 'checked' : '' }}>
+                    <span class="vm-size-pick-label">{{ $size->name }}</span>
+                </label>
+            @empty
+                <p class="text-muted small">Chưa có size nào. <a href="{{ route('admin.sizes.list') }}">Thêm size</a></p>
+            @endforelse
+        </div>
+    </div>
+
+    {{-- ── BƯỚC 3: BẢNG MA TRẬN BIẾN THỂ ── --}}
+    <div class="vm-step vm-step-matrix" id="vmMatrixStep" style="{{ empty($existingVariants) ? 'display:none;' : '' }}">
+        <div class="vm-step-label">
+            <span class="vm-step-num">3.</span>
+            Bảng biến thể (SKU / Giá vốn / Giá bán / Tồn kho)
+        </div>
+
+        {{-- Bulk apply bar --}}
+        <div class="vm-bulk-bar">
+            <span class="vm-bulk-label">Áp dụng nhanh:</span>
+            <div class="vm-bulk-field">
+                <label>Giá vốn</label>
+                <input type="number" min="0" step="1000" class="vm-bulk-input" id="vmBulkCost" placeholder="0">
+            </div>
+            <div class="vm-bulk-field">
+                <label>Giá bán</label>
+                <input type="number" min="0" step="1000" class="vm-bulk-input" id="vmBulkSale" placeholder="0">
+            </div>
+            <div class="vm-bulk-field">
+                <label>Tồn kho</label>
+                <input type="number" min="0" step="1" class="vm-bulk-input" id="vmBulkStock" placeholder="0">
+            </div>
+            <button type="button" class="vm-bulk-apply-btn" id="vmBulkApplyBtn">
+                <i class="fa-solid fa-bolt me-1"></i> Áp dụng cho tất cả
+            </button>
+        </div>
+
+        <div class="vm-matrix-table-wrap">
+            <table class="vm-matrix-table">
+                <thead>
+                    <tr>
+                        <th>Biến thể</th>
+                        <th>SKU</th>
+                        <th>Giá vốn (₫)</th>
+                        <th>Giá bán (₫)</th>
+                        <th>Tồn kho</th>
+                    </tr>
+                </thead>
+                <tbody id="vmMatrixBody">
+                    {{-- Rows injected by JS --}}
+                </tbody>
+            </table>
+            <div class="vm-matrix-empty" id="vmMatrixEmpty">Chọn màu và size để tạo bảng biến thể.</div>
         </div>
     </div>
 
 </div>
 
-{{-- ── SIZES JSON for JS ── --}}
+{{-- ── DATA FOR JS ── --}}
 <script>
-window.__VM_SIZES__ = @json($sizes->map(fn($s) => ['id' => $s->id, 'name' => $s->name])->values());
+window.__VM_SIZES__    = @json($sizes->map(fn($s) => ['id' => $s->id, 'name' => $s->name])->values());
 window.__VM_EXISTING__ = @json($existingVariants);
 </script>
 
@@ -116,8 +185,9 @@ window.__VM_EXISTING__ = @json($existingVariants);
 
 /* ── Steps ── */
 .vm-step {
-    margin-bottom: 20px;
+    margin-bottom: 24px;
 }
+.vm-step:last-child { margin-bottom: 0; }
 
 .vm-step-label {
     display: flex;
@@ -209,137 +279,225 @@ window.__VM_EXISTING__ = @json($existingVariants);
     display: inline-flex;
 }
 
-/* ── Variant boxes ── */
-.vm-boxes-wrap {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
+/* ── Size system tabs ── */
+.vm-size-system-tabs {
+    display: inline-flex;
+    background: #f3f4f6;
+    border-radius: 10px;
+    padding: 4px;
+    gap: 4px;
+    margin-bottom: 14px;
 }
 
-.vm-box {
-    border: 1.5px solid var(--vm-border);
-    border-radius: var(--vm-radius);
-    overflow: hidden;
-    animation: vmBoxIn 0.2s ease;
-}
-
-@keyframes vmBoxIn {
-    from { opacity: 0; transform: translateY(-8px); }
-    to   { opacity: 1; transform: translateY(0); }
-}
-
-.vm-box-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 16px;
-    background: #f9fafb;
-    border-bottom: 1.5px solid var(--vm-border);
-    gap: 10px;
-}
-
-.vm-box-header-left {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.vm-box-color-dot {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    flex-shrink: 0;
-}
-
-.vm-box-color-name {
-    font-size: 14px;
-    font-weight: 700;
-    color: #111;
-}
-
-.vm-box-stock-total {
+.vm-size-system-tab {
+    border: 0;
+    background: transparent;
+    padding: 7px 16px;
     font-size: 13px;
+    font-weight: 600;
     color: #6b7280;
-}
-
-/* ── Size rows ── */
-.vm-size-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 0;
-}
-
-.vm-size-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 16px;
-    border-bottom: 1px solid #f3f4f6;
-    border-right: 1px solid #f3f4f6;
-    transition: background 0.1s;
-}
-
-.vm-size-row:hover { background: #fafafa; }
-
-.vm-size-row.is-active {
-    background: #f0fdf4;
-}
-
-.vm-size-cb {
-    width: 16px;
-    height: 16px;
+    border-radius: 8px;
     cursor: pointer;
-    accent-color: var(--vm-accent);
-    flex-shrink: 0;
+    transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+    white-space: nowrap;
 }
 
-.vm-size-label {
+.vm-size-system-tab:hover { color: #374151; }
+
+.vm-size-system-tab.is-active {
+    background: #fff;
+    color: #111827;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+}
+
+/* ── Size pick chips (flat multi-select grid, no clipping) ── */
+.vm-size-pick-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.vm-size-pick-chip {
+    display: none; /* toggled via JS based on active system */
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border: 1.5px solid var(--vm-border);
+    border-radius: 8px;
+    cursor: pointer;
+    user-select: none;
+    background: #fff;
+    transition: border-color 0.15s, background 0.15s;
+    min-width: 52px;
+    justify-content: center;
+    box-sizing: border-box;
+}
+
+.vm-size-pick-chip.vm-size-system-visible {
+    display: inline-flex;
+}
+
+.vm-size-pick-chip:hover { border-color: #9ca3af; }
+
+.vm-size-pick-chip.is-checked {
+    border-color: var(--vm-accent);
+    background: #f9fafb;
+}
+
+.vm-size-pick-chip input[type="checkbox"] { display: none; }
+
+.vm-size-pick-label {
     font-size: 14px;
     font-weight: 600;
     color: #374151;
-    min-width: 36px;
-    cursor: pointer;
+    white-space: nowrap;
+    overflow: visible;
 }
 
-.vm-stock-input {
-    width: 72px;
+/* ── Bulk apply bar ── */
+.vm-bulk-bar {
+    display: flex;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 14px;
+    background: #f9fafb;
+    border: 1.5px solid var(--vm-border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 14px;
+}
+
+.vm-bulk-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: #374151;
+    align-self: center;
+}
+
+.vm-bulk-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.vm-bulk-field label {
+    font-size: 11px;
+    color: #6b7280;
+    font-weight: 600;
+}
+
+.vm-bulk-input {
+    width: 110px;
     height: 34px;
     border: 1.5px solid #d1d5db;
     border-radius: 6px;
     padding: 0 8px;
-    font-size: 14px;
-    font-weight: 600;
-    text-align: center;
+    font-size: 13px;
     outline: none;
-    transition: border-color 0.15s, opacity 0.15s;
-    background: #fff;
-    margin-left: auto;
 }
 
-.vm-stock-input:disabled {
-    opacity: 0.3;
-    background: #f9fafb;
-    cursor: not-allowed;
-}
-
-.vm-stock-input:not(:disabled):focus {
+.vm-bulk-input:focus {
     border-color: var(--vm-accent);
     box-shadow: 0 0 0 3px rgba(17,24,39,0.07);
 }
 
-.vm-stock-unit {
-    font-size: 12px;
-    color: #9ca3af;
+.vm-bulk-apply-btn {
+    height: 34px;
+    border: 0;
+    border-radius: 6px;
+    background: #111827;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 0 16px;
+    cursor: pointer;
+    transition: background 0.15s;
+    white-space: nowrap;
+}
+
+.vm-bulk-apply-btn:hover { background: #000; }
+
+/* ── Matrix table ── */
+.vm-matrix-table-wrap {
+    border: 1.5px solid var(--vm-border);
+    border-radius: var(--vm-radius);
+    overflow-x: auto;
+}
+
+.vm-matrix-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    min-width: 620px;
+}
+
+.vm-matrix-table thead th {
+    background: #f9fafb;
+    text-align: left;
+    padding: 10px 12px;
+    font-weight: 700;
+    color: #374151;
+    border-bottom: 1.5px solid var(--vm-border);
+    white-space: nowrap;
+}
+
+.vm-matrix-table tbody td {
+    padding: 8px 12px;
+    border-bottom: 1px solid #f3f4f6;
+    vertical-align: middle;
+}
+
+.vm-matrix-table tbody tr:last-child td { border-bottom: 0; }
+.vm-matrix-table tbody tr { animation: vmRowIn 0.15s ease; }
+
+@keyframes vmRowIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+.vm-matrix-combo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    color: #111827;
+    white-space: nowrap;
+}
+
+.vm-matrix-combo-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
     flex-shrink: 0;
 }
 
-/* ── Empty state ── */
-.vm-box-empty {
-    padding: 20px 16px;
+.vm-matrix-input {
+    width: 100%;
+    min-width: 90px;
+    height: 34px;
+    border: 1.5px solid #d1d5db;
+    border-radius: 6px;
+    padding: 0 8px;
+    font-size: 13px;
+    outline: none;
+    box-sizing: border-box;
+}
+
+.vm-matrix-input:focus {
+    border-color: var(--vm-accent);
+    box-shadow: 0 0 0 3px rgba(17,24,39,0.07);
+}
+
+.vm-matrix-empty {
+    display: none;
+    padding: 28px 16px;
     text-align: center;
     color: #9ca3af;
-    font-size: 12px;
+    font-size: 13px;
 }
+
+.vm-matrix-table-wrap.is-empty .vm-matrix-table { display: none; }
+.vm-matrix-table-wrap.is-empty .vm-matrix-empty { display: block; }
 </style>
 @endpush
 @endonce
@@ -351,178 +509,230 @@ window.__VM_EXISTING__ = @json($existingVariants);
 @push('scripts')
 <script>
 (function () {
-    const sizes    = window.__VM_SIZES__   || [];
     const existing = window.__VM_EXISTING__ || {};
 
-    const colorGrid  = document.getElementById('vmColorGrid');
-    const step2      = document.getElementById('vmStep2');
-    const boxesWrap  = document.getElementById('vmBoxesWrap');
-    const summary    = document.getElementById('vmSummary');
-    if (!colorGrid || !boxesWrap) return;
+    const colorGrid    = document.getElementById('vmColorGrid');
+    const sizeTabs      = document.getElementById('vmSizeSystemTabs');
+    const sizePickGrid  = document.getElementById('vmSizePickGrid');
+    const matrixStep    = document.getElementById('vmMatrixStep');
+    const matrixBody    = document.getElementById('vmMatrixBody');
+    const matrixWrap     = document.querySelector('.vm-matrix-table-wrap');
+    const summary       = document.getElementById('vmSummary');
+    if (!colorGrid || !sizePickGrid || !matrixBody) return;
 
-    /* ── Utilities ── */
     function esc(str) {
         return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     }
 
-    function updateSummary() {
-        const boxes   = boxesWrap.querySelectorAll('.vm-box');
-        let totalVariants = 0;
-        let totalStock    = 0;
-        boxes.forEach(box => {
-            box.querySelectorAll('.vm-size-cb:checked').forEach(cb => {
-                totalVariants++;
-                const inp = box.querySelector(`.vm-stock-input[data-size-id="${cb.dataset.sizeId}"]`);
-                totalStock += parseInt(inp?.value || 0, 10);
+    function slugify(str) {
+        return String(str || '')
+            .normalize('NFD').replace(/[̀-ͯ]/g, '')
+            .replace(/đ/gi, 'd')
+            .toUpperCase()
+            .replace(/[^A-Z0-9]+/g, '')
+            .substring(0, 6) || 'SP';
+    }
+
+    /* ═══════════════════════════════════════════
+       SIZE SYSTEM TABS
+    ═══════════════════════════════════════════ */
+    sizeTabs?.addEventListener('click', function (e) {
+        const btn = e.target.closest('.vm-size-system-tab');
+        if (!btn) return;
+        sizeTabs.querySelectorAll('.vm-size-system-tab').forEach(b => b.classList.remove('is-active'));
+        btn.classList.add('is-active');
+        applySizeSystemVisibility(btn.dataset.system);
+    });
+
+    function applySizeSystemVisibility(system) {
+        sizePickGrid.querySelectorAll('.vm-size-pick-chip').forEach(function (chip) {
+            chip.classList.toggle('vm-size-system-visible', chip.dataset.system === system);
+        });
+    }
+
+    /* ═══════════════════════════════════════════
+       COLOR CHIP TOGGLE
+    ═══════════════════════════════════════════ */
+    colorGrid.addEventListener('change', function (e) {
+        if (!e.target.matches('.vm-color-cb')) return;
+        const chip = e.target.closest('.vm-color-chip');
+        chip.classList.toggle('is-checked', e.target.checked);
+        rebuildMatrix();
+    });
+
+    /* ═══════════════════════════════════════════
+       SIZE CHIP TOGGLE
+    ═══════════════════════════════════════════ */
+    sizePickGrid.addEventListener('change', function (e) {
+        if (!e.target.matches('.vm-size-pick-cb')) return;
+        const chip = e.target.closest('.vm-size-pick-chip');
+        chip.classList.toggle('is-checked', e.target.checked);
+        rebuildMatrix();
+    });
+
+    /* ═══════════════════════════════════════════
+       MATRIX BUILD (cross-product of selected colors x sizes)
+    ═══════════════════════════════════════════ */
+    function getSelectedColors() {
+        return Array.from(colorGrid.querySelectorAll('.vm-color-cb:checked')).map(cb => {
+            const chip = cb.closest('.vm-color-chip');
+            return { id: cb.value, name: chip.dataset.colorName, hex: chip.dataset.colorHex };
+        });
+    }
+
+    function getSelectedSizes() {
+        return Array.from(sizePickGrid.querySelectorAll('.vm-size-pick-cb:checked')).map(cb => ({
+            id: cb.dataset.sizeId, name: cb.dataset.sizeName,
+        }));
+    }
+
+    function readCurrentValues() {
+        const map = {};
+        matrixBody.querySelectorAll('tr[data-color-id]').forEach(function (row) {
+            const key = row.dataset.colorId + '-' + row.dataset.sizeId;
+            map[key] = {
+                sku:        row.querySelector('[data-field="sku"]')?.value || '',
+                cost_price: row.querySelector('[data-field="cost_price"]')?.value || '',
+                sale_price: row.querySelector('[data-field="sale_price"]')?.value || '',
+                stock:      row.querySelector('[data-field="stock"]')?.value || '',
+            };
+        });
+        return map;
+    }
+
+    function rebuildMatrix() {
+        const colors   = getSelectedColors();
+        const sizes    = getSelectedSizes();
+        const previous = readCurrentValues();
+        const productName = document.getElementById('name')?.value || '';
+        const namePrefix   = slugify(productName);
+        const baseCost = document.getElementById('cost_price')?.value || '';
+        const baseSale = computeBaseSalePrice();
+
+        matrixBody.innerHTML = '';
+
+        if (colors.length === 0 || sizes.length === 0) {
+            matrixStep.style.display = '';
+            matrixWrap.classList.add('is-empty');
+            updateSummary();
+            return;
+        }
+
+        matrixWrap.classList.remove('is-empty');
+
+        colors.forEach(function (color) {
+            sizes.forEach(function (size) {
+                const key = color.id + '-' + size.id;
+                const prev = previous[key];
+                const fromExisting = (existing[color.id] && existing[color.id][size.id]) || null;
+                const data = prev || fromExisting || {};
+
+                const sku        = data.sku        ?? `${namePrefix}-${slugify(color.name)}-${size.name}`;
+                const costPrice  = data.cost_price ?? baseCost ?? '';
+                const salePrice  = data.sale_price ?? baseSale ?? '';
+                const stock      = data.stock      ?? '';
+
+                const tr = document.createElement('tr');
+                tr.dataset.colorId = color.id;
+                tr.dataset.sizeId  = size.id;
+                tr.innerHTML = `
+                    <td>
+                        <div class="vm-matrix-combo">
+                            <span class="vm-matrix-combo-dot" style="background:${color.hex};"></span>
+                            ${esc(color.name)} - ${esc(size.name)}
+                        </div>
+                    </td>
+                    <td>
+                        <input type="text" class="vm-matrix-input" data-field="sku"
+                               name="variants[${color.id}][${size.id}][sku]" value="${esc(sku)}">
+                    </td>
+                    <td>
+                        <input type="number" min="0" step="1000" class="vm-matrix-input" data-field="cost_price"
+                               name="variants[${color.id}][${size.id}][cost_price]" value="${esc(costPrice)}" placeholder="0">
+                    </td>
+                    <td>
+                        <input type="number" min="0" step="1000" class="vm-matrix-input" data-field="sale_price"
+                               name="variants[${color.id}][${size.id}][sale_price]" value="${esc(salePrice)}" placeholder="0">
+                    </td>
+                    <td>
+                        <input type="number" min="0" step="1" class="vm-matrix-input" data-field="stock"
+                               name="variants[${color.id}][${size.id}][stock]" value="${esc(stock)}" placeholder="0">
+                    </td>
+                `;
+                matrixBody.appendChild(tr);
             });
         });
-        if (totalVariants > 0) {
+
+        matrixStep.style.display = '';
+        updateSummary();
+    }
+
+    function computeBaseSalePrice() {
+        const price    = parseFloat(document.getElementById('price')?.value || '0');
+        const discount = parseFloat(document.getElementById('discount')?.value || '0');
+        if (!price) return '';
+        const finalPrice = price * (100 - discount) / 100;
+        return Math.round(finalPrice);
+    }
+
+    function updateSummary() {
+        const rows = matrixBody.querySelectorAll('tr[data-color-id]');
+        let totalStock = 0;
+        rows.forEach(row => {
+            totalStock += parseInt(row.querySelector('[data-field="stock"]')?.value || '0', 10) || 0;
+        });
+        if (rows.length > 0) {
             summary.style.display = '';
-            summary.textContent   = `${totalVariants} biến thể · ${totalStock.toLocaleString('vi-VN')} sp`;
+            summary.textContent   = `${rows.length} biến thể · ${totalStock.toLocaleString('vi-VN')} sp`;
         } else {
             summary.style.display = 'none';
         }
     }
 
-    function updateBoxStockTotal(box) {
-        let total = 0;
-        box.querySelectorAll('.vm-size-cb:checked').forEach(cb => {
-            const inp = box.querySelector(`.vm-stock-input[data-size-id="${cb.dataset.sizeId}"]`);
-            total += parseInt(inp?.value || 0, 10);
+    matrixBody.addEventListener('input', function (e) {
+        if (e.target.matches('[data-field="stock"]')) updateSummary();
+    });
+
+    /* ═══════════════════════════════════════════
+       BULK APPLY BAR
+    ═══════════════════════════════════════════ */
+    document.getElementById('vmBulkApplyBtn')?.addEventListener('click', function () {
+        const cost  = document.getElementById('vmBulkCost').value;
+        const sale  = document.getElementById('vmBulkSale').value;
+        const stock = document.getElementById('vmBulkStock').value;
+
+        matrixBody.querySelectorAll('tr[data-color-id]').forEach(function (row) {
+            if (cost  !== '') row.querySelector('[data-field="cost_price"]').value = cost;
+            if (sale  !== '') row.querySelector('[data-field="sale_price"]').value = sale;
+            if (stock !== '') row.querySelector('[data-field="stock"]').value = stock;
         });
-        const el = box.querySelector('.vm-box-stock-total');
-        if (el) el.textContent = total > 0 ? `Tổng: ${total.toLocaleString('vi-VN')} sp` : '';
-        updateSummary();
-    }
-
-    /* ── Build a variant box for a color ── */
-    function buildBox(colorId, colorName, colorHex) {
-        const isLight = ['#ffffff','#fff','#f5f5f5','#efefef','#e5e7eb','#fafafa']
-            .includes(colorHex.toLowerCase());
-
-        const existingForColor = existing[colorId] || {};
-
-        const sizeRows = sizes.map(size => {
-            const isChecked = size.id in existingForColor;
-            const stockVal  = existingForColor[size.id] ?? 0;
-            return `
-                <div class="vm-size-row${isChecked ? ' is-active' : ''}" data-size-row="${size.id}">
-                    <input type="checkbox"
-                           class="vm-size-cb"
-                           data-color-id="${colorId}"
-                           data-size-id="${size.id}"
-                           ${isChecked ? 'checked' : ''}>
-                    <label class="vm-size-label">${esc(size.name)}</label>
-                    <input type="number"
-                           class="vm-stock-input"
-                           name="variants[${colorId}][${size.id}]"
-                           data-size-id="${size.id}"
-                           min="0" value="${stockVal}"
-                           ${isChecked ? '' : 'disabled'}
-                           placeholder="0">
-                    <span class="vm-stock-unit">sp</span>
-                </div>`;
-        }).join('');
-
-        const box = document.createElement('div');
-        box.className  = 'vm-box';
-        box.id         = `vm-box-${colorId}`;
-        box.dataset.colorId = colorId;
-        box.innerHTML  = `
-            <div class="vm-box-header">
-                <div class="vm-box-header-left">
-                    <span class="vm-box-color-dot${isLight ? ' border' : ''}"
-                          style="background:${colorHex};${isLight?'border:1.5px solid #d1d5db;':''}"></span>
-                    <span class="vm-box-color-name">${esc(colorName)}</span>
-                    <span class="vm-box-stock-total"></span>
-                </div>
-            </div>
-            <div class="vm-size-grid">${sizes.length ? sizeRows : '<div class="vm-box-empty">Chưa có size nào.</div>'}</div>
-        `;
-
-        /* wire size checkboxes */
-        box.querySelectorAll('.vm-size-cb').forEach(cb => {
-            cb.addEventListener('change', () => onSizeCbChange(box, cb));
-        });
-
-        /* initial stock total */
-        updateBoxStockTotal(box);
-
-        return box;
-    }
-
-    function onSizeCbChange(box, cb) {
-        const row = box.querySelector(`[data-size-row="${cb.dataset.sizeId}"]`);
-        const inp = box.querySelector(`.vm-stock-input[data-size-id="${cb.dataset.sizeId}"]`);
-
-        if (cb.checked) {
-            row?.classList.add('is-active');
-            if (inp) {
-                inp.disabled = false;
-                inp.focus();
-                if (!inp.value || inp.value === '0') inp.value = '';
-            }
-        } else {
-            row?.classList.remove('is-active');
-            if (inp) { inp.disabled = true; inp.value = 0; }
-        }
-
-        updateBoxStockTotal(box);
-    }
-
-    /* ── Color chip toggle ── */
-    colorGrid.addEventListener('change', function (e) {
-        if (!e.target.matches('.vm-color-cb')) return;
-        const chip      = e.target.closest('.vm-color-chip');
-        const colorId   = parseInt(e.target.value, 10);
-        const colorName = chip.dataset.colorName;
-        const colorHex  = chip.dataset.colorHex;
-
-        if (e.target.checked) {
-            chip.classList.add('is-checked');
-
-            /* show step 2 */
-            step2.style.display = '';
-
-            /* append box */
-            if (!document.getElementById(`vm-box-${colorId}`)) {
-                boxesWrap.appendChild(buildBox(colorId, colorName, colorHex));
-            }
-        } else {
-            chip.classList.remove('is-checked');
-
-            /* remove box */
-            document.getElementById(`vm-box-${colorId}`)?.remove();
-
-            /* hide step 2 if no boxes */
-            if (!boxesWrap.querySelector('.vm-box')) {
-                step2.style.display = 'none';
-            }
-        }
-
         updateSummary();
     });
 
-    /* wire stock inputs (live total) - delegated */
-    boxesWrap.addEventListener('input', function (e) {
-        if (!e.target.matches('.vm-stock-input')) return;
-        const box = e.target.closest('.vm-box');
-        if (box) updateBoxStockTotal(box);
-    });
+    /* ═══════════════════════════════════════════
+       INITIALIZE (edit mode: pre-check + build)
+    ═══════════════════════════════════════════ */
+    applySizeSystemVisibility('letters');
 
-    /* ── Pre-render existing variants (edit mode) ── */
     const existingColorIds = Object.keys(existing).map(Number);
     if (existingColorIds.length) {
+        /* pre-check colors */
         existingColorIds.forEach(cid => {
             const chip = colorGrid.querySelector(`.vm-color-chip[data-color-id="${cid}"]`);
-            if (!chip) return;
-            chip.classList.add('is-checked');
-            const cb = chip.querySelector('.vm-color-cb');
-            if (cb) cb.checked = true;
-            boxesWrap.appendChild(buildBox(cid, chip.dataset.colorName, chip.dataset.colorHex));
+            if (chip) { chip.classList.add('is-checked'); chip.querySelector('.vm-color-cb').checked = true; }
         });
-        step2.style.display = '';
-        updateSummary();
+
+        /* pre-check sizes referenced by any color */
+        const sizeIds = new Set();
+        Object.values(existing).forEach(sizesObj => Object.keys(sizesObj).forEach(sid => sizeIds.add(Number(sid))));
+        sizeIds.forEach(sid => {
+            const chip = sizePickGrid.querySelector(`.vm-size-pick-chip .vm-size-pick-cb[data-size-id="${sid}"]`)?.closest('.vm-size-pick-chip');
+            if (chip) { chip.classList.add('is-checked'); chip.querySelector('.vm-size-pick-cb').checked = true; }
+        });
+
+        rebuildMatrix();
+    } else {
+        matrixWrap?.classList.add('is-empty');
     }
 })();
 </script>

@@ -124,6 +124,9 @@ class ProductSeeder extends Seeder
                                 'size_id'    => $sizeId,
                                 'stock'      => rand(5, 80),
                                 'image'      => $data['thumbnail'],
+                                'cost_price' => round($product->price * 0.6, 2),
+                                'sale_price' => round($product->final_price, 2),
+                                'status'     => 'Active',
                             ]
                         );
                     }

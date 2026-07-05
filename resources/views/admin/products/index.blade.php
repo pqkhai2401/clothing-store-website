@@ -59,11 +59,20 @@
                                 <input type="text" class="hk-cat-search-input" id="hkCatSearch" placeholder="Tìm danh mục..." autocomplete="off">
                             </div>
                             <div class="hk-cat-list" id="hkCatList" role="listbox">
-                                <button type="button" class="hk-cat-item {{ !$categoryId ? 'is-active' : '' }}" data-value="" data-label="Tất cả danh mục">Tất cả danh mục</button>
+                                <button type="button" class="hk-cat-item {{ !$categoryId && empty($parentCategoryId) ? 'is-active' : '' }}"
+                                    data-type="all" data-value="" data-label="Tất cả danh mục">Tất cả danh mục</button>
                                 @foreach($categories as $parent)
+                                    <button type="button"
+                                        class="hk-cat-item {{ (string) ($parentCategoryId ?? '') === (string) $parent->id ? 'is-active' : '' }}"
+                                        data-type="parent"
+                                        data-value="{{ $parent->id }}"
+                                        data-label="{{ $parent->name }} (tất cả)">
+                                        {{ $parent->name }}
+                                    </button>
                                     @foreach($parent->childrenCategories as $child)
                                         <button type="button"
-                                            class="hk-cat-item {{ (string)$categoryId === (string)$child->id ? 'is-active' : '' }}"
+                                            class="hk-cat-item ps-4 {{ (string)$categoryId === (string)$child->id ? 'is-active' : '' }}"
+                                            data-type="child"
                                             data-value="{{ $child->id }}"
                                             data-label="{{ $child->name }}">
                                             {{ $child->name }}

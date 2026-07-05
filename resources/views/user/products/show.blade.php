@@ -709,7 +709,8 @@
         // ===== Xử lý nút tăng/giảm số lượng =====
         document.getElementById('btnIncrease').addEventListener('click', function () {
             var val = parseInt(qtyInput.value);
-            if (!isNaN(val) && val < currentStock) {
+            var max = currentStock > 0 ? currentStock : 99;
+            if (!isNaN(val) && val < max) {
                 qtyInput.value = val + 1;
             }
         });

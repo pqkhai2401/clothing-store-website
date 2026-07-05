@@ -3,7 +3,9 @@
 
     $pageGroups = [
         'admin.products'   => 'Sản phẩm',
+        'admin.goods-receipts' => 'Nhập kho',
         'admin.categories' => 'Danh mục',
+        'admin.suppliers'  => 'Nhà cung cấp',
         'admin.brands'     => 'Thương hiệu',
         'admin.colors'     => 'Màu sắc',
         'admin.sizes'      => 'Kích thước',
@@ -31,7 +33,7 @@
         'admin.colors.trash'      => 'Thùng rác màu sắc',
         'admin.sizes.trash'       => 'Thùng rác kích thước',
         'admin.reviews.trash'     => 'Thùng rác đánh giá',
-        
+        'admin.goods-receipts.trash' => 'Thùng rác nhập kho',
         default => null,
     };
 
