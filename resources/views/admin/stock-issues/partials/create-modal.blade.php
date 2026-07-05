@@ -1,175 +1,221 @@
-<div id="stockIssueModal" class="fixed inset-0 z-[1200] hidden justify-end bg-black/40 backdrop-blur-[2px]">
-    <form method="POST"
-        action="{{ route('admin.stock-issues.store') }}"
-        id="stockIssueAjaxForm"
-        class="flex h-screen w-full max-w-5xl flex-col overflow-hidden bg-white shadow-2xl ring-1 ring-black/5 lg:w-2/3">
-        @csrf
-        <input type="hidden" name="action" id="siModalActionInput" value="draft">
+{{--
+    Modal tạo phiếu xuất kho mới — Bootstrap thuần (không dùng Tailwind).
+    Variables expected: $variants — Collection các biến thể còn tồn kho, đã map sẵn field cần thiết.
+--}}
 
-        <div class="flex shrink-0 items-center justify-between gap-4 border-b border-slate-200 px-5 py-3">
+{{-- Add Stock Issue Offcanvas — panel trượt từ bên phải, cao hết màn hình --}}
+<div class="offcanvas offcanvas-end si-offcanvas" tabindex="-1" id="stockIssueOffcanvas" aria-labelledby="stockIssueOffcanvasLabel">
+    <form method="POST" action="{{ route('admin.stock-issues.store') }}" id="stockIssueAjaxForm" class="d-flex flex-column h-100">
+        @csrf
+        {{-- Lưu ý: KHÔNG được đặt tên field là "action" — nó sẽ ghi đè thuộc tính gốc form.action của DOM,
+             khiến fetch() gửi nhầm URL. Đã cố tình đặt tên khác. --}}
+        <input type="hidden" name="submit_action" id="siModalActionInput" value="draft">
+
+        <div class="offcanvas-header border-bottom">
             <div>
-                <h2 class="text-lg font-bold tracking-[-0.01em] text-slate-950">Tạo phiếu xuất kho mới</h2>
-                <p class="mt-0.5 text-xs font-medium text-slate-500">Chọn sản phẩm cần xuất và điền lý do tương ứng.</p>
+                <div class="d-flex align-items-center gap-2">
+                    <h2 class="offcanvas-title mb-0" id="stockIssueOffcanvasLabel">Tạo phiếu xuất kho mới</h2>
+                    <span class="gr-badge gr-badge--draft" id="siModalStatusBadge">Nháp</span>
+                </div>
+                <p class="mb-0 text-muted" style="font-size:13px;">Chọn sản phẩm cần xuất và điền lý do tương ứng.</p>
             </div>
-            <button type="button"
-                id="closeStockIssueModalBtn"
-                class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-xl font-semibold leading-none text-slate-500 transition hover:bg-slate-200 hover:text-slate-900">
-                ×
-            </button>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Đóng"></button>
         </div>
 
-        <div class="flex-1 overflow-y-auto px-5 py-4">
-            <section class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
-                <div class="mb-3 flex items-center justify-between gap-3">
-                    <div>
-                        <h3 class="text-sm font-bold text-slate-950">Thông tin chung</h3>
-                        <p class="mt-1 text-xs text-slate-500">Thiết lập lý do và ghi chú cho phiếu xuất kho.</p>
-                    </div>
-                    <span class="inline-flex flex-none rounded-full bg-amber-100 px-3 py-1 text-xs font-bold uppercase tracking-[0.08em] text-amber-700 ring-1 ring-amber-200">
-                        Nháp
-                    </span>
-                </div>
-
-                <div>
-                    <label for="siModalReason" class="mb-2 block text-[11px] font-bold uppercase tracking-[0.12em] text-slate-600">
-                        Lý do xuất kho <span class="text-red-500">*</span>
-                    </label>
-                    <input type="text"
-                        id="siModalReason"
-                        name="reason"
-                        list="siModalReasonSuggestions"
-                        value="{{ old('reason') }}"
-                        placeholder="Ví dụ: Xuất hủy - Hàng lỗi rách, hỏng"
-                        required
-                        class="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition placeholder:font-normal placeholder:text-slate-400 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100">
-                    <datalist id="siModalReasonSuggestions">
-                        <option value="Xuất hủy - Hàng lỗi rách, hỏng">
-                        <option value="Xuất trả NCC - Hàng lỗi">
-                        <option value="Xuất mẫu trưng bày">
-                        <option value="Xuất bán buôn">
-                    </datalist>
-                    <div class="mt-2 hidden text-xs font-semibold text-red-600" data-si-error="reason"></div>
-                </div>
-
-                <div class="mt-4">
-                    <label for="siModalNote" class="mb-2 block text-[11px] font-bold uppercase tracking-[0.12em] text-slate-600">Ghi chú (không bắt buộc)</label>
-                    <textarea id="siModalNote"
-                        name="note"
-                        rows="2"
-                        placeholder="Thêm ghi chú nội bộ cho phiếu xuất này..."
-                        class="w-full resize-none rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-100">{{ old('note') }}</textarea>
-                </div>
-            </section>
-
-            <section class="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
-                <div class="mb-3">
-                    <h3 class="text-sm font-bold text-slate-950">Sản phẩm xuất kho</h3>
-                    <p class="mt-1 text-xs text-slate-500">Tìm sản phẩm, kiểm tra tồn kho và nhập số lượng xuất.</p>
-                </div>
-
-                <div class="relative mb-3">
-                    <span class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
-                        <i class="fa-solid fa-magnifying-glass"></i>
-                    </span>
-                    <input type="text"
-                        id="siModalPickerInput"
-                        autocomplete="off"
-                        placeholder="Tìm theo tên sản phẩm, SKU, màu hoặc size để thêm vào phiếu..."
-                        class="h-11 w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 text-sm font-medium text-slate-800 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100">
-                    <div id="siModalPickerPanel"
-                        hidden
-                        class="absolute left-0 right-0 top-[calc(100%+8px)] z-30 max-h-80 overflow-y-auto rounded-2xl border border-slate-200 bg-white py-2 shadow-2xl"></div>
-                </div>
-                <div class="mb-3 hidden text-xs font-semibold text-red-600" data-si-error="items"></div>
-
-                <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-                    <div class="max-h-[390px] overflow-auto si-hidden-scrollbar">
-                        <table class="min-w-[780px] table-fixed text-left">
-                            <thead class="sticky top-0 z-10 bg-slate-50 text-[11px] font-bold uppercase tracking-[0.08em] text-slate-500">
-                                <tr>
-                                    <th class="w-[28%] px-4 py-3">Sản phẩm / SKU</th>
-                                    <th class="w-[10%] px-3 py-3">Tồn kho</th>
-                                    <th class="w-[12%] px-3 py-3 text-center">Số lượng</th>
-                                    <th class="w-[16%] px-3 py-3 text-center">Đơn giá</th>
-                                    <th class="w-[16%] px-3 py-3 text-right">Tổng</th>
-                                    <th class="w-[10%] px-3 py-3 text-center">Thao tác</th>
-                                </tr>
-                            </thead>
-                            <tbody id="siModalTableBody" class="divide-y divide-slate-100 text-sm"></tbody>
-                        </table>
-
-                        <div id="siModalTableEmpty" class="px-6 py-10 text-center">
-                            <div class="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
-                                <i class="fa-solid fa-box-open"></i>
+        <div class="offcanvas-body flex-grow-1 overflow-auto">
+                    {{-- Thông tin chung --}}
+                    <div class="card si-info-card mb-4">
+                        <div class="card-header">
+                            <span class="fw-bold" style="font-size:14px;">Thông tin phiếu xuất</span>
+                        </div>
+                        <div class="card-body p-3">
+                            <div class="mb-3">
+                                <span class="si-inline-label d-block mb-1">Loại lý do <span class="text-danger">*</span></span>
+                                <input type="hidden" name="reason_type" id="reasonTypeInput"
+                                    value="{{ old('reason_type', array_key_first(\App\Models\StockIssue::REASON_TYPE_LABELS)) }}" required>
+                                <div class="hk-cat-filter si-reason-filter" id="reasonTypeFilter">
+                                    <button type="button" class="hk-cat-trigger" id="reasonTypeTrigger">
+                                        <span class="hk-cat-trigger-label" id="reasonTypeLabel">
+                                            {{ \App\Models\StockIssue::REASON_TYPE_LABELS[old('reason_type', array_key_first(\App\Models\StockIssue::REASON_TYPE_LABELS))] }}
+                                        </span>
+                                        <i class="fa-solid fa-chevron-down hk-cat-arrow"></i>
+                                    </button>
+                                    <div class="hk-cat-panel" id="reasonTypePanel" hidden style="width:280px;">
+                                        <div class="hk-cat-list" id="reasonTypeList">
+                                            @foreach(\App\Models\StockIssue::REASON_TYPE_LABELS as $value => $label)
+                                                <button type="button" class="hk-cat-item {{ old('reason_type', array_key_first(\App\Models\StockIssue::REASON_TYPE_LABELS)) === $value ? 'is-active' : '' }}"
+                                                    data-value="{{ $value }}" data-label="{{ $label }}">{{ $label }}</button>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="invalid-feedback d-block mt-1" data-si-error="reason_type"></div>
                             </div>
-                            <div class="text-sm font-semibold text-slate-600">Chưa có sản phẩm nào trong phiếu</div>
-                            <div class="mt-1 text-xs text-slate-400">Tìm và chọn sản phẩm ở ô phía trên để thêm vào phiếu.</div>
+
+                            <div class="edit-field mb-0">
+                                <label for="siModalNote">Ghi chú chi tiết</label>
+                                <textarea id="siModalNote" name="note" rows="2" class="form-control"
+                                    placeholder="Thêm ghi chú nội bộ cho phiếu xuất này...">{{ old('note') }}</textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Sản phẩm xuất kho --}}
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="fw-bold" style="font-size:14px;">Sản phẩm xuất kho</span>
+                        </div>
+                        <div class="card-body p-3">
+                            <div class="gr-picker-wrap">
+                                <input type="text" class="gr-picker-input" id="siModalPickerInput"
+                                    placeholder="Tìm theo tên sản phẩm, SKU, màu hoặc size để thêm vào phiếu..." autocomplete="off">
+                                <div class="gr-picker-panel" id="siModalPickerPanel" hidden></div>
+                            </div>
+                            <div class="invalid-feedback d-block mt-2" data-si-error="items"></div>
+
+                            <div class="gr-table-wrap is-empty" id="siModalTableWrap">
+                                <table class="gr-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Sản phẩm</th>
+                                            <th style="width:100px;">Tồn kho</th>
+                                            <th style="width:100px;">Số lượng</th>
+                                            <th style="width:130px;">Đơn giá (₫)</th>
+                                            <th style="width:130px;">Thành tiền</th>
+                                            <th style="width:44px;"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="siModalTableBody"></tbody>
+                                </table>
+                                <div class="gr-table-empty">Chưa có sản phẩm nào. Tìm và chọn sản phẩm ở ô phía trên để thêm vào phiếu.</div>
+                            </div>
+
+                            <div class="gr-summary-bar">
+                                <span class="gr-summary-label">Tổng cộng đơn xuất:</span>
+                                <span class="gr-summary-value" id="siModalTotalAmount">0đ</span>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="mt-3 flex justify-end rounded-2xl bg-emerald-50 px-4 py-3 ring-1 ring-emerald-100">
-                    <div class="text-right text-sm font-bold uppercase tracking-[0.08em] text-slate-600">
-                        Tổng cộng đơn xuất:
-                        <span id="siModalTotalAmount" class="ml-2 text-2xl font-extrabold tracking-tight text-emerald-700 normal-case">0đ</span>
-                    </div>
-                </div>
-            </section>
-        </div>
-
-        <div class="flex shrink-0 flex-wrap justify-end gap-3 border-t border-slate-200 bg-slate-50 px-5 py-3">
-            <button type="button"
-                id="cancelStockIssueModalBtn"
-                class="inline-flex min-w-[112px] items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50">
-                Hủy bỏ
+        <div class="border-top bg-light px-4 py-3 d-flex flex-wrap justify-content-end gap-2">
+            <button type="button" class="btn btn-light border fw-semibold" data-bs-dismiss="offcanvas">Hủy bỏ</button>
+            <button type="submit" class="btn btn-outline-dark fw-semibold" data-si-modal-action="draft">
+                <i class="fa-regular fa-floppy-disk me-1"></i> Lưu nháp
             </button>
-            <button type="submit"
-                data-si-modal-action="draft"
-                class="inline-flex min-w-[112px] items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50">
-                <span>💾</span>
-                <span>Lưu nháp</span>
-            </button>
-            <button type="submit"
-                data-si-modal-action="issue"
-                class="inline-flex min-w-[112px] items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-extrabold text-white shadow-sm transition hover:bg-emerald-800 focus:ring-4 focus:ring-emerald-200">
-                <span>✓</span>
-                <span>Xuất kho ngay</span>
+            <button type="submit" class="btn gr-btn-emerald fw-semibold" id="siModalIssueBtn" data-si-modal-action="issue">
+                <i class="fa-solid fa-check me-1"></i> Xuất kho ngay
             </button>
         </div>
     </form>
 </div>
 
+@once
+@push('styles')
+<style>
+.si-offcanvas { width: min(900px, 92vw) !important; }
+.si-info-card { border: 1.5px solid #e5e7eb; border-radius: 12px; background: #f9fafb; }
+.si-inline-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #6b7280; white-space: nowrap; }
+.si-reason-filter { width: 100%; max-width: 320px; }
+.gr-row-status-filter { width: auto; flex: none; }
+.gr-row-status-filter .hk-cat-trigger { width: auto; white-space: nowrap; min-height: 30px; padding: 0 10px; font-size: 11px; }
+.price-input.is-locked { background: #f3f4f6 !important; color: #9ca3af !important; cursor: not-allowed; }
+.gr-num-input.border-danger { border-color: #dc2626 !important; }
+.si-stock-warning { font-size: 11px; font-weight: 600; color: #dc2626; margin-top: 4px; }
+
+/* ── Variant picker (dùng chung style với trang tạo phiếu nhập kho) ── */
+.gr-picker-wrap { position: relative; }
+.gr-picker-input {
+    width: 100%; height: 42px; border: 1.5px solid #d1d5db; border-radius: 8px;
+    padding: 0 14px; font-size: 14px; outline: none;
+}
+.gr-picker-input:focus { border-color: #174761; box-shadow: 0 0 0 3px rgba(23,71,97,.08); }
+.gr-picker-panel {
+    position: absolute; top: calc(100% + 6px); left: 0; right: 0;
+    background: #fff; border: 1.5px solid #e5e7eb; border-radius: 10px;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.12); max-height: 300px; overflow-y: auto;
+    z-index: 1060;
+}
+.gr-picker-item {
+    display: flex; align-items: center; gap: 10px; padding: 9px 14px;
+    cursor: pointer; border-bottom: 1px solid #f3f4f6; transition: background .1s;
+}
+.gr-picker-item:last-child { border-bottom: 0; }
+.gr-picker-item:hover, .gr-picker-item.is-active { background: #f9fafb; }
+.gr-picker-thumb { width: 38px; height: 38px; border-radius: 6px; object-fit: cover; flex-shrink: 0; background: #f3f4f6; }
+.gr-picker-info { flex: 1; min-width: 0; }
+.gr-picker-name { font-size: 13px; font-weight: 700; color: #111827; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gr-picker-meta { font-size: 12px; color: #6b7280; display: flex; align-items: center; gap: 6px; }
+.gr-picker-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; border: 1px solid rgba(0,0,0,.08); }
+.gr-picker-stock { font-size: 11px; color: #9ca3af; white-space: nowrap; }
+.gr-picker-empty { padding: 20px; text-align: center; color: #9ca3af; font-size: 13px; }
+
+/* ── Items table ── */
+.gr-table-wrap { border: 1.5px solid #e5e7eb; border-radius: 10px; overflow-x: auto; margin-top: 16px; max-height: 360px; overflow-y: auto; }
+.gr-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 640px; }
+.gr-table thead th {
+    background: #f9fafb; text-align: left; padding: 10px 12px; font-weight: 700;
+    color: #374151; border-bottom: 1.5px solid #e5e7eb; white-space: nowrap;
+    position: sticky; top: 0; z-index: 1;
+}
+.gr-table tbody td { padding: 9px 12px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
+.gr-table tbody tr:last-child td { border-bottom: 0; }
+.gr-row-product { display: flex; align-items: center; gap: 10px; min-width: 200px; }
+.gr-row-thumb { width: 40px; height: 40px; border-radius: 6px; object-fit: cover; flex-shrink: 0; background: #f3f4f6; }
+.gr-row-name { font-size: 13px; font-weight: 700; color: #111827; }
+.gr-row-sub { font-size: 12px; color: #6b7280; display: flex; align-items: center; gap: 6px; }
+.gr-row-dot { width: 10px; height: 10px; border-radius: 50%; border: 1px solid rgba(0,0,0,.08); flex-shrink: 0; }
+.gr-num-input {
+    width: 100%; min-width: 85px; height: 34px; border: 1.5px solid #d1d5db; border-radius: 6px;
+    padding: 0 8px; font-size: 13px; outline: none; box-sizing: border-box;
+}
+.gr-num-input:focus { border-color: #174761; box-shadow: 0 0 0 3px rgba(23,71,97,.08); }
+.gr-row-total { font-weight: 700; color: #111827; white-space: nowrap; }
+.gr-row-remove {
+    width: 28px; height: 28px; border-radius: 50%; border: 0; background: #f3f4f6; color: #6b7280;
+    display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background .15s, color .15s;
+}
+.gr-row-remove:hover { background: #fee2e2; color: #dc2626; }
+.gr-table-empty { padding: 28px 16px; text-align: center; color: #9ca3af; font-size: 13px; }
+.gr-table-wrap.is-empty .gr-table { display: none; }
+.gr-table-wrap:not(.is-empty) .gr-table-empty { display: none; }
+
+/* ── Summary footer ── */
+.gr-summary-bar {
+    display: flex; align-items: center; justify-content: flex-end; gap: 10px;
+    margin-top: 14px; padding: 14px 16px; background: #f9fafb; border: 1.5px solid #e5e7eb; border-radius: 10px;
+}
+.gr-summary-label { font-size: 14px; color: #374151; font-weight: 600; }
+.gr-summary-value { font-size: 20px; font-weight: 800; color: #174761; }
+</style>
+@endpush
+@endonce
+
+@once
+@push('scripts')
 <script>
 (function () {
     const variants = @json($variants);
-    const modal = document.getElementById('stockIssueModal');
-    const openBtn = document.getElementById('openStockIssueModalBtn');
-    const closeBtn = document.getElementById('closeStockIssueModalBtn');
-    const cancelBtn = document.getElementById('cancelStockIssueModalBtn');
+    const modal = document.getElementById('stockIssueOffcanvas');
     const form = document.getElementById('stockIssueAjaxForm');
     const actionInput = document.getElementById('siModalActionInput');
     const pickerInput = document.getElementById('siModalPickerInput');
     const pickerPanel = document.getElementById('siModalPickerPanel');
+    const tableWrap = document.getElementById('siModalTableWrap');
     const tableBody = document.getElementById('siModalTableBody');
-    const tableEmpty = document.getElementById('siModalTableEmpty');
     const totalEl = document.getElementById('siModalTotalAmount');
+    const issueBtn = document.getElementById('siModalIssueBtn');
+    const reasonTypeSelect = document.getElementById('reasonTypeInput');
     const tableArea = document.querySelector('[data-admin-table-area]');
+    const REASON_TYPES_ALLOWING_PRICE_EDIT = ['XUAT_TRA_NCC'];
+    const STATUS_LABELS = { draft: 'Nháp', issue: 'Xuất kho ngay' };
     let selected = {};
+    let order = []; // variantId (string) — mới thêm sẽ nằm ở đầu bảng
 
-    if (!modal || !openBtn || !form) return;
+    if (!modal || !form) return;
 
-    function openModal() {
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
-        document.body.classList.add('overflow-hidden');
-        setTimeout(() => pickerInput?.focus(), 50);
-    }
-
-    function closeModal() {
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
-        document.body.classList.remove('overflow-hidden');
-        clearErrors();
+    function priceEditAllowed() {
+        return REASON_TYPES_ALLOWING_PRICE_EDIT.includes(reasonTypeSelect?.value);
     }
 
     function esc(str) {
@@ -181,16 +227,13 @@
     }
 
     function resolveImageUrl(path) {
-        if (!path) return 'https://placehold.co/96x96/f1f5f9/94a3b8?text=NOIR';
+        if (!path) return 'https://placehold.co/80x80?text=No+Image';
         if (path.startsWith('http://') || path.startsWith('https://')) return path;
         return '/' + path.replace(/^\/+/, '');
     }
 
     function clearErrors() {
-        document.querySelectorAll('[data-si-error]').forEach(el => {
-            el.textContent = '';
-            el.classList.add('hidden');
-        });
+        document.querySelectorAll('[data-si-error]').forEach(el => { el.textContent = ''; });
     }
 
     function showErrors(errors) {
@@ -200,10 +243,84 @@
             const target = document.querySelector(`[data-si-error="${normalized}"]`);
             if (!target) return;
             target.textContent = Array.isArray(messages) ? messages[0] : messages;
-            target.classList.remove('hidden');
         });
     }
 
+    // ── Toast thông báo (đồng bộ với component thông báo chung của trang) ──
+    const TOAST_ICONS = {
+        success: '<path d="M8 12l2.5 2.5L16 9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>',
+        error:   '<path d="M9 9l6 6M15 9l-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>',
+    };
+    function showToast(message, type = 'success') {
+        const container = document.getElementById('toast-container');
+        if (!container) { alert(message); return; }
+        const toast = document.createElement('div');
+        toast.className = `custom-toast server-toast ${type === 'error' ? 'toast-error' : 'toast-success'}`;
+        toast.style.pointerEvents = 'auto';
+        toast.innerHTML = `
+            <div class="toast-content">
+                <div class="toast-icon">
+                    <svg style="flex-shrink:0;display:block;" viewBox="0 0 24 24" width="22" height="22">
+                        ${TOAST_ICONS[type] ?? TOAST_ICONS.success}
+                    </svg>
+                </div>
+                <div class="toast-message">${message}</div>
+            </div>
+            <span class="toast-close" onclick="closeServerToast(this)">&times;</span>
+        `;
+        container.appendChild(toast);
+        setTimeout(() => {
+            if (document.body.contains(toast)) {
+                toast.classList.add('hiding');
+                setTimeout(() => toast.remove(), 300);
+            }
+        }, 5000);
+    }
+
+    /* ── Dropdown "Loại lý do" ── */
+    const reasonTypeFilter  = document.getElementById('reasonTypeFilter');
+    const reasonTypeTrigger = document.getElementById('reasonTypeTrigger');
+    const reasonTypePanel   = document.getElementById('reasonTypePanel');
+    const reasonTypeLabelEl = document.getElementById('reasonTypeLabel');
+    const reasonTypeList    = document.getElementById('reasonTypeList');
+    const statusBadge       = document.getElementById('siModalStatusBadge');
+
+    reasonTypeTrigger?.addEventListener('click', function () {
+        const isHidden = reasonTypePanel.hidden;
+        closeAllDropdowns();
+        if (isHidden) { reasonTypePanel.hidden = false; reasonTypeTrigger.classList.add('is-open'); }
+    });
+    reasonTypeList?.addEventListener('click', function (e) {
+        const btn = e.target.closest('.hk-cat-item');
+        if (!btn) return;
+        reasonTypeSelect.value = btn.dataset.value;
+        reasonTypeLabelEl.textContent = btn.dataset.label;
+        reasonTypeList.querySelectorAll('.hk-cat-item').forEach(item => item.classList.toggle('is-active', item === btn));
+        closeAllDropdowns();
+        handleReasonChange();
+    });
+
+    function closeAllDropdowns() {
+        if (reasonTypePanel) reasonTypePanel.hidden = true;
+        reasonTypeTrigger?.classList.remove('is-open');
+    }
+
+    document.addEventListener('click', function (e) {
+        if (reasonTypeFilter && !reasonTypeFilter.contains(e.target)) { reasonTypePanel.hidden = true; reasonTypeTrigger?.classList.remove('is-open'); }
+    });
+
+    // Trạng thái phiếu hiển thị dạng badge tĩnh trên tiêu đề — quyết định Nháp/Xuất kho ngay
+    // thực hiện qua 2 nút submit ở cuối panel, không còn dropdown riêng.
+    function setAction(action) {
+        actionInput.value = action;
+        if (statusBadge) {
+            statusBadge.textContent = STATUS_LABELS[action] || action;
+            statusBadge.classList.toggle('gr-badge--draft', action === 'draft');
+            statusBadge.classList.toggle('gr-badge--completed', action === 'issue');
+        }
+    }
+
+    /* ── Picker: search & dropdown ── */
     function filterVariants(query) {
         query = query.trim().toLowerCase();
         if (!query) return [];
@@ -212,107 +329,141 @@
 
     function renderPicker(list) {
         if (list.length === 0) {
-            pickerPanel.innerHTML = '<div class="px-5 py-5 text-center text-sm font-semibold text-slate-400">Không tìm thấy sản phẩm phù hợp hoặc đã hết hàng.</div>';
+            pickerPanel.innerHTML = '<div class="gr-picker-empty">Không tìm thấy sản phẩm phù hợp hoặc đã hết hàng.</div>';
             pickerPanel.hidden = false;
             return;
         }
-
         pickerPanel.innerHTML = list.map(v => `
-            <button type="button" class="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-slate-50" data-variant-id="${v.id}">
-                <img class="h-11 w-11 flex-none rounded-xl object-cover ring-1 ring-slate-200" src="${resolveImageUrl(v.thumbnail)}" alt="">
-                <span class="min-w-0 flex-1">
-                    <span class="block truncate text-sm font-bold text-slate-900">${esc(v.product_name)}</span>
-                    <span class="mt-0.5 block truncate text-xs font-medium text-slate-500">${esc(v.color_name)} - ${esc(v.size_name)} | SKU: ${esc(v.sku)}</span>
-                </span>
-                <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-500">Tồn: ${v.stock}</span>
-            </button>
+            <div class="gr-picker-item" data-variant-id="${v.id}">
+                <img class="gr-picker-thumb" src="${resolveImageUrl(v.thumbnail)}" alt="">
+                <div class="gr-picker-info">
+                    <div class="gr-picker-name">${esc(v.product_name)}</div>
+                    <div class="gr-picker-meta">
+                        <span class="gr-picker-dot" style="background:${esc(v.color_hex || '#ccc')};"></span>
+                        ${esc(v.color_name)} · ${esc(v.size_name)} · SKU: ${esc(v.sku)}
+                    </div>
+                </div>
+                <span class="gr-picker-stock">Tồn: ${v.stock}</span>
+            </div>
         `).join('');
         pickerPanel.hidden = false;
     }
 
+    pickerInput.addEventListener('input', function () { renderPicker(filterVariants(this.value)); });
+    pickerInput.addEventListener('focus', function () { if (this.value.trim()) renderPicker(filterVariants(this.value)); });
+
+    document.addEventListener('click', function (e) {
+        if (!e.target.closest('.gr-picker-wrap')) pickerPanel.hidden = true;
+    });
+
+    pickerPanel.addEventListener('click', function (e) {
+        const item = e.target.closest('.gr-picker-item');
+        if (!item || !item.dataset.variantId) return;
+        addVariant(item.dataset.variantId);
+        pickerInput.value = '';
+        pickerPanel.hidden = true;
+        pickerInput.focus();
+    });
+
+    // Hỗ trợ quét mã Barcode/SKU: gõ (hoặc scan) rồi Enter sẽ tự thêm sản phẩm khớp nhất
+    pickerInput.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        const query = this.value.trim().toLowerCase();
+        if (!query) return;
+        const matches = filterVariants(query);
+        if (matches.length === 0) return;
+        const exact = matches.find(v => v.sku.toLowerCase() === query);
+        addVariant((exact || matches[0]).id);
+        this.value = '';
+        pickerPanel.hidden = true;
+    });
+
+    /* ── Item table management ── */
     function addVariant(variantId) {
-        const variant = variants.find(v => String(v.id) === String(variantId));
+        variantId = String(variantId);
+        const variant = variants.find(v => String(v.id) === variantId);
         if (!variant) return;
-        if (selected[variantId]) return;
-        selected[variantId] = { variant, quantity: 1, unit_price: variant.unit_price || 0 };
+
+        if (selected[variantId]) {
+            selected[variantId].quantity = Math.min(selected[variantId].quantity + 1, variant.stock || selected[variantId].quantity + 1);
+        } else {
+            selected[variantId] = { variant, quantity: 1, unit_price: variant.unit_price || 0 };
+            order.unshift(variantId);
+        }
         renderTable();
     }
 
+    function removeVariant(variantId) {
+        delete selected[variantId];
+        order = order.filter(id => id !== variantId);
+        renderTable();
+    }
+
+    function updateIssueButtonState() {
+        if (!issueBtn) return;
+        const hasOverStock = Object.values(selected).some(item => item.quantity > item.variant.stock);
+        issueBtn.disabled = hasOverStock;
+    }
+
     function renderTable() {
-        const ids = Object.keys(selected);
-        tableEmpty.classList.toggle('hidden', ids.length > 0);
+        const ids = order.filter(id => selected[id]);
+        tableWrap.classList.toggle('is-empty', ids.length === 0);
         tableBody.innerHTML = '';
 
-        ids.forEach(variantId => {
+        ids.forEach(function (variantId) {
             const item = selected[variantId];
             const { variant, quantity, unit_price } = item;
             const lineTotal = quantity * unit_price;
             const overStock = quantity > variant.stock;
+            const allowed = priceEditAllowed();
+
             const tr = document.createElement('tr');
             tr.dataset.variantId = variantId;
-            tr.className = 'bg-white hover:bg-slate-50/80';
             tr.innerHTML = `
-                <td class="px-4 py-3">
-                    <div class="flex items-center gap-3">
-                        <img class="h-10 w-10 flex-none rounded-lg object-cover ring-1 ring-slate-200" src="${resolveImageUrl(variant.thumbnail)}" alt="">
-                        <div class="min-w-0">
-                            <div class="truncate text-sm font-bold text-slate-950">${esc(variant.product_name)}</div>
-                            <div class="mt-0.5 truncate text-xs font-medium text-slate-500">${esc(variant.color_name)} - ${esc(variant.size_name)} | SKU: ${esc(variant.sku)}</div>
+                <td>
+                    <div class="gr-row-product">
+                        <img class="gr-row-thumb" src="${resolveImageUrl(variant.thumbnail)}" alt="">
+                        <div>
+                            <div class="gr-row-name">${esc(variant.product_name)}</div>
+                            <div class="gr-row-sub">
+                                <span class="gr-row-dot" style="background:${esc(variant.color_hex || '#ccc')};"></span>
+                                ${esc(variant.color_name)} · ${esc(variant.size_name)} · ${esc(variant.sku)}
+                            </div>
                         </div>
                     </div>
                     <input type="hidden" name="items[${variantId}][product_variant_id]" value="${variantId}">
                 </td>
-                <td class="px-3 py-3 text-sm font-semibold text-slate-500">${variant.stock} cái</td>
-                <td class="px-3 py-3 text-center">
-                    <input type="number" min="1" max="${variant.stock}" step="1"
-                        class="mx-auto h-9 w-16 rounded-lg border ${overStock ? 'border-red-400' : 'border-slate-300'} bg-white text-center text-sm font-bold text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
-                        data-field="quantity" name="items[${variantId}][quantity]" value="${quantity}">
+                <td>${variant.stock}</td>
+                <td>
+                    <input type="number" min="1" max="${variant.stock}" step="1" class="gr-num-input ${overStock ? 'border-danger' : ''}" data-field="quantity"
+                        name="items[${variantId}][quantity]" value="${quantity}">
+                    <div class="si-stock-warning" data-field="stock-warning" style="${overStock ? '' : 'display:none;'}">Vượt tồn kho</div>
                 </td>
-                <td class="px-3 py-3 text-center">
-                    <input type="number" min="0" step="1000"
-                        class="mx-auto h-9 w-24 rounded-lg border border-slate-300 bg-white text-center text-sm font-bold text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
-                        data-field="unit_price" name="items[${variantId}][unit_price]" value="${unit_price}">
+                <td>
+                    <input type="number" min="0" step="1000" class="gr-num-input price-input ${allowed ? '' : 'is-locked'}" data-field="unit_price"
+                        value="${unit_price}" ${allowed ? '' : 'disabled readonly'}>
+                    <input type="hidden" data-field="unit_price_hidden" name="items[${variantId}][unit_price]" value="${unit_price}">
                 </td>
-                <td class="px-3 py-3 text-right text-sm font-bold text-slate-900" data-field="line-total">${money(lineTotal)}</td>
-                <td class="px-3 py-3 text-center">
-                    <button type="button" data-remove-variant="${variantId}" class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-slate-500 transition hover:bg-red-50 hover:text-red-600">
-                        <i class="fa-regular fa-trash-can"></i>
+                <td class="gr-row-total" data-field="line-total">${money(lineTotal)}</td>
+                <td>
+                    <button type="button" class="gr-row-remove" data-remove-variant="${variantId}" title="Xóa">
+                        <i class="fa-solid fa-xmark"></i>
                     </button>
                 </td>
             `;
             tableBody.appendChild(tr);
         });
+
         updateTotal();
+        updateIssueButtonState();
     }
 
-    function updateTotal() {
-        const total = Object.values(selected).reduce((sum, item) => sum + item.quantity * item.unit_price, 0);
-        totalEl.textContent = money(total);
+    function updatePrice(row, item, inputEl) {
+        item.unit_price = Math.max(0, parseFloat(inputEl.value) || 0);
+        const hiddenInput = row.querySelector('[data-field="unit_price_hidden"]');
+        if (hiddenInput) hiddenInput.value = item.unit_price;
     }
-
-    async function refreshOutboundTable(url) {
-        if (!tableArea) return;
-        const res = await fetch(url || '{{ route('admin.goods-receipts.list', ['tab' => 'outbound']) }}', {
-            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
-        });
-        if (!res.ok) return;
-        const data = await res.json();
-        if (data.html) tableArea.innerHTML = data.html;
-    }
-
-    openBtn.addEventListener('click', openModal);
-    closeBtn.addEventListener('click', closeModal);
-    cancelBtn.addEventListener('click', closeModal);
-    modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
-
-    pickerInput.addEventListener('input', function () { renderPicker(filterVariants(this.value)); });
-    pickerPanel.addEventListener('click', function (e) {
-        const item = e.target.closest('[data-variant-id]');
-        if (!item) return;
-        addVariant(item.dataset.variantId);
-        pickerInput.value = '';
-        pickerPanel.hidden = true;
-    });
 
     tableBody.addEventListener('input', function (e) {
         const row = e.target.closest('tr[data-variant-id]');
@@ -324,26 +475,84 @@
         if (e.target.matches('[data-field="quantity"]')) {
             const qty = Math.max(1, parseInt(e.target.value, 10) || 1);
             item.quantity = qty;
-            e.target.classList.toggle('border-red-400', qty > item.variant.stock);
+            e.target.value = qty;
+            const overStock = qty > item.variant.stock;
+            e.target.classList.toggle('border-danger', overStock);
+            const warn = row.querySelector('[data-field="stock-warning"]');
+            if (warn) warn.style.display = overStock ? '' : 'none';
         }
 
         if (e.target.matches('[data-field="unit_price"]')) {
-            item.unit_price = Math.max(0, parseFloat(e.target.value) || 0);
+            updatePrice(row, item, e.target);
         }
 
         row.querySelector('[data-field="line-total"]').textContent = money(item.quantity * item.unit_price);
         updateTotal();
+        updateIssueButtonState();
     });
 
     tableBody.addEventListener('click', function (e) {
         const btn = e.target.closest('[data-remove-variant]');
         if (!btn) return;
-        delete selected[btn.dataset.removeVariant];
-        renderTable();
+        removeVariant(btn.dataset.removeVariant);
     });
 
+    function updateTotal() {
+        const total = Object.values(selected).reduce((sum, item) => sum + item.quantity * item.unit_price, 0);
+        totalEl.textContent = money(total);
+    }
+
+    // Khi đổi "Loại lý do": khóa/mở toàn bộ ô đơn giá trong bảng cho phù hợp
+    function handleReasonChange() {
+        const allowed = priceEditAllowed();
+
+        document.querySelectorAll('#siModalTableBody tr[data-variant-id]').forEach(row => {
+            const variantId = row.dataset.variantId;
+            const item = selected[variantId];
+            const priceInput = row.querySelector('.price-input');
+            if (!item || !priceInput) return;
+
+            if (allowed) {
+                priceInput.disabled = false;
+                priceInput.readOnly = false;
+                priceInput.classList.remove('is-locked');
+            } else {
+                item.unit_price = item.variant.original_cost_price ?? item.variant.unit_price ?? 0;
+                priceInput.value = item.unit_price;
+                priceInput.disabled = true;
+                priceInput.readOnly = true;
+                priceInput.classList.add('is-locked');
+                const hiddenInput = row.querySelector('[data-field="unit_price_hidden"]');
+                if (hiddenInput) hiddenInput.value = item.unit_price;
+            }
+
+            const lineTotalEl = row.querySelector('[data-field="line-total"]');
+            if (lineTotalEl) lineTotalEl.textContent = money(item.quantity * item.unit_price);
+        });
+
+        updateTotal();
+    }
+
+    /* ── Mở/đóng panel (Bootstrap Offcanvas) ── */
+    modal.addEventListener('shown.bs.offcanvas', function () {
+        pickerInput?.focus();
+    });
+    modal.addEventListener('hidden.bs.offcanvas', function () {
+        clearErrors();
+    });
+
+    async function refreshOutboundTable(url) {
+        if (!tableArea) return;
+        const res = await fetch(url || '{{ route('admin.goods-receipts.list', ['tab' => 'outbound']) }}', {
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.html) tableArea.innerHTML = data.html;
+    }
+
     document.querySelectorAll('[data-si-modal-action]').forEach(btn => {
-        btn.addEventListener('click', function () { actionInput.value = this.dataset.siModalAction; });
+        btn.addEventListener('click', function () { setAction(this.dataset.siModalAction); });
     });
 
     form.addEventListener('submit', async function (e) {
@@ -358,28 +567,51 @@
         submitter?.setAttribute('disabled', 'disabled');
 
         try {
-            const res = await fetch(form.action, {
+            const res = await fetch('{{ route('admin.stock-issues.store') }}', {
                 method: 'POST',
                 headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
                 body: new FormData(form),
             });
-            const data = await res.json().catch(() => ({}));
 
-            if (!res.ok) {
-                showErrors(data.errors || { items: [data.message || 'Không thể tạo phiếu xuất kho.'] });
+            const contentType = res.headers.get('content-type') || '';
+            if (!contentType.includes('application/json')) {
+                showErrors({ items: ['Phiên làm việc có thể đã hết hạn hoặc máy chủ phản hồi không hợp lệ. Vui lòng tải lại trang (F5) và thử lại.'] });
+                return;
+            }
+
+            const data = await res.json().catch(() => null);
+
+            if (!res.ok || !data) {
+                showErrors((data && data.errors) || { items: [(data && data.message) || 'Không thể tạo phiếu xuất kho.'] });
+                return;
+            }
+
+            if (!data.code) {
+                showErrors({ items: ['Không nhận được xác nhận tạo phiếu từ máy chủ. Vui lòng tải lại trang và kiểm tra lại danh sách.'] });
                 return;
             }
 
             selected = {};
+            order = [];
             form.reset();
-            actionInput.value = 'draft';
+            setAction('draft');
+            const firstReasonItem = reasonTypeList?.querySelector('.hk-cat-item');
+            if (firstReasonItem) {
+                reasonTypeSelect.value = firstReasonItem.dataset.value;
+                reasonTypeLabelEl.textContent = firstReasonItem.dataset.label;
+                reasonTypeList.querySelectorAll('.hk-cat-item').forEach(item => item.classList.toggle('is-active', item === firstReasonItem));
+            }
             renderTable();
-            closeModal();
+            bootstrap.Offcanvas.getOrCreateInstance(modal).hide();
             await refreshOutboundTable(data.table_url);
-            alert(data.message || 'Tạo phiếu xuất kho thành công.');
+            showToast(data.message || `Tạo phiếu xuất kho "${data.code}" thành công.`);
+        } catch (err) {
+            showToast('Không thể kết nối tới máy chủ. Vui lòng kiểm tra kết nối mạng và thử lại.', 'error');
         } finally {
             submitter?.removeAttribute('disabled');
         }
     });
 })();
 </script>
+@endpush
+@endonce

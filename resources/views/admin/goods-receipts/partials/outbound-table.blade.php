@@ -30,7 +30,10 @@
                     <tr>
                         <td style="opacity:.55;">{{ $issue->id }}</td>
                         <td class="fw-bold">
-                            <a href="{{ route('admin.stock-issues.show', $issue->id) }}">{{ $issue->code }}</a>
+                            <a href="{{ route('admin.stock-issues.show', $issue->id) }}"
+                                data-stock-issue-show-trigger
+                                data-show-url="{{ route('admin.stock-issues.show', $issue->id) }}"
+                                onclick="event.preventDefault();">{{ $issue->code }}</a>
                         </td>
                         <td>{{ $issue->reason }}</td>
                         <td>{{ number_format($issue->items_quantity_sum ?? 0) }}</td>
@@ -39,36 +42,44 @@
                             @if($issue->isIssued())
                                 <span class="gr-badge gr-badge--completed">Đã xuất kho</span>
                             @else
-                                <span class="gr-badge gr-badge--draft">Nháp</span>
+                                <div class="hk-cat-filter gr-row-status-filter" id="rowStatusFilter{{ $issue->id }}" style="width:auto;flex:none;">
+                                    <button type="button" class="hk-cat-trigger" style="min-height:30px;width:auto;white-space:nowrap;padding:0 10px;font-size:11px;">
+                                        <span class="hk-cat-trigger-label">Nháp</span>
+                                        <i class="fa-solid fa-chevron-down hk-cat-arrow" style="font-size:9px;"></i>
+                                    </button>
+                                    <div class="hk-cat-panel" hidden style="width:160px;">
+                                        <div class="hk-cat-list">
+                                            <button type="button" class="hk-cat-item is-active" data-value="draft">Nháp</button>
+                                            <button type="button" class="hk-cat-item"
+                                                data-value="issue"
+                                                data-issue-url="{{ route('admin.stock-issues.issue', $issue->id) }}"
+                                                data-issue-code="{{ $issue->code }}">
+                                                Đã xuất kho
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
                             @endif
                         </td>
                         <td>{{ $issue->created_at?->format('d/m/Y H:i') ?? '—' }}</td>
                         <td class="text-end pe-4">
-                            <div class="dropdown">
-                                <button type="button" class="product-more-btn" data-bs-toggle="dropdown" aria-expanded="false">
-                                    <i class="fa-solid fa-ellipsis"></i>
+                            <div class="d-inline-flex align-items-center gap-1">
+                                <button type="button"
+                                    class="product-more-btn d-inline-flex align-items-center justify-content-center"
+                                    data-stock-issue-show-trigger
+                                    data-show-url="{{ route('admin.stock-issues.show', $issue->id) }}"
+                                    title="Xem chi tiết">
+                                    <i class="fa-regular fa-eye"></i>
                                 </button>
-                                <div class="dropdown-menu dropdown-menu-end product-row-menu">
-                                    <a href="{{ route('admin.stock-issues.show', $issue->id) }}" class="dropdown-item">
-                                        <i class="fa-regular fa-eye"></i> Xem chi tiết
-                                    </a>
-                                    @if($issue->isDraft())
-                                        <form method="POST" action="{{ route('admin.stock-issues.issue', $issue->id) }}" style="margin:0">
-                                            @csrf @method('PATCH')
-                                            <button type="submit" class="dropdown-item"
-                                                onclick="return confirm('Xuất kho phiếu này sẽ trừ tồn kho ngay lập tức. Tiếp tục?')">
-                                                <i class="fa-solid fa-check"></i> Xuất kho ngay
-                                            </button>
-                                        </form>
-                                        <div class="dropdown-divider my-1"></div>
-                                        <button type="button" class="dropdown-item text-danger"
-                                            data-delete-url="{{ route('admin.stock-issues.destroy', $issue->id) }}"
-                                            data-delete-name="{{ $issue->code }}"
-                                            data-delete-type="phiếu xuất kho">
-                                            <i class="fa-regular fa-trash-can"></i> Xóa
-                                        </button>
-                                    @endif
-                                </div>
+                                @if($issue->isDraft())
+                                    <button type="button" class="product-more-btn text-danger d-inline-flex align-items-center justify-content-center"
+                                        data-delete-url="{{ route('admin.stock-issues.destroy', $issue->id) }}"
+                                        data-delete-name="{{ $issue->code }}"
+                                        data-delete-type="phiếu xuất kho"
+                                        title="Xóa">
+                                        <i class="fa-regular fa-trash-can"></i>
+                                    </button>
+                                @endif
                             </div>
                         </td>
                     </tr>

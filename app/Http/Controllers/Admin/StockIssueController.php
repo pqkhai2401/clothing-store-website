@@ -15,53 +15,66 @@ class StockIssueController extends Controller
 {
     public function create()
     {
-        $variants = $this->availableVariants();
-
-        return view('admin.stock-issues.create', compact('variants'));
+        // Trang tạo phiếu xuất kho hiện được thực hiện qua modal ngay tại danh sách
+        // (xem admin.stock-issues.partials.create-modal), không còn dùng trang riêng.
+        return redirect()->route('admin.goods-receipts.list', ['tab' => 'outbound']);
     }
 
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'reason' => ['required', 'string', 'max:255'],
+            'reason_type' => ['required', Rule::in(array_keys(StockIssue::REASON_TYPE_LABELS))],
             'note' => ['nullable', 'string', 'max:2000'],
-            'action' => ['required', Rule::in(['draft', 'issue'])],
+            'submit_action' => ['required', Rule::in(['draft', 'issue'])],
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_variant_id' => ['required', 'integer', Rule::exists('product_variants', 'id')],
             'items.*.quantity' => ['required', 'integer', 'min:1'],
             'items.*.unit_price' => ['required', 'numeric', 'min:0'],
         ], [
-            'reason.required' => 'Vui lòng nhập lý do xuất kho.',
+            'reason_type.required' => 'Vui lòng chọn loại lý do xuất kho.',
+            'reason_type.in' => 'Loại lý do xuất kho không hợp lệ.',
             'items.required' => 'Vui lòng chọn ít nhất một sản phẩm để xuất kho.',
             'items.min' => 'Vui lòng chọn ít nhất một sản phẩm để xuất kho.',
         ]);
 
-        if ($validated['action'] === 'issue') {
-            $this->assertSufficientStock($validated['items']);
+        // Chỉ "Xuất trả đối tác - Nhà cung cấp" mới được phép tự đặt giá xuất.
+        // Các loại lý do khác: BỎ QUA giá client gửi lên, luôn lấy giá vốn thật từ DB
+        // để chặn hành vi sửa giá qua devtools/inspect-element.
+        $allowsPriceEdit = in_array($validated['reason_type'], StockIssue::REASON_TYPES_ALLOWING_PRICE_EDIT, true);
+
+        $normalizedItems = collect($validated['items'])->map(function (array $item) use ($allowsPriceEdit) {
+            $variant = ProductVariant::findOrFail($item['product_variant_id']);
+
+            return [
+                'product_variant_id' => $variant->id,
+                'quantity' => (int) $item['quantity'],
+                'unit_price' => $allowsPriceEdit ? (float) $item['unit_price'] : (float) $variant->cost_price,
+            ];
+        })->all();
+
+        if ($validated['submit_action'] === 'issue') {
+            $this->assertSufficientStock($normalizedItems);
         }
 
-        $stockIssue = DB::transaction(function () use ($validated) {
-            $totalAmount = collect($validated['items'])
+        $stockIssue = DB::transaction(function () use ($validated, $normalizedItems) {
+            $totalAmount = collect($normalizedItems)
                 ->sum(fn ($item) => $item['quantity'] * $item['unit_price']);
 
             $stockIssue = StockIssue::create([
                 'code' => $this->generateCode(),
-                'reason' => $validated['reason'],
+                'reason' => StockIssue::REASON_TYPE_LABELS[$validated['reason_type']],
+                'reason_type' => $validated['reason_type'],
                 'note' => $validated['note'] ?? null,
                 'status' => StockIssue::STATUS_DRAFT,
                 'total_amount' => $totalAmount,
                 'created_by' => Auth::id(),
             ]);
 
-            foreach ($validated['items'] as $item) {
-                $stockIssue->items()->create([
-                    'product_variant_id' => $item['product_variant_id'],
-                    'quantity' => $item['quantity'],
-                    'unit_price' => $item['unit_price'],
-                ]);
+            foreach ($normalizedItems as $item) {
+                $stockIssue->items()->create($item);
             }
 
-            if ($validated['action'] === 'issue') {
+            if ($validated['submit_action'] === 'issue') {
                 $this->issueStock($stockIssue);
             }
 
@@ -81,7 +94,7 @@ class StockIssueController extends Controller
             ->with('success', "Tạo phiếu xuất kho \"{$stockIssue->code}\" thành công.");
     }
 
-    public function show(string $id)
+    public function show(Request $request, string $id)
     {
         $stockIssue = StockIssue::with([
             'creator',
@@ -89,6 +102,13 @@ class StockIssueController extends Controller
             'items.productVariant.color:id,name,hex_code',
             'items.productVariant.size:id,name',
         ])->findOrFail($id);
+
+        // Panel trượt tại danh sách tải nội dung chi tiết qua AJAX (không chuyển trang).
+        if ($request->ajax()) {
+            return response()->json([
+                'html' => view('admin.stock-issues.partials.show-content', compact('stockIssue'))->render(),
+            ]);
+        }
 
         return view('admin.stock-issues.show', compact('stockIssue'));
     }
@@ -145,7 +165,9 @@ class StockIssueController extends Controller
                 'color_hex' => $v->color?->display_hex_code,
                 'size_name' => $v->size?->name,
                 'stock' => $v->stock,
-                'unit_price' => (float) $v->sale_price,
+                // Giá xuất mặc định luôn theo giá vốn hệ thống; chỉ "Xuất trả NCC" mới cho phép Admin sửa.
+                'unit_price' => (float) $v->cost_price,
+                'original_cost_price' => (float) $v->cost_price,
             ])
             ->values();
     }

@@ -14,9 +14,23 @@ class StockIssue extends Model
     public const STATUS_DRAFT  = 'draft';
     public const STATUS_ISSUED = 'issued';
 
+    public const REASON_TYPE_DAMAGE   = 'XUAT_HUY';
+    public const REASON_TYPE_STOCKTAKE = 'XUAT_KIEM_KHO';
+    public const REASON_TYPE_RETURN_SUPPLIER = 'XUAT_TRA_NCC';
+
+    // Chỉ loại lý do này mới cho phép Admin tự chỉnh đơn giá xuất; các loại còn lại luôn chốt theo giá vốn hệ thống.
+    public const REASON_TYPES_ALLOWING_PRICE_EDIT = [self::REASON_TYPE_RETURN_SUPPLIER];
+
+    public const REASON_TYPE_LABELS = [
+        self::REASON_TYPE_DAMAGE => 'Xuất hủy',
+        self::REASON_TYPE_STOCKTAKE => 'Xuất kiểm kho - Cân bằng',
+        self::REASON_TYPE_RETURN_SUPPLIER => 'Xuất trả đối tác - Nhà cung cấp',
+    ];
+
     protected $fillable = [
         'code',
         'reason',
+        'reason_type',
         'note',
         'status',
         'total_amount',
@@ -47,5 +61,10 @@ class StockIssue extends Model
     public function isIssued(): bool
     {
         return $this->status === self::STATUS_ISSUED;
+    }
+
+    public function allowsPriceEdit(): bool
+    {
+        return in_array($this->reason_type, self::REASON_TYPES_ALLOWING_PRICE_EDIT, true);
     }
 }
