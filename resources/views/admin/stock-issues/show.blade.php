@@ -66,6 +66,12 @@
                         <label>Lý do xuất kho</label>
                         <div class="fw-bold">{{ $stockIssue->reason }}</div>
                     </div>
+                    @if($stockIssue->note)
+                        <div class="edit-field">
+                            <label>Ghi chú</label>
+                            <div>{{ $stockIssue->note }}</div>
+                        </div>
+                    @endif
                     @if($stockIssue->isIssued())
                         <div class="edit-field mb-0">
                             <label>Xuất kho lúc</label>

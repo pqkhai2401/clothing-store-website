@@ -17,6 +17,7 @@ class StockIssue extends Model
     protected $fillable = [
         'code',
         'reason',
+        'note',
         'status',
         'total_amount',
         'created_by',

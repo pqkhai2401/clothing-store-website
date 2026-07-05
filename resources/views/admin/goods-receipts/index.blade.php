@@ -4,6 +4,9 @@
 
 @push('styles')
     @include('admin.suppliers.styles')
+    @if(($tab ?? '') === 'outbound')
+        <script src="https://cdn.tailwindcss.com"></script>
+    @endif
     <style>
     .gr-badge { display: inline-block; white-space: nowrap; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 99px; text-transform: uppercase; letter-spacing: .03em; }
     .gr-badge--draft { background: #fef3c7; color: #92400e; }
@@ -97,6 +100,8 @@
     .gr-ov-product { display: flex; align-items: center; gap: 10px; }
     .gr-ov-thumb { width: 42px; height: 42px; border-radius: 8px; object-fit: cover; flex-shrink: 0; background: #f3f4f6; }
     .gr-ov-variant { font-size: 12px; color: #6b7280; }
+    .si-hidden-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+    .si-hidden-scrollbar::-webkit-scrollbar { width: 0; height: 0; }
     </style>
 @endpush
 
@@ -125,9 +130,9 @@
                             <i class="fa-solid fa-plus me-1"></i> Tạo phiếu nhập kho
                         </a>
                     @elseif($tab === 'outbound')
-                        <a href="{{ route('admin.stock-issues.create') }}" class="btn gr-btn-emerald product-action-btn">
+                        <button type="button" class="btn gr-btn-emerald product-action-btn" id="openStockIssueModalBtn">
                             <i class="fa-solid fa-plus me-1"></i> Tạo phiếu xuất kho
-                        </a>
+                        </button>
                     @endif
                 </div>
             </div>
@@ -318,6 +323,10 @@
                 <div data-admin-table-area>
                     @include('admin.goods-receipts.partials.outbound-table')
                 </div>
+
+                @include('admin.stock-issues.partials.create-modal', [
+                    'variants' => $stockIssueVariants ?? collect(),
+                ])
 
             @endif
         </section>

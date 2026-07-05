@@ -68,7 +68,9 @@ class GoodsReceiptController extends Controller
             ]);
         }
 
-        return view('admin.goods-receipts.index', compact('stockIssues', 'keyword', 'status', 'perPage') + ['tab' => 'outbound']);
+        $stockIssueVariants = $this->stockIssueVariants();
+
+        return view('admin.goods-receipts.index', compact('stockIssues', 'keyword', 'status', 'perPage', 'stockIssueVariants') + ['tab' => 'outbound']);
     }
 
     private function overviewIndex(Request $request)
@@ -204,6 +206,27 @@ class GoodsReceiptController extends Controller
             ->values();
 
         return view('admin.goods-receipts.create', compact('suppliers', 'variants'));
+    }
+
+    private function stockIssueVariants()
+    {
+        return ProductVariant::query()
+            ->with(['product:id,name,thumbnail', 'color:id,name,hex_code', 'size:id,name'])
+            ->whereHas('product', fn ($q) => $q->whereNull('deleted_at'))
+            ->where('stock', '>', 0)
+            ->get()
+            ->map(fn (ProductVariant $v) => [
+                'id'           => $v->id,
+                'sku'          => $v->sku,
+                'product_name' => $v->product?->name,
+                'thumbnail'    => $v->product?->thumbnail,
+                'color_name'   => $v->color?->name,
+                'color_hex'    => $v->color?->display_hex_code,
+                'size_name'    => $v->size?->name,
+                'stock'        => $v->stock,
+                'unit_price'   => (float) $v->sale_price,
+            ])
+            ->values();
     }
 
     public function store(Request $request)

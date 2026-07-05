@@ -15,23 +15,7 @@ class StockIssueController extends Controller
 {
     public function create()
     {
-        $variants = ProductVariant::query()
-            ->with(['product:id,name,thumbnail', 'color:id,name,hex_code', 'size:id,name'])
-            ->whereHas('product', fn ($q) => $q->whereNull('deleted_at'))
-            ->where('stock', '>', 0)
-            ->get()
-            ->map(fn (ProductVariant $v) => [
-                'id'           => $v->id,
-                'sku'          => $v->sku,
-                'product_name' => $v->product?->name,
-                'thumbnail'    => $v->product?->thumbnail,
-                'color_name'   => $v->color?->name,
-                'color_hex'    => $v->color?->display_hex_code,
-                'size_name'    => $v->size?->name,
-                'stock'        => $v->stock,
-                'unit_price'   => (float) $v->sale_price,
-            ])
-            ->values();
+        $variants = $this->availableVariants();
 
         return view('admin.stock-issues.create', compact('variants'));
     }
@@ -39,16 +23,17 @@ class StockIssueController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'reason'                      => ['required', 'string', 'max:255'],
-            'action'                      => ['required', Rule::in(['draft', 'issue'])],
-            'items'                       => ['required', 'array', 'min:1'],
-            'items.*.product_variant_id'  => ['required', 'integer', Rule::exists('product_variants', 'id')],
-            'items.*.quantity'            => ['required', 'integer', 'min:1'],
-            'items.*.unit_price'          => ['required', 'numeric', 'min:0'],
+            'reason' => ['required', 'string', 'max:255'],
+            'note' => ['nullable', 'string', 'max:2000'],
+            'action' => ['required', Rule::in(['draft', 'issue'])],
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.product_variant_id' => ['required', 'integer', Rule::exists('product_variants', 'id')],
+            'items.*.quantity' => ['required', 'integer', 'min:1'],
+            'items.*.unit_price' => ['required', 'numeric', 'min:0'],
         ], [
             'reason.required' => 'Vui lòng nhập lý do xuất kho.',
-            'items.required'  => 'Vui lòng chọn ít nhất một sản phẩm để xuất kho.',
-            'items.min'       => 'Vui lòng chọn ít nhất một sản phẩm để xuất kho.',
+            'items.required' => 'Vui lòng chọn ít nhất một sản phẩm để xuất kho.',
+            'items.min' => 'Vui lòng chọn ít nhất một sản phẩm để xuất kho.',
         ]);
 
         if ($validated['action'] === 'issue') {
@@ -60,18 +45,19 @@ class StockIssueController extends Controller
                 ->sum(fn ($item) => $item['quantity'] * $item['unit_price']);
 
             $stockIssue = StockIssue::create([
-                'code'         => $this->generateCode(),
-                'reason'       => $validated['reason'],
-                'status'       => StockIssue::STATUS_DRAFT,
+                'code' => $this->generateCode(),
+                'reason' => $validated['reason'],
+                'note' => $validated['note'] ?? null,
+                'status' => StockIssue::STATUS_DRAFT,
                 'total_amount' => $totalAmount,
-                'created_by'   => Auth::id(),
+                'created_by' => Auth::id(),
             ]);
 
             foreach ($validated['items'] as $item) {
                 $stockIssue->items()->create([
                     'product_variant_id' => $item['product_variant_id'],
-                    'quantity'           => $item['quantity'],
-                    'unit_price'         => $item['unit_price'],
+                    'quantity' => $item['quantity'],
+                    'unit_price' => $item['unit_price'],
                 ]);
             }
 
@@ -81,6 +67,15 @@ class StockIssueController extends Controller
 
             return $stockIssue;
         });
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => "Tạo phiếu xuất kho \"{$stockIssue->code}\" thành công.",
+                'code' => $stockIssue->code,
+                'show_url' => route('admin.stock-issues.show', $stockIssue->id),
+                'table_url' => route('admin.goods-receipts.list', ['tab' => 'outbound']),
+            ]);
+        }
 
         return redirect()->route('admin.stock-issues.show', $stockIssue->id)
             ->with('success', "Tạo phiếu xuất kho \"{$stockIssue->code}\" thành công.");
@@ -102,14 +97,14 @@ class StockIssueController extends Controller
     {
         $stockIssue = StockIssue::with('items')->findOrFail($id);
 
-        if (!$stockIssue->isDraft()) {
+        if (! $stockIssue->isDraft()) {
             return back()->with('error', 'Phiếu xuất kho này đã được xuất trước đó.');
         }
 
         try {
             $this->assertSufficientStock($stockIssue->items->map(fn ($item) => [
                 'product_variant_id' => $item->product_variant_id,
-                'quantity'           => $item->quantity,
+                'quantity' => $item->quantity,
             ])->all());
         } catch (ValidationException $e) {
             return back()->with('error', collect($e->errors())->flatten()->first());
@@ -124,7 +119,7 @@ class StockIssueController extends Controller
     {
         $stockIssue = StockIssue::findOrFail($id);
 
-        if (!$stockIssue->isDraft()) {
+        if (! $stockIssue->isDraft()) {
             return back()->with('error', 'Không thể xóa phiếu xuất kho đã hoàn tất.');
         }
 
@@ -134,11 +129,33 @@ class StockIssueController extends Controller
             ->with('success', 'Xóa phiếu xuất kho thành công');
     }
 
+    private function availableVariants()
+    {
+        return ProductVariant::query()
+            ->with(['product:id,name,thumbnail', 'color:id,name,hex_code', 'size:id,name'])
+            ->whereHas('product', fn ($q) => $q->whereNull('deleted_at'))
+            ->where('stock', '>', 0)
+            ->get()
+            ->map(fn (ProductVariant $v) => [
+                'id' => $v->id,
+                'sku' => $v->sku,
+                'product_name' => $v->product?->name,
+                'thumbnail' => $v->product?->thumbnail,
+                'color_name' => $v->color?->name,
+                'color_hex' => $v->color?->display_hex_code,
+                'size_name' => $v->size?->name,
+                'stock' => $v->stock,
+                'unit_price' => (float) $v->sale_price,
+            ])
+            ->values();
+    }
+
     private function assertSufficientStock(array $items): void
     {
         foreach ($items as $item) {
             $variant = ProductVariant::find($item['product_variant_id']);
-            if (!$variant || $variant->stock < $item['quantity']) {
+
+            if (! $variant || $variant->stock < $item['quantity']) {
                 throw ValidationException::withMessages([
                     'items' => "Sản phẩm SKU \"{$variant?->sku}\" không đủ tồn kho (còn {$variant?->stock}, cần {$item['quantity']}).",
                 ]);
@@ -150,7 +167,10 @@ class StockIssueController extends Controller
     {
         foreach ($stockIssue->items as $item) {
             $variant = ProductVariant::lockForUpdate()->find($item->product_variant_id);
-            if (!$variant) continue;
+
+            if (! $variant) {
+                continue;
+            }
 
             $variant->update([
                 'stock' => max(0, $variant->stock - $item->quantity),
@@ -158,7 +178,7 @@ class StockIssueController extends Controller
         }
 
         $stockIssue->update([
-            'status'    => StockIssue::STATUS_ISSUED,
+            'status' => StockIssue::STATUS_ISSUED,
             'issued_at' => now(),
         ]);
     }
