@@ -63,6 +63,10 @@
         background: #f1f5f9;
         color: #334155;
         border: 1px solid #e2e8f0;
+        max-width: 100%;
+        padding-left: 10px;
+        padding-right: 10px;
+        white-space: nowrap;
     }
 
     .size-weight-chip {

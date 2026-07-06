@@ -15,9 +15,9 @@
         }
 
         .order-badge--pending   { background: #FFFBEB; border: 1.5px solid #FDE68A; color: #92400E; }
-        .order-badge--confirmed { background: #EFF6FF; border: 1.5px solid #BFDBFE; color: #1D4ED8; }
+        .order-badge--processing { background: #EFF6FF; border: 1.5px solid #BFDBFE; color: #1D4ED8; }
         .order-badge--shipping  { background: #F0F9FF; border: 1.5px solid #BAE6FD; color: #0369A1; }
-        .order-badge--delivered { background: #ECFDF5; border: 1.5px solid #86EFAC; color: #16A34A; }
+        .order-badge--completed { background: #ECFDF5; border: 1.5px solid #86EFAC; color: #16A34A; }
         .order-badge--cancelled { background: #FEF2F2; border: 1.5px solid #FECACA; color: #DC2626; }
 
         .payment-badge {
@@ -47,9 +47,9 @@
 
         /* ── Dark mode ────────────────────────────────── */
         [data-theme="dark"] .order-badge--pending   { background: rgba(251,191,36,0.12) !important; border-color: rgba(251,191,36,0.3) !important; color: #FCD34D !important; }
-        [data-theme="dark"] .order-badge--confirmed { background: rgba(59,130,246,0.12) !important; border-color: rgba(59,130,246,0.3) !important; color: #93C5FD !important; }
+        [data-theme="dark"] .order-badge--processing { background: rgba(59,130,246,0.12) !important; border-color: rgba(59,130,246,0.3) !important; color: #93C5FD !important; }
         [data-theme="dark"] .order-badge--shipping  { background: rgba(14,165,233,0.12) !important; border-color: rgba(14,165,233,0.3) !important; color: #7DD3FC !important; }
-        [data-theme="dark"] .order-badge--delivered { background: rgba(34,197,94,0.12) !important; border-color: rgba(34,197,94,0.3) !important; color: #86EFAC !important; }
+        [data-theme="dark"] .order-badge--completed { background: rgba(34,197,94,0.12) !important; border-color: rgba(34,197,94,0.3) !important; color: #86EFAC !important; }
         [data-theme="dark"] .order-badge--cancelled { background: rgba(239,68,68,0.12) !important; border-color: rgba(239,68,68,0.3) !important; color: #FCA5A5 !important; }
         [data-theme="dark"] .payment-badge--paid    { background: rgba(34,197,94,0.12) !important; border-color: rgba(34,197,94,0.3) !important; color: #86EFAC !important; }
         [data-theme="dark"] .payment-badge--unpaid  { background: rgba(239,68,68,0.12) !important; border-color: rgba(239,68,68,0.3) !important; color: #FCA5A5 !important; }

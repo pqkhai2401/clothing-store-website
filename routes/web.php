@@ -5,6 +5,7 @@ use App\Http\Controllers\User\AddressController;
 use App\Http\Controllers\User\AuthController;
 use App\Http\Controllers\User\CartController;
 use App\Http\Controllers\User\CheckoutController;
+use App\Http\Controllers\User\OrderController;
 use App\Http\Controllers\User\ProfileController;
 
 use Illuminate\Support\Facades\Route;
@@ -21,6 +22,8 @@ Route::name('404-not-found')->get('404-not-found', function () {
 Route::view('/about', 'user.about.index')->name('about');
 
 Route::get('/products', [ProductController::class, 'index'])->name('products.index');
+Route::get('/new-arrivals', [ProductController::class, 'index'])->name('new-arrivals');
+Route::get('/collections', [ProductController::class, 'index'])->name('collections');
 Route::get('/search', [ProductController::class, 'search'])->name('search');
 Route::get('/api/search/suggestions', [ProductController::class, 'suggestions'])->name('search.suggestions');
 
@@ -46,6 +49,14 @@ Route::middleware('auth')->group(function () {
     Route::delete('/user/addresses/{address}', [AddressController::class, 'destroy'])->name('addresses.destroy');
 });
 
+
+// Orders
+Route::middleware('auth')->group(function () {
+    Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
+    Route::get('/orders/{id}/detail', [OrderController::class, 'detail'])->name('orders.detail');
+    Route::patch('/orders/{id}/cancel', [OrderController::class, 'cancelOrder'])->name('orders.cancel');
+    Route::get('/orders/{id}', [OrderController::class, 'show'])->name('orders.show');
+});
 
 // Profile
 Route::middleware('auth')->group(function () {

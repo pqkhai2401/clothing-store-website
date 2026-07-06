@@ -5,10 +5,14 @@ use App\Http\Controllers\Admin\BrandController;
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\ColorController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\GoodsReceiptController;
 use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\ReviewController;
 use App\Http\Controllers\Admin\SizeController;
+use App\Http\Controllers\Admin\StockIssueController;
+use App\Http\Controllers\Admin\StocktakeController;
+use App\Http\Controllers\Admin\SupplierController;
 use App\Http\Controllers\Admin\ProfileController;
 use App\Http\Controllers\Admin\UserController;
 
@@ -57,6 +61,8 @@ Route::middleware(['auth.login', 'admin'])
 
         Route::prefix('products')->name('products.')->group(function () use ($trashRoutes) {
             Route::get('/', [ProductController::class, 'index'])->name('list');
+            Route::get('/create', [ProductController::class, 'create'])->name('create');
+            Route::post('/', [ProductController::class, 'store'])->name('store');
             Route::get('/{id}/edit', [ProductController::class, 'edit'])->name('edit');
             Route::put('/{id}', [ProductController::class, 'update'])->name('update');
             Route::patch('/{id}/toggle-status', [ProductController::class, 'toggleStatus'])->name('toggleStatus');
@@ -69,6 +75,7 @@ Route::middleware(['auth.login', 'admin'])
 
         Route::prefix('categories')->name('categories.')->group(function () use ($trashRoutes) {
             Route::get('/', [CategoryController::class, 'index'])->name('list');
+            Route::post('/', [CategoryController::class, 'store'])->name('store');
             Route::get('/{id}/edit', [CategoryController::class, 'edit'])->name('edit');
             Route::put('/{id}', [CategoryController::class, 'update'])->name('update');
             Route::patch('/{id}/toggle-status', [CategoryController::class, 'toggleStatus'])->name('toggleStatus');
@@ -116,9 +123,54 @@ Route::middleware(['auth.login', 'admin'])
             $trashRoutes(SizeController::class)();
         });
 
+        Route::middleware('permission:manage-suppliers')
+            ->prefix('suppliers')->name('suppliers.')->group(function () use ($trashRoutes) {
+                Route::get('/', [SupplierController::class, 'index'])->name('list');
+                Route::post('/', [SupplierController::class, 'store'])->name('store');
+                Route::get('/{id}/edit', [SupplierController::class, 'edit'])->name('edit');
+                Route::put('/{id}', [SupplierController::class, 'update'])->name('update');
+                Route::patch('/{id}/toggle-status', [SupplierController::class, 'toggleStatus'])->name('toggleStatus');
+                Route::delete('/{id}', [SupplierController::class, 'destroy'])->name('destroy');
+                Route::post('/bulk-delete', [SupplierController::class, 'bulkDelete'])->name('bulkDelete');
+                Route::post('/trash/bulk-restore', [SupplierController::class, 'bulkRestore'])->name('bulkRestore');
+                Route::post('/trash/bulk-force-delete', [SupplierController::class, 'bulkForceDelete'])->name('bulkForceDelete');
+                $trashRoutes(SupplierController::class)();
+            });
+
+        Route::middleware('permission:manage-goods-receipts')
+            ->prefix('goods-receipts')->name('goods-receipts.')->group(function () {
+                Route::get('/', [GoodsReceiptController::class, 'index'])->name('list');
+                Route::get('/create', [GoodsReceiptController::class, 'create'])->name('create');
+                Route::post('/', [GoodsReceiptController::class, 'store'])->name('store');
+                Route::get('/{id}', [GoodsReceiptController::class, 'show'])->name('show');
+                Route::patch('/{id}/complete', [GoodsReceiptController::class, 'complete'])->name('complete');
+                Route::delete('/{id}', [GoodsReceiptController::class, 'destroy'])->name('destroy');
+            });
+
+        Route::middleware('permission:manage-goods-receipts')
+            ->prefix('stock-issues')->name('stock-issues.')->group(function () use ($trashRoutes) {
+                Route::get('/create', [StockIssueController::class, 'create'])->name('create');
+                Route::post('/', [StockIssueController::class, 'store'])->name('store');
+                Route::post('/bulk-delete', [StockIssueController::class, 'bulkDelete'])->name('bulkDelete');
+                Route::post('/trash/bulk-restore', [StockIssueController::class, 'bulkRestore'])->name('bulkRestore');
+                Route::post('/trash/bulk-force-delete', [StockIssueController::class, 'bulkForceDelete'])->name('bulkForceDelete');
+                $trashRoutes(StockIssueController::class)();
+                Route::get('/{id}', [StockIssueController::class, 'show'])->name('show');
+                Route::patch('/{id}/issue', [StockIssueController::class, 'issue'])->name('issue');
+                Route::delete('/{id}', [StockIssueController::class, 'destroy'])->name('destroy');
+            });
+
+        Route::middleware('permission:manage-goods-receipts')
+            ->prefix('stocktakes')->name('stocktakes.')->group(function () {
+                Route::post('/', [StocktakeController::class, 'store'])->name('store');
+                Route::get('/{id}', [StocktakeController::class, 'show'])->name('show');
+                Route::patch('/{id}/approve', [StocktakeController::class, 'approve'])->name('approve');
+                Route::patch('/{id}/reject', [StocktakeController::class, 'reject'])->name('reject');
+            });
+
         Route::prefix('orders')->name('orders.')->group(function () {
             Route::get('/', [OrderController::class, 'index'])->name('list');
-            Route::get('/{id}', [OrderController::class, 'show'])->name('show');
+            Route::get('/{id}/detail', [OrderController::class, 'detail'])->name('detail');
             Route::put('/{id}', [OrderController::class, 'update'])->name('update');
         });
 

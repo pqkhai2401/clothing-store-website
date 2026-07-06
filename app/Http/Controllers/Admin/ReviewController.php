@@ -66,7 +66,7 @@ class ReviewController extends Controller
 
     public function trash(Request $request)
     {
-        $keyword = trim((string) $request->input('keyword'));
+        $keyword = trim((string) $request->input('search', $request->input('keyword')));
         $perPage = in_array((int) $request->input('per_page'), [10, 25, 50], true)
             ? (int) $request->input('per_page') : 10;
 
@@ -78,7 +78,13 @@ class ReviewController extends Controller
             });
         }
 
-        $reviews = $query->paginate($perPage)->appends($request->except('page'));
+        $reviews = $query->paginate($perPage)->withQueryString();
+
+        if ($request->ajax()) {
+            return response()->json([
+                'html' => view('admin.reviews.partials.trash-table', compact('reviews'))->render(),
+            ]);
+        }
 
         return view('admin.reviews.trash', compact('reviews', 'keyword', 'perPage'));
     }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\User;
 use App\Http\Controllers\Controller;
 use App\Models\CartItem;
 use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Services\CartPricingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -36,51 +37,65 @@ class CartController extends Controller
             'quantity'   => ['nullable', 'integer', 'min:1'],
         ]);
 
-        $product = Product::with(['productVariants' => function ($query) {
-            $query->where('stock', '>', 0)->orderBy('id');
-        }])->findOrFail($validated['product_id']);
+        $quantity = (int) ($validated['quantity'] ?? 1);
+        $product = Product::where('status', true)->findOrFail($validated['product_id']);
 
-        if (!empty($validated['color_id']) && !empty($validated['size_id'])) {
-            $variant = $product->productVariants
+        $variantQuery = ProductVariant::query()
+            ->where('product_id', $product->id)
+            ->where('stock', '>', 0);
+
+        if (! empty($validated['color_id']) || ! empty($validated['size_id'])) {
+            if (empty($validated['color_id']) || empty($validated['size_id'])) {
+                return response()->json([
+                    'message' => 'Vui lòng chọn đầy đủ màu sắc và kích thước.',
+                ], 422);
+            }
+
+            $variantQuery
                 ->where('color_id', $validated['color_id'])
-                ->where('size_id', $validated['size_id'])
-                ->first();
-        } else {
-            $variant = $product->productVariants->first();
+                ->where('size_id', $validated['size_id']);
         }
+
+        $variant = $variantQuery->orderBy('id')->first();
 
         if (! $variant) {
             return response()->json([
-                'message' => 'Sản phẩm này hiện đã hết hàng.',
+                'message' => 'Biến thể sản phẩm đã chọn hiện đã hết hàng hoặc không tồn tại.',
             ], 422);
         }
 
-        $requestedQty = $validated['quantity'] ?? 1;
+        if ($quantity > $variant->stock) {
+            return response()->json([
+                'message' => "Số lượng vượt quá tồn kho hiện có ({$variant->stock}).",
+            ], 422);
+        }
+
         $user = $request->user();
 
-        DB::transaction(function () use ($user, $variant, $requestedQty) {
+        DB::transaction(function () use ($user, $variant, $quantity) {
             $cart = $user->cart()->firstOrCreate(['user_id' => $user->id]);
 
             $cartItem = $cart->cartItems()->where('product_variant_id', $variant->id)->first();
 
             if ($cartItem) {
                 $cartItem->update([
-                    'quantity' => min($cartItem->quantity + $requestedQty, $variant->stock),
+                    'quantity' => min($cartItem->quantity + $quantity, $variant->stock),
                 ]);
             } else {
                 $cart->cartItems()->create([
                     'product_variant_id' => $variant->id,
-                    'quantity'           => min($requestedQty, $variant->stock),
+                    'quantity'           => $quantity,
                 ]);
             }
         });
 
-        $cartCount = (int) $user->cart()->first()?->cartItems()->sum('quantity');
+        $cartCount = (int) $this->cartItems($user)->sum('quantity');
 
         return response()->json([
-            'message'    => 'Đã thêm sản phẩm vào giỏ hàng.',
-            'cart_url'   => route('cart.index'),
-            'cart_count' => $cartCount,
+            'message'      => 'Đã thêm sản phẩm vào giỏ hàng.',
+            'cart_url'     => route('cart.index'),
+            'checkout_url' => route('checkout.index'),
+            'cart_count'   => $cartCount,
         ]);
     }
 
@@ -108,12 +123,11 @@ class CartController extends Controller
             'product_variant_id' => ['required', 'integer', 'exists:product_variants,id'],
         ]);
 
-        $newVariant = \App\Models\ProductVariant::with(['color', 'size'])->findOrFail($validated['product_variant_id']);
+        $newVariant = ProductVariant::with(['color', 'size'])->findOrFail($validated['product_variant_id']);
 
         abort_unless($newVariant->product_id === $cartItem->productVariant->product_id, 422, 'Variant không thuộc sản phẩm này.');
         abort_unless($newVariant->stock > 0, 422, 'Variant này đã hết hàng.');
 
-        // If the target variant already exists in cart, merge quantities
         $existing = $cartItem->cart->cartItems()
             ->where('product_variant_id', $newVariant->id)
             ->where('id', '!=', $cartItem->id)
@@ -145,6 +159,7 @@ class CartController extends Controller
             'size_name'        => $variant->size?->name,
             'variant_image'    => $variant->image ?: $variant->product->thumbnail,
             'stock'            => $variant->stock,
+            //Xử lý biến thể trong giỏ hàng trùng nhau (cùng màu + size) → gộp lại
             'merged'           => isset($existing),
             'merged_item_id'   => isset($existing) ? $existing->id : null,
         ]);

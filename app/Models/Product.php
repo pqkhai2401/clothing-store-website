@@ -18,6 +18,7 @@ class Product extends Model
         'slug',
         'description',
         'price',
+        'cost_price',
         'discount',
         'thumbnail',
         'category_id',
@@ -30,6 +31,7 @@ class Product extends Model
 
     protected $casts = [
         'price'       => 'decimal:2',
+        'cost_price'  => 'decimal:2',
         'discount'    => 'integer',
         'is_featured' => 'boolean',
         'status'      => 'boolean',

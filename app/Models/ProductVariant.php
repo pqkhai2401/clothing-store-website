@@ -18,10 +18,15 @@ class ProductVariant extends Model
         'stock',
         'image',
         'sku',
+        'cost_price',
+        'sale_price',
+        'status',
     ];
 
     protected $casts = [
-        'stock' => 'integer',
+        'stock'      => 'integer',
+        'cost_price' => 'decimal:2',
+        'sale_price' => 'decimal:2',
     ];
 
     /**

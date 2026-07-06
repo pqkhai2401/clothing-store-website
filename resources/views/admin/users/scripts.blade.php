@@ -5,6 +5,7 @@
         const showAddressFields = @json($showAddressFields);
         const isStaffPage = @json($isStaffPage);
         const currentUserId = @json($currentUserId ?? null);
+        const currentUserIsProtectedAdmin = @json($currentUserIsProtectedAdmin ?? false);
         const detailModalEl = document.getElementById('userDetailModal');
         const editModalEl = document.getElementById('userEditModal');
         const detailModal = bootstrap.Modal.getOrCreateInstance(detailModalEl);
@@ -174,6 +175,7 @@
             editForm.querySelectorAll('[data-error-for]').forEach(error => {
                 error.textContent = '';
             });
+            editForm.querySelector('[data-permission-error-row]')?.classList.add('d-none');
         }
 
         function showErrors(errors) {
@@ -190,7 +192,11 @@
                 }
 
                 if (error) {
-                    error.textContent = Array.isArray(messages) ? messages[0] : messages;
+                    const msg = Array.isArray(messages) ? messages[0] : messages;
+                    error.textContent = msg;
+                    // Show permission error row if hidden
+                    const permRow = error.closest('[data-permission-error-row]');
+                    if (permRow) permRow.classList.remove('d-none');
                 }
             });
 
@@ -225,7 +231,18 @@
 
         function fillEditForm(data, updateUrl) {
             const user = data.user;
-            const isProtectedByOther = Boolean(user.is_protected) && currentUserId !== null && String(user.id) !== String(currentUserId);
+            const isSelf              = currentUserId !== null && String(user.id) === String(currentUserId);
+            const targetIsProtected   = Boolean(user.is_protected) && user.role_name === 'admin';
+            const targetIsNormalAdmin = ! Boolean(user.is_protected) && user.role_name === 'admin';
+            const targetIsAdmin       = user.role_name === 'admin';
+
+            // Determine access restrictions
+            // Normal admin editing a protected admin → block all writes
+            const blockAll = ! currentUserIsProtectedAdmin && targetIsProtected;
+            // Normal admin editing another normal admin → block sensitive (status/role/password)
+            const blockSensitive = ! currentUserIsProtectedAdmin && targetIsNormalAdmin && ! isSelf;
+            // Protected admin editing another protected admin → role is locked, deactivate is locked
+            const targetProtectedNotSelf = targetIsProtected && ! isSelf;
 
             editForm.action = updateUrl;
             editForm.dataset.currentUserId = user.id;
@@ -245,15 +262,26 @@
             fillRoleOptions(data.roles, user.role_id);
             syncLockReason();
 
-            if (isStaffPage) {
-                const statusSelect = editForm.elements['is_active'];
-                if (statusSelect) {
-                    for (const opt of statusSelect.options) {
-                        opt.disabled = (opt.value === '1' && !user.is_active);
-                    }
+            // --- Status field ---
+            const statusSel = editForm.elements['is_active'];
+            if (statusSel) {
+                statusSel.disabled = false;
+                for (const opt of statusSel.options) { opt.disabled = false; }
+
+                if (blockAll || blockSensitive) {
+                    statusSel.disabled = true;
+                } else if (isSelf) {
+                    // Cannot lock yourself
+                    const lockOpt = statusSel.querySelector('option[value="0"]');
+                    if (lockOpt) lockOpt.disabled = true;
+                } else if (targetProtectedNotSelf) {
+                    // Even protected admin cannot lock another protected admin
+                    const lockOpt = statusSel.querySelector('option[value="0"]');
+                    if (lockOpt) lockOpt.disabled = true;
                 }
             }
 
+            // --- Role select ---
             const roleSelect     = editForm.elements['role_id'];
             const roleLockedNote = editForm.querySelector('[data-role-locked-note]');
             const roleField      = editForm.querySelector('[data-role-field]');
@@ -261,31 +289,70 @@
                 roleSelect.disabled = false;
                 roleLockedNote?.classList.add('d-none');
                 roleField?.classList.remove('role-field--locked');
-                if (isStaffPage && currentUserId !== null && String(user.id) === String(currentUserId)) {
-                    roleSelect.disabled = true;
-                    if (roleLockedNote) {
-                        roleLockedNote.innerHTML = '<i class="fa-solid fa-lock" style="font-size:11px;color:#9ca3af;"></i> Không thể thay đổi vai trò của tài khoản đang đăng nhập';
-                    }
-                    roleLockedNote?.classList.remove('d-none');
-                    roleField?.classList.add('role-field--locked');
+
+                let lockRoleNote = '';
+                if (isSelf) {
+                    lockRoleNote = 'Không thể thay đổi vai trò của tài khoản đang đăng nhập';
+                } else if (targetIsProtected) {
+                    lockRoleNote = 'Không thể thay đổi vai trò của admin hệ thống';
+                } else if (blockSensitive) {
+                    lockRoleNote = 'Quản trị viên thường không có quyền đổi vai trò của quản trị viên khác';
                 }
 
-                if (isProtectedByOther) {
+                if (lockRoleNote) {
                     roleSelect.disabled = true;
                     if (roleLockedNote) {
-                        roleLockedNote.innerHTML = '<i class="fa-solid fa-lock" style="font-size:11px;color:#9ca3af;"></i> Admin hệ thống được bảo vệ, không thể đổi vai trò';
+                        roleLockedNote.innerHTML = `<i class="fa-solid fa-lock" style="font-size:11px;color:#9ca3af;"></i> ${lockRoleNote}`;
                     }
                     roleLockedNote?.classList.remove('d-none');
                     roleField?.classList.add('role-field--locked');
                 }
             }
 
+            // --- Password fields ---
+            const pwLocked = blockAll || blockSensitive;
             ['password', 'password_confirmation'].forEach(function (fieldName) {
                 const field = editForm.elements[fieldName];
                 if (field) {
-                    field.disabled = isProtectedByOther;
+                    field.disabled = pwLocked;
+                    if (pwLocked) field.value = '';
                 }
             });
+
+            // --- is_protected checkbox (only rendered for protected admin) ---
+            const protectedRow      = editForm.querySelector('[data-protected-row]');
+            const protectedCheckbox = document.getElementById('modal_is_protected');
+            const protectedHidden   = protectedRow?.querySelector('[data-protected-hidden]');
+            if (protectedRow) {
+                // Show when editing admin target (protected or normal), not self
+                const showRow = currentUserIsProtectedAdmin && targetIsAdmin && ! isSelf;
+                protectedRow.classList.toggle('d-none', ! showRow);
+                const rowInputs = protectedRow.querySelectorAll('input');
+                rowInputs.forEach(el => { el.disabled = ! showRow; });
+                if (showRow && protectedCheckbox) {
+                    protectedCheckbox.checked  = Boolean(user.is_protected);
+                    protectedCheckbox.disabled = false;
+                    if (protectedHidden) protectedHidden.disabled = false;
+                }
+            }
+
+            // --- Permission error row ---
+            const permRow = editForm.querySelector('[data-permission-error-row]');
+            if (permRow) {
+                permRow.classList.add('d-none');
+                const permErr = permRow.querySelector('[data-error-for="permission"]');
+                if (permErr) permErr.textContent = '';
+            }
+
+            // --- Info-only hint when blocked ---
+            if (blockAll) {
+                const hint = editForm.querySelector('[data-permission-error-row]');
+                if (hint) {
+                    hint.classList.remove('d-none');
+                    const permErr = hint.querySelector('[data-error-for="permission"]');
+                    if (permErr) permErr.textContent = 'Admin hệ thống được bảo vệ — bạn chỉ có thể chỉnh sửa thông tin cơ bản (tên, email, SĐT).';
+                }
+            }
         }
 
         function updateTableRow(user) {
@@ -396,6 +463,14 @@
             submitButton.disabled = true;
             submitButton.innerHTML = 'Đang lưu...';
 
+            // Build formData and re-include disabled fields so required validation passes
+            const formData = new FormData(editForm);
+            editForm.querySelectorAll('select[disabled], input[disabled][name]').forEach(function (el) {
+                if (el.name && ! formData.has(el.name)) {
+                    formData.set(el.name, el.value ?? '');
+                }
+            });
+
             try {
                 const response = await fetch(editForm.action, {
                     method: 'POST',
@@ -404,7 +479,7 @@
                         'X-Requested-With': 'XMLHttpRequest',
                         'X-CSRF-TOKEN': csrfToken,
                     },
-                    body: new FormData(editForm),
+                    body: formData,
                 });
 
                 const data = await parseJsonResponse(response, 'Không thể cập nhật người dùng.');

@@ -69,10 +69,12 @@ document.addEventListener('DOMContentLoaded', function () {
         if (catLabel) catLabel.textContent = btn.dataset.label;
 
         const parentCategoryFilter = document.getElementById('productParentCategoryFilter');
-        if (parentCategoryFilter) parentCategoryFilter.value = '';
+        const isParent = btn.dataset.type === 'parent';
+
+        if (categoryFilter) categoryFilter.value = isParent ? '' : (btn.dataset.value || '');
+        if (parentCategoryFilter) parentCategoryFilter.value = isParent ? (btn.dataset.value || '') : '';
 
         if (categoryFilter) {
-            categoryFilter.value = btn.dataset.value || '';
             categoryFilter.dispatchEvent(new Event('change', { bubbles: true }));
         }
         closeCatPanel();
