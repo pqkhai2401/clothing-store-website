@@ -208,7 +208,7 @@
             </div>
             <div class="row">
                 <!-- Men -->
-                <div class="col-md-4">
+                <div class="col-md-6">
                     <div class="category-container">
                         <div class="category-img-wrapper">
                             <img src="{{ asset('images/category_men.png') }}" alt="Men's Collection" class="category-img">
@@ -220,7 +220,7 @@
                     </div>
                 </div>
                 <!-- Women -->
-                <div class="col-md-4">
+                <div class="col-md-6">
                     <div class="category-container">
                         <div class="category-img-wrapper">
                             <img src="{{ asset('images/category_women.png') }}" alt="Bộ Sưu Tập Nữ" class="category-img">
@@ -228,18 +228,6 @@
                         <div class="category-overlay">
                             <h3 class="category-title">Nữ</h3>
                             <a href="{{ url('/women') }}" class="category-link">Xem Bộ Sưu Tập</a>
-                        </div>
-                    </div>
-                </div>
-                <!-- Accessories -->
-                <div class="col-md-4">
-                    <div class="category-container">
-                        <div class="category-img-wrapper">
-                            <img src="{{ asset('images/category_acc.png') }}" alt="Bộ Sưu Tập Phụ Kiện" class="category-img">
-                        </div>
-                        <div class="category-overlay">
-                            <h3 class="category-title">Phụ Kiện</h3>
-                            <a href="{{ url('/products?category=accessories') }}" class="category-link">Xem Bộ Sưu Tập</a>
                         </div>
                     </div>
                 </div>
