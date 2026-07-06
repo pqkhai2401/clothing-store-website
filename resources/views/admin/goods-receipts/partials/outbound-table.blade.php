@@ -3,6 +3,9 @@
         <table class="table table-hover product-table align-middle" id="stockIssueTable">
             <thead>
                 <tr>
+                    <th class="hk-cb-th">
+                        <input type="checkbox" class="form-check-input product-check hk-cb-all" id="stockIssueCheckAll">
+                    </th>
                     <th style="width:76px;">
                         <button type="button" class="product-sort-btn is-active" data-sort-key="id" data-sort-type="number">
                             ID <span class="product-sort-icon">↓</span>
@@ -22,12 +25,16 @@
                             Ngày tạo <span class="product-sort-icon">↑↓</span>
                         </button>
                     </th>
+                    <th style="width:150px;">Người tạo</th>
                     <th class="text-end pe-4" style="width:110px;">Thao tác</th>
                 </tr>
             </thead>
             <tbody>
                 @forelse($stockIssues as $issue)
                     <tr>
+                        <td class="hk-cb-td">
+                            <input type="checkbox" class="form-check-input product-check hk-cb-row" value="{{ $issue->id }}" data-status="{{ $issue->status }}">
+                        </td>
                         <td style="opacity:.55;">{{ $issue->id }}</td>
                         <td class="fw-bold">
                             <a href="{{ route('admin.stock-issues.show', $issue->id) }}"
@@ -42,26 +49,17 @@
                             @if($issue->isIssued())
                                 <span class="gr-badge gr-badge--completed">Đã xuất kho</span>
                             @else
-                                <div class="hk-cat-filter gr-row-status-filter" id="rowStatusFilter{{ $issue->id }}" style="width:auto;flex:none;">
-                                    <button type="button" class="hk-cat-trigger" style="min-height:30px;width:auto;white-space:nowrap;padding:0 10px;font-size:11px;">
-                                        <span class="hk-cat-trigger-label">Nháp</span>
-                                        <i class="fa-solid fa-chevron-down hk-cat-arrow" style="font-size:9px;"></i>
-                                    </button>
-                                    <div class="hk-cat-panel" hidden style="width:160px;">
-                                        <div class="hk-cat-list">
-                                            <button type="button" class="hk-cat-item is-active" data-value="draft">Nháp</button>
-                                            <button type="button" class="hk-cat-item"
-                                                data-value="issue"
-                                                data-issue-url="{{ route('admin.stock-issues.issue', $issue->id) }}"
-                                                data-issue-code="{{ $issue->code }}">
-                                                Đã xuất kho
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
+                                <button type="button" class="gr-row-status-trigger"
+                                    data-row-status-trigger
+                                    data-issue-url="{{ route('admin.stock-issues.issue', $issue->id) }}"
+                                    data-issue-code="{{ $issue->code }}">
+                                    <span>Nháp</span>
+                                    <i class="fa-solid fa-chevron-down" style="font-size:9px;"></i>
+                                </button>
                             @endif
                         </td>
                         <td>{{ $issue->created_at?->format('d/m/Y H:i') ?? '—' }}</td>
+                        <td>{{ $issue->creator->username ?? 'N/A' }}</td>
                         <td class="text-end pe-4">
                             <div class="d-inline-flex align-items-center gap-1">
                                 <button type="button"
@@ -85,7 +83,7 @@
                     </tr>
                 @empty
                     <tr data-empty-row>
-                        <td colspan="8" class="text-center py-5">
+                        <td colspan="10" class="text-center py-5">
                             <i class="fa-solid fa-truck-ramp-box text-muted mb-3" style="font-size:42px;display:block;"></i>
                             <div class="fw-semibold text-muted">Chưa có phiếu xuất kho nào</div>
                         </td>
@@ -100,5 +98,6 @@
     @include('layouts.components.pagination', [
         'paginator' => $stockIssues,
         'itemLabel' => 'phiếu xuất kho',
+        'bulkDeleteUrl' => route('admin.stock-issues.bulkDelete'),
     ])
 </div>

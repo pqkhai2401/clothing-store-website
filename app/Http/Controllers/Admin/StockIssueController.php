@@ -143,10 +143,96 @@ class StockIssueController extends Controller
             return back()->with('error', 'Không thể xóa phiếu xuất kho đã hoàn tất.');
         }
 
+        $stockIssue->deleted_by = Auth::id();
+        $stockIssue->save();
         $stockIssue->delete();
 
         return redirect()->route('admin.goods-receipts.list', ['tab' => 'outbound'])
             ->with('success', 'Xóa phiếu xuất kho thành công');
+    }
+
+    public function bulkDelete(Request $request)
+    {
+        $ids = array_filter((array) $request->input('ids', []), 'is_numeric');
+
+        if (empty($ids)) {
+            return back()->with('error', 'Vui lòng chọn ít nhất một phiếu xuất kho để xóa.');
+        }
+
+        // Chỉ xóa được các phiếu còn ở trạng thái Nháp, phiếu đã xuất kho phải được giữ lại.
+        $query = StockIssue::whereIn('id', $ids)->where('status', StockIssue::STATUS_DRAFT);
+        $query->update(['deleted_by' => Auth::id()]);
+        $deleted = $query->delete();
+
+        return back()->with('success', "Đã xóa {$deleted} phiếu xuất kho thành công.");
+    }
+
+    public function trash(Request $request)
+    {
+        $keyword = trim((string) $request->input('search', $request->input('keyword')));
+        $perPage = in_array((int) $request->input('per_page'), [10, 25, 50], true)
+            ? (int) $request->input('per_page') : 10;
+
+        $query = StockIssue::onlyTrashed()->with(['creator', 'deleter'])->orderByDesc('deleted_at');
+
+        if ($keyword !== '') {
+            $query->where(function ($q) use ($keyword) {
+                $q->where('code', 'like', "%{$keyword}%")
+                    ->orWhere('reason', 'like', "%{$keyword}%");
+            });
+        }
+
+        $stockIssues = $query->paginate($perPage)->withQueryString();
+
+        if ($request->ajax()) {
+            return response()->json([
+                'html' => view('admin.stock-issues.partials.trash-table', compact('stockIssues'))->render(),
+            ]);
+        }
+
+        return view('admin.stock-issues.trash', compact('stockIssues', 'keyword', 'perPage'));
+    }
+
+    public function restore(string $id)
+    {
+        $stockIssue = StockIssue::onlyTrashed()->findOrFail($id);
+        StockIssue::onlyTrashed()->where('id', $stockIssue->id)->update(['deleted_by' => null]);
+        $stockIssue->restore();
+
+        return redirect()->route('admin.stock-issues.trash')->with('success', 'Khôi phục phiếu xuất kho thành công');
+    }
+
+    public function forceDelete(string $id)
+    {
+        StockIssue::onlyTrashed()->findOrFail($id)->forceDelete();
+
+        return redirect()->route('admin.stock-issues.trash')->with('success', 'Đã xóa vĩnh viễn phiếu xuất kho');
+    }
+
+    public function bulkRestore(Request $request)
+    {
+        $ids = array_filter((array) $request->input('ids', []), 'is_numeric');
+        if (empty($ids)) {
+            return back()->with('error', 'Vui lòng chọn ít nhất một phiếu xuất kho.');
+        }
+
+        StockIssue::onlyTrashed()->whereIn('id', $ids)->update(['deleted_by' => null]);
+        $restored = StockIssue::onlyTrashed()->whereIn('id', $ids)->restore();
+
+        return back()->with('success', "Đã khôi phục {$restored} phiếu xuất kho thành công.");
+    }
+
+    public function bulkForceDelete(Request $request)
+    {
+        $ids = array_filter((array) $request->input('ids', []), 'is_numeric');
+        if (empty($ids)) {
+            return back()->with('error', 'Vui lòng chọn ít nhất một phiếu xuất kho.');
+        }
+
+        $count = StockIssue::onlyTrashed()->whereIn('id', $ids)->count();
+        StockIssue::onlyTrashed()->whereIn('id', $ids)->forceDelete();
+
+        return back()->with('success', "Đã xóa vĩnh viễn {$count} phiếu xuất kho.");
     }
 
     private function availableVariants()

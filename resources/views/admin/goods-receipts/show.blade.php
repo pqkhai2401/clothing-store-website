@@ -36,7 +36,7 @@
                 @endif
             </h1>
             <p class="mb-0 text-muted" style="font-size:13px;">
-                Tạo bởi {{ $goodsReceipt->creator->name ?? 'N/A' }} lúc {{ $goodsReceipt->created_at?->format('d/m/Y H:i') }}
+                Tạo bởi {{ $goodsReceipt->creator->username ?? 'N/A' }} lúc {{ $goodsReceipt->created_at?->format('d/m/Y H:i') }}
             </p>
         </div>
         <div class="d-flex gap-2">

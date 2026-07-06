@@ -117,8 +117,6 @@
 .si-info-card { border: 1.5px solid #e5e7eb; border-radius: 12px; background: #f9fafb; }
 .si-inline-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #6b7280; white-space: nowrap; }
 .si-reason-filter { width: 100%; max-width: 320px; }
-.gr-row-status-filter { width: auto; flex: none; }
-.gr-row-status-filter .hk-cat-trigger { width: auto; white-space: nowrap; min-height: 30px; padding: 0 10px; font-size: 11px; }
 .price-input.is-locked { background: #f3f4f6 !important; color: #9ca3af !important; cursor: not-allowed; }
 .gr-num-input.border-danger { border-color: #dc2626 !important; }
 .si-stock-warning { font-size: 11px; font-weight: 600; color: #dc2626; margin-top: 4px; }

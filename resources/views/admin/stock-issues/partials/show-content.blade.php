@@ -10,7 +10,7 @@
             @endif
         </h2>
         <p class="mb-0 text-muted" style="font-size:13px;">
-            Tạo bởi {{ $stockIssue->creator->name ?? 'N/A' }} lúc {{ $stockIssue->created_at?->format('d/m/Y H:i') }}
+            Tạo bởi {{ $stockIssue->creator->username ?? 'N/A' }} lúc {{ $stockIssue->created_at?->format('d/m/Y H:i') }}
         </p>
     </div>
     @if($stockIssue->isDraft())
