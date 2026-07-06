@@ -147,9 +147,13 @@ Route::middleware(['auth.login', 'admin'])
             });
 
         Route::middleware('permission:manage-goods-receipts')
-            ->prefix('stock-issues')->name('stock-issues.')->group(function () {
+            ->prefix('stock-issues')->name('stock-issues.')->group(function () use ($trashRoutes) {
                 Route::get('/create', [StockIssueController::class, 'create'])->name('create');
                 Route::post('/', [StockIssueController::class, 'store'])->name('store');
+                Route::post('/bulk-delete', [StockIssueController::class, 'bulkDelete'])->name('bulkDelete');
+                Route::post('/trash/bulk-restore', [StockIssueController::class, 'bulkRestore'])->name('bulkRestore');
+                Route::post('/trash/bulk-force-delete', [StockIssueController::class, 'bulkForceDelete'])->name('bulkForceDelete');
+                $trashRoutes(StockIssueController::class)();
                 Route::get('/{id}', [StockIssueController::class, 'show'])->name('show');
                 Route::patch('/{id}/issue', [StockIssueController::class, 'issue'])->name('issue');
                 Route::delete('/{id}', [StockIssueController::class, 'destroy'])->name('destroy');

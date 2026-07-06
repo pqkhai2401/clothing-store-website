@@ -12,6 +12,33 @@
     .gr-badge--low-stock { background: #fef3c7; color: #92400e; }
     .gr-badge--out-of-stock { background: #fee2e2; color: #991b1b; }
 
+    /* ── Chi tiết phiếu xuất kho (panel trượt) ── */
+    .si-show-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .si-show-table thead th {
+        background: #f9fafb; text-align: left; padding: 10px 12px; font-weight: 700;
+        color: #374151; border-bottom: 1.5px solid #e5e7eb; white-space: nowrap;
+    }
+    .si-show-table tbody td { padding: 10px 12px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
+    .si-show-product { display: flex; align-items: center; gap: 10px; }
+    .si-show-thumb { width: 42px; height: 42px; border-radius: 6px; object-fit: cover; flex-shrink: 0; background: #f3f4f6; }
+    .si-show-dot { width: 10px; height: 10px; border-radius: 50%; border: 1px solid rgba(0,0,0,.08); flex-shrink: 0; display: inline-block; }
+
+    /* ── Trạng thái phiếu xuất kho: pill đổi trạng thái ngay trên bảng ── */
+    .gr-row-status-trigger {
+        display: inline-flex; align-items: center; gap: 6px;
+        min-height: 30px; padding: 0 10px; white-space: nowrap;
+        border: 1px solid #fde68a; border-radius: 999px;
+        background: #fef3c7; color: #92400e;
+        font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .02em;
+        cursor: pointer; transition: border-color .15s, background .15s;
+    }
+    .gr-row-status-trigger:hover,
+    .gr-row-status-trigger.is-open { border-color: #f59e0b; background: #fef0c7; }
+    .gr-row-status-trigger i { transition: transform .2s; }
+    .gr-row-status-trigger.is-open i { transform: rotate(180deg); }
+
+    .gr-row-status-shared-panel { position: fixed; z-index: 1080; }
+
     /* ── Tabs ── */
     .gr-tabs {
         display: flex;
@@ -97,6 +124,8 @@
     .gr-ov-product { display: flex; align-items: center; gap: 10px; }
     .gr-ov-thumb { width: 42px; height: 42px; border-radius: 8px; object-fit: cover; flex-shrink: 0; background: #f3f4f6; }
     .gr-ov-variant { font-size: 12px; color: #6b7280; }
+    .si-hidden-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+    .si-hidden-scrollbar::-webkit-scrollbar { width: 0; height: 0; }
     </style>
 @endpush
 
@@ -125,9 +154,13 @@
                             <i class="fa-solid fa-plus me-1"></i> Tạo phiếu nhập kho
                         </a>
                     @elseif($tab === 'outbound')
-                        <a href="{{ route('admin.stock-issues.create') }}" class="btn gr-btn-emerald product-action-btn">
-                            <i class="fa-solid fa-plus me-1"></i> Tạo phiếu xuất kho
+                        <a href="{{ route('admin.stock-issues.trash') }}" class="btn btn-light border product-action-btn">
+                            <i class="fa-regular fa-trash-can me-1"></i> Thùng rác
                         </a>
+                        <button type="button" class="btn gr-btn-emerald product-action-btn"
+                            data-bs-toggle="offcanvas" data-bs-target="#stockIssueOffcanvas">
+                            <i class="fa-solid fa-plus me-1"></i> Tạo phiếu xuất kho
+                        </button>
                     @endif
                 </div>
             </div>
@@ -319,6 +352,26 @@
                     @include('admin.goods-receipts.partials.outbound-table')
                 </div>
 
+                @include('admin.stock-issues.partials.create-modal', [
+                    'variants' => $stockIssueVariants ?? collect(),
+                ])
+
+                <div class="offcanvas offcanvas-end si-offcanvas" tabindex="-1" id="stockIssueShowOffcanvas">
+                    <div class="offcanvas-header border-bottom">
+                        <h2 class="offcanvas-title fw-bold" style="font-size:16px;">Chi tiết phiếu xuất kho</h2>
+                        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Đóng"></button>
+                    </div>
+                    <div class="offcanvas-body flex-grow-1 overflow-auto" id="stockIssueShowBody"></div>
+                </div>
+
+                {{-- Panel trạng thái dùng chung cho mọi dòng bảng, nổi ra ngoài (position:fixed) để không bị cắt bởi vùng cuộn của bảng. --}}
+                <div class="hk-cat-panel gr-row-status-shared-panel" id="grRowStatusPanel" hidden style="width:160px;">
+                    <div class="hk-cat-list">
+                        <button type="button" class="hk-cat-item is-active" data-value="draft">Nháp</button>
+                        <button type="button" class="hk-cat-item" id="grRowStatusIssueBtn" data-value="issue">Đã xuất kho</button>
+                    </div>
+                </div>
+
             @endif
         </section>
     </main>
@@ -428,6 +481,92 @@
         wireHkFilterDropdown({
             root: 'hkGrOutboundStatusFilter', trigger: 'hkGrOutboundStatusTrigger', panel: 'hkGrOutboundStatusPanel',
             label: 'hkGrOutboundStatusLabel', list: 'hkGrOutboundStatusList', hidden: 'grOutboundStatusFilter',
+        });
+
+        /* ── Đổi trạng thái phiếu xuất kho ngay trên bảng (panel dùng chung, nổi position:fixed) ──
+           Dùng event delegation trên document vì các dòng bảng được nạp lại qua AJAX.
+           Panel được đặt bên ngoài vùng bảng có overflow, nên luôn hiển thị đầy đủ, không bị cắt. */
+        (function () {
+            const sharedPanel = document.getElementById('grRowStatusPanel');
+            const issueBtn    = document.getElementById('grRowStatusIssueBtn');
+            if (!sharedPanel || !issueBtn) return;
+
+            function closePanel() {
+                sharedPanel.hidden = true;
+                document.querySelectorAll('.gr-row-status-trigger.is-open').forEach(t => t.classList.remove('is-open'));
+            }
+
+            document.addEventListener('click', function (e) {
+                const trigger = e.target.closest('.gr-row-status-trigger');
+                if (trigger) {
+                    const wasOpenForThisTrigger = !sharedPanel.hidden && trigger.classList.contains('is-open');
+                    closePanel();
+
+                    if (!wasOpenForThisTrigger) {
+                        const rect = trigger.getBoundingClientRect();
+                        sharedPanel.style.top  = (rect.bottom + 6) + 'px';
+                        sharedPanel.style.left = Math.max(8, rect.right - 160) + 'px';
+                        issueBtn.dataset.issueUrl  = trigger.dataset.issueUrl;
+                        issueBtn.dataset.issueCode = trigger.dataset.issueCode;
+                        sharedPanel.hidden = false;
+                        trigger.classList.add('is-open');
+                    }
+                    return;
+                }
+
+                const item = e.target.closest('#grRowStatusPanel .hk-cat-item');
+                if (item) {
+                    if (item.dataset.value === 'issue') {
+                        const url  = item.dataset.issueUrl;
+                        const code = item.dataset.issueCode;
+                        if (url && confirm(`Xuất kho phiếu "${code}" sẽ trừ tồn kho ngay lập tức. Tiếp tục?`)) {
+                            const form = document.createElement('form');
+                            form.method = 'POST';
+                            form.action = url;
+                            form.innerHTML = `
+                                <input type="hidden" name="_token" value="${document.querySelector('meta[name="csrf-token"]')?.content || ''}">
+                                <input type="hidden" name="_method" value="PATCH">
+                            `;
+                            document.body.appendChild(form);
+                            form.submit();
+                        }
+                    }
+                    closePanel();
+                    return;
+                }
+
+                if (!e.target.closest('.gr-row-status-trigger') && !e.target.closest('#grRowStatusPanel')) {
+                    closePanel();
+                }
+            });
+
+            window.addEventListener('scroll', closePanel, true);
+            window.addEventListener('resize', closePanel);
+        })();
+
+        /* ── Xem chi tiết phiếu xuất kho: panel trượt từ phải, nạp nội dung qua AJAX ──
+           Dùng event delegation vì các dòng bảng được nạp lại qua AJAX. */
+        document.addEventListener('click', function (e) {
+            const trigger = e.target.closest('[data-stock-issue-show-trigger]');
+            if (!trigger) return;
+
+            const url = trigger.dataset.showUrl;
+            const offcanvasEl = document.getElementById('stockIssueShowOffcanvas');
+            const body = document.getElementById('stockIssueShowBody');
+            if (!url || !offcanvasEl || !body) return;
+
+            body.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-secondary" role="status"></div></div>';
+            bootstrap.Offcanvas.getOrCreateInstance(offcanvasEl).show();
+
+            fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
+                .then(res => {
+                    if (!res.ok) throw new Error('request-failed');
+                    return res.json();
+                })
+                .then(data => { body.innerHTML = data.html; })
+                .catch(() => {
+                    body.innerHTML = '<div class="text-danger p-4">Không thể tải chi tiết phiếu xuất kho. Vui lòng thử lại.</div>';
+                });
         });
 
         /* ── Low-stock alert card: click to filter table by "Sắp hết hàng" ── */
