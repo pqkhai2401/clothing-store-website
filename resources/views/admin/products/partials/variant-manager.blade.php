@@ -736,5 +736,3 @@ window.__VM_EXISTING__ = @json($existingVariants);
     }
 })();
 </script>
-@endpush
-@endonce

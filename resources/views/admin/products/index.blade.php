@@ -211,6 +211,14 @@
             <div data-admin-table-area>
                 @include('admin.products.partials.table')
             </div>
+
+            <div class="offcanvas offcanvas-end product-edit-offcanvas" tabindex="-1" id="productEditOffcanvas">
+                <div data-product-edit-body>
+                    <div class="offcanvas-body text-center py-5">
+                        <div class="spinner-border text-secondary" role="status"></div>
+                    </div>
+                </div>
+            </div>
         </section>
     </div>
 @endsection

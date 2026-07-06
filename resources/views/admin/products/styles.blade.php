@@ -901,4 +901,7 @@
         box-shadow: 0 0 0 3px rgba(59,130,246,.15) !important;
     }
     [data-theme="dark"] .hk-add-modal .form-text { color: #64748B !important; }
+
+    /* ── Panel "Sửa sản phẩm" trượt từ phải ── */
+    .product-edit-offcanvas { width: min(1100px, 95vw) !important; }
     </style>

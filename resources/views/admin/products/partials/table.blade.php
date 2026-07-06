@@ -347,10 +347,13 @@ html:not([data-theme="dark"]) .stock-total {
 
                                     <td class="text-end pe-4">
                                         <div class="d-inline-flex align-items-center gap-1">
-                                            <a href="{{ route('admin.products.edit', $product->id) }}"
-                                                class="product-more-btn d-inline-flex align-items-center justify-content-center" title="Sửa">
+                                            <button type="button"
+                                                class="product-more-btn d-inline-flex align-items-center justify-content-center"
+                                                data-product-edit-trigger
+                                                data-edit-url="{{ route('admin.products.edit', $product->id) }}"
+                                                title="Sửa">
                                                 <i class="fa-regular fa-pen-to-square"></i>
-                                            </a>
+                                            </button>
                                             <button type="button" class="product-more-btn text-danger d-inline-flex align-items-center justify-content-center"
                                                 data-delete-url="{{ route('admin.products.destroy', $product->id) }}"
                                                 data-delete-name="{{ $product->name }}"

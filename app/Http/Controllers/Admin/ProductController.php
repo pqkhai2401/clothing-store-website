@@ -14,6 +14,7 @@ use App\Models\Size;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Maatwebsite\Excel\Facades\Excel;
@@ -235,7 +236,20 @@ class ProductController extends Controller
             ->with('success', "Thêm sản phẩm \"{$product->name}\" thành công.");
     }
 
-    public function edit(string $id)
+    public function edit(Request $request, string $id)
+    {
+        $data = $this->editFormData($id);
+
+        if ($request->ajax()) {
+            return response()->json([
+                'html' => view('admin.products.partials.edit-content', $data)->render(),
+            ]);
+        }
+
+        return view('admin.products.edit', $data);
+    }
+
+    private function editFormData(string $id): array
     {
         $product    = Product::with(['productVariants', 'productImages'])->findOrFail($id);
         $categories = Category::with('childrenCategories')->orderBy('name')->get();
@@ -254,17 +268,14 @@ class ProductController extends Controller
             ])->toArray())
             ->toArray();
 
-        return view('admin.products.edit', compact(
-            'product', 'categories', 'brands', 'genders',
-            'colors', 'sizes', 'existingVariants'
-        ));
+        return compact('product', 'categories', 'brands', 'genders', 'colors', 'sizes', 'existingVariants');
     }
 
     public function update(Request $request, string $id)
     {
         $product = Product::with('productImages')->findOrFail($id);
 
-        $request->validate([
+        $validator = Validator::make($request->all(), [
             'name'        => ['required', 'string', 'max:255'],
             'slug'        => ['nullable', 'string', 'max:255', Rule::unique('products', 'slug')->ignore($id)],
             'category_id' => ['required', 'integer', Rule::exists('categories', 'id')],
@@ -294,6 +305,21 @@ class ProductController extends Controller
             'image_2.max'          => 'Ảnh phụ 2 không được vượt quá 2MB.',
             'image_3.max'          => 'Ảnh phụ 3 không được vượt quá 2MB.',
         ]);
+
+        if ($validator->fails()) {
+            if ($request->ajax() || $request->wantsJson()) {
+                $request->flash();
+                $data = $this->editFormData($id);
+                $errorBag = (new \Illuminate\Support\ViewErrorBag())->put('default', $validator->errors());
+                $html = view('admin.products.partials.edit-content', $data)
+                    ->with('errors', $errorBag)
+                    ->render();
+
+                return response()->json(['message' => 'Dữ liệu chưa hợp lệ.', 'html' => $html], 422);
+            }
+
+            return back()->withErrors($validator)->withInput();
+        }
 
         $slug = $request->filled('slug')
             ? Str::slug($request->input('slug'))
@@ -371,8 +397,13 @@ class ProductController extends Controller
             throw $e;
         }
 
-        return redirect()->route('admin.products.list')
-            ->with('success', "Cập nhật sản phẩm \"{$product->name}\" thành công.");
+        $message = "Cập nhật sản phẩm \"{$product->name}\" thành công.";
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(['message' => $message]);
+        }
+
+        return redirect()->route('admin.products.list')->with('success', $message);
     }
 
     public function toggleStatus(Request $request, string $id)
