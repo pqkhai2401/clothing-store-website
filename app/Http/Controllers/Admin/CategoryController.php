@@ -39,6 +39,7 @@ class CategoryController extends Controller
         };
 
         $categories = $query->paginate($perPage)->withQueryString();
+        $parentCategories = Category::whereNull('parent_id')->orderBy('name')->get(['id', 'name']);
 
         if ($request->ajax()) {
             return response()->json([
@@ -46,7 +47,43 @@ class CategoryController extends Controller
             ]);
         }
 
-        return view('admin.categories.index', compact('categories', 'keyword', 'perPage'));
+        return view('admin.categories.index', compact('categories', 'keyword', 'perPage', 'parentCategories'));
+    }
+
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'name'      => ['required', 'string', 'max:255'],
+            'parent_id' => ['nullable', 'integer', Rule::exists('categories', 'id')],
+            'status'    => ['required', Rule::in([0, 1, '0', '1'])],
+        ], [
+            'name.required'    => 'Tên danh mục không được để trống.',
+            'name.max'         => 'Tên danh mục không được quá 255 ký tự.',
+            'parent_id.exists' => 'Danh mục cha không hợp lệ.',
+            'status.required'  => 'Vui lòng chọn trạng thái.',
+        ]);
+
+        $slug = Str::slug($validated['name']);
+        if (Category::where('slug', $slug)->exists()) {
+            $slug = $slug . '-' . time();
+        }
+
+        $category = Category::create([
+            'name'      => $validated['name'],
+            'slug'      => $slug,
+            'parent_id' => $validated['parent_id'] ?? null,
+            'status'    => (bool) (int) $validated['status'],
+        ]);
+
+        if ($request->ajax()) {
+            return response()->json([
+                'message'  => "Thêm danh mục \"{$category->name}\" thành công.",
+                'category' => $category,
+            ], 201);
+        }
+
+        return redirect()->route('admin.categories.list')
+            ->with('success', "Thêm danh mục \"{$category->name}\" thành công.");
     }
 
     public function edit(string $id)

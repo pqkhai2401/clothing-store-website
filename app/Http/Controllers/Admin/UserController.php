@@ -78,10 +78,18 @@ class UserController extends Controller
         $request = request();
         $context = $this->resolveContext($request);
         $this->authorizeContext($request, $context['type']);
+
+        $currentUser             = $request->user();
+        $currentIsProtectedAdmin = $currentUser->isAdmin() && (bool) $currentUser->is_protected;
+
         $roles = $this->rolesForContext($context['type']);
+        if (! $currentIsProtectedAdmin) {
+            $roles = $roles->filter(fn ($role) => $role->name !== UserRole::ADMIN->value)->values();
+        }
 
         return view('admin.users.create', [
-            'roles' => $roles,
+            'roles'                       => $roles,
+            'currentUserIsProtectedAdmin' => $currentIsProtectedAdmin,
             ...$context,
         ]);
     }
@@ -107,15 +115,33 @@ class UserController extends Controller
             'lock_reason' => ['nullable', 'string', 'max:255'],
         ], $this->validationMessages());
 
-        $user = User::create([
-            'username' => $validated['username'],
-            'email' => $validated['email'],
-            'phone_number' => $validated['phone_number'] ?? null,
-            'is_active' => (bool) $validated['is_active'],
-            'password' => Hash::make($validated['password']),
-        ]);
+        $currentUser             = $request->user();
+        $currentIsProtectedAdmin = $currentUser->isAdmin() && (bool) $currentUser->is_protected;
+        $currentIsNormalAdmin    = $currentUser->isAdmin() && ! (bool) $currentUser->is_protected;
 
         $roleForUser = $this->roleForContext($context['type'], $validated['role_id'] ?? null);
+
+        if ($currentIsNormalAdmin && $roleForUser?->name === UserRole::ADMIN->value) {
+            return back()->withErrors(['role_id' => 'Quản trị viên thường chỉ được tạo tài khoản nhân viên.'])->withInput();
+        }
+
+        if ($request->boolean('is_protected') && ! $currentIsProtectedAdmin) {
+            return back()->withErrors(['is_protected' => 'Chỉ admin hệ thống mới có quyền tạo admin hệ thống được bảo vệ.'])->withInput();
+        }
+
+        $isProtected = $currentIsProtectedAdmin
+            && $request->boolean('is_protected')
+            && $roleForUser?->name === UserRole::ADMIN->value;
+
+        $user = User::create([
+            'username'     => $validated['username'],
+            'email'        => $validated['email'],
+            'phone_number' => $validated['phone_number'] ?? null,
+            'is_active'    => (bool) $validated['is_active'],
+            'password'     => Hash::make($validated['password']),
+            'is_protected' => $isProtected,
+        ]);
+
         if ($roleForUser) {
             $user->syncRoles([$roleForUser->name]);
         }
@@ -144,12 +170,16 @@ class UserController extends Controller
         $this->authorizeContext(request(), $context['type'], $user);
 
         if (request()->expectsJson() || request()->ajax()) {
+            $currentUser      = request()->user();
+            $currentIsNormal  = $currentUser->isAdmin() && ! (bool) $currentUser->is_protected;
+            $roles = $this->rolesForContext($context['type']);
+            if ($currentIsNormal) {
+                $roles = $roles->filter(fn ($r) => $r->name !== UserRole::ADMIN->value)->values();
+            }
+
             return response()->json([
-                'user' => $this->userModalPayload($user),
-                'roles' => $this->rolesForContext($context['type'])->map(fn ($role) => [
-                    'id' => $role->id,
-                    'name' => $role->name,
-                ])->values(),
+                'user'      => $this->userModalPayload($user),
+                'roles'     => $roles->map(fn ($role) => ['id' => $role->id, 'name' => $role->name])->values(),
                 'show_role' => ($context['type'] !== 'customer'),
             ]);
         }
@@ -192,51 +222,107 @@ class UserController extends Controller
         ], $this->validationMessages());
 
         $currentUser = $request->user();
-        $isSelf = (int) $currentUser->id === (int) $user->id;
-        $isProtectedTarget = (bool) $user->is_protected;
-        $isProtectedEditedByOther = $isProtectedTarget && ! $isSelf;
-        $currentRoleId = $user->roles()->first()?->id;
-        $statusChanged = (bool) $validated['is_active'] !== (bool) $user->is_active;
-        $roleChanged = ! empty($validated['role_id']) && (int) $validated['role_id'] !== (int) $currentRoleId;
-        $passwordChanged = filled($validated['password'] ?? null);
+        $targetUser  = $user;
 
+        $isSelf = (int) $currentUser->id === (int) $targetUser->id;
+
+        $currentIsProtectedAdmin = $currentUser->isAdmin() && (bool) $currentUser->is_protected;
+        $currentIsNormalAdmin    = $currentUser->isAdmin() && ! (bool) $currentUser->is_protected;
+
+        $targetIsProtectedAdmin = $targetUser->isAdmin() && (bool) $targetUser->is_protected;
+        $targetIsNormalAdmin    = $targetUser->isAdmin() && ! (bool) $targetUser->is_protected;
+
+        $currentRoleId   = $targetUser->roles()->first()?->id;
+        $statusChanged   = (bool) $validated['is_active'] !== (bool) $targetUser->is_active;
+        $roleChanged     = ! empty($validated['role_id']) && (int) $validated['role_id'] !== (int) $currentRoleId;
+        $passwordChanged = filled($validated['password'] ?? null);
+        $protectedChanged = $request->has('is_protected')
+            && (bool) $request->boolean('is_protected') !== (bool) $targetUser->is_protected;
+
+        // 1. Block self-lock
         if ($isSelf && $statusChanged && ! (bool) $validated['is_active']) {
             return $this->validationErrorResponse($request, 'is_active', 'Bạn không thể tự khóa tài khoản đang đăng nhập.');
         }
 
+        // 2. Block self-role-change
         if ($isSelf && $roleChanged) {
             return $this->validationErrorResponse($request, 'role_id', 'Bạn không thể tự thay đổi vai trò của chính mình.');
         }
 
-        if ($isProtectedEditedByOther && ($statusChanged || $roleChanged || $passwordChanged)) {
-            return $this->validationErrorResponse(
-                $request,
-                'is_active',
-                'Không thể thay đổi vai trò, trạng thái hoặc mật khẩu của admin hệ thống.'
-            );
+        // 3. Only protected admin can toggle is_protected
+        if ($protectedChanged && ! $currentIsProtectedAdmin) {
+            return $this->validationErrorResponse($request, 'is_protected', 'Chỉ admin hệ thống mới có quyền thay đổi quyền bảo vệ.');
         }
 
-        $canChangeStatus = ! $isProtectedEditedByOther && ! ($isSelf && $context['type'] === 'staff');
-        $canChangeRole = ! $isProtectedEditedByOther && ! $isSelf;
-        $canChangePassword = ! $isProtectedEditedByOther;
+        // 4. Cannot self-unprotect
+        if ($isSelf && $protectedChanged && ! $request->boolean('is_protected')) {
+            return $this->validationErrorResponse($request, 'is_protected', 'Bạn không thể tự tắt quyền bảo vệ của chính mình.');
+        }
 
+        // 5. Cannot remove last protected admin
+        if ($protectedChanged && ! $request->boolean('is_protected') && (bool) $targetUser->is_protected) {
+            $remainingCount = User::role(UserRole::ADMIN->value)
+                ->where('is_protected', true)
+                ->count();
+            if ($remainingCount <= 1) {
+                return $this->validationErrorResponse($request, 'is_protected', 'Không thể tắt quyền bảo vệ vì đây là admin hệ thống cuối cùng.');
+            }
+        }
+
+        // 6. Cannot change role of protected admin
+        if ($targetIsProtectedAdmin && $roleChanged) {
+            return $this->validationErrorResponse($request, 'role_id', 'Không thể thay đổi vai trò của admin hệ thống.');
+        }
+
+        // 7. Cannot lock (deactivate) a protected admin
+        if ($targetIsProtectedAdmin && $statusChanged && ! (bool) $validated['is_active']) {
+            return $this->validationErrorResponse($request, 'is_active', 'Không thể khóa tài khoản admin hệ thống.');
+        }
+
+        // 7a. is_protected can only be set on admin accounts
+        if ($protectedChanged && $request->boolean('is_protected') && ! $targetUser->isAdmin()) {
+            return $this->validationErrorResponse($request, 'is_protected', 'Chỉ tài khoản admin mới có thể được cấp quyền bảo vệ.');
+        }
+
+        // 8. Normal admin cannot edit protected admin (any action)
+        if ($currentIsNormalAdmin && $targetIsProtectedAdmin) {
+            return $this->validationErrorResponse($request, 'permission', 'Quản trị viên thường không có quyền chỉnh sửa admin hệ thống.');
+        }
+
+        // 9. Normal admin cannot change sensitive data of another normal admin
+        if ($currentIsNormalAdmin && $targetIsNormalAdmin && ! $isSelf
+            && ($statusChanged || $roleChanged || $passwordChanged || $protectedChanged)) {
+            return $this->validationErrorResponse($request, 'permission', 'Quản trị viên thường không có quyền thay đổi vai trò, trạng thái hoặc mật khẩu của quản trị viên khác.');
+        }
+
+        // 10. Normal admin cannot promote anyone to admin role
+        if ($currentIsNormalAdmin && $roleChanged) {
+            $newRole = Role::find((int) $validated['role_id']);
+            if ($newRole?->name === UserRole::ADMIN->value) {
+                return $this->validationErrorResponse($request, 'role_id', 'Quản trị viên thường không có quyền cấp vai trò quản trị viên.');
+            }
+        }
+
+        // --- Build update data ---
         $updateData = [
-            'username' => $validated['username'],
-            'email' => $validated['email'],
+            'username'     => $validated['username'],
+            'email'        => $validated['email'],
             'phone_number' => $validated['phone_number'] ?? null,
+            'is_active'    => (bool) $validated['is_active'],
+            'lock_reason'  => (bool) $validated['is_active'] ? null : ($validated['lock_reason'] ?? null),
         ];
 
-        if ($canChangeStatus) {
-            $updateData['is_active'] = (bool) $validated['is_active'];
-            $updateData['lock_reason'] = (bool) $validated['is_active'] ? null : ($validated['lock_reason'] ?? null);
+        if ($passwordChanged) {
+            $updateData['password'] = Hash::make($validated['password']);
         }
 
-        if ($canChangePassword && $passwordChanged) {
-            $updateData['password'] = Hash::make($validated['password']);
+        if ($currentIsProtectedAdmin && $request->has('is_protected') && $targetUser->isAdmin()) {
+            $updateData['is_protected'] = $request->boolean('is_protected');
         }
 
         $user->update($updateData);
 
+        $canChangeRole = ! $targetIsProtectedAdmin && ! $isSelf;
         if ($canChangeRole) {
             $roleForUser = $this->roleForContext($context['type'], $validated['role_id'] ?? null, $user);
             if ($roleForUser) {
