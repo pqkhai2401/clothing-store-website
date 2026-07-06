@@ -40,7 +40,6 @@
     </main>
 
     @unless(View::hasSection('auth_standalone'))
-        @include('partials.newsletter')
         @include('partials.footer')
     @endunless
 
