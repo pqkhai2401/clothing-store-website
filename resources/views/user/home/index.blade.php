@@ -250,12 +250,12 @@
         </div>
     </section>
 
-    <!-- 6. Trending Products -->
+    <!-- 6. products with the most views -->
     <section class="py-5 bg-light">
         <div class="container-fluid px-lg-5">
             <div class="section-header text-center">
-                <h2 class="section-title">Đang Thịnh Hành</h2>
-                <div class="section-subtitle">Những phong cách được yêu thích nhất mùa này</div>
+                <h2 class="section-title">ĐƯỢC QUAN TÂM NHIỀU NHẤT</h2>
+                <div class="section-subtitle">Khám phá những sản phẩm được xem nhiều nhất trên cửa hàng.</div>
             </div>
             
             @php
