@@ -105,36 +105,6 @@
             height: 350px;
         }
     }
-
-
-
-    /* Promotional Section */
-    .promo-section {
-        height: 60vh;
-        background-image: linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.3)), url("{{ asset('images/promo_banner.png') }}");
-        background-size: cover;
-        background-position: center;
-        background-attachment: fixed;
-        display: flex;
-        align-items: center;
-        color: #ffffff;
-    }
-
-    .promo-title {
-        font-size: 3rem;
-        margin-bottom: 20px;
-    }
-
-    @media (max-width: 768px) {
-        .promo-section {
-            height: 45vh;
-            background-attachment: scroll;
-        }
-        .promo-title {
-            font-size: 2rem;
-        }
-    }
-
     /* Section Title */
     .section-header {
         margin-bottom: 50px;
@@ -300,20 +270,5 @@
             @include('partials.product-grid', ['products' => $trendingNow, 'cols' => 'col-6 col-md-3'])
         </div>
     </section>
-
-    <!-- 7. Promotional Banner -->
-    <section class="promo-section">
-        <div class="container">
-            <div class="row">
-                <div class="col-lg-6 col-md-8 text-start animate__animated animate__fadeInLeft px-4 px-md-0">
-                    <span class="text-uppercase tracking-wider font-semibold text-white fs-6 mb-3 d-block">Bộ Sưu Tập Thân Thiện Môi Trường</span>
-                    <h2 class="promo-title">BỘ SƯU TẬP BỀN VỮNG</h2>
-                    <p class="fs-5 mb-4 text-white opacity-75">Được làm từ 100% vải hữu cơ và tái chế. Thời trang được thiết kế để vừa thanh lịch hôm nay, vừa bảo vệ ngày mai.</p>
-                    <a href="{{ url('/products?collection=sustainable') }}" class="btn btn-black bg-white text-dark border-white">Khám Phá Bộ Sưu Tập</a>
-                </div>
-            </div>
-        </div>
-    </section>
-
 
 @endsection
