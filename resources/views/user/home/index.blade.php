@@ -315,38 +315,5 @@
         </div>
     </section>
 
-    <!-- 8. Customer Reviews -->
-    <section class="py-5 my-5">
-        <div class="container-fluid px-lg-5">
-            <div class="section-header text-center">
-                <h2 class="section-title">Khách Hàng Nói Gì</h2>
-                <div class="section-subtitle">Những trải nghiệm thực tế từ cộng đồng khách hàng của chúng tôi</div>
-            </div>
-            
-            @php
-                $mockReviews = [
-                    [
-                        'author' => 'Minh Tuấn',
-                        'rating' => 5,
-                        'comment' => 'Chất lượng áo linen thực sự xuất sắc. Thiết kế tối giản, vừa vặn hoàn hảo và vải cực kỳ thoáng mát. Ngay lập tức trở thành item không thể thiếu trong tủ đồ hè của tôi.',
-                        'date' => '12 tháng 5, 2026'
-                    ],
-                    [
-                        'author' => 'Thu Hà',
-                        'rating' => 5,
-                        'comment' => 'Lúc đầu tôi còn nghi ngờ về gợi ý từ AI, nhưng nó đề xuất chiếc blazer len may đo vừa như in với vóc dáng của tôi. Thanh toán trơn tru và giao hàng nhanh chóng.',
-                        'date' => '01 tháng 6, 2026'
-                    ],
-                    [
-                        'author' => 'Hoàng Long',
-                        'rating' => 5,
-                        'comment' => 'Dịch vụ khách hàng xuất sắc và bao bì rất đẹp. Rõ ràng thương hiệu này quan tâm đến môi trường, từ chất liệu vải cho đến hộp giao hàng có thể tái chế.',
-                        'date' => '10 tháng 6, 2026'
-                    ]
-                ];
-            @endphp
-            
-            @include('partials.review-list', ['reviews' => $mockReviews])
-        </div>
-    </section>
+
 @endsection
