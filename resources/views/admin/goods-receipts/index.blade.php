@@ -145,10 +145,6 @@
                             onclick="alert('Tính năng Cập nhật nhanh số lượng đang được phát triển.')">
                             <i class="fa-solid fa-chart-column me-1"></i> Cập nhật nhanh số lượng
                         </button>
-                        <button type="button" class="btn gr-btn-emerald product-action-btn"
-                            onclick="alert('Tính năng Lập phiếu kiểm kê đang được phát triển.')">
-                            <i class="fa-regular fa-clipboard me-1"></i> Lập phiếu kiểm kê
-                        </button>
                     @elseif($tab === 'inbound')
                         <a href="{{ route('admin.goods-receipts.create') }}" class="btn btn-dark product-action-btn">
                             <i class="fa-solid fa-plus me-1"></i> Tạo phiếu nhập kho
@@ -160,6 +156,11 @@
                         <button type="button" class="btn gr-btn-emerald product-action-btn"
                             data-bs-toggle="offcanvas" data-bs-target="#stockIssueOffcanvas">
                             <i class="fa-solid fa-plus me-1"></i> Tạo phiếu xuất kho
+                        </button>
+                    @elseif($tab === 'stocktake')
+                        <button type="button" class="btn gr-btn-emerald product-action-btn"
+                            data-bs-toggle="modal" data-bs-target="#stocktakeModal">
+                            <i class="fa-regular fa-clipboard me-1"></i> Lập phiếu kiểm kê
                         </button>
                     @endif
                 </div>
@@ -173,6 +174,8 @@
                     class="gr-tab {{ ($tab ?? '') === 'inbound' ? 'is-active' : '' }}">Đơn nhập hàng</a>
                 <a href="{{ route('admin.goods-receipts.list', ['tab' => 'outbound']) }}"
                     class="gr-tab {{ ($tab ?? '') === 'outbound' ? 'is-active' : '' }}">Đơn xuất kho</a>
+                <a href="{{ route('admin.goods-receipts.list', ['tab' => 'stocktake']) }}"
+                    class="gr-tab {{ ($tab ?? '') === 'stocktake' ? 'is-active' : '' }}">Phiếu kiểm kê</a>
             </div>
 
             @if(($tab ?? 'overview') === 'overview')
@@ -372,6 +375,56 @@
                     </div>
                 </div>
 
+            @elseif($tab === 'stocktake')
+
+                <form method="GET" action="{{ route('admin.goods-receipts.list') }}" id="stocktakeSearchForm"
+                      class="product-toolbar">
+                    <input type="hidden" name="tab" value="stocktake">
+                    <input type="hidden" name="per_page" value="{{ $perPage }}">
+                    <div class="product-toolbar-left">
+                        <input type="search" name="search" data-admin-search id="stocktakeRealtimeSearch"
+                            class="form-control product-search"
+                            value="{{ $keyword }}"
+                            placeholder="Tìm theo mã phiếu kiểm kê..." autocomplete="off">
+                        @php
+                            $stocktakeStatusLabelMap = ['' => 'Tất cả trạng thái', 'pending' => 'Chờ xử lý', 'approved' => 'Đã duyệt', 'rejected' => 'Đã hủy'];
+                        @endphp
+                        <input type="hidden" name="status" id="grStocktakeStatusFilter" data-admin-filter value="{{ $status }}">
+                        <div class="hk-cat-filter gr-status-filter" id="hkGrStocktakeStatusFilter">
+                            <button type="button" class="hk-cat-trigger" id="hkGrStocktakeStatusTrigger" aria-haspopup="listbox" aria-expanded="false">
+                                <span class="hk-cat-trigger-label" id="hkGrStocktakeStatusLabel">{{ $stocktakeStatusLabelMap[$status] ?? 'Tất cả trạng thái' }}</span>
+                                <i class="fa-solid fa-chevron-down hk-cat-arrow"></i>
+                            </button>
+                            <div class="hk-cat-panel" id="hkGrStocktakeStatusPanel" hidden>
+                                <div class="hk-cat-list" id="hkGrStocktakeStatusList" role="listbox">
+                                    @foreach($stocktakeStatusLabelMap as $value => $label)
+                                        <button type="button" class="hk-cat-item {{ $status === $value ? 'is-active' : '' }}" data-value="{{ $value }}" data-label="{{ $label }}">{{ $label }}</button>
+                                    @endforeach
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+
+                <div data-admin-table-area>
+                    @include('admin.goods-receipts.partials.stocktake-table')
+                </div>
+
+                @include('admin.goods-receipts.partials.stocktake-modal', [
+                    'variants' => $stocktakeVariants ?? collect(),
+                    'stocktakeCode' => $stocktakeCodePreview ?? null,
+                ])
+
+                <div class="modal fade" id="stocktakeDetailModal" tabindex="-1" aria-labelledby="stocktakeDetailModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered stkd-modal-dialog">
+                        <div class="modal-content" id="stocktakeDetailModalContent">
+                            <div class="modal-body text-center py-5">
+                                <div class="spinner-border text-secondary" role="status"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
             @endif
         </section>
     </main>
@@ -379,6 +432,7 @@
 
 @push('scripts')
     @include('layouts.components.confirm.delete')
+    @include('layouts.components.confirm.update')
     @include('admin.partials.realtime-table')
     <script>
     (function () {
@@ -482,6 +536,64 @@
             root: 'hkGrOutboundStatusFilter', trigger: 'hkGrOutboundStatusTrigger', panel: 'hkGrOutboundStatusPanel',
             label: 'hkGrOutboundStatusLabel', list: 'hkGrOutboundStatusList', hidden: 'grOutboundStatusFilter',
         });
+
+        wireHkFilterDropdown({
+            root: 'hkGrStocktakeStatusFilter', trigger: 'hkGrStocktakeStatusTrigger', panel: 'hkGrStocktakeStatusPanel',
+            label: 'hkGrStocktakeStatusLabel', list: 'hkGrStocktakeStatusList', hidden: 'grStocktakeStatusFilter',
+        });
+
+        /* ── Xem chi tiết phiếu kiểm kê: nạp nội dung qua AJAX vào modal dùng chung ──
+           Dùng event delegation vì các dòng bảng được nạp lại qua AJAX. */
+        (function () {
+            const detailModal = document.getElementById('stocktakeDetailModal');
+            const detailContent = document.getElementById('stocktakeDetailModalContent');
+            if (!detailModal || !detailContent) return;
+
+            document.addEventListener('click', function (e) {
+                const trigger = e.target.closest('[data-stocktake-show-trigger]');
+                if (!trigger) return;
+                const url = trigger.dataset.showUrl;
+                if (!url) return;
+
+                detailContent.innerHTML = '<div class="modal-body text-center py-5"><div class="spinner-border text-secondary" role="status"></div></div>';
+                bootstrap.Modal.getOrCreateInstance(detailModal).show();
+
+                fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
+                    .then(res => { if (!res.ok) throw new Error('request-failed'); return res.json(); })
+                    .then(data => { detailContent.innerHTML = data.html; })
+                    .catch(() => {
+                        detailContent.innerHTML = '<div class="modal-body text-danger p-4">Không thể tải chi tiết phiếu kiểm kê. Vui lòng thử lại.</div>';
+                    });
+            });
+
+            detailModal.addEventListener('hidden.bs.modal', function () {
+                detailContent.innerHTML = '<div class="modal-body text-center py-5"><div class="spinner-border text-secondary" role="status"></div></div>';
+            });
+
+            // Duyệt/Hủy phiếu kiểm kê: dùng modal xác nhận riêng của hệ thống thay cho confirm() gốc của trình duyệt.
+            document.addEventListener('click', function (e) {
+                const rejectBtn = e.target.closest('[data-stocktake-reject-trigger]');
+                if (rejectBtn) {
+                    window.openUpdateConfirmModal({
+                        title: 'Hủy bỏ phiếu kiểm kê?',
+                        message: `Bạn có chắc chắn muốn hủy bỏ phiếu kiểm kê "${rejectBtn.dataset.code}"? Phiếu sẽ chuyển sang trạng thái Đã hủy và không thể khôi phục.`,
+                        updateUrl: rejectBtn.dataset.rejectUrl,
+                        updateMethod: 'PATCH',
+                    });
+                    return;
+                }
+
+                const approveBtn = e.target.closest('[data-stocktake-approve-trigger]');
+                if (approveBtn) {
+                    window.openUpdateConfirmModal({
+                        title: 'Xác nhận cân bằng kho?',
+                        message: `Hệ thống sẽ tự động tạo các phiếu nhập/xuất kho tương ứng để cân bằng số lượng thực tế cho phiếu "${approveBtn.dataset.code}". Hành động này không thể hoàn tác.`,
+                        updateUrl: approveBtn.dataset.approveUrl,
+                        updateMethod: 'PATCH',
+                    });
+                }
+            });
+        })();
 
         /* ── Đổi trạng thái phiếu xuất kho ngay trên bảng (panel dùng chung, nổi position:fixed) ──
            Dùng event delegation trên document vì các dòng bảng được nạp lại qua AJAX.

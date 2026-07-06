@@ -294,7 +294,7 @@ class StockIssueController extends Controller
     private function generateCode(): string
     {
         $prefix = 'PXK' . now()->format('Ymd');
-        $lastToday = StockIssue::where('code', 'like', "{$prefix}%")
+        $lastToday = StockIssue::withTrashed()->where('code', 'like', "{$prefix}%")
             ->orderByDesc('code')
             ->first();
 

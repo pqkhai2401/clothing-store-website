@@ -7,6 +7,7 @@ use App\Models\Category;
 use App\Models\GoodsReceipt;
 use App\Models\ProductVariant;
 use App\Models\StockIssue;
+use App\Models\Stocktake;
 use App\Models\Supplier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -19,15 +20,58 @@ class GoodsReceiptController extends Controller
 
     public function index(Request $request)
     {
-        $tab = in_array($request->input('tab'), ['overview', 'inbound', 'outbound'], true)
+        $tab = in_array($request->input('tab'), ['overview', 'inbound', 'outbound', 'stocktake'], true)
             ? $request->input('tab')
             : 'overview';
 
         return match ($tab) {
-            'inbound'  => $this->inboundIndex($request),
-            'outbound' => $this->outboundIndex($request),
-            default    => $this->overviewIndex($request),
+            'inbound'   => $this->inboundIndex($request),
+            'outbound'  => $this->outboundIndex($request),
+            'stocktake' => $this->stocktakeIndex($request),
+            default     => $this->overviewIndex($request),
         };
+    }
+
+    private function stocktakeIndex(Request $request)
+    {
+        $keyword = trim((string) $request->input('search', $request->input('keyword')));
+        $status  = $request->input('status');
+        $sort = $request->input('sort', 'id');
+        $direction = in_array($request->input('direction'), ['asc', 'desc'], true) ? $request->input('direction') : 'desc';
+        $perPage = in_array((int) $request->input('per_page'), [10, 25, 50], true)
+            ? (int) $request->input('per_page')
+            : 10;
+
+        $query = Stocktake::with(['creator', 'processor'])->withCount('items');
+
+        if ($keyword !== '') {
+            $query->where(function ($q) use ($keyword) {
+                $q->where('code', 'like', "%{$keyword}%")
+                    ->orWhere('note', 'like', "%{$keyword}%");
+            });
+        }
+
+        if (in_array($status, [Stocktake::STATUS_PENDING, Stocktake::STATUS_APPROVED, Stocktake::STATUS_REJECTED], true)) {
+            $query->where('status', $status);
+        }
+
+        match ($sort) {
+            'created_at' => $query->orderBy('created_at', $direction),
+            default      => $query->orderBy('id', $direction),
+        };
+
+        $stocktakes = $query->paginate($perPage)->withQueryString();
+
+        if ($request->ajax()) {
+            return response()->json([
+                'html' => view('admin.goods-receipts.partials.stocktake-table', compact('stocktakes'))->render(),
+            ]);
+        }
+
+        $stocktakeVariants = $this->stockIssueVariants();
+        $stocktakeCodePreview = $this->stocktakeCodePreview();
+
+        return view('admin.goods-receipts.index', compact('stocktakes', 'keyword', 'status', 'perPage', 'stocktakeVariants', 'stocktakeCodePreview') + ['tab' => 'stocktake']);
     }
 
     private function outboundIndex(Request $request)
@@ -131,16 +175,16 @@ class GoodsReceiptController extends Controller
         $activeVariants = ProductVariant::whereHas('product', fn ($q) => $q->whereNull('deleted_at'));
 
         return view('admin.goods-receipts.index', [
-            'tab'           => 'overview',
-            'variants'      => $variants,
-            'keyword'       => $keyword,
-            'categoryId'    => $categoryId,
-            'stockStatus'   => $stockStatus,
-            'perPage'       => $perPage,
-            'categories'    => $categories,
-            'totalStock'    => (int) $activeVariants->clone()->sum('stock'),
-            'totalValue'    => (float) ($activeVariants->clone()->selectRaw('SUM(stock * cost_price) as v')->value('v') ?? 0),
-            'lowStockCount' => $activeVariants->clone()->where('stock', '>', 0)->where('stock', '<=', self::LOW_STOCK_THRESHOLD)->count(),
+            'tab'               => 'overview',
+            'variants'          => $variants,
+            'keyword'           => $keyword,
+            'categoryId'        => $categoryId,
+            'stockStatus'       => $stockStatus,
+            'perPage'           => $perPage,
+            'categories'        => $categories,
+            'totalStock'        => (int) $activeVariants->clone()->sum('stock'),
+            'totalValue'        => (float) ($activeVariants->clone()->selectRaw('SUM(stock * cost_price) as v')->value('v') ?? 0),
+            'lowStockCount'     => $activeVariants->clone()->where('stock', '>', 0)->where('stock', '<=', self::LOW_STOCK_THRESHOLD)->count(),
         ]);
     }
 
@@ -227,6 +271,15 @@ class GoodsReceiptController extends Controller
                 'unit_price'   => (float) $v->sale_price,
             ])
             ->values();
+    }
+
+    private function stocktakeCodePreview(): string
+    {
+        $prefix = 'PKK' . now()->format('Ymd');
+        $lastToday = Stocktake::where('code', 'like', "{$prefix}%")->orderByDesc('code')->first();
+        $sequence = $lastToday ? ((int) substr($lastToday->code, -3)) + 1 : 1;
+
+        return $prefix . str_pad((string) $sequence, 3, '0', STR_PAD_LEFT);
     }
 
     public function store(Request $request)

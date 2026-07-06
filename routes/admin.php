@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\ReviewController;
 use App\Http\Controllers\Admin\SizeController;
 use App\Http\Controllers\Admin\StockIssueController;
+use App\Http\Controllers\Admin\StocktakeController;
 use App\Http\Controllers\Admin\SupplierController;
 use App\Http\Controllers\Admin\ProfileController;
 use App\Http\Controllers\Admin\UserController;
@@ -157,6 +158,14 @@ Route::middleware(['auth.login', 'admin'])
                 Route::get('/{id}', [StockIssueController::class, 'show'])->name('show');
                 Route::patch('/{id}/issue', [StockIssueController::class, 'issue'])->name('issue');
                 Route::delete('/{id}', [StockIssueController::class, 'destroy'])->name('destroy');
+            });
+
+        Route::middleware('permission:manage-goods-receipts')
+            ->prefix('stocktakes')->name('stocktakes.')->group(function () {
+                Route::post('/', [StocktakeController::class, 'store'])->name('store');
+                Route::get('/{id}', [StocktakeController::class, 'show'])->name('show');
+                Route::patch('/{id}/approve', [StocktakeController::class, 'approve'])->name('approve');
+                Route::patch('/{id}/reject', [StocktakeController::class, 'reject'])->name('reject');
             });
 
         Route::prefix('orders')->name('orders.')->group(function () {
