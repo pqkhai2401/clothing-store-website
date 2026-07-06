@@ -160,6 +160,27 @@ document.addEventListener('DOMContentLoaded', function () {
         list: 'hkProductColorList',
         hidden: 'productColorFilter',
     });
+
+    wireSimpleDropdown({
+        root: 'hkProductBrandFilter',
+        trigger: 'hkProductBrandTrigger',
+        panel: 'hkProductBrandPanel',
+        label: 'hkProductBrandLabel',
+        list: 'hkProductBrandList',
+        hidden: 'productBrandFilter',
+    });
+
+    /* ── Chip lọc nhanh "Sắp hết hàng" (tổng tồn kho < 10) ── */
+    const lowStockChip = document.getElementById('productLowStockChip');
+    const stockStatusFilter = document.getElementById('productStockStatusFilter');
+    if (lowStockChip && stockStatusFilter) {
+        lowStockChip.addEventListener('click', function () {
+            const next = stockStatusFilter.value === 'low_stock' ? '' : 'low_stock';
+            stockStatusFilter.value = next;
+            lowStockChip.classList.toggle('is-active', next === 'low_stock');
+            stockStatusFilter.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+    }
 });
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -273,5 +294,90 @@ document.addEventListener('DOMContentLoaded', function () {
     window.addEventListener('resize', function () {
         if (activeTooltip) positionStockTooltip(activeTooltip);
     });
+});
+
+/* ── Xuất Excel: ưu tiên các dòng đã chọn (checkbox), nếu không có dòng nào được chọn thì xuất theo bộ lọc hiện tại ── */
+function exportProducts() {
+    const checked = Array.from(document.querySelectorAll('.product-row-check:checked'));
+    const params = new URLSearchParams();
+
+    if (checked.length > 0) {
+        params.set('ids', checked.map(cb => cb.value).join(','));
+    } else {
+        const fields = {
+            category_id: 'productCategoryFilter',
+            parent_category_id: 'productParentCategoryFilter',
+            brand_id: 'productBrandFilter',
+            size_id: 'productSizeFilter',
+            color_id: 'productColorFilter',
+            status: 'productStatusFilter',
+            stock_status: 'productStockStatusFilter',
+            search: 'productRealtimeSearch',
+        };
+
+        Object.entries(fields).forEach(([param, elementId]) => {
+            const value = document.getElementById(elementId)?.value;
+            if (value !== undefined && value !== null && value !== '') {
+                params.set(param, value);
+            }
+        });
+    }
+
+    window.location.href = '{{ route('admin.products.export') }}?' + params.toString();
+}
+
+/* ── Toast thông báo (đồng bộ với component thông báo chung của trang) ── */
+function showProductToast(message, type = 'success') {
+    const container = document.getElementById('toast-container');
+    if (!container) { alert(message); return; }
+    const toast = document.createElement('div');
+    toast.className = `custom-toast server-toast ${type === 'error' ? 'toast-error' : 'toast-success'}`;
+    toast.style.pointerEvents = 'auto';
+    toast.innerHTML = `
+        <div class="toast-content">
+            <div class="toast-message">${message}</div>
+        </div>
+        <span class="toast-close" onclick="closeServerToast(this)">&times;</span>
+    `;
+    container.appendChild(toast);
+    setTimeout(() => {
+        if (document.body.contains(toast)) {
+            toast.classList.add('hiding');
+            setTimeout(() => toast.remove(), 300);
+        }
+    }, 5000);
+}
+
+/* ── Chuyển trạng thái Đang bán / Ẩn ngay trên bảng bằng nút gạt (không cần vào trang Sửa) ──
+   Dùng event delegation vì bảng được nạp lại qua AJAX. */
+document.addEventListener('change', function (e) {
+    const toggle = e.target.closest('.product-status-switch');
+    if (!toggle) return;
+
+    const url = toggle.dataset.toggleStatusUrl;
+    const label = toggle.closest('.product-status-switch-wrap')?.querySelector('.product-status-switch-label');
+    const previousChecked = !toggle.checked;
+    toggle.disabled = true;
+
+    fetch(url, {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+        },
+        body: JSON.stringify({}),
+    })
+        .then(res => { if (!res.ok) throw new Error('request-failed'); return res.json(); })
+        .then(data => {
+            if (label) label.textContent = data.status ? 'Đang bán' : 'Ẩn';
+            showProductToast(data.message);
+        })
+        .catch(() => {
+            toggle.checked = previousChecked;
+            showProductToast('Không thể cập nhật trạng thái sản phẩm. Vui lòng thử lại.', 'error');
+        })
+        .finally(() => { toggle.disabled = false; });
 });
 </script>

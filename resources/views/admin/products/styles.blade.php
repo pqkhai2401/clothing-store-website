@@ -215,6 +215,31 @@
         flex: 0 0 210px;
     }
 
+    .product-low-stock-chip {
+        display: inline-flex;
+        align-items: center;
+        white-space: nowrap;
+        height: 38px;
+        padding: 0 16px;
+        border: 1px solid #FCA5A5;
+        border-radius: 999px;
+        background: #fff;
+        color: #DC2626;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: background .15s, border-color .15s;
+    }
+    .product-low-stock-chip:hover {
+        background: #FEF2F2;
+        border-color: #F87171;
+    }
+    .product-low-stock-chip.is-active {
+        background: #DC2626;
+        border-color: #DC2626;
+        color: #fff;
+    }
+
     .product-action-btn {
         min-height: 38px;
         padding: 8px 16px;
@@ -381,6 +406,36 @@
         background: #F8FAFC;
         border: 1.5px solid #CBD5E1;
         color: #64748B;
+    }
+
+    .product-status-switch-wrap {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .product-status-switch {
+        width: 38px;
+        height: 20px;
+        cursor: pointer;
+        background-color: #CBD5E1;
+        border-color: #CBD5E1;
+    }
+    .product-status-switch:checked {
+        background-color: #16A34A;
+        border-color: #16A34A;
+    }
+    .product-status-switch:focus {
+        box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.15);
+        border-color: #16A34A;
+    }
+    .product-status-switch-label {
+        font-size: 12px;
+        font-weight: 700;
+        color: #64748B;
+        white-space: nowrap;
+    }
+    .product-status-switch:checked ~ .product-status-switch-label {
+        color: #16A34A;
     }
 
     .price-display {

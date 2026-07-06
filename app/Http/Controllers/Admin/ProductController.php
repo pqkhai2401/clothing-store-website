@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Enums\Gender;
+use App\Exports\ProductsExport;
 use App\Http\Controllers\Controller;
 use App\Models\Brand;
 use App\Models\Category;
@@ -15,9 +16,12 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ProductController extends Controller
 {
+    public const LOW_STOCK_THRESHOLD = 10;
+
     public function index(Request $request)
     {
         $search           = trim((string) $request->input('search', $request->input('keyword')));
@@ -28,6 +32,7 @@ class ProductController extends Controller
         $sizeId           = $request->input('size_id');
         $colorId          = $request->input('color_id');
         $status           = $request->input('status');
+        $stockStatus      = $request->input('stock_status');
         $sort       = $request->input('sort', 'id');
         $direction  = $request->input('direction', 'desc');
         $perPage    = in_array((int) $request->input('per_page'), [10, 25, 50], true)
@@ -69,6 +74,15 @@ class ProductController extends Controller
             $query->where('status', (bool) (int) $status);
         }
 
+        if ($stockStatus === 'low_stock') {
+            // Không dùng having() trên cột alias của withSum() vì Eloquent::count()/paginate()
+            // dựng lại câu COUNT(*) bỏ mất cột alias đó, khiến having() luôn lọc rỗng.
+            $query->whereRaw(
+                '(select coalesce(sum(product_variants.stock), 0) from product_variants where product_variants.product_id = products.id) < ?',
+                [self::LOW_STOCK_THRESHOLD]
+            );
+        }
+
         $direction = in_array($direction, ['asc', 'desc'], true) ? $direction : 'desc';
         match ($sort) {
             'name' => $query->orderBy('name', $direction),
@@ -82,6 +96,7 @@ class ProductController extends Controller
         $categories = Category::whereNull('parent_id')->with('childrenCategories')->get();
         $sizes      = Size::where('status', 1)->orderBy('sort_weight')->orderBy('name')->get();
         $colors     = Color::orderBy('name')->get();
+        $brands     = Brand::orderBy('name')->get();
 
         if ($request->ajax()) {
             return response()->json([
@@ -89,7 +104,12 @@ class ProductController extends Controller
             ]);
         }
 
-        return view('admin.products.index', compact('products', 'categories', 'sizes', 'colors', 'keyword', 'categoryId', 'parentCategoryId', 'brandId', 'sizeId', 'colorId', 'status', 'perPage'));
+        return view('admin.products.index', compact('products', 'categories', 'sizes', 'colors', 'brands', 'keyword', 'categoryId', 'parentCategoryId', 'brandId', 'sizeId', 'colorId', 'status', 'stockStatus', 'perPage'));
+    }
+
+    public function export(Request $request)
+    {
+        return Excel::download(new ProductsExport($request), 'danh-sach-san-pham-' . now()->format('Ymd-His') . '.xlsx');
     }
 
     public function create()
@@ -355,7 +375,7 @@ class ProductController extends Controller
             ->with('success', "Cập nhật sản phẩm \"{$product->name}\" thành công.");
     }
 
-    public function toggleStatus(string $id)
+    public function toggleStatus(Request $request, string $id)
     {
         $product = Product::findOrFail($id);
         $newStatus = !$product->status;
@@ -364,6 +384,10 @@ class ProductController extends Controller
         $msg = $newStatus
             ? "Sản phẩm \"{$product->name}\" đã được hiển thị."
             : "Sản phẩm \"{$product->name}\" đã được ẩn khỏi website.";
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(['status' => $newStatus, 'message' => $msg]);
+        }
 
         return back()->with('success', $msg);
     }

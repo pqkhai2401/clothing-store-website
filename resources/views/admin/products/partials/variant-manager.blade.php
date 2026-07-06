@@ -145,8 +145,12 @@ window.__VM_EXISTING__ = @json($existingVariants);
 {{-- ══════════════════════════════════════════ --}}
 {{-- CSS                                        --}}
 {{-- ══════════════════════════════════════════ --}}
-@once
-@push('styles')
+{{--
+    Lưu ý: KHÔNG dùng @push('styles')/@push('scripts') ở đây — vì khi partial này được
+    render riêng lẻ qua AJAX (mở panel Sửa sản phẩm dạng trượt phải), nội dung push sẽ
+    không bao giờ được xuất ra (chỉ layout chính mới gọi @stack). Style/script phải nằm
+    trực tiếp trong HTML trả về để hoạt động đúng ở cả 2 chế độ (trang đầy đủ & panel AJAX).
+--}}
 <style>
 /* ── Wrapper ── */
 .vm-wrap {
@@ -499,14 +503,10 @@ window.__VM_EXISTING__ = @json($existingVariants);
 .vm-matrix-table-wrap.is-empty .vm-matrix-table { display: none; }
 .vm-matrix-table-wrap.is-empty .vm-matrix-empty { display: block; }
 </style>
-@endpush
-@endonce
 
 {{-- ══════════════════════════════════════════ --}}
 {{-- JavaScript                                 --}}
 {{-- ══════════════════════════════════════════ --}}
-@once
-@push('scripts')
 <script>
 (function () {
     const existing = window.__VM_EXISTING__ || {};

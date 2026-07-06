@@ -334,39 +334,30 @@ html:not([data-theme="dark"]) .stock-total {
                                     </td>
 
                                     <td data-cell="status" data-sort-value="{{ $product->status ? 1 : 0 }}">
-                                        <span class="status-badge {{ $product->status ? 'status-badge--active' : 'status-badge--inactive' }}">
-                                            {{ $product->status ? 'Đang bán' : 'Ẩn' }}
-                                        </span>
+                                        <div class="form-check form-switch product-status-switch-wrap mb-0">
+                                            <input type="checkbox" role="switch" class="form-check-input product-status-switch"
+                                                data-toggle-status-url="{{ route('admin.products.toggleStatus', $product->id) }}"
+                                                data-product-name="{{ $product->name }}"
+                                                {{ $product->status ? 'checked' : '' }}>
+                                            <label class="form-check-label product-status-switch-label">
+                                                {{ $product->status ? 'Đang bán' : 'Ẩn' }}
+                                            </label>
+                                        </div>
                                     </td>
 
                                     <td class="text-end pe-4">
-                                        <div class="dropdown">
-                                            <button type="button" class="product-more-btn" data-bs-toggle="dropdown" aria-expanded="false">
-                                                <i class="fa-solid fa-ellipsis"></i>
+                                        <div class="d-inline-flex align-items-center gap-1">
+                                            <a href="{{ route('admin.products.edit', $product->id) }}"
+                                                class="product-more-btn d-inline-flex align-items-center justify-content-center" title="Sửa">
+                                                <i class="fa-regular fa-pen-to-square"></i>
+                                            </a>
+                                            <button type="button" class="product-more-btn text-danger d-inline-flex align-items-center justify-content-center"
+                                                data-delete-url="{{ route('admin.products.destroy', $product->id) }}"
+                                                data-delete-name="{{ $product->name }}"
+                                                data-delete-type="sản phẩm"
+                                                title="Xóa">
+                                                <i class="fa-regular fa-trash-can"></i>
                                             </button>
-                                            <div class="dropdown-menu dropdown-menu-end product-row-menu">
-                                                <a href="{{ route('admin.products.edit', $product->id) }}" class="dropdown-item">
-                                                    <i class="fa-regular fa-pen-to-square"></i> Sửa
-                                                </a>
-                                                <form method="POST" action="{{ route('admin.products.toggleStatus', $product->id) }}" style="margin:0">
-                                                    @csrf
-                                                    @method('PATCH')
-                                                    <button type="submit" class="dropdown-item">
-                                                        @if($product->status)
-                                                            <i class="fa-regular fa-eye-slash"></i> Ẩn sản phẩm
-                                                        @else
-                                                            <i class="fa-regular fa-eye"></i> Hiện lại sản phẩm
-                                                        @endif
-                                                    </button>
-                                                </form>
-                                                <div class="dropdown-divider my-1"></div>
-                                                <button type="button" class="dropdown-item text-danger"
-                                                    data-delete-url="{{ route('admin.products.destroy', $product->id) }}"
-                                                    data-delete-name="{{ $product->name }}"
-                                                    data-delete-type="sản phẩm">
-                                                    <i class="fa-regular fa-trash-can"></i> Xóa
-                                                </button>
-                                            </div>
                                         </div>
                                     </td>
                                 </tr>

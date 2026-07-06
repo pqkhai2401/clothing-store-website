@@ -22,6 +22,15 @@
     .si-show-product { display: flex; align-items: center; gap: 10px; }
     .si-show-thumb { width: 42px; height: 42px; border-radius: 6px; object-fit: cover; flex-shrink: 0; background: #f3f4f6; }
     .si-show-dot { width: 10px; height: 10px; border-radius: 50%; border: 1px solid rgba(0,0,0,.08); flex-shrink: 0; display: inline-block; }
+    .gr-show-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .gr-show-table thead th {
+        background: #f9fafb; text-align: left; padding: 10px 12px; font-weight: 700;
+        color: #374151; border-bottom: 1.5px solid #e5e7eb; white-space: nowrap;
+    }
+    .gr-show-table tbody td { padding: 10px 12px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
+    .gr-show-product { display: flex; align-items: center; gap: 10px; }
+    .gr-show-thumb { width: 42px; height: 42px; border-radius: 6px; object-fit: cover; flex-shrink: 0; background: #f3f4f6; }
+    .gr-show-dot { width: 10px; height: 10px; border-radius: 50%; border: 1px solid rgba(0,0,0,.08); flex-shrink: 0; display: inline-block; }
 
     /* ── Trạng thái phiếu xuất kho: pill đổi trạng thái ngay trên bảng ── */
     .gr-row-status-trigger {
@@ -146,9 +155,10 @@
                             <i class="fa-solid fa-chart-column me-1"></i> Cập nhật nhanh số lượng
                         </button>
                     @elseif($tab === 'inbound')
-                        <a href="{{ route('admin.goods-receipts.create') }}" class="btn btn-dark product-action-btn">
+                        <button type="button" class="btn btn-dark product-action-btn"
+                            data-bs-toggle="offcanvas" data-bs-target="#goodsReceiptOffcanvas">
                             <i class="fa-solid fa-plus me-1"></i> Tạo phiếu nhập kho
-                        </a>
+                        </button>
                     @elseif($tab === 'outbound')
                         <a href="{{ route('admin.stock-issues.trash') }}" class="btn btn-light border product-action-btn">
                             <i class="fa-regular fa-trash-can me-1"></i> Thùng rác
@@ -318,6 +328,26 @@
 
                 <div data-admin-table-area>
                     @include('admin.goods-receipts.partials.table')
+                </div>
+
+                @include('admin.goods-receipts.partials.create-modal', [
+                    'suppliers' => $suppliers ?? collect(),
+                    'variants' => $goodsReceiptVariants ?? collect(),
+                ])
+
+                <div class="offcanvas offcanvas-end gr-offcanvas" tabindex="-1" id="goodsReceiptShowOffcanvas">
+                    <div class="offcanvas-header border-bottom">
+                        <h2 class="offcanvas-title fw-bold" style="font-size:16px;">Chi tiết phiếu nhập kho</h2>
+                        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Đóng"></button>
+                    </div>
+                    <div class="offcanvas-body flex-grow-1 overflow-auto" id="goodsReceiptShowBody"></div>
+                </div>
+
+                <div class="hk-cat-panel gr-row-status-shared-panel" id="grRowStatusPanel" hidden style="width:160px;">
+                    <div class="hk-cat-list">
+                        <button type="button" class="hk-cat-item is-active" data-value="draft">Nháp</button>
+                        <button type="button" class="hk-cat-item" id="grRowStatusIssueBtn" data-value="complete">Hoàn tất</button>
+                    </div>
                 </div>
 
             @elseif($tab === 'outbound')
@@ -595,13 +625,13 @@
             });
         })();
 
-        /* ── Đổi trạng thái phiếu xuất kho ngay trên bảng (panel dùng chung, nổi position:fixed) ──
+        /* ── Đổi trạng thái phiếu nhập/xuất ngay trên bảng (panel dùng chung, nổi position:fixed) ──
            Dùng event delegation trên document vì các dòng bảng được nạp lại qua AJAX.
            Panel được đặt bên ngoài vùng bảng có overflow, nên luôn hiển thị đầy đủ, không bị cắt. */
         (function () {
             const sharedPanel = document.getElementById('grRowStatusPanel');
-            const issueBtn    = document.getElementById('grRowStatusIssueBtn');
-            if (!sharedPanel || !issueBtn) return;
+            const actionBtn   = document.getElementById('grRowStatusIssueBtn');
+            if (!sharedPanel || !actionBtn) return;
 
             function closePanel() {
                 sharedPanel.hidden = true;
@@ -618,8 +648,11 @@
                         const rect = trigger.getBoundingClientRect();
                         sharedPanel.style.top  = (rect.bottom + 6) + 'px';
                         sharedPanel.style.left = Math.max(8, rect.right - 160) + 'px';
-                        issueBtn.dataset.issueUrl  = trigger.dataset.issueUrl;
-                        issueBtn.dataset.issueCode = trigger.dataset.issueCode;
+                        actionBtn.dataset.statusAction = trigger.dataset.statusAction || 'issue';
+                        actionBtn.dataset.statusUrl = trigger.dataset.statusUrl || trigger.dataset.issueUrl;
+                        actionBtn.dataset.statusCode = trigger.dataset.statusCode || trigger.dataset.issueCode;
+                        actionBtn.dataset.statusConfirm = trigger.dataset.statusConfirm
+                            || `Xuất kho phiếu "${trigger.dataset.issueCode}" sẽ trừ tồn kho ngay lập tức. Tiếp tục?`;
                         sharedPanel.hidden = false;
                         trigger.classList.add('is-open');
                     }
@@ -628,10 +661,10 @@
 
                 const item = e.target.closest('#grRowStatusPanel .hk-cat-item');
                 if (item) {
-                    if (item.dataset.value === 'issue') {
-                        const url  = item.dataset.issueUrl;
-                        const code = item.dataset.issueCode;
-                        if (url && confirm(`Xuất kho phiếu "${code}" sẽ trừ tồn kho ngay lập tức. Tiếp tục?`)) {
+                    if (item.dataset.value === actionBtn.dataset.statusAction) {
+                        const url = actionBtn.dataset.statusUrl;
+                        const message = actionBtn.dataset.statusConfirm || 'Bạn có chắc chắn muốn cập nhật trạng thái phiếu này?';
+                        if (url && confirm(message)) {
                             const form = document.createElement('form');
                             form.method = 'POST';
                             form.action = url;
@@ -655,6 +688,31 @@
             window.addEventListener('scroll', closePanel, true);
             window.addEventListener('resize', closePanel);
         })();
+
+        /* ── Xem chi tiết phiếu xuất kho: panel trượt từ phải, nạp nội dung qua AJAX ──
+           Dùng event delegation vì các dòng bảng được nạp lại qua AJAX. */
+        document.addEventListener('click', function (e) {
+            const trigger = e.target.closest('[data-goods-receipt-show-trigger]');
+            if (!trigger) return;
+
+            const url = trigger.dataset.showUrl;
+            const offcanvasEl = document.getElementById('goodsReceiptShowOffcanvas');
+            const body = document.getElementById('goodsReceiptShowBody');
+            if (!url || !offcanvasEl || !body) return;
+
+            body.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-secondary" role="status"></div></div>';
+            bootstrap.Offcanvas.getOrCreateInstance(offcanvasEl).show();
+
+            fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
+                .then(res => {
+                    if (!res.ok) throw new Error('request-failed');
+                    return res.json();
+                })
+                .then(data => { body.innerHTML = data.html; })
+                .catch(() => {
+                    body.innerHTML = '<div class="text-danger p-4">Không thể tải chi tiết phiếu nhập kho. Vui lòng thử lại.</div>';
+                });
+        });
 
         /* ── Xem chi tiết phiếu xuất kho: panel trượt từ phải, nạp nội dung qua AJAX ──
            Dùng event delegation vì các dòng bảng được nạp lại qua AJAX. */

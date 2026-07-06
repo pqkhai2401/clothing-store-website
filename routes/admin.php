@@ -61,6 +61,7 @@ Route::middleware(['auth.login', 'admin'])
 
         Route::prefix('products')->name('products.')->group(function () use ($trashRoutes) {
             Route::get('/', [ProductController::class, 'index'])->name('list');
+            Route::get('/export', [ProductController::class, 'export'])->name('export');
             Route::get('/create', [ProductController::class, 'create'])->name('create');
             Route::post('/', [ProductController::class, 'store'])->name('store');
             Route::get('/{id}/edit', [ProductController::class, 'edit'])->name('edit');
@@ -142,6 +143,7 @@ Route::middleware(['auth.login', 'admin'])
                 Route::get('/', [GoodsReceiptController::class, 'index'])->name('list');
                 Route::get('/create', [GoodsReceiptController::class, 'create'])->name('create');
                 Route::post('/', [GoodsReceiptController::class, 'store'])->name('store');
+                Route::post('/bulk-delete', [GoodsReceiptController::class, 'bulkDelete'])->name('bulkDelete');
                 Route::get('/{id}', [GoodsReceiptController::class, 'show'])->name('show');
                 Route::patch('/{id}/complete', [GoodsReceiptController::class, 'complete'])->name('complete');
                 Route::delete('/{id}', [GoodsReceiptController::class, 'destroy'])->name('destroy');

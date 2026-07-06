@@ -15,6 +15,9 @@
                 <h1 class="product-header-title mb-2">Quản lý sản phẩm</h1>
                 <p class="product-header-desc mb-0">Danh sách tất cả sản phẩm trong hệ thống.</p>
                 <div class="product-header-actions">
+                    <button type="button" class="btn btn-light border product-action-btn" onclick="exportProducts()">
+                        <i class="fa-solid fa-file-excel me-1" style="color:#16A34A;"></i> Xuất file Excel
+                    </button>
                     <a href="{{ route('admin.products.create') }}" class="btn btn-dark product-action-btn">
                         <i class="fa-solid fa-plus me-1"></i> Thêm sản phẩm
                     </a>
@@ -142,9 +145,48 @@
                             </div>
                         </div>
                     </div>
+
+                    @php
+                        $selectedBrandLabel = 'Tất cả thương hiệu';
+                        foreach ($brands as $brand) {
+                            if ((string) ($brandId ?? '') === (string) $brand->id) {
+                                $selectedBrandLabel = $brand->name;
+                                break;
+                            }
+                        }
+                    @endphp
+                    <input type="hidden" name="brand_id" data-admin-filter id="productBrandFilter" value="{{ $brandId ?? '' }}">
+                    <div class="hk-cat-filter product-compact-filter" id="hkProductBrandFilter">
+                        <button type="button" class="hk-cat-trigger" id="hkProductBrandTrigger" aria-haspopup="listbox" aria-expanded="false">
+                            <span class="hk-cat-trigger-label" id="hkProductBrandLabel">{{ $selectedBrandLabel }}</span>
+                            <i class="fa-solid fa-chevron-down hk-cat-arrow"></i>
+                        </button>
+                        <div class="hk-cat-panel" id="hkProductBrandPanel" hidden>
+                            <div class="hk-cat-list" id="hkProductBrandList" role="listbox">
+                                <button type="button" class="hk-cat-item {{ !($brandId ?? '') ? 'is-active' : '' }}" data-value="" data-label="Tất cả thương hiệu">Tất cả thương hiệu</button>
+                                @foreach($brands as $brand)
+                                    <button type="button"
+                                        class="hk-cat-item {{ (string) ($brandId ?? '') === (string) $brand->id ? 'is-active' : '' }}"
+                                        data-value="{{ $brand->id }}"
+                                        data-label="{{ $brand->name }}">
+                                        {{ $brand->name }}
+                                    </button>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="product-toolbar-right">
+                    @php
+                        $stockStatusVal = request('stock_status', $stockStatus ?? '');
+                    @endphp
+                    <input type="hidden" name="stock_status" data-admin-filter id="productStockStatusFilter" value="{{ $stockStatusVal }}">
+                    <button type="button" class="product-low-stock-chip {{ $stockStatusVal === 'low_stock' ? 'is-active' : '' }}" id="productLowStockChip"
+                        title="Lọc sản phẩm có tổng tồn kho dưới 10">
+                        <i class="fa-solid fa-triangle-exclamation me-1"></i> Sắp hết hàng
+                    </button>
+
                     @php
                         $statusVal = request('status', $status ?? '');
                         $statusLabelMap = ['' => 'Tất cả trạng thái', '1' => 'Đang bán', '0' => 'Ẩn'];
