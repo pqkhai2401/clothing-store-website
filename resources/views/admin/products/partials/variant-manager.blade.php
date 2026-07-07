@@ -363,19 +363,20 @@ window.__VM_EXISTING__ = @json($existingVariants);
     display: flex;
     align-items: flex-end;
     flex-wrap: wrap;
-    gap: 14px;
+    gap: 8px;
     background: #f9fafb;
     border: 1.5px solid var(--vm-border);
     border-radius: 10px;
-    padding: 12px 14px;
+    padding: 10px 12px;
     margin-bottom: 14px;
 }
 
 .vm-bulk-label {
+    width: 100%;
     font-size: 13px;
     font-weight: 700;
     color: #374151;
-    align-self: center;
+    margin-bottom: 4px;
 }
 
 .vm-bulk-field {
@@ -391,7 +392,7 @@ window.__VM_EXISTING__ = @json($existingVariants);
 }
 
 .vm-bulk-input {
-    width: 110px;
+    width: 90px;
     height: 34px;
     border: 1.5px solid #d1d5db;
     border-radius: 6px;
@@ -413,7 +414,7 @@ window.__VM_EXISTING__ = @json($existingVariants);
     color: #fff;
     font-size: 13px;
     font-weight: 700;
-    padding: 0 16px;
+    padding: 0 12px;
     cursor: pointer;
     transition: background 0.15s;
     white-space: nowrap;
@@ -611,11 +612,20 @@ window.__VM_EXISTING__ = @json($existingVariants);
 
         matrixBody.innerHTML = '';
 
+        const pricingWrapper = document.getElementById('generalPricingWrapper');
         if (colors.length === 0 || sizes.length === 0) {
-            matrixStep.style.display = '';
+            matrixStep.style.display = 'none'; // Ẩn bước 3 khi chưa chọn màu/size
             matrixWrap.classList.add('is-empty');
+            if (pricingWrapper) {
+                pricingWrapper.style.display = 'block';
+            }
             updateSummary();
             return;
+        }
+
+        // Nếu có biến thể -> ẩn khung nhập giá chung phía trên đi cho sạch giao diện
+        if (pricingWrapper) {
+            pricingWrapper.style.display = 'none';
         }
 
         matrixWrap.classList.remove('is-empty');

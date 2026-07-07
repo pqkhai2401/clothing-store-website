@@ -27,6 +27,7 @@
         'admin.staff.create'      => 'Thêm mới quản trị viên',
         'admin.customers.create'  => 'Thêm mới khách hàng',
         'admin.users.create'      => 'Thêm mới tài khoản',
+        'admin.products.create'   => 'Thêm mới sản phẩm',
         'admin.products.trash'    => 'Thùng rác sản phẩm',
         'admin.categories.trash'  => 'Thùng rác danh mục',
         'admin.brands.trash'      => 'Thùng rác thương hiệu',

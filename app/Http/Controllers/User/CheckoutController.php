@@ -117,10 +117,15 @@ class CheckoutController extends Controller
             ]);
 
             foreach ($cartItems as $item) {
+                $variant = $item->productVariant;
+                $unitPrice = $variant->sale_price > 0 ? (float) $variant->sale_price : (float) $variant->product->final_price;
+                $costPrice = $variant->cost_price > 0 ? (float) $variant->cost_price : (float) $variant->product->cost_price;
+
                 OrderItem::create([
                     'order_id'           => $order->id,
                     'product_variant_id' => $item->product_variant_id,
-                    'unit_price'         => $item->productVariant->product->final_price,
+                    'unit_price'         => $unitPrice,
+                    'cost_price'         => $costPrice,
                     'quantity'           => $item->quantity,
                 ]);
             }

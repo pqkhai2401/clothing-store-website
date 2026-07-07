@@ -124,13 +124,17 @@ class ProductController extends Controller
         // Lấy thông tin giá từ bảng products (giá chung cho sản phẩm)
         $product = Product::findOrFail($request->product_id);
 
+        $discount = $product->discount;
+        $finalPrice = $variant->sale_price > 0 ? (float) $variant->sale_price : (float) $product->final_price;
+        $price = $discount > 0 ? $finalPrice / (1 - $discount / 100) : $finalPrice;
+
         return response()->json([
             'found'       => true,
             'stock'       => $variant->stock,
             'sku'         => $variant->sku,
-            'price'       => $product->price,
-            'discount'    => $product->discount,
-            'final_price' => $product->final_price,
+            'price'       => $price,
+            'discount'    => $discount,
+            'final_price' => $finalPrice,
             'image'       => $variant->image,
         ]);
     }

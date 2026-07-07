@@ -522,8 +522,8 @@
                         $variant      = $item->productVariant;
                         $product      = $variant->product;
                         $image        = $variant->image ?: $product->thumbnail;
-                        $unitPrice    = $product->final_price;
-                        $unitOriginal = $product->price;
+                        $unitPrice    = $variant->sale_price > 0 ? (float) $variant->sale_price : (float) $product->final_price;
+                        $unitOriginal = $product->discount > 0 ? $unitPrice / (1 - $product->discount / 100) : $unitPrice;
                         $linePrice    = $unitPrice * $item->quantity;
                         $lineOriginal = $unitOriginal * $item->quantity;
                         $savings      = $lineOriginal - $linePrice;

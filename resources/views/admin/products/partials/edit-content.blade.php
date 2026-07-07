@@ -7,6 +7,17 @@
     $standalone = $standalone ?? false;
 @endphp
 
+<style>
+    /* Sổ xuống Danh mục/Thương hiệu/Giới tính trong panel Sửa sản phẩm: neo bên trái (mở qua phải)
+       thay vì neo phải mặc định (right:0) — cột "Phân loại" hẹp nên neo phải khiến panel nổi lệch,
+       không áp sát cạnh trái của ô chọn. Rộng bằng đúng ô chọn (100%) để không bị hụt/thừa. */
+    .hk-cat-form .hk-cat-panel {
+        left: 0;
+        right: auto;
+        width: 100%;
+    }
+</style>
+
 <form method="POST" action="{{ route('admin.products.update', $product->id) }}"
       enctype="multipart/form-data" id="editProductForm" class="d-flex flex-column {{ $standalone ? '' : 'h-100' }}">
     @csrf
@@ -178,38 +189,63 @@
                         </div>
 
                         {{-- Giới tính --}}
+                        @php
+                            $curGender = old('gender', $product->gender);
+                            $curGenderLabel = $genders[$curGender] ?? '— Chọn giới tính —';
+                        @endphp
                         <div class="edit-field">
-                            <label for="gender">Giới tính <span class="text-danger">*</span></label>
-                            <select id="gender" name="gender"
-                                class="form-select @error('gender') is-invalid @enderror" required>
-                                @foreach($genders as $value => $label)
-                                    <option value="{{ $value }}"
-                                        {{ old('gender', $product->gender) === $value ? 'selected' : '' }}>
-                                        {{ $label }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            @error('gender') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                        </div>
-
-                        {{-- Giá --}}
-                        <div class="row g-3">
-                            <div class="col-7">
-                                <div class="edit-field mb-0">
-                                    <label for="price">Giá gốc (₫) <span class="text-danger">*</span></label>
-                                    <input type="number" id="price" name="price" min="0" step="1000"
-                                        class="form-control @error('price') is-invalid @enderror"
-                                        value="{{ old('price', (int) $product->price) }}" required>
-                                    @error('price') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                            <label>Giới tính <span class="text-danger">*</span></label>
+                            <input type="hidden" name="gender" id="gender" value="{{ $curGender }}">
+                            <div class="hk-cat-filter hk-cat-form w-100 @error('gender') is-invalid @enderror" id="hkGenderWrap">
+                                <button type="button" class="hk-cat-trigger w-100" id="hkGenderTrigger">
+                                    <span class="hk-cat-trigger-label" id="hkGenderLabel">{{ $curGenderLabel }}</span>
+                                    <i class="fa-solid fa-chevron-down hk-cat-arrow"></i>
+                                </button>
+                                <div class="hk-cat-panel" id="hkGenderPanel" hidden>
+                                    <div class="hk-cat-list" id="hkGenderList">
+                                        @foreach($genders as $value => $label)
+                                            <button type="button" class="hk-cat-item {{ $curGender === $value ? 'is-active' : '' }}"
+                                                data-value="{{ $value }}" data-label="{{ $label }}">
+                                                {{ $label }}
+                                            </button>
+                                        @endforeach
+                                    </div>
                                 </div>
                             </div>
-                            <div class="col-5">
-                                <div class="edit-field mb-0">
-                                    <label for="discount">Giảm giá (%)</label>
-                                    <input type="number" id="discount" name="discount" min="0" max="100"
-                                        class="form-control @error('discount') is-invalid @enderror"
-                                        value="{{ old('discount', $product->discount) }}" required>
-                                    @error('discount') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                            @error('gender') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                        </div>
+
+                        {{-- Khung giá chung (ẩn hiện động bằng JS khi có biến thể) --}}
+                        <div id="generalPricingWrapper">
+                            {{-- Giá vốn (dùng cho phân tích tài chính) --}}
+                            <div class="edit-field">
+                                <label for="cost_price">Giá vốn (₫)</label>
+                                <input type="number" id="cost_price" name="cost_price" min="0" step="1000"
+                                    class="form-control @error('cost_price') is-invalid @enderror"
+                                    value="{{ old('cost_price', (int) $product->cost_price) }}">
+                                @error('cost_price') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                <div class="form-text">Dùng làm giá vốn mặc định cho các biến thể &amp; phân tích lợi nhuận.</div>
+                            </div>
+
+                            {{-- Giá --}}
+                            <div class="row g-3">
+                                <div class="col-7">
+                                    <div class="edit-field mb-0">
+                                        <label for="price">Giá gốc (₫) <span class="text-danger">*</span></label>
+                                        <input type="number" id="price" name="price" min="0" step="1000"
+                                            class="form-control @error('price') is-invalid @enderror"
+                                            value="{{ old('price', (int) $product->price) }}" required>
+                                        @error('price') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                    </div>
+                                </div>
+                                <div class="col-5">
+                                    <div class="edit-field mb-0">
+                                        <label for="discount">Giảm giá (%)</label>
+                                        <input type="number" id="discount" name="discount" min="0" max="100"
+                                            class="form-control @error('discount') is-invalid @enderror"
+                                            value="{{ old('discount', $product->discount) }}" required>
+                                        @error('discount') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -284,6 +320,8 @@
                         <input type="file" id="fileInput0" name="thumbnail" accept="image/*" class="d-none @error('thumbnail') is-invalid @enderror">
                         <input type="file" id="fileInput1" name="image_2"   accept="image/*" class="d-none">
                         <input type="file" id="fileInput2" name="image_3"   accept="image/*" class="d-none">
+                        <input type="hidden" name="remove_image_2" id="removeImage2" value="0">
+                        <input type="hidden" name="remove_image_3" id="removeImage3" value="0">
                         @error('thumbnail') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                         <div class="form-text">JPEG, PNG, WebP · Tối đa 2MB · Để trống để giữ ảnh cũ</div>
 
@@ -385,6 +423,13 @@
                 preview.src = e.target.result;
                 preview.classList.remove('d-none');
                 slot.classList.add('has-image');
+                if (idx === '1') {
+                    const removeInput = form.querySelector('#removeImage2');
+                    if (removeInput) removeInput.value = '0';
+                } else if (idx === '2') {
+                    const removeInput = form.querySelector('#removeImage3');
+                    if (removeInput) removeInput.value = '0';
+                }
             };
             reader.readAsDataURL(file);
         }
@@ -425,6 +470,13 @@
             preview.classList.add('d-none');
             slot.classList.remove('has-image');
             input.value = '';
+            if (idx === '1') {
+                const removeInput = form.querySelector('#removeImage2');
+                if (removeInput) removeInput.value = '1';
+            } else if (idx === '2') {
+                const removeInput = form.querySelector('#removeImage3');
+                if (removeInput) removeInput.value = '1';
+            }
         });
     });
 
@@ -504,6 +556,13 @@
         wrapId:    'hkBrandWrap',
     });
 
+    setupHkCat({
+        triggerId: 'hkGenderTrigger', panelId: 'hkGenderPanel',
+        labelId:   'hkGenderLabel',   searchId: null,
+        listId:    'hkGenderList',    hiddenId: 'gender',
+        wrapId:    'hkGenderWrap',
+    });
+
     /* ═══════════════════════════════════════════
        3. SUBMIT: validate + gửi AJAX nếu đang ở panel trượt (không phải trang đầy đủ)
     ═══════════════════════════════════════════ */
@@ -517,6 +576,10 @@
         }
         if (!form.querySelector('#brandId').value) {
             form.querySelector('#hkBrandWrap').classList.add('is-invalid');
+            ok = false;
+        }
+        if (!form.querySelector('#gender').value) {
+            form.querySelector('#hkGenderWrap').classList.add('is-invalid');
             ok = false;
         }
         return ok;

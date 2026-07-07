@@ -1203,5 +1203,53 @@
         padding: 6px 8px !important; /* Thu hẹp khoảng cách các dòng */
         font-size: 12.5px !important; /* Giảm cỡ chữ dòng */
     }
+
+    /* ── Hình ảnh 3 slots ── */
+    .img-slots {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+    }
+    .img-slot {
+        border: 2px dashed #d1d5db;
+        border-radius: 10px;
+        aspect-ratio: 1 / 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: border-color 0.15s, background 0.15s;
+        overflow: hidden;
+        position: relative;
+        background: #fafafa;
+    }
+    .img-slot:hover, .img-slot.drag-over { border-color: #174761; background: #f0f9ff; }
+    .img-slot .slot-placeholder { text-align: center; padding: 8px; pointer-events: none; }
+    .img-slot .slot-placeholder i { font-size: 22px; color: #9ca3af; }
+    .img-slot .slot-placeholder p { font-size: 11px; color: #9ca3af; margin: 4px 0 0; }
+    .img-slot .slot-badge {
+        position: absolute; top: 6px; left: 6px;
+        background: #174761; color: #fff;
+        font-size: 10px; font-weight: 700;
+        padding: 2px 7px; border-radius: 99px;
+        z-index: 1;
+    }
+    .img-slot img.slot-preview {
+        width: 100%; height: 100%;
+        object-fit: cover;
+        position: absolute; inset: 0;
+    }
+    .img-slot .slot-remove {
+        display: none;
+        position: absolute; top: 6px; right: 6px;
+        width: 22px; height: 22px; border-radius: 50%;
+        background: rgba(0,0,0,0.55); color: #fff;
+        border: 0; font-size: 11px;
+        align-items: center; justify-content: center;
+        cursor: pointer; z-index: 2;
+    }
+    .img-slot.has-image .slot-remove { display: flex; }
+    .img-slot.has-image .slot-placeholder { display: none; }
     </style>
 

@@ -35,6 +35,16 @@
         .product-admin-page .product-brand-filter .hk-cat-panel {
             width: 240px;
         }
+
+        /* Khối "COMPACT VIEW" dùng chung ép padding:0 10px cho mọi ô tìm kiếm, đè mất
+           padding-left:46px dành riêng cho ô tìm kiếm có icon kính lúp ở đây, khiến icon
+           đè lên chữ. Khôi phục lại khoảng chừa cho icon (chỉ ở khu vực có icon này). */
+        .product-admin-page .product-search-row .product-search {
+            padding: 0 14px 0 42px !important;
+        }
+        .product-admin-page .product-search-icon {
+            left: 16px;
+        }
     </style>
 @endpush
 
@@ -273,7 +283,7 @@
             </div>
 
             <div class="offcanvas offcanvas-end product-edit-offcanvas" tabindex="-1" id="productEditOffcanvas">
-                <div data-product-edit-body>
+                <div data-product-edit-body class="h-100">
                     <div class="offcanvas-body text-center py-5">
                         <div class="spinner-border text-secondary" role="status"></div>
                     </div>

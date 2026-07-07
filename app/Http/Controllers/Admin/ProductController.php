@@ -372,10 +372,27 @@ class ProductController extends Controller
 
                 // Cập nhật ảnh phụ: slot 1 → index 0, slot 2 → index 1
                 $extraImages = $product->productImages->values();
+                
+                // Xử lý xoá ảnh phụ nếu có tín hiệu xoá từ client
+                foreach ([0 => 'remove_image_2', 1 => 'remove_image_3'] as $idx => $removeField) {
+                    if ($request->input($removeField) == 1) {
+                        $existing = $extraImages->get($idx);
+                        if ($existing) {
+                            $filePath = str_replace('storage/', '', $existing->image);
+                            Storage::disk('public')->delete($filePath);
+                            $existing->delete();
+                        }
+                    }
+                }
+
+                // Cập nhật hoặc thêm mới ảnh phụ
                 foreach ([0 => $newImage2, 1 => $newImage3] as $idx => $newPath) {
                     if ($newPath === null) continue;
                     $existing = $extraImages->get($idx);
                     if ($existing) {
+                        // Xoá file cũ nếu thay thế bằng file mới
+                        $filePath = str_replace('storage/', '', $existing->image);
+                        Storage::disk('public')->delete($filePath);
                         $existing->update(['image' => $newPath]);
                     } else {
                         $product->productImages()->create(['image' => $newPath]);
@@ -394,12 +411,26 @@ class ProductController extends Controller
                                 'cost_price' => max(0, (float) ($data['cost_price'] ?? 0)),
                                 'sale_price' => max(0, (float) ($data['sale_price'] ?? 0)),
                                 'stock'      => max(0, (int) ($data['stock'] ?? 0)),
+                                'status'     => 'Active', // Kích hoạt lại hoạt động nếu trước đó bị ẩn
                             ]
                         );
                         $keep[] = $variant->id;
                     }
                 }
-                $product->productVariants()->whereNotIn('id', $keep)->delete();
+
+                // Xử lý các biến thể bị bỏ chọn (không nằm trong danh sách keep)
+                $variantsToRemove = $product->productVariants()->whereNotIn('id', $keep)->get();
+                foreach ($variantsToRemove as $v) {
+                    // Kiểm tra xem biến thể có nằm trong đơn hàng nào không
+                    $hasOrders = DB::table('order_items')->where('product_variant_id', $v->id)->exists();
+                    if ($hasOrders) {
+                        // Nếu có đơn hàng, chuyển trạng thái thành Inactive để bảo toàn lịch sử hóa đơn tài chính
+                        $v->update(['status' => 'Inactive']);
+                    } else {
+                        // Nếu chưa có đơn hàng nào, tiến hành xóa hoàn toàn khỏi DB
+                        $v->delete();
+                    }
+                }
             });
         } catch (\Throwable $e) {
             foreach ($uploadedPaths as $path) {

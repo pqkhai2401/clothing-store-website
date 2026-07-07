@@ -17,7 +17,7 @@ class CartPricingService
     public static function totals(Collection $cartItems): array
     {
         $subtotal = $cartItems->sum(
-            fn ($item) => $item->productVariant->product->final_price * $item->quantity
+            fn ($item) => ($item->productVariant->sale_price > 0 ? (float) $item->productVariant->sale_price : (float) $item->productVariant->product->final_price) * $item->quantity
         );
 
         $shippingFee = $subtotal == 0 || $subtotal >= self::FREE_SHIPPING_THRESHOLD
