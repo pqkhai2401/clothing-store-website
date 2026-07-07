@@ -73,6 +73,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 tableArea.innerHTML = data.html || '';
                 window.history.pushState({}, '', url.toString());
                 wireBulkActions();
+
+                if (typeof data.stats === 'string') {
+                    const statsArea = document.querySelector('[data-admin-stats-area]');
+                    if (statsArea) statsArea.innerHTML = data.stats;
+                }
             })
             .catch(function (error) {
                 if (error.name !== 'AbortError') {

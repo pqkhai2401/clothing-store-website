@@ -2,11 +2,18 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\UserRole;
 use App\Exports\OrdersExport;
 use App\Http\Controllers\Controller;
+use App\Models\Address;
 use App\Models\Order;
+use App\Models\OrderItem;
+use App\Models\PaymentMethod;
+use App\Models\ProductVariant;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -32,6 +39,63 @@ class OrderController extends Controller
         'completed' => 'text-bg-success',
         'cancelled' => 'text-bg-secondary',
     ];
+
+    /**
+     * Các khoảng thời gian mẫu (hôm nay/tuần/tháng/quý/năm) dùng để gợi ý chip lọc nhanh
+     * và để suy ra nhãn hiển thị cho thẻ thống kê dựa trên date_from/date_to hiện tại.
+     */
+    private function periodRanges(): array
+    {
+        $now = now();
+
+        return [
+            'today'   => [$now->copy()->startOfDay(), $now->copy()->endOfDay(), 'hôm nay'],
+            'week'    => [$now->copy()->startOfWeek(), $now->copy()->endOfWeek(), 'tuần này'],
+            'month'   => [$now->copy()->startOfMonth(), $now->copy()->endOfMonth(), 'tháng này'],
+            'quarter' => [$now->copy()->startOfQuarter(), $now->copy()->endOfQuarter(), 'quý này'],
+            'year'    => [$now->copy()->startOfYear(), $now->copy()->endOfYear(), 'năm này'],
+        ];
+    }
+
+    /**
+     * Suy ra khoảng ngày + nhãn hiển thị cho thẻ thống kê từ date_from/date_to đang áp dụng.
+     * Nếu không lọc gì cả, mặc định thống kê theo "hôm nay". Nếu khoảng ngày khớp đúng một
+     * kỳ mẫu (tuần/tháng/quý/năm hiện tại) thì dùng nhãn tương ứng, ngược lại là "khoảng đã chọn".
+     */
+    private function resolveStatsRange(string $dateFrom, string $dateTo): array
+    {
+        $ranges = $this->periodRanges();
+
+        if ($dateFrom === '' && $dateTo === '') {
+            [$from, $to, $label] = $ranges['today'];
+            return [$from->toDateString(), $to->toDateString(), $label];
+        }
+
+        foreach ($ranges as [$from, $to, $label]) {
+            if ($dateFrom === $from->toDateString() && $dateTo === $to->toDateString()) {
+                return [$dateFrom, $dateTo, $label];
+            }
+        }
+
+        return [$dateFrom, $dateTo, 'khoảng đã chọn'];
+    }
+
+    private function buildStatsData(string $dateFrom, string $dateTo): array
+    {
+        [$statsFrom, $statsTo, $periodLabel] = $this->resolveStatsRange($dateFrom, $dateTo);
+
+        $rangeQuery = fn () => Order::query()
+            ->when($statsFrom !== '', fn ($q) => $q->whereDate('created_at', '>=', $statsFrom))
+            ->when($statsTo !== '', fn ($q) => $q->whereDate('created_at', '<=', $statsTo));
+
+        return [
+            'periodLabel'     => $periodLabel,
+            'periodOrders'    => $rangeQuery()->count(),
+            'periodRevenue'   => $rangeQuery()->where('status', '!=', 'cancelled')->sum('total_money'),
+            'cancelledOrders' => $rangeQuery()->where('status', 'cancelled')->count(),
+            'pendingOrders'   => Order::where('status', 'pending')->count(),
+        ];
+    }
 
     /**
      * Xây dựng query đơn hàng theo các bộ lọc dùng chung cho danh sách (index) và xuất Excel (export),
@@ -109,26 +173,22 @@ class OrderController extends Controller
             'direction'           => $direction,
         ];
 
+        $statsData = $this->buildStatsData($dateFrom, $dateTo);
+
         if ($request->ajax()) {
             return response()->json([
-                'html' => view('admin.orders.partials.table', $tableData)->render(),
+                'html'  => view('admin.orders.partials.table', $tableData)->render(),
+                'stats' => view('admin.orders.partials.stats', $statsData)->render(),
             ]);
         }
 
-        $todayRevenue    = Order::whereDate('created_at', today())->where('status', '!=', 'cancelled')->sum('total_money');
-        $pendingOrders   = Order::where('status', 'pending')->count();
-        $cancelledOrders = Order::where('status', 'cancelled')->count();
-
-        return view('admin.orders.index', array_merge($tableData, [
-            'keyword'         => $keyword,
-            'statusFilter'    => $statusFilter,
-            'paymentFilter'   => $paymentFilter,
-            'dateFrom'        => $dateFrom,
-            'dateTo'          => $dateTo,
-            'perPage'         => $perPage,
-            'todayRevenue'    => $todayRevenue,
-            'pendingOrders'   => $pendingOrders,
-            'cancelledOrders' => $cancelledOrders,
+        return view('admin.orders.index', array_merge($tableData, $statsData, [
+            'keyword'       => $keyword,
+            'statusFilter'  => $statusFilter,
+            'paymentFilter' => $paymentFilter,
+            'dateFrom'      => $dateFrom,
+            'dateTo'        => $dateTo,
+            'perPage'       => $perPage,
         ]));
     }
 
@@ -159,6 +219,157 @@ class OrderController extends Controller
         }
 
         return back()->with('success', $message);
+    }
+
+    public function create()
+    {
+        return view('admin.orders.create', [
+            'paymentMethods' => PaymentMethod::where('status', true)->orderBy('name')->get(),
+            'statusLabels'   => self::STATUS_LABELS,
+            'paymentStatusLabels' => self::PAYMENT_STATUS_LABELS,
+        ]);
+    }
+
+    public function searchCustomers(Request $request)
+    {
+        $q = trim((string) $request->input('q'));
+
+        $customers = User::role(UserRole::CUSTOMER->value)
+            ->when($q !== '', function ($query) use ($q) {
+                $query->where(function ($w) use ($q) {
+                    $w->where('username', 'like', "%{$q}%")
+                        ->orWhere('email', 'like', "%{$q}%")
+                        ->orWhere('phone_number', 'like', "%{$q}%");
+                });
+            })
+            ->orderBy('username')
+            ->limit(15)
+            ->get(['id', 'username', 'email', 'phone_number']);
+
+        return response()->json(['customers' => $customers]);
+    }
+
+    public function customerAddresses(User $user)
+    {
+        return response()->json([
+            'addresses' => $user->addresses()->orderByDesc('is_default')->orderByDesc('id')->get(),
+        ]);
+    }
+
+    public function searchVariants(Request $request)
+    {
+        $q = trim((string) $request->input('q'));
+
+        $variants = ProductVariant::query()
+            ->with(['product:id,name,price,discount', 'color:id,name', 'size:id,name'])
+            ->whereHas('product', fn ($p) => $p->where('status', true))
+            ->where('stock', '>', 0)
+            ->when($q !== '', function ($query) use ($q) {
+                $query->where(function ($w) use ($q) {
+                    $w->where('sku', 'like', "%{$q}%")
+                        ->orWhereHas('product', fn ($p) => $p->where('name', 'like', "%{$q}%"));
+                });
+            })
+            ->orderBy('id', 'desc')
+            ->limit(20)
+            ->get()
+            ->map(fn (ProductVariant $variant) => [
+                'id'          => $variant->id,
+                'product_name' => $variant->product->name,
+                'color'       => $variant->color->name ?? '',
+                'size'        => $variant->size->name ?? '',
+                'sku'         => $variant->sku,
+                'stock'       => $variant->stock,
+                'unit_price'  => $variant->product->final_price,
+            ]);
+
+        return response()->json(['variants' => $variants]);
+    }
+
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'user_id'           => ['required', 'integer', Rule::exists('users', 'id')],
+            'address_id'        => ['nullable', 'integer', Rule::exists('addresses', 'id')],
+            'new_address.city'              => ['required_without:address_id', 'nullable', 'string', 'max:255'],
+            'new_address.district'          => ['nullable', 'string', 'max:255'],
+            'new_address.ward'              => ['required_without:address_id', 'nullable', 'string', 'max:255'],
+            'new_address.apartment_number'  => ['required_without:address_id', 'nullable', 'string', 'max:255'],
+            'phone'              => ['required', 'string', 'max:20'],
+            'payment_method_id' => ['required', 'integer', Rule::exists('payment_methods', 'id')],
+            'status'             => ['required', Rule::in(array_keys(self::STATUS_LABELS))],
+            'payment_status'     => ['required', Rule::in(array_keys(self::PAYMENT_STATUS_LABELS))],
+            'shipping_fee'       => ['required', 'numeric', 'min:0'],
+            'note'               => ['nullable', 'string', 'max:1000'],
+            'items'              => ['required', 'array', 'min:1'],
+            'items.*.product_variant_id' => ['required', 'integer', Rule::exists('product_variants', 'id')],
+            'items.*.quantity'   => ['required', 'integer', 'min:1'],
+        ], [
+            'user_id.required' => 'Vui lòng chọn khách hàng.',
+            'new_address.city.required_without' => 'Vui lòng nhập tỉnh/thành phố cho địa chỉ mới.',
+            'new_address.ward.required_without' => 'Vui lòng nhập phường/xã cho địa chỉ mới.',
+            'new_address.apartment_number.required_without' => 'Vui lòng nhập địa chỉ cụ thể cho địa chỉ mới.',
+            'phone.required' => 'Vui lòng nhập số điện thoại.',
+            'payment_method_id.required' => 'Vui lòng chọn phương thức thanh toán.',
+            'items.required' => 'Vui lòng thêm ít nhất một sản phẩm vào đơn hàng.',
+            'items.*.quantity.min' => 'Số lượng sản phẩm phải lớn hơn 0.',
+        ]);
+
+        $order = DB::transaction(function () use ($validated) {
+            $address = ($validated['address_id'] ?? null)
+                ? Address::where('id', $validated['address_id'])->where('user_id', $validated['user_id'])->firstOrFail()
+                : Address::create([
+                    'user_id'          => $validated['user_id'],
+                    'city'             => $validated['new_address']['city'],
+                    'district'         => $validated['new_address']['district'] ?? null,
+                    'ward'             => $validated['new_address']['ward'],
+                    'apartment_number' => $validated['new_address']['apartment_number'],
+                ]);
+
+            do {
+                $orderCode = 'ORD-' . now()->format('Ymd') . '-' . str_pad((string) random_int(1, 99999), 5, '0', STR_PAD_LEFT);
+            } while (Order::where('order_code', $orderCode)->exists());
+
+            $variants = ProductVariant::with('product')
+                ->whereIn('id', collect($validated['items'])->pluck('product_variant_id'))
+                ->get()
+                ->keyBy('id');
+
+            $totalMoney = 0;
+            foreach ($validated['items'] as $item) {
+                $variant = $variants[$item['product_variant_id']];
+                $totalMoney += $variant->product->final_price * $item['quantity'];
+            }
+            $totalMoney += (float) $validated['shipping_fee'];
+
+            $order = Order::create([
+                'user_id'           => $validated['user_id'],
+                'address_id'        => $address->id,
+                'payment_method_id' => $validated['payment_method_id'],
+                'order_code'        => $orderCode,
+                'phone'             => $validated['phone'],
+                'note'              => $validated['note'] ?? null,
+                'total_money'       => $totalMoney,
+                'shipping_fee'      => $validated['shipping_fee'],
+                'status'            => $validated['status'],
+                'payment_status'    => $validated['payment_status'],
+            ]);
+
+            foreach ($validated['items'] as $item) {
+                $variant = $variants[$item['product_variant_id']];
+                OrderItem::create([
+                    'order_id'           => $order->id,
+                    'product_variant_id' => $variant->id,
+                    'unit_price'         => $variant->product->final_price,
+                    'quantity'           => $item['quantity'],
+                ]);
+            }
+
+            return $order;
+        });
+
+        return redirect()->route('admin.orders.detail', $order->id)
+            ->with('success', "Đã tạo đơn hàng \"{$order->order_code}\" thành công.");
     }
 
     public function detail(string $id)

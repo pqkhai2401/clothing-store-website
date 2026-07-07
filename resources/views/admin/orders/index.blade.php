@@ -60,6 +60,9 @@
                     <p class="product-header-desc mb-0">Danh sách tất cả đơn hàng trong hệ thống.</p>
                 </div>
                 <div class="product-header-actions">
+                    <a href="{{ route('admin.orders.create') }}" class="btn btn-dark product-action-btn">
+                        <i class="fa-solid fa-plus me-1"></i> Thêm đơn hàng
+                    </a>
                     <a href="{{ route('admin.orders.export') }}?{{ http_build_query(request()->except('page')) }}"
                        class="btn product-action-btn product-action-btn--neutral">
                         <i class="fa-solid fa-download me-1"></i> Xuất Excel
@@ -67,25 +70,8 @@
                 </div>
             </div>
 
-            <div class="row g-3 product-stat-row">
-                <div class="col-md-4">
-                    <div class="product-stat-card">
-                        <div class="product-stat-label">Doanh thu hôm nay</div>
-                        <div class="product-stat-value">{{ number_format($todayRevenue, 0, ',', '.') }}đ</div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="product-stat-card">
-                        <div class="product-stat-label">Đơn chờ duyệt</div>
-                        <div class="product-stat-value product-stat-value--success">{{ number_format($pendingOrders) }}</div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="product-stat-card">
-                        <div class="product-stat-label">Đơn bị hủy</div>
-                        <div class="product-stat-value product-stat-value--danger">{{ number_format($cancelledOrders) }}</div>
-                    </div>
-                </div>
+            <div data-admin-stats-area>
+                @include('admin.orders.partials.stats')
             </div>
 
             @php
@@ -145,12 +131,21 @@
                         </div>
                     </div>
 
+                    {{-- Chip chọn nhanh theo kỳ --}}
+                    <div class="order-period-chips" id="orderPeriodChips">
+                        <button type="button" class="order-period-chip" data-period="today">Hôm nay</button>
+                        <button type="button" class="order-period-chip" data-period="week">Tuần này</button>
+                        <button type="button" class="order-period-chip" data-period="month">Tháng này</button>
+                        <button type="button" class="order-period-chip" data-period="quarter">Quý này</button>
+                        <button type="button" class="order-period-chip" data-period="year">Năm này</button>
+                    </div>
+
                     {{-- Lọc theo khoảng thời gian --}}
                     <div class="order-date-range">
-                        <input type="date" name="date_from" data-admin-filter class="form-control order-date-input"
+                        <input type="date" name="date_from" id="orderDateFrom" data-admin-filter class="form-control order-date-input"
                             value="{{ $dateFrom ?? '' }}" title="Từ ngày">
                         <span class="order-date-sep">—</span>
-                        <input type="date" name="date_to" data-admin-filter class="form-control order-date-input"
+                        <input type="date" name="date_to" id="orderDateTo" data-admin-filter class="form-control order-date-input"
                             value="{{ $dateTo ?? '' }}" title="Đến ngày">
                     </div>
                 </div>
@@ -367,6 +362,78 @@
             document.addEventListener('click', function (e) {
                 if (!panel.hidden && !document.getElementById('hkOrderPaymentDrop')?.contains(e.target)) close();
             });
+        }());
+
+        /* ── Chip chọn nhanh theo kỳ (Hôm nay/Tuần/Tháng/Quý/Năm) ── */
+        (function () {
+            const chips     = document.querySelectorAll('#orderPeriodChips .order-period-chip');
+            const fromInput = document.getElementById('orderDateFrom');
+            const toInput   = document.getElementById('orderDateTo');
+            if (!chips.length || !fromInput || !toInput) return;
+
+            function pad(n) { return String(n).padStart(2, '0'); }
+            function iso(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+
+            function rangeFor(period) {
+                const now = new Date();
+                let from, to;
+
+                switch (period) {
+                    case 'today':
+                        from = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                        to   = new Date(from);
+                        break;
+                    case 'week': {
+                        const day = (now.getDay() + 6) % 7; // Thứ 2 = 0
+                        from = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day);
+                        to   = new Date(from.getFullYear(), from.getMonth(), from.getDate() + 6);
+                        break;
+                    }
+                    case 'month':
+                        from = new Date(now.getFullYear(), now.getMonth(), 1);
+                        to   = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+                        break;
+                    case 'quarter': {
+                        const q = Math.floor(now.getMonth() / 3);
+                        from = new Date(now.getFullYear(), q * 3, 1);
+                        to   = new Date(now.getFullYear(), q * 3 + 3, 0);
+                        break;
+                    }
+                    case 'year':
+                        from = new Date(now.getFullYear(), 0, 1);
+                        to   = new Date(now.getFullYear(), 11, 31);
+                        break;
+                    default:
+                        return null;
+                }
+
+                return [iso(from), iso(to)];
+            }
+
+            function syncActiveChips() {
+                const fromVal = fromInput.value;
+                const toVal   = toInput.value;
+                chips.forEach(function (chip) {
+                    const range  = rangeFor(chip.dataset.period);
+                    const active = !!range && fromVal === range[0] && toVal === range[1];
+                    chip.classList.toggle('is-active', active);
+                });
+            }
+
+            chips.forEach(function (chip) {
+                chip.addEventListener('click', function () {
+                    const range = rangeFor(chip.dataset.period);
+                    if (!range) return;
+                    fromInput.value = range[0];
+                    toInput.value   = range[1];
+                    syncActiveChips();
+                    fromInput.dispatchEvent(new Event('change', { bubbles: true }));
+                });
+            });
+
+            fromInput.addEventListener('change', syncActiveChips);
+            toInput.addEventListener('change', syncActiveChips);
+            syncActiveChips();
         }());
 
     }());

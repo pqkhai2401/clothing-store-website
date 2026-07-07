@@ -26,37 +26,37 @@
                     <th style="width: 44px;">
                         <input type="checkbox" class="form-check-input product-check hk-cb-all">
                     </th>
-                    <th style="width:160px;">
+                    <th style="width:125px;">
                         Mã đơn hàng
                     </th>
                     <th>Khách hàng</th>
-                    <th style="width:130px;">Số điện thoại</th>
-                    <th style="width:145px;">
+                    <th style="width:110px;">Số điện thoại</th>
+                    <th style="width:110px;">
                         <button type="button" class="product-sort-btn {{ $isActive('total') }}" data-sort-key="total" data-sort-type="number">
                             Tổng tiền <span class="product-sort-icon">{{ $sortIcon('total') }}</span>
                         </button>
                     </th>
-                    <th style="width:115px;">
+                    <th style="width:90px;">
                         <button type="button" class="product-sort-btn {{ $isActive('fee') }}" data-sort-key="fee" data-sort-type="number">
                             Phí ship <span class="product-sort-icon">{{ $sortIcon('fee') }}</span>
                         </button>
                     </th>
-                    <th style="width:155px;">
+                    <th style="width:125px;">
                         <button type="button" class="product-sort-btn {{ $isActive('status') }}" data-sort-key="status">
                             Trạng thái đơn <span class="product-sort-icon">{{ $sortIcon('status') }}</span>
                         </button>
                     </th>
-                    <th style="width:155px;">
+                    <th style="width:130px;">
                         <button type="button" class="product-sort-btn {{ $isActive('payment') }}" data-sort-key="payment">
                             Thanh toán <span class="product-sort-icon">{{ $sortIcon('payment') }}</span>
                         </button>
                     </th>
-                    <th style="width:130px;">
+                    <th style="width:110px;">
                         <button type="button" class="product-sort-btn {{ $isActive('created_at') }}" data-sort-key="created_at">
                             Ngày đặt <span class="product-sort-icon">{{ $sortIcon('created_at') }}</span>
                         </button>
                     </th>
-                    <th class="text-center" style="width:90px;">Thao tác</th>
+                    <th class="text-center" style="width:80px;">Thao tác</th>
                 </tr>
             </thead>
             <tbody>
