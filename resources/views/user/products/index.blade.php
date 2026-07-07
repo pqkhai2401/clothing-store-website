@@ -369,6 +369,7 @@
                         </div>
                     </div>
 
+                    <input type="hidden" name="q" value="{{ $currentSearch ?? '' }}">
                     </form>
 
                     @if(!empty($selectedCategories) || !empty($selectedGenders) || !empty($selectedBrands) || !empty($selectedTags) || $minPrice || $maxPrice)
@@ -399,19 +400,6 @@
                             <i class="bi bi-sliders me-1"></i> BỘ LỌC
                         </button>
 
-                        <!-- Search Bar -->
-                        <div class="search-bar-inline d-none d-md-block">
-                            <div class="position-relative">
-                                <input type="text" name="q" id="searchDesktop" class="form-control"
-                                       placeholder="Tìm kiếm sản phẩm..." value="{{ $currentSearch ?? '' }}"
-                                       form="productFilterForm">
-                                <button type="submit" form="productFilterForm"
-                                        class="border-0 bg-transparent position-absolute end-0 top-0 mt-2 me-3 text-muted">
-                                    <i class="bi bi-search"></i>
-                                </button>
-                            </div>
-                        </div>
-
                         <!-- Sorting -->
                         <div class="sort-dropdown">
                             <select class="form-select" name="sort" form="productFilterForm"
@@ -421,18 +409,6 @@
                                 <option value="price-low" {{ ($currentSort ?? '') === 'price-low' ? 'selected' : '' }}>Sắp xếp: Giá tăng dần</option>
                                 <option value="price-high" {{ ($currentSort ?? '') === 'price-high' ? 'selected' : '' }}>Sắp xếp: Giá giảm dần</option>
                             </select>
-                        </div>
-                    </div>
-
-                    <!-- Inline Search Bar on Mobile (đồng bộ giá trị với ô search desktop) -->
-                    <div class="search-bar-inline d-block d-md-none mb-4">
-                        <div class="position-relative">
-                            <input type="text" id="searchMobile" class="form-control"
-                                   placeholder="Tìm kiếm sản phẩm..." value="{{ $currentSearch ?? '' }}">
-                            <button type="button" id="searchMobileBtn"
-                                    class="border-0 bg-transparent position-absolute end-0 top-0 mt-2 me-3 text-muted">
-                                <i class="bi bi-search"></i>
-                            </button>
                         </div>
                     </div>
 
@@ -496,24 +472,6 @@
                 filterBackdrop.classList.add('d-none');
             });
         }
-
-        // Đồng bộ ô search mobile <-> desktop (cùng submit vào productFilterForm)
-        const searchDesktop = document.getElementById('searchDesktop');
-        const searchMobile  = document.getElementById('searchMobile');
-        const filterForm    = document.getElementById('productFilterForm');
-
-        if (searchDesktop && searchMobile) {
-            searchMobile.addEventListener('input', () => { searchDesktop.value = searchMobile.value; });
-            searchDesktop.addEventListener('input', () => { searchMobile.value = searchDesktop.value; });
-        }
-
-        document.getElementById('searchMobileBtn')?.addEventListener('click', () => filterForm?.submit());
-        searchMobile?.addEventListener('keydown', function (e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                filterForm?.submit();
-            }
-        });
     });
 </script>
 @endpush
