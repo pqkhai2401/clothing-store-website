@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
+use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\ProductView;
+use App\Models\Tag;
 use App\Models\Wishlist;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -140,37 +142,33 @@ class ProductController extends Controller
     {
         $query = Product::where('status', true);
 
-        // Lọc theo gender nếu có
-        $gender = $request->query('gender');
-        if ($gender === 'men') {
-            $query->whereIn('gender', ['men', 'unisex']);
-        } elseif ($gender === 'women') {
-            $query->whereIn('gender', ['women', 'unisex']);
-        }
-
-        // Xác định tiêu đề và thứ tự sắp xếp
+        // Xác định tiêu đề và thứ tự sắp xếp mặc định theo route
         $routeName = $request->route()?->getName();
         $sort      = $request->query('sort', '');
 
-        if ($routeName === 'new-arrivals' || $sort === 'newest') {
-            $query->latest();
+        if ($routeName === 'new-arrivals') {
             $pageTitle = 'Hàng mới về';
-        } elseif ($sort === 'best-selling') {
-            $query->orderBy('views_count', 'desc');
-            $pageTitle = 'Bán chạy nhất';
+            if ($sort === '') $sort = 'newest';
         } elseif ($routeName === 'collections') {
-            $query->where('is_featured', true)->latest();
+            $query->where('is_featured', true);
             $pageTitle = 'Bộ sưu tập';
+            if ($sort === '') $sort = 'newest';
         } else {
-            $query->latest();
             $pageTitle = 'Tất cả sản phẩm';
+            if ($sort === '') $sort = 'popularity';
         }
+
+        $this->applyFilters($query, $request);
+        $this->applySort($query, $sort);
 
         $products = $query->with('category')
             ->paginate(12)
             ->appends($request->query());
 
-        return view('user.products.index', compact('products', 'pageTitle'));
+        return view('user.products.index', array_merge(
+            compact('products', 'pageTitle'),
+            $this->filterViewData($request)
+        ));
     }
 
     // Tìm kiếm sản phẩm theo từ khóa
@@ -187,8 +185,10 @@ class ProductController extends Controller
             });
         }
 
+        $this->applyFilters($query, $request);
+        $this->applySort($query, $request->query('sort', 'popularity'));
+
         $products = $query->with('category')
-            ->latest()
             ->paginate(12)
             ->appends($request->query());
 
@@ -196,7 +196,114 @@ class ProductController extends Controller
             ? "Kết quả cho: \"{$q}\""
             : 'Tìm kiếm sản phẩm';
 
-        return view('user.products.index', compact('products', 'pageTitle', 'q'));
+        return view('user.products.index', array_merge(
+            compact('products', 'pageTitle', 'q'),
+            $this->filterViewData($request)
+        ));
+    }
+
+    /**
+     * Áp dụng các bộ lọc sidebar (category, gender, brand, tags, khoảng giá)
+     * dùng chung cho index(), search() và getProductsByCategory().
+     */
+    private function applyFilters($query, Request $request): void
+    {
+        // Category (multi-select, theo slug)
+        $categorySlugs = array_filter((array) $request->query('category', []));
+        if (!empty($categorySlugs)) {
+            $categoryIds = Category::whereIn('slug', $categorySlugs)->pluck('id');
+            $query->whereIn('category_id', $categoryIds);
+        }
+
+        // Gender (multi-select; vẫn tương thích với link cũ ?gender=men dạng chuỗi đơn)
+        $genders = array_filter((array) $request->query('gender', []));
+        if (!empty($genders)) {
+            $query->where(function ($sub) use ($genders) {
+                foreach ($genders as $g) {
+                    if ($g === 'men') {
+                        $sub->orWhereIn('gender', ['men', 'unisex']);
+                    } elseif ($g === 'women') {
+                        $sub->orWhereIn('gender', ['women', 'unisex']);
+                    } elseif ($g === 'unisex') {
+                        $sub->orWhere('gender', 'unisex');
+                    }
+                }
+            });
+        }
+
+        // Brand (multi-select, theo id)
+        $brandIds = array_filter((array) $request->query('brand', []));
+        if (!empty($brandIds)) {
+            $query->whereIn('brand_id', $brandIds);
+        }
+
+        // Tags (multi-select, theo id)
+        $tagIds = array_filter((array) $request->query('tags', []));
+        if (!empty($tagIds)) {
+            $query->whereHas('tags', fn ($t) => $t->whereIn('tags.id', $tagIds));
+        }
+
+        // Khoảng giá (VNĐ)
+        $minPrice = $request->query('min_price');
+        $maxPrice = $request->query('max_price');
+        if (is_numeric($minPrice)) {
+            $query->where('price', '>=', (float) $minPrice);
+        }
+        if (is_numeric($maxPrice)) {
+            $query->where('price', '<=', (float) $maxPrice);
+        }
+    }
+
+    // Áp dụng sắp xếp dùng chung
+    private function applySort($query, string $sort): void
+    {
+        switch ($sort) {
+            case 'newest':
+                $query->latest();
+                break;
+            case 'price-low':
+                $query->orderBy('price', 'asc');
+                break;
+            case 'price-high':
+                $query->orderBy('price', 'desc');
+                break;
+            case 'best-selling':
+            case 'popularity':
+            default:
+                $query->orderBy('views_count', 'desc');
+                break;
+        }
+    }
+
+    // Dữ liệu cho sidebar filter (danh mục, thương hiệu, tag + giá trị đang chọn)
+    private function filterViewData(Request $request): array
+    {
+        $categories = Category::whereNotNull('parent_id')
+            ->where('status', true)
+            ->withCount(['products' => fn ($q) => $q->where('status', true)])
+            ->orderBy('name')
+            ->get();
+
+        $brands = Brand::where('status', true)
+            ->withCount(['products' => fn ($q) => $q->where('status', true)])
+            ->orderBy('name')
+            ->get();
+
+        $tags = Tag::orderBy('name')->get();
+
+        return [
+            'filterCategories'   => $categories,
+            'filterBrands'       => $brands,
+            'filterTags'         => $tags,
+            'selectedCategories' => array_filter((array) $request->query('category', [])),
+            'selectedGenders'    => array_filter((array) $request->query('gender', [])),
+            'selectedBrands'     => array_filter((array) $request->query('brand', [])),
+            'selectedTags'       => array_filter((array) $request->query('tags', [])),
+            'minPrice'           => $request->query('min_price'),
+            'maxPrice'           => $request->query('max_price'),
+            'currentSort'        => $request->query('sort', 'popularity'),
+            'currentSearch'      => $request->query('q', ''),
+        ];
     }
 
     // Gợi ý tìm kiếm nhanh (AJAX autocomplete)
@@ -247,21 +354,16 @@ class ProductController extends Controller
         $query = Product::whereIn('category_id', $categoryIds)
             ->where('status', true);
 
-        // Lọc theo giới tính 
-        $gender = $request->query('gender');
-        if ($gender === 'men') {
-            $query->whereIn('gender', ['men', 'unisex']);
-        } elseif ($gender === 'women') {
-            $query->whereIn('gender', ['women', 'unisex']);
-        }
+        $this->applyFilters($query, $request);
+        $this->applySort($query, $request->query('sort', 'popularity'));
 
-        // Sắp xếp theo mới nhất + phân trang 12 sản phẩm/trang
+        // Phân trang 12 sản phẩm/trang
         $products = $query->with('category')
-            ->latest()
             ->paginate(12)
             ->appends($request->query());
 
         // Xác định tiêu đề trang hiển thị
+        $gender    = $request->query('gender');
         $pageTitle = $category->name;
         if ($gender === 'men') {
             $pageTitle .= ' Nam';
@@ -269,12 +371,12 @@ class ProductController extends Controller
             $pageTitle .= ' Nữ';
         }
 
-        return view('user.products.index', [
+        return view('user.products.index', array_merge($this->filterViewData($request), [
             'products'    => $products,
             'category'    => $category,
             'pageTitle'   => $pageTitle,
             'currentSlug' => $slug,
             'gender'      => $gender,
-        ]);
+        ]));
     }
 }
