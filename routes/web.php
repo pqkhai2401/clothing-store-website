@@ -5,6 +5,7 @@ use App\Http\Controllers\User\AddressController;
 use App\Http\Controllers\User\AuthController;
 use App\Http\Controllers\User\CartController;
 use App\Http\Controllers\User\CheckoutController;
+use App\Http\Controllers\User\LocationController;
 use App\Http\Controllers\User\OrderController;
 use App\Http\Controllers\User\ProfileController;
 
@@ -26,6 +27,11 @@ Route::get('/new-arrivals', [ProductController::class, 'index'])->name('new-arri
 Route::get('/collections', [ProductController::class, 'index'])->name('collections');
 Route::get('/search', [ProductController::class, 'search'])->name('search');
 Route::get('/api/search/suggestions', [ProductController::class, 'suggestions'])->name('search.suggestions');
+
+// Route proxy lấy dữ liệu Tỉnh/Thành - Quận/Huyện - Phường/Xã (tránh lỗi CORS khi gọi trực tiếp API bên thứ ba)
+Route::get('/api/location/provinces', [LocationController::class, 'provinces'])->name('location.provinces');
+Route::get('/api/location/districts/{province_code}', [LocationController::class, 'districts'])->name('location.districts');
+Route::get('/api/location/wards/{district_code}', [LocationController::class, 'wards'])->name('location.wards');
 
 // Route chi tiết sản phẩm: /san-pham/{slug}
 Route::get('/san-pham/{slug}', [ProductController::class, 'show'])->name('products.show');
