@@ -220,6 +220,11 @@ html:not([data-theme="dark"]) .stock-total {
                                         Giá <span class="product-sort-icon">↑↓</span>
                                     </button>
                                 </th>
+                                 <th>
+                                    <button type="button" class="product-sort-btn" data-sort-key="cost_price" data-sort-type="number">
+                                        Giá vốn<span class="product-sort-icon">↑↓</span>
+                                    </button>
+                                </th>
                                 <th>
                                     <button type="button" class="product-sort-btn" data-sort-key="stock" data-sort-type="number">
                                         Tổng tồn kho <span class="product-sort-icon">↑↓</span>
@@ -273,36 +278,63 @@ html:not([data-theme="dark"]) .stock-total {
                                         <span class="fw-semibold">{{ $product->brand?->name ?? '—' }}</span>
                                     </td>
 
-                                    <td data-cell="price" data-sort-value="{{ $effectivePrice }}"
-                                        class="product-quickedit-cell"
-                                        data-quickedit-url="{{ route('admin.products.quickUpdate', $product->id) }}"
-                                        data-product-name="{{ $product->name }}"
-                                        title="Nhấp đúp để sửa nhanh giá/giảm giá">
+                                    <td data-cell="price" data-sort-value="{{ $product->min_price ?? $effectivePrice }}"
+                                        @if($product->min_price === null)
+                                            class="product-quickedit-cell"
+                                            data-quickedit-url="{{ route('admin.products.quickUpdate', $product->id) }}"
+                                            data-product-name="{{ $product->name }}"
+                                            title="Nhấp đúp để sửa nhanh giá/giảm giá"
+                                        @endif>
                                         @php $discounted = $product->discount > 0; @endphp
                                         <div class="product-quickedit-view">
-                                            @if($discounted)
-                                                <div class="price-display">
-                                                    <span class="price-sale">{{ number_format($product->price * (100 - $product->discount) / 100, 0, ',', '.') }}₫</span>
-                                                    <span class="price-original">{{ number_format($product->price, 0, ',', '.') }}₫</span>
-                                                </div>
+                                            @if($product->min_price !== null)
+                                                @if($product->min_price == $product->max_price)
+                                                    <span class="price-normal">{{ number_format($product->min_price, 0, ',', '.') }}₫</span>
+                                                @else
+                                                    <span class="price-normal fw-bold">{{ number_format($product->min_price, 0, ',', '.') }}₫ - {{ number_format($product->max_price, 0, ',', '.') }}₫</span>
+                                                @endif
                                             @else
-                                                <span class="price-normal">{{ number_format($product->price, 0, ',', '.') }}₫</span>
+                                                @if($discounted)
+                                                    <div class="price-display">
+                                                        <span class="price-sale">{{ number_format($product->price * (100 - $product->discount) / 100, 0, ',', '.') }}₫</span>
+                                                        <span class="price-original">{{ number_format($product->price, 0, ',', '.') }}₫</span>
+                                                    </div>
+                                                @else
+                                                    <span class="price-normal">{{ number_format($product->price, 0, ',', '.') }}₫</span>
+                                                @endif
                                             @endif
                                         </div>
-                                        <div class="product-quickedit-form d-none">
-                                            <div class="product-quickedit-row">
-                                                <label>Giá gốc</label>
-                                                <input type="number" class="product-quickedit-input" data-field="price" min="0" step="1000" value="{{ (int) $product->price }}">
+                                        @if($product->min_price === null)
+                                            <div class="product-quickedit-form d-none">
+                                                <div class="product-quickedit-row">
+                                                    <label>Giá gốc</label>
+                                                    <input type="number" class="product-quickedit-input" data-field="price" min="0" step="1000" value="{{ (int) $product->price }}">
+                                                </div>
+                                                <div class="product-quickedit-row">
+                                                    <label>Giảm giá %</label>
+                                                    <input type="number" class="product-quickedit-input" data-field="discount" min="0" max="100" step="1" value="{{ (int) $product->discount }}">
+                                                </div>
+                                                <div class="product-quickedit-actions">
+                                                    <button type="button" class="product-quickedit-save" title="Lưu"><i class="fa-solid fa-check"></i></button>
+                                                    <button type="button" class="product-quickedit-cancel" title="Hủy"><i class="fa-solid fa-xmark"></i></button>
+                                                </div>
                                             </div>
-                                            <div class="product-quickedit-row">
-                                                <label>Giảm giá %</label>
-                                                <input type="number" class="product-quickedit-input" data-field="discount" min="0" max="100" step="1" value="{{ (int) $product->discount }}">
-                                            </div>
-                                            <div class="product-quickedit-actions">
-                                                <button type="button" class="product-quickedit-save" title="Lưu"><i class="fa-solid fa-check"></i></button>
-                                                <button type="button" class="product-quickedit-cancel" title="Hủy"><i class="fa-solid fa-xmark"></i></button>
-                                            </div>
-                                        </div>
+                                        @endif
+                                    </td>
+
+                                    {{-- Giá vốn --}}
+                                    <td data-cell="cost_price" data-sort-value="{{ $product->min_cost_price ?? (float)$product->cost_price }}">
+                                        <span class="text-muted">
+                                            @if($product->min_cost_price !== null)
+                                                @if($product->min_cost_price == $product->max_cost_price)
+                                                    {{ number_format($product->min_cost_price, 0, ',', '.') }}₫
+                                                @else
+                                                    {{ number_format($product->min_cost_price, 0, ',', '.') }}₫ - {{ number_format($product->max_cost_price, 0, ',', '.') }}₫
+                                                @endif
+                                            @else
+                                                {{ number_format($product->cost_price, 0, ',', '.') }}₫
+                                            @endif
+                                        </span>
                                     </td>
 
                                     {{-- Số lượng tồn kho --}}

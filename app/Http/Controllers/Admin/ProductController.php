@@ -41,7 +41,11 @@ class ProductController extends Controller
             : 10;
 
         $query = Product::with(['category', 'brand', 'productVariants.size', 'productVariants.color'])
-            ->withSum('productVariants', 'stock');
+            ->withSum('productVariants', 'stock')
+            ->withMin('productVariants as min_price', 'sale_price')
+            ->withMax('productVariants as max_price', 'sale_price')
+            ->withMin('productVariants as min_cost_price', 'cost_price')
+            ->withMax('productVariants as max_cost_price', 'cost_price');
 
         if ($search !== '') {
             $query->where(function ($q) use ($search) {
@@ -88,6 +92,7 @@ class ProductController extends Controller
         match ($sort) {
             'name' => $query->orderBy('name', $direction),
             'price' => $query->orderBy('price', $direction),
+            'cost_price' => $query->orderBy('cost_price', $direction),
             'stock' => $query->orderBy('product_variants_sum_stock', $direction),
             'status' => $query->orderBy('status', $direction),
             'is_featured' => $query->orderBy('is_featured', $direction),
@@ -161,6 +166,11 @@ class ProductController extends Controller
             'category_id.required' => 'Vui lòng chọn danh mục.',
             'brand_id.required'    => 'Vui lòng chọn thương hiệu.',
             'price.required'       => 'Giá sản phẩm không được để trống.',
+            'price.numeric'        => 'Giá sản phẩm phải là một số.',
+            'price.min'            => 'Giá sản phẩm không được âm.',
+            'cost_price.required'  => 'Giá vốn không được để trống.',
+            'cost_price.numeric'   => 'Giá vốn phải là một số.',
+            'cost_price.min'       => 'Giá vốn không được âm.',
             'discount.min'         => 'Giảm giá không được âm.',
             'discount.max'         => 'Giảm giá không được vượt quá 100%.',
             'gender.required'      => 'Vui lòng chọn giới tính.',
