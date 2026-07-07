@@ -250,7 +250,7 @@
                 <div class="col-lg-3 sidebar-filters-col" id="sidebarFilters">
                     <!-- Close button on mobile -->
                     <div class="sidebar-close-btn d-none text-end mb-4">
-                        <button class="btn btn-sm btn-outline-dark" id="closeFiltersBtn">CLOSE <i class="bi bi-x"></i></button>
+                        <button class="btn btn-sm btn-outline-dark" id="closeFiltersBtn">ĐÓNG <i class="bi bi-x"></i></button>
                     </div>
 
                     <form method="GET" action="{{ url()->current() }}" id="productFilterForm">
@@ -258,14 +258,14 @@
                     <!-- Category Filter -->
                     <div class="filter-group">
                         <h4 class="filter-title" data-bs-toggle="collapse" data-bs-target="#collapseCategory">
-                            Category <i class="bi bi-chevron-down"></i>
+                            Danh mục <i class="bi bi-chevron-down"></i>
                         </h4>
                         <div class="collapse show" id="collapseCategory">
                             <ul class="filter-list">
                                 <li>
                                     <a href="{{ url()->current() }}?{{ $withoutQuery(['category', 'page']) }}"
                                        class="filter-link {{ empty($selectedCategories) ? 'active' : '' }}">
-                                        All <span class="filter-count">({{ $filterCategories->sum('products_count') }})</span>
+                                        Tất cả <span class="filter-count">({{ $filterCategories->sum('products_count') }})</span>
                                     </a>
                                 </li>
                                 @foreach($filterCategories as $cat)
@@ -289,20 +289,20 @@
                     <!-- Gender Filter -->
                     <div class="filter-group">
                         <h4 class="filter-title" data-bs-toggle="collapse" data-bs-target="#collapseGender">
-                            Gender <i class="bi bi-chevron-down"></i>
+                            Giới tính <i class="bi bi-chevron-down"></i>
                         </h4>
                         <div class="collapse show" id="collapseGender">
                             <div class="form-check">
                                 <input class="form-check-input" type="checkbox" name="gender[]" value="men" id="genderMen"
                                        {{ in_array('men', $selectedGenders) ? 'checked' : '' }}
                                        onchange="document.getElementById('productFilterForm').submit()">
-                                <label class="form-check-label" for="genderMen">Men</label>
+                                <label class="form-check-label" for="genderMen">Nam</label>
                             </div>
                             <div class="form-check">
                                 <input class="form-check-input" type="checkbox" name="gender[]" value="women" id="genderWomen"
                                        {{ in_array('women', $selectedGenders) ? 'checked' : '' }}
                                        onchange="document.getElementById('productFilterForm').submit()">
-                                <label class="form-check-label" for="genderWomen">Women</label>
+                                <label class="form-check-label" for="genderWomen">Nữ</label>
                             </div>
                             <div class="form-check">
                                 <input class="form-check-input" type="checkbox" name="gender[]" value="unisex" id="genderUnisex"
@@ -316,7 +316,7 @@
                     <!-- Brand Filter -->
                     <div class="filter-group">
                         <h4 class="filter-title" data-bs-toggle="collapse" data-bs-target="#collapseBrand">
-                            Brand <i class="bi bi-chevron-down"></i>
+                            Thương hiệu <i class="bi bi-chevron-down"></i>
                         </h4>
                         <div class="collapse show" id="collapseBrand">
                             @foreach($filterBrands as $brand)
@@ -337,26 +337,26 @@
                     <!-- Price Range Filter -->
                     <div class="filter-group">
                         <h4 class="filter-title" data-bs-toggle="collapse" data-bs-target="#collapsePrice">
-                            Price Range <i class="bi bi-chevron-down"></i>
+                            Khoảng giá <i class="bi bi-chevron-down"></i>
                         </h4>
                         <div class="collapse show" id="collapsePrice">
                             <div class="price-inputs">
-                                <input type="number" name="min_price" id="minPrice" placeholder="MIN (đ)" value="{{ $minPrice }}" min="0">
-                                <input type="number" name="max_price" id="maxPrice" placeholder="MAX (đ)" value="{{ $maxPrice }}" min="0">
+                                <input type="number" name="min_price" id="minPrice" placeholder="TỪ (đ)" value="{{ $minPrice }}" min="0">
+                                <input type="number" name="max_price" id="maxPrice" placeholder="ĐẾN (đ)" value="{{ $maxPrice }}" min="0">
                             </div>
-                            <button type="submit" class="btn btn-black w-100 mt-3 btn-sm">APPLY PRICE</button>
+                            <button type="submit" class="btn btn-black w-100 mt-3 btn-sm">ÁP DỤNG GIÁ</button>
                         </div>
                     </div>
 
                     <!-- Tags Filter -->
                     <div class="filter-group border-0">
                         <h4 class="filter-title" data-bs-toggle="collapse" data-bs-target="#collapseTags">
-                            Tags <i class="bi bi-chevron-down"></i>
+                            Nhãn <i class="bi bi-chevron-down"></i>
                         </h4>
                         <div class="collapse show" id="collapseTags">
                             <div class="tag-cloud mt-2">
                                 <a href="{{ url()->current() }}?{{ $withoutQuery(['tags', 'page']) }}"
-                                   class="tag-badge {{ empty($selectedTags) ? 'active' : '' }}">All</a>
+                                   class="tag-badge {{ empty($selectedTags) ? 'active' : '' }}">Tất cả</a>
                                 @foreach($filterTags as $tag)
                                     <label class="tag-badge {{ in_array((string) $tag->id, $selectedTags) ? 'active' : '' }}">
                                         <input type="checkbox" name="tags[]" value="{{ $tag->id }}" class="d-none"
@@ -396,14 +396,14 @@
                     <div class="toolbar-section">
                         <!-- Mobile Filter Button Trigger -->
                         <button class="btn btn-outline-dark d-block d-lg-none" id="mobileFilterBtn">
-                            <i class="bi bi-sliders me-1"></i> FILTERS
+                            <i class="bi bi-sliders me-1"></i> BỘ LỌC
                         </button>
 
                         <!-- Search Bar -->
                         <div class="search-bar-inline d-none d-md-block">
                             <div class="position-relative">
                                 <input type="text" name="q" id="searchDesktop" class="form-control"
-                                       placeholder="Search products..." value="{{ $currentSearch ?? '' }}"
+                                       placeholder="Tìm kiếm sản phẩm..." value="{{ $currentSearch ?? '' }}"
                                        form="productFilterForm">
                                 <button type="submit" form="productFilterForm"
                                         class="border-0 bg-transparent position-absolute end-0 top-0 mt-2 me-3 text-muted">
@@ -416,10 +416,10 @@
                         <div class="sort-dropdown">
                             <select class="form-select" name="sort" form="productFilterForm"
                                     onchange="document.getElementById('productFilterForm').submit()">
-                                <option value="popularity" {{ ($currentSort ?? 'popularity') === 'popularity' ? 'selected' : '' }}>Sort By: Popularity</option>
-                                <option value="newest" {{ ($currentSort ?? '') === 'newest' ? 'selected' : '' }}>Sort By: Newest</option>
-                                <option value="price-low" {{ ($currentSort ?? '') === 'price-low' ? 'selected' : '' }}>Sort By: Price (Low to High)</option>
-                                <option value="price-high" {{ ($currentSort ?? '') === 'price-high' ? 'selected' : '' }}>Sort By: Price (High to Low)</option>
+                                <option value="popularity" {{ ($currentSort ?? 'popularity') === 'popularity' ? 'selected' : '' }}>Sắp xếp: Phổ biến</option>
+                                <option value="newest" {{ ($currentSort ?? '') === 'newest' ? 'selected' : '' }}>Sắp xếp: Mới nhất</option>
+                                <option value="price-low" {{ ($currentSort ?? '') === 'price-low' ? 'selected' : '' }}>Sắp xếp: Giá tăng dần</option>
+                                <option value="price-high" {{ ($currentSort ?? '') === 'price-high' ? 'selected' : '' }}>Sắp xếp: Giá giảm dần</option>
                             </select>
                         </div>
                     </div>
@@ -428,7 +428,7 @@
                     <div class="search-bar-inline d-block d-md-none mb-4">
                         <div class="position-relative">
                             <input type="text" id="searchMobile" class="form-control"
-                                   placeholder="Search products..." value="{{ $currentSearch ?? '' }}">
+                                   placeholder="Tìm kiếm sản phẩm..." value="{{ $currentSearch ?? '' }}">
                             <button type="button" id="searchMobileBtn"
                                     class="border-0 bg-transparent position-absolute end-0 top-0 mt-2 me-3 text-muted">
                                 <i class="bi bi-search"></i>
