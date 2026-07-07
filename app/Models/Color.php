@@ -14,6 +14,11 @@ class Color extends Model
     protected $fillable = [
         'name',
         'hex_code',
+        'status',
+    ];
+
+    protected $casts = [
+        'status' => 'boolean',
     ];
 
     public function getDisplayHexCodeAttribute(): ?string

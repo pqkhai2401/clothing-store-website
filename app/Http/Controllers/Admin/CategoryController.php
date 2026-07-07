@@ -159,7 +159,7 @@ class CategoryController extends Controller
         return redirect()->route('admin.categories.list')->with('success', 'Xóa danh mục thành công');
     }
 
-    public function toggleStatus(string $id)
+    public function toggleStatus(Request $request, string $id)
     {
         $category = Category::findOrFail($id);
         $newStatus = !$category->status;
@@ -168,6 +168,10 @@ class CategoryController extends Controller
         $msg = $newStatus
             ? "Danh mục \"{$category->name}\" đã được hiển thị."
             : "Danh mục \"{$category->name}\" đã được ẩn khỏi website.";
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => $msg, 'status' => $newStatus]);
+        }
 
         return back()->with('success', $msg);
     }

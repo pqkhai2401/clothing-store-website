@@ -5,6 +5,37 @@
 @push('styles')
     @include('admin.products.styles')
     <link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet">
+    <style>
+        /* Màu nút hành động dịu hơn, bớt "gắt", đồng bộ với các trang khác (Đơn hàng, Kích thước...) */
+        .product-admin-page .product-action-btn { border-radius: 8px !important; }
+        .product-admin-page .product-action-btn.btn-dark {
+            background: #059669 !important;
+            border-color: #059669 !important;
+        }
+        .product-admin-page .product-action-btn.btn-dark:hover {
+            background: #047857 !important;
+            border-color: #047857 !important;
+        }
+        .product-admin-page .product-action-btn.btn-light {
+            background: #ffffff !important;
+            border: 1.5px solid #D8E0EA !important;
+            color: #64748B !important;
+        }
+        .product-admin-page .product-action-btn.btn-light:hover {
+            background: #FEF2F2 !important;
+            border-color: #F87171 !important;
+            color: #DC2626 !important;
+        }
+
+        /* Bộ lọc "Thương hiệu" cần rộng hơn Size/Màu vì nhãn mặc định "Tất cả thương hiệu" dài hơn */
+        .product-admin-page .product-brand-filter {
+            width: 210px !important;
+            flex: 0 0 210px !important;
+        }
+        .product-admin-page .product-brand-filter .hk-cat-panel {
+            width: 240px;
+        }
+    </style>
 @endpush
 
 @section('content')
@@ -18,15 +49,15 @@
                     <p class="product-header-desc mb-0">Danh sách tất cả sản phẩm trong hệ thống.</p>
                 </div>
                 <div class="product-header-actions">
-                    <a href="{{ route('admin.products.create') }}" class="btn btn-dark product-action-btn">
-                        <i class="fa-solid fa-plus me-1"></i> Thêm sản phẩm
-                    </a>
-                    <a href="{{ route('admin.products.trash') }}" class="btn btn-light border product-action-btn">
-                        <i class="fa-regular fa-trash-can me-1"></i> Thùng rác
-                    </a>
                     <button type="button" class="btn product-action-btn product-action-btn--neutral" onclick="exportProducts()">
                         <i class="fa-solid fa-download me-1"></i> Xuất Excel
                     </button>
+                    <a href="{{ route('admin.products.trash') }}" class="btn btn-light border product-action-btn">
+                        <i class="fa-regular fa-trash-can me-1"></i> Thùng rác
+                    </a>
+                    <a href="{{ route('admin.products.create') }}" class="btn btn-dark product-action-btn">
+                        <i class="fa-solid fa-plus me-1"></i> Thêm sản phẩm
+                    </a>
                 </div>
             </div>
 
@@ -184,7 +215,7 @@
                         }
                     @endphp
                     <input type="hidden" name="brand_id" data-admin-filter id="productBrandFilter" value="{{ $brandId ?? '' }}">
-                    <div class="hk-cat-filter product-compact-filter" id="hkProductBrandFilter">
+                    <div class="hk-cat-filter product-brand-filter" id="hkProductBrandFilter">
                         <button type="button" class="hk-cat-trigger" id="hkProductBrandTrigger" aria-haspopup="listbox" aria-expanded="false">
                             <span class="hk-cat-trigger-label" id="hkProductBrandLabel">{{ $selectedBrandLabel }}</span>
                             <i class="fa-solid fa-chevron-down hk-cat-arrow"></i>

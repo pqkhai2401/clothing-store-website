@@ -1,6 +1,10 @@
 {{-- Styles extracted from index.blade.php --}}
 @include('admin.products.styles')
     <style>
+        /* Bảng đơn hàng có ít cột hơn bảng sản phẩm — thu hẹp min-width dùng chung
+           để cột "Khách hàng" không bị kéo dãn ra khoảng trắng thừa không cần thiết */
+        #orderTable { min-width: 1260px; }
+
         /* ── Order status chips ────────────────────────────────── */
         .order-badge {
             display: inline-flex;
@@ -36,6 +40,7 @@
         .payment-badge--unpaid { background: #FEF2F2; border: 1.5px solid #FECACA; color: #DC2626; }
 
         .order-code {
+            display: inline-block;
             font-family: monospace;
             font-size: 12px;
             font-weight: 700;
@@ -43,35 +48,145 @@
             background: #F1F5F9;
             padding: 3px 7px;
             border-radius: 5px;
+            white-space: nowrap;
         }
 
-        /* ── Chip chọn nhanh theo kỳ ── */
-        .order-period-chips {
-            display: flex;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 6px;
-        }
-        .order-period-chip {
+        /* ── Sổ xuống chọn nhanh trạng thái đơn/thanh toán ngay trong bảng ── */
+        .oc-row-dropdown { position: relative; display: inline-block; width: auto; }
+        .oc-row-trigger {
             display: inline-flex;
             align-items: center;
-            white-space: nowrap;
-            height: 38px;
-            padding: 0 14px;
+            gap: 6px;
+            border-width: 1.5px;
+            border-style: solid;
+            cursor: pointer;
+        }
+        .oc-row-trigger:hover { filter: brightness(0.97); }
+        .oc-row-trigger:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.15);
+        }
+        .oc-row-caret {
+            font-size: 9px;
+            opacity: .65;
+            transition: transform .15s;
+        }
+        .oc-row-trigger.is-open .oc-row-caret { transform: rotate(180deg); }
+
+        /* Mở từ trái qua phải, rộng vừa nội dung thay vì lệch phải/quá cứng như select mặc định */
+        .oc-row-dropdown .hk-cat-panel {
+            left: 0;
+            right: auto;
+            width: 190px;
+        }
+        .oc-row-panel .hk-cat-list .hk-cat-item { font-size: 13px; }
+
+        /* ── Nút Xem/Cập nhật hiển thị trực tiếp, không cần mở menu "..." ── */
+        .order-row-action-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 30px;
+            height: 30px;
+            border: 1px solid transparent;
+            border-radius: 8px;
+            color: #0F172A;
+            background: #F1F5F9;
+            font-size: 13px;
+            transition: background .15s, color .15s;
+        }
+        .order-row-action-btn:hover {
+            background: #E2E8F0;
+            color: #020617;
+        }
+
+        /* ── Dropdown chọn kỳ linh hoạt (Năm/Quý/Tháng) ── */
+        .order-period-dropdown { width: 170px; flex: 0 0 170px; }
+        .order-period-panel {
+            left: 0;
+            right: auto;
+            width: 260px;
+            padding: 14px;
+        }
+        .order-period-quick-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .order-period-quick-btn {
+            flex: 1;
+            height: 34px;
             border: 1px solid #D8E0EA;
-            border-radius: 999px;
+            border-radius: 8px;
             background: #fff;
             color: #374151;
-            font-size: 13px;
+            font-size: 12.5px;
             font-weight: 700;
+            cursor: pointer;
+            transition: background .15s, border-color .15s;
+        }
+        .order-period-quick-btn:hover {
+            background: #F0FDF4;
+            border-color: #16A34A;
+            color: #16A34A;
+        }
+        .order-period-year-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+        .order-period-year-row label {
+            font-size: 12.5px;
+            font-weight: 700;
+            color: #6b7280;
+            white-space: nowrap;
+        }
+        .order-period-year-filter {
+            width: 110px;
+            flex: 0 0 110px;
+        }
+        .order-period-year-filter .hk-cat-trigger {
+            min-height: 34px;
+            padding: 0 10px;
+            font-size: 13px;
+        }
+        .order-period-year-filter .hk-cat-panel {
+            left: 0;
+            right: auto;
+            width: 110px;
+        }
+        .order-period-year-filter .hk-cat-list {
+            max-height: 220px;
+        }
+        .order-period-section { margin-bottom: 12px; }
+        .order-period-section:last-child { margin-bottom: 0; }
+        .order-period-section-title {
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            color: #94A3B8;
+            margin-bottom: 8px;
+        }
+        .order-period-grid {
+            display: grid;
+            gap: 6px;
+        }
+        .order-period-grid--quarter { grid-template-columns: repeat(4, 1fr); }
+        .order-period-grid--month { grid-template-columns: repeat(4, 1fr); }
+        .order-period-cell {
+            height: 30px;
+            border: 1px solid #D8E0EA;
+            border-radius: 6px;
+            background: #fff;
+            color: #374151;
+            font-size: 12px;
+            font-weight: 600;
             cursor: pointer;
             transition: background .15s, border-color .15s, color .15s;
         }
-        .order-period-chip:hover {
-            background: #F1F5F9;
-            border-color: #94A3B8;
-        }
-        .order-period-chip.is-active {
+        .order-period-cell:hover {
             background: #16A34A;
             border-color: #16A34A;
             color: #fff;
@@ -111,101 +226,77 @@
             background: #162843 !important;
             color: #CBD5E1 !important;
         }
-        [data-theme="dark"] .order-period-chip {
+        [data-theme="dark"] .oc-row-panel {
+            background: #101C33 !important;
+            border-color: #2A3B59 !important;
+        }
+        [data-theme="dark"] .oc-row-panel .hk-cat-item {
+            color: #E2E8F0 !important;
+        }
+        [data-theme="dark"] .oc-row-panel .hk-cat-item:hover {
+            background: #162843 !important;
+        }
+        [data-theme="dark"] .order-row-action-btn {
+            background: #101C33 !important;
+            color: #CBD5E1 !important;
+        }
+        [data-theme="dark"] .order-row-action-btn:hover {
+            background: #162843 !important;
+            color: #fff !important;
+        }
+        [data-theme="dark"] .order-period-quick-btn,
+        [data-theme="dark"] .order-period-cell {
             background: #101B2E !important;
             border-color: #22314A !important;
             color: #CBD5E1 !important;
         }
-        [data-theme="dark"] .order-period-chip:hover {
-            background: #162843 !important;
-            border-color: #2E4361 !important;
-        }
-        [data-theme="dark"] .order-period-chip.is-active {
+        [data-theme="dark"] .order-period-quick-btn:hover,
+        [data-theme="dark"] .order-period-cell:hover {
             background: #16A34A !important;
             border-color: #16A34A !important;
             color: #fff !important;
         }
-
-        /* ── COMPACT VIEW (Tương đương hiệu ứng Zoom 90%) ── */
-        .product-admin-page {
-            font-size: 13px;
+        [data-theme="dark"] .order-period-section-title {
+            color: #000000 !important;
         }
-        .product-admin-page .product-header-title {
-            font-size: 1.4rem !important; /* Thu nhỏ tiêu đề trang */
-            margin-bottom: 2px !important;
+        [data-theme="dark"] .order-period-year-row label {
+            color: #94A3B8 !important;
         }
-        .product-admin-page .product-header-desc {
-            font-size: 0.8rem !important;
-        }
-
-        /* Thu nhỏ dòng chứa các thẻ thống kê (Stats Cards) */
-        .product-admin-page .row.g-4 {
-            --bs-gutter-y: 0.75rem !important;
-            --bs-gutter-x: 0.75rem !important;
-        }
-        .product-admin-page .card-body {
-            padding: 10px 14px !important; /* Giảm padding thẻ thống kê */
-        }
-        .product-admin-page .card-body .text-muted {
-            font-size: 11px !important; /* Thu nhỏ nhãn thẻ */
-        }
-        .product-admin-page .card-body h3, 
-        .product-admin-page .card-body .fw-bold {
-            font-size: 1.5rem !important; /* Thu nhỏ số liệu */
-        }
-
-        /* Thu nhỏ thanh công cụ (Toolbar & Filters) */
-        .product-admin-page .product-toolbar {
-            margin-top: 12px !important;
-            margin-bottom: 12px !important;
-            gap: 8px !important;
-        }
-        .product-admin-page .product-search,
-        .product-admin-page .hk-cat-trigger,
-        .product-admin-page .order-period-chip,
-        .product-admin-page .order-date-input {
-            min-height: 34px !important; /* Giảm chiều cao từ 38px xuống 34px */
-            height: 34px !important;
-            font-size: 12px !important;
-            padding: 0 10px !important;
-        }
-        .product-admin-page .order-period-chips {
-            gap: 4px !important; /* Thu hẹp khoảng cách các nút kỳ */
-        }
-
-        /* Thu gọn thanh lọc đơn hàng để "Từ ngày" lên chung 1 hàng với trạng thái/thanh toán */
-        .product-admin-page .product-toolbar-left {
+        /* ── COMPACT VIEW ORDER SPECIFIC OVERRIDES ── */
+        #orderFilterForm .product-toolbar-left {
             gap: 6px !important;
         }
-        .product-admin-page .product-search {
+        #orderFilterForm .product-search {
             width: 170px !important;
             flex: 0 0 170px !important;
         }
-        .product-admin-page .hk-cat-filter {
+        #orderFilterForm .hk-cat-filter {
             width: 138px !important;
             flex: 0 0 138px !important;
         }
-        .product-admin-page .order-period-chip {
-            padding: 0 8px !important;
+        #orderFilterForm .order-period-dropdown {
+            width: 150px !important;
+            flex: 0 0 150px !important;
         }
-        .product-admin-page .order-date-range {
+        #orderFilterForm .order-period-year-filter {
+            width: 110px !important;
+            flex: 0 0 110px !important;
+        }
+        #orderFilterForm .order-date-range {
             gap: 4px !important;
         }
-        .product-admin-page .order-date-input {
+        #orderFilterForm .order-date-input {
             width: 100px !important;
-        }
-
-        /* Thu nhỏ bảng dữ liệu (Table) */
-        .product-admin-page .product-table th,
-        .product-admin-page .product-table td {
-            padding: 6px 8px !important; /* Thu hẹp khoảng cách các dòng */
-            font-size: 12.5px !important; /* Giảm cỡ chữ dòng */
+            min-height: 34px !important;
+            height: 34px !important;
+            font-size: 12px !important;
+            padding: 0 10px !important;
         }
         .product-admin-page .order-badge,
         .product-admin-page .payment-badge {
             font-size: 11px !important;
             padding: 3px 10px !important;
-            min-height: 22px !important; /* Thu nhỏ các huy hiệu */
+            min-height: 22px !important;
         }
         .product-admin-page .order-code {
             font-size: 11px !important;

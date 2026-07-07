@@ -225,7 +225,7 @@ html:not([data-theme="dark"]) .stock-total {
                                         Tổng tồn kho <span class="product-sort-icon">↑↓</span>
                                     </button>
                                 </th>
-                                <th>
+                                <th style="width: 130px;">
                                     <button type="button" class="product-sort-btn" data-sort-key="status" data-sort-type="number">
                                         Trạng thái <span class="product-sort-icon">↑↓</span>
                                     </button>

@@ -98,7 +98,7 @@ html:not([data-theme="dark"]) .category-count-total { color: #111827 !important;
 [data-theme="dark"] .category-count-total { color: #f8fafc !important; }
 </style>
 
-<div class="product-table-wrap">
+<div class="product-table-wrap brand-table-wrap">
                 <div class="table-responsive">
                     <table class="table table-hover product-table align-middle" id="brandTable">
                         <thead>
@@ -111,23 +111,23 @@ html:not([data-theme="dark"]) .category-count-total { color: #111827 !important;
                                         ID <span class="product-sort-icon">↑</span>
                                     </button>
                                 </th>
-                                <th>
+                                <th style="width:340px;">
                                     <button type="button" class="product-sort-btn" data-sort-key="name">
                                         Tên thương hiệu <span class="product-sort-icon">↑↓</span>
                                     </button>
                                 </th>
-                                <th style="width:160px;">
+                                <th style="width:190px;">
                                     <button type="button" class="product-sort-btn" data-sort-key="products_count" data-sort-type="number">
                                         Số sản phẩm <span class="product-sort-icon">↑↓</span>
                                     </button>
                                 </th>
-                                <th style="width:140px;">
+                                <th style="width:170px;">
                                     <button type="button" class="product-sort-btn" data-sort-key="created_at">
                                         Ngày tạo <span class="product-sort-icon">↑↓</span>
                                     </button>
                                 </th>
-                                <th style="width:120px;">Trạng thái</th>
-                                <th class="text-end pe-4" style="width:90px;">Thao tác</th>
+                                <th style="width:170px;">Trạng thái</th>
+                                <th class="text-end pe-4" style="width:120px;">Thao tác</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -178,42 +178,38 @@ html:not([data-theme="dark"]) .category-count-total { color: #111827 !important;
                                         {{ $brand->created_at?->format('d/m/Y') ?? '—' }}
                                     </td>
                                     <td data-cell="status" data-sort-value="{{ $brand->status ? 1 : 0 }}">
-                                        <span class="status-badge {{ $brand->status ? 'status-badge--active' : 'status-badge--inactive' }}">
-                                            {{ $brand->status ? 'Hoạt động' : 'Ngưng hoạt động' }}
-                                        </span>
+                                        <div class="hk-cat-filter brand-status-dropdown" data-brand-id="{{ $brand->id }}"
+                                            data-toggle-url="{{ route('admin.brands.toggleStatus', $brand->id) }}">
+                                            <button type="button" class="status-badge brand-status-trigger {{ $brand->status ? 'status-badge--active' : 'status-badge--inactive' }}"
+                                                data-value="{{ $brand->status ? 1 : 0 }}" aria-haspopup="listbox" aria-expanded="false">
+                                                <span class="brand-status-trigger-label">{{ $brand->status ? 'Hoạt động' : 'Ngưng hoạt động' }}</span>
+                                                <i class="fa-solid fa-chevron-down brand-status-caret"></i>
+                                            </button>
+                                            <div class="hk-cat-panel brand-status-panel" hidden>
+                                                <div class="hk-cat-list" role="listbox">
+                                                    <button type="button" class="hk-cat-item {{ $brand->status ? 'is-active' : '' }}" data-value="1" data-css="status-badge--active">Hoạt động</button>
+                                                    <button type="button" class="hk-cat-item {{ !$brand->status ? 'is-active' : '' }}" data-value="0" data-css="status-badge--inactive">Ngưng hoạt động</button>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </td>
                                     <td class="text-end pe-4">
-                                        <div class="dropdown">
-                                            <button type="button" class="product-more-btn" data-bs-toggle="dropdown" aria-expanded="false">
-                                                <i class="fa-solid fa-ellipsis"></i>
+                                        <div class="d-flex align-items-center justify-content-end gap-1">
+                                            <button type="button" class="row-action-btn"
+                                                data-bs-toggle="modal" data-bs-target="#editBrandModal"
+                                                data-edit-id="{{ $brand->id }}"
+                                                data-edit-name="{{ $brand->name }}"
+                                                data-edit-url="{{ route('admin.brands.update', $brand->id) }}"
+                                                title="Sửa">
+                                                <i class="fa-regular fa-pen-to-square"></i>
                                             </button>
-                                            <div class="dropdown-menu dropdown-menu-end product-row-menu">
-                                                <button type="button" class="dropdown-item"
-                                                    data-bs-toggle="modal" data-bs-target="#editBrandModal"
-                                                    data-edit-id="{{ $brand->id }}"
-                                                    data-edit-name="{{ $brand->name }}"
-                                                    data-edit-url="{{ route('admin.brands.update', $brand->id) }}">
-                                                    <i class="fa-regular fa-pen-to-square"></i> Sửa
-                                                </button>
-                                                <form method="POST" action="{{ route('admin.brands.toggleStatus', $brand->id) }}" style="margin:0">
-                                                    @csrf
-                                                    @method('PATCH')
-                                                    <button type="submit" class="dropdown-item">
-                                                        @if($brand->status)
-                                                            <i class="fa-regular fa-eye-slash"></i> Ẩn thương hiệu
-                                                        @else
-                                                            <i class="fa-regular fa-eye"></i> Hiện lại thương hiệu
-                                                        @endif
-                                                    </button>
-                                                </form>
-                                                <div class="dropdown-divider my-1"></div>
-                                                <button type="button" class="dropdown-item text-danger"
-                                                    data-delete-url="{{ route('admin.brands.destroy', $brand->id) }}"
-                                                    data-delete-name="{{ $brand->name }}"
-                                                    data-delete-type="thương hiệu">
-                                                    <i class="fa-regular fa-trash-can"></i> Xóa
-                                                </button>
-                                            </div>
+                                            <button type="button" class="row-action-btn"
+                                                data-delete-url="{{ route('admin.brands.destroy', $brand->id) }}"
+                                                data-delete-name="{{ $brand->name }}"
+                                                data-delete-type="thương hiệu"
+                                                title="Xóa">
+                                                <i class="fa-regular fa-trash-can"></i>
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>
@@ -230,7 +226,7 @@ html:not([data-theme="dark"]) .category-count-total { color: #111827 !important;
                 </div>
             </div>
 
-            <div class="bg-white border border-top-0 rounded-bottom px-3 py-2">
+            <div class="bg-white border border-top-0 rounded-bottom px-3 py-2 brand-pagination-bar">
                 @include('layouts.components.pagination', [
                     'paginator'     => $brands,
                     'itemLabel'     => 'thương hiệu',

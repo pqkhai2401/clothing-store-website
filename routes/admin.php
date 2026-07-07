@@ -107,6 +107,7 @@ Route::middleware(['auth.login', 'admin'])
             Route::post('/', [ColorController::class, 'store'])->name('store');
             Route::get('/{id}/edit', [ColorController::class, 'edit'])->name('edit');
             Route::put('/{id}', [ColorController::class, 'update'])->name('update');
+            Route::patch('/{id}/toggle-status', [ColorController::class, 'toggleStatus'])->name('toggleStatus');
             Route::delete('/{id}', [ColorController::class, 'destroy'])->name('destroy');
             Route::post('/bulk-delete', [ColorController::class, 'bulkDelete'])->name('bulkDelete');
             Route::post('/trash/bulk-restore', [ColorController::class, 'bulkRestore'])->name('bulkRestore');

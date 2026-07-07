@@ -110,7 +110,7 @@ class BrandController extends Controller
         return redirect()->route('admin.brands.list')->with('success', 'Xóa thương hiệu thành công');
     }
 
-    public function toggleStatus(string $id)
+    public function toggleStatus(Request $request, string $id)
     {
         $brand = Brand::findOrFail($id);
         $newStatus = !$brand->status;
@@ -119,6 +119,10 @@ class BrandController extends Controller
         $msg = $newStatus
             ? "Thương hiệu \"{$brand->name}\" đã được hiển thị."
             : "Thương hiệu \"{$brand->name}\" đã được ẩn khỏi website.";
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => $msg, 'status' => $newStatus]);
+        }
 
         return back()->with('success', $msg);
     }

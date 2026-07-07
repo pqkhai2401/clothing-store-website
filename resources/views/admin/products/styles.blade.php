@@ -165,6 +165,14 @@
         border-color: #16A34A;
     }
 
+    /* Focus rõ ràng, có chủ đích (thay cho viền mặc định đen/thô của trình duyệt khi bấm/tab vào nút) */
+    .hk-cat-trigger:focus,
+    .hk-cat-trigger:focus-visible {
+        outline: none;
+        border-color: #16A34A;
+        box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.15);
+    }
+
     .hk-cat-trigger-label {
         flex: 1;
         overflow: hidden;
@@ -226,14 +234,18 @@
     .hk-cat-list {
         max-height: 240px;
         overflow-y: auto;
-        padding: 6px 0;
+        padding: 6px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
     }
 
     .hk-cat-item {
         display: block;
         width: 100%;
-        padding: 8px 14px;
+        padding: 8px 12px;
         border: 0;
+        border-radius: 8px;
         background: transparent;
         font-size: 13px;
         color: #374151;
@@ -278,24 +290,26 @@
         flex: 0 0 210px;
     }
 
+    /* Chip lọc nhanh "Sắp hết hàng" — nền đỏ cực nhạt mặc định (nổi bật nhưng không thô cứng
+       như viền đỏ đậm), chỉ đậm màu hẳn khi đang được chọn (is-active) */
     .product-low-stock-chip {
         display: inline-flex;
         align-items: center;
         white-space: nowrap;
         height: 38px;
         padding: 0 16px;
-        border: 1px solid #FCA5A5;
+        border: 1px solid transparent;
         border-radius: 999px;
-        background: #fff;
-        color: #DC2626;
+        background: #FEF2F2;
+        color: #EF4444;
         font-size: 13px;
         font-weight: 700;
         cursor: pointer;
-        transition: background .15s, border-color .15s;
+        transition: background .15s, border-color .15s, color .15s;
     }
     .product-low-stock-chip:hover {
-        background: #FEF2F2;
-        border-color: #F87171;
+        background: #FEE2E2;
+        border-color: #FCA5A5;
     }
     .product-low-stock-chip.is-active {
         background: #DC2626;
@@ -711,6 +725,13 @@
     [data-theme="dark"] .hk-cat-trigger:hover,
     [data-theme="dark"] .hk-cat-trigger.is-open {
         border-color: #3B82F6 !important;
+    }
+
+    [data-theme="dark"] .hk-cat-trigger:focus,
+    [data-theme="dark"] .hk-cat-trigger:focus-visible {
+        outline: none;
+        border-color: #3B82F6 !important;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18) !important;
     }
 
     [data-theme="dark"] .hk-cat-arrow { color: #94A3B8 !important; }
@@ -1133,4 +1154,54 @@
     [data-theme="dark"] .ql-toolbar.ql-snow button.ql-active .ql-fill {
         fill: #3B82F6 !important;
     }
+
+    /* ── COMPACT VIEW (Tương đương hiệu ứng Zoom 90%) ── */
+    .product-admin-page {
+        font-size: 13px;
+    }
+    .product-admin-page .product-header-title {
+        font-size: 1.4rem !important; /* Thu nhỏ tiêu đề trang */
+        margin-bottom: 2px !important;
+    }
+    .product-admin-page .product-header-desc {
+        font-size: 0.8rem !important;
+    }
+
+    /* Thu nhỏ dòng chứa các thẻ thống kê (Stats Cards) */
+    .product-admin-page .row.g-4 {
+        --bs-gutter-y: 0.75rem !important;
+        --bs-gutter-x: 0.75rem !important;
+    }
+    .product-admin-page .card-body {
+        padding: 10px 14px !important; /* Giảm padding thẻ thống kê */
+    }
+    .product-admin-page .card-body .text-muted {
+        font-size: 11px !important; /* Thu nhỏ nhãn thẻ */
+    }
+    .product-admin-page .card-body h3, 
+    .product-admin-page .card-body .fw-bold {
+        font-size: 1.5rem !important; /* Thu nhỏ số liệu */
+    }
+
+    /* Thu nhỏ thanh công cụ (Toolbar & Filters) */
+    .product-admin-page .product-toolbar {
+        margin-top: 12px !important;
+        margin-bottom: 12px !important;
+        gap: 8px !important;
+    }
+    .product-admin-page .product-search,
+    .product-admin-page .hk-cat-trigger {
+        min-height: 34px !important; /* Giảm chiều cao từ 38px xuống 34px */
+        height: 34px !important;
+        font-size: 12px !important;
+        padding: 0 10px !important;
+    }
+
+    /* Thu nhỏ bảng dữ liệu (Table) */
+    .product-admin-page .product-table th,
+    .product-admin-page .product-table td {
+        padding: 6px 8px !important; /* Thu hẹp khoảng cách các dòng */
+        font-size: 12.5px !important; /* Giảm cỡ chữ dòng */
+    }
     </style>
+

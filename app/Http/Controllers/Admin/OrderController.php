@@ -41,40 +41,76 @@ class OrderController extends Controller
     ];
 
     /**
-     * Các khoảng thời gian mẫu (hôm nay/tuần/tháng/quý/năm) dùng để gợi ý chip lọc nhanh
-     * và để suy ra nhãn hiển thị cho thẻ thống kê dựa trên date_from/date_to hiện tại.
+     * Các bước chuyển trạng thái hợp lệ theo vòng đời đơn hàng. Đơn đã "Hoàn thành" hoặc
+     * "Đã hủy" là trạng thái cuối (terminal), không cho chuyển tiếp/nhảy cóc/lùi lại.
      */
-    private function periodRanges(): array
-    {
-        $now = now();
+    public const STATUS_TRANSITIONS = [
+        'pending'    => ['processing', 'cancelled'],
+        'processing' => ['shipping', 'cancelled'],
+        'shipping'   => ['completed'],
+        'completed'  => [],
+        'cancelled'  => [],
+    ];
 
-        return [
-            'today'   => [$now->copy()->startOfDay(), $now->copy()->endOfDay(), 'hôm nay'],
-            'week'    => [$now->copy()->startOfWeek(), $now->copy()->endOfWeek(), 'tuần này'],
-            'month'   => [$now->copy()->startOfMonth(), $now->copy()->endOfMonth(), 'tháng này'],
-            'quarter' => [$now->copy()->startOfQuarter(), $now->copy()->endOfQuarter(), 'quý này'],
-            'year'    => [$now->copy()->startOfYear(), $now->copy()->endOfYear(), 'năm này'],
-        ];
+    /**
+     * Danh sách trạng thái được phép chọn cho một đơn đang ở trạng thái hiện tại
+     * (luôn gồm chính trạng thái hiện tại — coi như lựa chọn "không đổi").
+     */
+    public static function allowedStatusOptions(string $currentStatus): array
+    {
+        $allowedKeys = array_merge([$currentStatus], self::STATUS_TRANSITIONS[$currentStatus] ?? []);
+
+        return array_intersect_key(self::STATUS_LABELS, array_flip($allowedKeys));
+    }
+
+    private static function isValidStatusTransition(string $from, string $to): bool
+    {
+        return $to === $from || in_array($to, self::STATUS_TRANSITIONS[$from] ?? [], true);
     }
 
     /**
      * Suy ra khoảng ngày + nhãn hiển thị cho thẻ thống kê từ date_from/date_to đang áp dụng.
-     * Nếu không lọc gì cả, mặc định thống kê theo "hôm nay". Nếu khoảng ngày khớp đúng một
-     * kỳ mẫu (tuần/tháng/quý/năm hiện tại) thì dùng nhãn tương ứng, ngược lại là "khoảng đã chọn".
+     * Nếu không lọc gì cả, mặc định thống kê theo năm hiện tại. Nếu khoảng ngày khớp đúng
+     * trọn 1 năm/quý/tháng (của bất kỳ năm nào) thì hiển thị nhãn tương ứng (vd "Năm 2025",
+     * "Quý 2/2025", "Tháng 6/2025"), ngược lại là "khoảng đã chọn".
      */
     private function resolveStatsRange(string $dateFrom, string $dateTo): array
     {
-        $ranges = $this->periodRanges();
-
         if ($dateFrom === '' && $dateTo === '') {
-            [$from, $to, $label] = $ranges['today'];
-            return [$from->toDateString(), $to->toDateString(), $label];
+            $from = now()->startOfYear();
+            $to   = now()->endOfYear();
+
+            return [$from->toDateString(), $to->toDateString(), 'năm ' . $from->year];
         }
 
-        foreach ($ranges as [$from, $to, $label]) {
-            if ($dateFrom === $from->toDateString() && $dateTo === $to->toDateString()) {
-                return [$dateFrom, $dateTo, $label];
-            }
+        try {
+            $from = \Carbon\Carbon::parse($dateFrom)->startOfDay();
+            $to   = \Carbon\Carbon::parse($dateTo)->startOfDay();
+        } catch (\Throwable) {
+            return [$dateFrom, $dateTo, 'khoảng đã chọn'];
+        }
+
+        if ($from->year === $to->year
+            && $from->isSameDay($from->copy()->startOfYear())
+            && $to->isSameDay($to->copy()->endOfYear())
+        ) {
+            return [$dateFrom, $dateTo, 'năm ' . $from->year];
+        }
+
+        if ($from->year === $to->year
+            && $from->quarter === $to->quarter
+            && $from->isSameDay($from->copy()->startOfQuarter())
+            && $to->isSameDay($to->copy()->endOfQuarter())
+        ) {
+            return [$dateFrom, $dateTo, 'quý ' . $from->quarter . '/' . $from->year];
+        }
+
+        if ($from->year === $to->year
+            && $from->month === $to->month
+            && $from->isSameDay($from->copy()->startOfMonth())
+            && $to->isSameDay($to->copy()->endOfMonth())
+        ) {
+            return [$dateFrom, $dateTo, 'tháng ' . $from->month . '/' . $from->year];
         }
 
         return [$dateFrom, $dateTo, 'khoảng đã chọn'];
@@ -208,11 +244,24 @@ class OrderController extends Controller
             'status.in'    => 'Trạng thái không hợp lệ.',
         ]);
 
-        $updated = Order::whereIn('id', $validated['ids'])->update(['status' => $validated['status']]);
+        $eligibleIds = Order::whereIn('id', $validated['ids'])
+            ->get(['id', 'status'])
+            ->filter(fn (Order $order) => self::isValidStatusTransition($order->status, $validated['status']))
+            ->pluck('id');
+
+        $updated = $eligibleIds->isNotEmpty()
+            ? Order::whereIn('id', $eligibleIds)->update(['status' => $validated['status']])
+            : 0;
+
+        $skipped = count($validated['ids']) - $updated;
 
         $message = $validated['status'] === 'cancelled'
             ? "Đã hủy {$updated} đơn hàng."
             : "Đã duyệt {$updated} đơn hàng sang trạng thái Đang xử lý.";
+
+        if ($skipped > 0) {
+            $message .= " ({$skipped} đơn hàng không hợp lệ để chuyển trạng thái này đã bị bỏ qua.)";
+        }
 
         if ($request->expectsJson()) {
             return response()->json(['success' => true, 'message' => $message]);
@@ -406,6 +455,17 @@ class OrderController extends Controller
             'payment_status.in' => 'Trạng thái thanh toán không hợp lệ.',
             'note.max' => 'Ghi chú không được quá 1000 ký tự.',
         ]);
+
+        if (! self::isValidStatusTransition($order->status, $request->input('status'))) {
+            $message = "Không thể chuyển đơn hàng từ \"" . (self::STATUS_LABELS[$order->status] ?? $order->status)
+                . "\" sang \"" . (self::STATUS_LABELS[$request->input('status')] ?? $request->input('status')) . "\".";
+
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => $message], 422);
+            }
+
+            return back()->withErrors(['status' => $message])->withInput();
+        }
 
         $order->update([
             'status' => $request->input('status'),

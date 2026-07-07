@@ -12,6 +12,7 @@ class ColorController extends Controller
     public function index(Request $request)
     {
         $keyword = trim((string) $request->input('search', $request->input('keyword')));
+        $status = $request->input('status');
         $sort = $request->input('sort', 'id');
         $direction = in_array($request->input('direction'), ['asc', 'desc'], true) ? $request->input('direction') : 'asc';
         $perPage = in_array((int) $request->input('per_page'), [10, 25, 50], true)
@@ -22,6 +23,10 @@ class ColorController extends Controller
 
         if ($keyword !== '') {
             $query->where('name', 'like', "%{$keyword}%");
+        }
+
+        if (in_array($status, ['0', '1'], true)) {
+            $query->where('status', (bool) (int) $status);
         }
 
         match ($sort) {
@@ -40,6 +45,23 @@ class ColorController extends Controller
         }
 
         return view('admin.colors.index', compact('colors', 'keyword', 'perPage'));
+    }
+
+    public function toggleStatus(Request $request, string $id)
+    {
+        $color = Color::findOrFail($id);
+        $newStatus = !$color->status;
+        $color->update(['status' => $newStatus]);
+
+        $msg = $newStatus
+            ? "Màu sắc \"{$color->name}\" đã được hiển thị."
+            : "Màu sắc \"{$color->name}\" đã được ẩn khỏi website.";
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => $msg, 'status' => $newStatus]);
+        }
+
+        return back()->with('success', $msg);
     }
 
     public function store(Request $request)
