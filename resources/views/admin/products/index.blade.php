@@ -4,6 +4,7 @@
 
 @push('styles')
     @include('admin.products.styles')
+    <link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet">
 @endpush
 
 @section('content')
@@ -11,28 +12,55 @@
         <x-notification />
 
         <section class="px-3 px-md-4">
-            <div>
-                <h1 class="product-header-title mb-2">Quản lý sản phẩm</h1>
-                <p class="product-header-desc mb-0">Danh sách tất cả sản phẩm trong hệ thống.</p>
+            <div class="d-flex align-items-start justify-content-between flex-wrap gap-3">
+                <div>
+                    <h1 class="product-header-title mb-2">Quản lý sản phẩm</h1>
+                    <p class="product-header-desc mb-0">Danh sách tất cả sản phẩm trong hệ thống.</p>
+                </div>
                 <div class="product-header-actions">
-                    <button type="button" class="btn btn-light border product-action-btn" onclick="exportProducts()">
-                        <i class="fa-solid fa-file-excel me-1" style="color:#16A34A;"></i> Xuất file Excel
-                    </button>
                     <a href="{{ route('admin.products.create') }}" class="btn btn-dark product-action-btn">
                         <i class="fa-solid fa-plus me-1"></i> Thêm sản phẩm
                     </a>
                     <a href="{{ route('admin.products.trash') }}" class="btn btn-light border product-action-btn">
                         <i class="fa-regular fa-trash-can me-1"></i> Thùng rác
                     </a>
+                    <button type="button" class="btn product-action-btn product-action-btn--neutral" onclick="exportProducts()">
+                        <i class="fa-solid fa-download me-1"></i> Xuất Excel
+                    </button>
+                </div>
+            </div>
+
+            <div class="row g-3 product-stat-row">
+                <div class="col-md-4">
+                    <div class="product-stat-card">
+                        <div class="product-stat-label">Tổng sản phẩm</div>
+                        <div class="product-stat-value">{{ number_format($totalProducts) }}</div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="product-stat-card">
+                        <div class="product-stat-label">Đang hoạt động</div>
+                        <div class="product-stat-value product-stat-value--success">{{ number_format($activeProducts) }}</div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="product-stat-card">
+                        <div class="product-stat-label">Hết hàng</div>
+                        <div class="product-stat-value product-stat-value--danger">{{ number_format($outOfStockProducts) }}</div>
+                    </div>
                 </div>
             </div>
 
             <div class="product-toolbar">
-                <div class="product-toolbar-left">
+                <div class="product-search-row">
+                    <i class="fa-solid fa-magnifying-glass product-search-icon"></i>
                     <input type="search" name="search" data-admin-search id="productRealtimeSearch" class="form-control product-search"
                         value="{{ $keyword }}"
                         placeholder="Tìm kiếm theo tên sản phẩm, danh mục,..." autocomplete="off">
+                </div>
 
+                <div class="product-toolbar-filters-row">
+                <div class="product-toolbar-left">
                     @php
                         $selectedCatLabel = 'Tất cả danh mục';
                         if (!empty($parentCategoryId)) {
@@ -206,6 +234,7 @@
                         </div>
                     </div>
                 </div>
+                </div>
             </div>
 
             <div data-admin-table-area>
@@ -224,6 +253,7 @@
 @endsection
 
 @push('scripts')
+    <script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
     @include('layouts.components.confirm.delete')
     @include('admin.products.scripts')
     @include('admin.partials.realtime-table')

@@ -230,6 +230,11 @@ html:not([data-theme="dark"]) .stock-total {
                                         Trạng thái <span class="product-sort-icon">↑↓</span>
                                     </button>
                                 </th>
+                                <th class="text-center" style="width: 76px;">
+                                    <button type="button" class="product-sort-btn" data-sort-key="is_featured" data-sort-type="number">
+                                        Nổi bật <span class="product-sort-icon">↑↓</span>
+                                    </button>
+                                </th>
                                 <th class="text-end pe-4" style="width: 96px;">Thao tác</th>
                             </tr>
                         </thead>
@@ -268,16 +273,36 @@ html:not([data-theme="dark"]) .stock-total {
                                         <span class="fw-semibold">{{ $product->brand?->name ?? '—' }}</span>
                                     </td>
 
-                                    <td data-cell="price" data-sort-value="{{ $effectivePrice }}">
+                                    <td data-cell="price" data-sort-value="{{ $effectivePrice }}"
+                                        class="product-quickedit-cell"
+                                        data-quickedit-url="{{ route('admin.products.quickUpdate', $product->id) }}"
+                                        data-product-name="{{ $product->name }}"
+                                        title="Nhấp đúp để sửa nhanh giá/giảm giá">
                                         @php $discounted = $product->discount > 0; @endphp
-                                        @if($discounted)
-                                            <div class="price-display">
-                                                <span class="price-sale">{{ number_format($product->price * (100 - $product->discount) / 100, 0, ',', '.') }}₫</span>
-                                                <span class="price-original">{{ number_format($product->price, 0, ',', '.') }}₫</span>
+                                        <div class="product-quickedit-view">
+                                            @if($discounted)
+                                                <div class="price-display">
+                                                    <span class="price-sale">{{ number_format($product->price * (100 - $product->discount) / 100, 0, ',', '.') }}₫</span>
+                                                    <span class="price-original">{{ number_format($product->price, 0, ',', '.') }}₫</span>
+                                                </div>
+                                            @else
+                                                <span class="price-normal">{{ number_format($product->price, 0, ',', '.') }}₫</span>
+                                            @endif
+                                        </div>
+                                        <div class="product-quickedit-form d-none">
+                                            <div class="product-quickedit-row">
+                                                <label>Giá gốc</label>
+                                                <input type="number" class="product-quickedit-input" data-field="price" min="0" step="1000" value="{{ (int) $product->price }}">
                                             </div>
-                                        @else
-                                            <span class="price-normal">{{ number_format($product->price, 0, ',', '.') }}₫</span>
-                                        @endif
+                                            <div class="product-quickedit-row">
+                                                <label>Giảm giá %</label>
+                                                <input type="number" class="product-quickedit-input" data-field="discount" min="0" max="100" step="1" value="{{ (int) $product->discount }}">
+                                            </div>
+                                            <div class="product-quickedit-actions">
+                                                <button type="button" class="product-quickedit-save" title="Lưu"><i class="fa-solid fa-check"></i></button>
+                                                <button type="button" class="product-quickedit-cancel" title="Hủy"><i class="fa-solid fa-xmark"></i></button>
+                                            </div>
+                                        </div>
                                     </td>
 
                                     {{-- Số lượng tồn kho --}}
@@ -345,6 +370,16 @@ html:not([data-theme="dark"]) .stock-total {
                                         </div>
                                     </td>
 
+                                    <td class="text-center" data-sort-value="{{ $product->is_featured ? 1 : 0 }}">
+                                        <button type="button"
+                                            class="product-featured-star {{ $product->is_featured ? 'is-active' : '' }}"
+                                            data-toggle-featured-url="{{ route('admin.products.toggleFeatured', $product->id) }}"
+                                            data-product-name="{{ $product->name }}"
+                                            title="{{ $product->is_featured ? 'Bỏ đánh dấu nổi bật' : 'Đánh dấu sản phẩm nổi bật' }}">
+                                            <i class="fa-solid fa-star"></i>
+                                        </button>
+                                    </td>
+
                                     <td class="text-end pe-4">
                                         <div class="d-inline-flex align-items-center gap-1">
                                             <button type="button"
@@ -366,7 +401,7 @@ html:not([data-theme="dark"]) .stock-total {
                                 </tr>
                             @empty
                                 <tr data-empty-row>
-                                    <td colspan="10" class="text-center py-5">
+                                    <td colspan="11" class="text-center py-5">
                                         <i class="fa-solid fa-inbox text-muted mb-3" style="font-size:42px; display:block;"></i>
                                         <div class="fw-semibold text-muted">Chưa có sản phẩm nào</div>
                                     </td>

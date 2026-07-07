@@ -90,6 +90,7 @@ class ProductController extends Controller
             'price' => $query->orderBy('price', $direction),
             'stock' => $query->orderBy('product_variants_sum_stock', $direction),
             'status' => $query->orderBy('status', $direction),
+            'is_featured' => $query->orderBy('is_featured', $direction),
             default => $query->orderBy('id', $direction),
         };
 
@@ -105,7 +106,17 @@ class ProductController extends Controller
             ]);
         }
 
-        return view('admin.products.index', compact('products', 'categories', 'sizes', 'colors', 'brands', 'keyword', 'categoryId', 'parentCategoryId', 'brandId', 'sizeId', 'colorId', 'status', 'stockStatus', 'perPage'));
+        $totalProducts      = Product::count();
+        $activeProducts     = Product::where('status', true)->count();
+        $outOfStockProducts = Product::whereRaw(
+            '(select coalesce(sum(product_variants.stock), 0) from product_variants where product_variants.product_id = products.id) <= 0'
+        )->count();
+
+        return view('admin.products.index', compact(
+            'products', 'categories', 'sizes', 'colors', 'brands', 'keyword', 'categoryId', 'parentCategoryId',
+            'brandId', 'sizeId', 'colorId', 'status', 'stockStatus', 'perPage',
+            'totalProducts', 'activeProducts', 'outOfStockProducts'
+        ));
     }
 
     public function export(Request $request)
@@ -421,6 +432,53 @@ class ProductController extends Controller
         }
 
         return back()->with('success', $msg);
+    }
+
+    public function toggleFeatured(Request $request, string $id)
+    {
+        $product = Product::findOrFail($id);
+        $newFeatured = !$product->is_featured;
+        $product->update(['is_featured' => $newFeatured]);
+
+        $msg = $newFeatured
+            ? "Đã đánh dấu \"{$product->name}\" là sản phẩm nổi bật."
+            : "Đã bỏ đánh dấu nổi bật cho \"{$product->name}\".";
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(['is_featured' => $newFeatured, 'message' => $msg]);
+        }
+
+        return back()->with('success', $msg);
+    }
+
+    public function quickUpdate(Request $request, string $id)
+    {
+        $product = Product::findOrFail($id);
+
+        $validator = Validator::make($request->all(), [
+            'price'    => ['required', 'numeric', 'min:0'],
+            'discount' => ['required', 'integer', 'min:0', 'max:100'],
+        ], [
+            'price.required'    => 'Giá không được để trống.',
+            'price.numeric'     => 'Giá phải là một số.',
+            'price.min'         => 'Giá không được âm.',
+            'discount.required' => 'Giảm giá không được để trống.',
+            'discount.integer'  => 'Giảm giá phải là số nguyên.',
+            'discount.min'      => 'Giảm giá không được âm.',
+            'discount.max'      => 'Giảm giá không được vượt quá 100%.',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['message' => $validator->errors()->first()], 422);
+        }
+
+        $product->update($validator->validated());
+
+        return response()->json([
+            'message' => "Cập nhật giá sản phẩm \"{$product->name}\" thành công.",
+            'price' => (float) $product->price,
+            'discount' => (int) $product->discount,
+        ]);
     }
 
     public function destroy(string $id)

@@ -112,9 +112,13 @@
                                 <td class="info-label ps-0">Email</td>
                                 <td class="info-value">{{ $order->user?->email ?? '—' }}</td>
                             </tr>
+                            @php
+                                $displayPhone = collect([$order->phone, $order->user?->phone_number])
+                                    ->first(fn ($p) => $p && $p !== '0');
+                            @endphp
                             <tr>
                                 <td class="info-label ps-0">Số điện thoại</td>
-                                <td class="info-value">{{ $order->phone ?? $order->user?->phone_number ?? '—' }}</td>
+                                <td class="info-value">{{ $displayPhone ?? 'Chưa cập nhật' }}</td>
                             </tr>
                             @if($order->address)
                                 <tr>

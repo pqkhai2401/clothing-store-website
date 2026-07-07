@@ -45,6 +45,28 @@
             border-radius: 5px;
         }
 
+        /* ── Lọc theo khoảng thời gian ── */
+        .order-date-range {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .order-date-input {
+            min-height: 38px;
+            width: 155px;
+            border: 1px solid #D8E0EA;
+            border-radius: 10px;
+            font-size: 13px;
+        }
+        .order-date-input:focus {
+            border-color: #16A34A;
+            box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.12);
+        }
+        .order-date-sep {
+            color: #94A3B8;
+            font-weight: 700;
+        }
+
         /* ── Dark mode ────────────────────────────────── */
         [data-theme="dark"] .order-badge--pending   { background: rgba(251,191,36,0.12) !important; border-color: rgba(251,191,36,0.3) !important; color: #FCD34D !important; }
         [data-theme="dark"] .order-badge--processing { background: rgba(59,130,246,0.12) !important; border-color: rgba(59,130,246,0.3) !important; color: #93C5FD !important; }

@@ -67,6 +67,8 @@ Route::middleware(['auth.login', 'admin'])
             Route::get('/{id}/edit', [ProductController::class, 'edit'])->name('edit');
             Route::put('/{id}', [ProductController::class, 'update'])->name('update');
             Route::patch('/{id}/toggle-status', [ProductController::class, 'toggleStatus'])->name('toggleStatus');
+            Route::patch('/{id}/toggle-featured', [ProductController::class, 'toggleFeatured'])->name('toggleFeatured');
+            Route::patch('/{id}/quick-update', [ProductController::class, 'quickUpdate'])->name('quickUpdate');
             Route::delete('/{id}', [ProductController::class, 'destroy'])->name('destroy');
             Route::post('/bulk-delete', [ProductController::class, 'bulkDelete'])->name('bulkDelete');
             Route::post('/trash/bulk-restore', [ProductController::class, 'bulkRestore'])->name('bulkRestore');
@@ -172,6 +174,8 @@ Route::middleware(['auth.login', 'admin'])
 
         Route::prefix('orders')->name('orders.')->group(function () {
             Route::get('/', [OrderController::class, 'index'])->name('list');
+            Route::get('/export', [OrderController::class, 'export'])->name('export');
+            Route::post('/bulk-update-status', [OrderController::class, 'bulkUpdateStatus'])->name('bulkUpdateStatus');
             Route::get('/{id}/detail', [OrderController::class, 'detail'])->name('detail');
             Route::put('/{id}', [OrderController::class, 'update'])->name('update');
         });

@@ -54,9 +54,38 @@
         <x-notification />
 
         <section class="px-3 px-md-4">
-            <div>
-                <h1 class="product-header-title mb-2">Quản lý đơn hàng</h1>
-                <p class="product-header-desc mb-0">Danh sách tất cả đơn hàng trong hệ thống.</p>
+            <div class="d-flex align-items-start justify-content-between flex-wrap gap-3">
+                <div>
+                    <h1 class="product-header-title mb-2">Quản lý đơn hàng</h1>
+                    <p class="product-header-desc mb-0">Danh sách tất cả đơn hàng trong hệ thống.</p>
+                </div>
+                <div class="product-header-actions">
+                    <a href="{{ route('admin.orders.export') }}?{{ http_build_query(request()->except('page')) }}"
+                       class="btn product-action-btn product-action-btn--neutral">
+                        <i class="fa-solid fa-download me-1"></i> Xuất Excel
+                    </a>
+                </div>
+            </div>
+
+            <div class="row g-3 product-stat-row">
+                <div class="col-md-4">
+                    <div class="product-stat-card">
+                        <div class="product-stat-label">Doanh thu hôm nay</div>
+                        <div class="product-stat-value">{{ number_format($todayRevenue, 0, ',', '.') }}đ</div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="product-stat-card">
+                        <div class="product-stat-label">Đơn chờ duyệt</div>
+                        <div class="product-stat-value product-stat-value--success">{{ number_format($pendingOrders) }}</div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="product-stat-card">
+                        <div class="product-stat-label">Đơn bị hủy</div>
+                        <div class="product-stat-value product-stat-value--danger">{{ number_format($cancelledOrders) }}</div>
+                    </div>
+                </div>
             </div>
 
             @php
@@ -114,6 +143,15 @@
                                 @endforeach
                             </div>
                         </div>
+                    </div>
+
+                    {{-- Lọc theo khoảng thời gian --}}
+                    <div class="order-date-range">
+                        <input type="date" name="date_from" data-admin-filter class="form-control order-date-input"
+                            value="{{ $dateFrom ?? '' }}" title="Từ ngày">
+                        <span class="order-date-sep">—</span>
+                        <input type="date" name="date_to" data-admin-filter class="form-control order-date-input"
+                            value="{{ $dateTo ?? '' }}" title="Đến ngày">
                     </div>
                 </div>
             </form>

@@ -258,6 +258,20 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
+        const customActionButton = event.target.closest('[data-admin-table-area] [data-custom-value]');
+        if (customActionButton) {
+            const form = tableArea.querySelector('form[id$="_bcf"]');
+            const field = customActionButton.closest('.hk-pg-status-actions')?.dataset.bulkField || 'value';
+            const value = customActionButton.dataset.customValue;
+            const label = tableArea.querySelector('.hk-pagination')?.dataset.label || 'mục';
+            const actionLabel = customActionButton.textContent.trim();
+            const count = selectedRows().length;
+            if (count && confirm('Bạn có chắc chắn muốn "' + actionLabel + '" cho ' + count + ' ' + label + ' đã chọn không?')) {
+                submitBulk(form, { [field]: value });
+            }
+            return;
+        }
+
         const statusButton = event.target.closest('[data-admin-table-area] .hk-pg-sel-status');
         if (statusButton) {
             const form = tableArea.querySelector('form[id$="_bsf"]');

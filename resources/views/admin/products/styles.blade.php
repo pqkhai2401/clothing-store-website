@@ -22,36 +22,80 @@
         display: flex;
         align-items: center;
         gap: 10px;
-        margin-top: 16px;
+        margin-top: 15px;
     }
+
+    /* ── Thẻ tổng hợp số liệu sản phẩm ── */
+    .product-stat-row {
+        margin-top: 8px;
+        margin-bottom: 20px;
+    }
+    .product-stat-card {
+        background: #ffffff;
+        border: 1px solid #E2E8F0;
+        border-radius: 12px;
+        padding: 16px 20px;
+        height: 100%;
+    }
+    .product-stat-label {
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .03em;
+        color: #64748B;
+        margin-bottom: 8px;
+    }
+    .product-stat-value {
+        font-size: 26px;
+        font-weight: 800;
+        color: #0F172A;
+        line-height: 1;
+    }
+    .product-stat-value--success { color: #16A34A; }
+    .product-stat-value--danger { color: #DC2626; }
+
+    [data-theme="dark"] .product-stat-card {
+        background: #0F1B31 !important;
+        border-color: #22324D !important;
+    }
+    [data-theme="dark"] .product-stat-label { color: #94A3B8 !important; }
+    [data-theme="dark"] .product-stat-value { color: #F8FAFC !important; }
+    [data-theme="dark"] .product-stat-value--success { color: #4ADE80 !important; }
+    [data-theme="dark"] .product-stat-value--danger { color: #F87171 !important; }
 
     .product-toolbar {
         display: flex;
-        align-items: center;
-        justify-content: space-between;
+        flex-direction: column;
         gap: 16px;
         margin: 30px 0 16px;
     }
 
-    .product-toolbar-left {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        flex: 1 1 auto;
-        flex-wrap: nowrap;
-        min-width: 0;
+    /* ── Ô tìm kiếm to, chiếm trọn hàng riêng để dễ gõ nội dung ── */
+    .product-search-row {
+        position: relative;
+        width: 100%;
+    }
+
+    .product-search-icon {
+        position: absolute;
+        left: 18px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #94A3B8;
+        font-size: 16px;
+        pointer-events: none;
     }
 
     .product-search {
-        min-height: 38px;
-        border: 1px solid #D8E0EA;
-        border-radius: 10px;
+        min-height: 52px;
+        width: 100%;
+        border: 1.5px solid #D8E0EA;
+        border-radius: 12px;
         background: #fff;
         box-shadow: none;
-        font-size: 14px;
+        font-size: 15px;
         color: #0F172A;
-        width: min(380px, 100%);
-        flex: 0 1 380px;
+        padding-left: 46px;
     }
 
     .product-search::placeholder {
@@ -60,7 +104,25 @@
 
     .product-search:focus {
         border-color: #16A34A;
-        box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.12);
+        box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.12);
+    }
+
+    /* ── Hàng bộ lọc: cho phép xuống dòng, giãn khoảng cách rộng rãi hơn ── */
+    .product-toolbar-filters-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 14px 20px;
+    }
+
+    .product-toolbar-left {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        flex: 1 1 auto;
+        flex-wrap: wrap;
+        min-width: 0;
     }
 
     /* Custom category dropdown */
@@ -207,7 +269,8 @@
         display: flex;
         align-items: center;
         justify-content: flex-end;
-        gap: 10px;
+        flex-wrap: wrap;
+        gap: 14px;
     }
 
     .product-toolbar-right .product-status-filter {
@@ -272,6 +335,18 @@
         color: #B91C1C !important;
     }
 
+    .product-action-btn--neutral {
+        background: #ffffff !important;
+        border: 1.5px solid #D8E0EA !important;
+        color: #334155 !important;
+    }
+
+    .product-action-btn--neutral:hover {
+        background: #F8FAFC !important;
+        border-color: #CBD5E1 !important;
+        color: #0F172A !important;
+    }
+
     .product-table-wrap {
         overflow: hidden;
         background: #ffffff;
@@ -279,8 +354,30 @@
         border-radius: 12px;
     }
 
+    /* ── Cho phép kéo ngang để xem hết cột (ID, ảnh, tên, danh mục, giá, tồn kho, trạng thái, nổi bật, thao tác...) ── */
+    .product-table-wrap .table-responsive {
+        overflow-x: auto !important;
+        overflow-y: visible !important;
+        scrollbar-width: thin;
+        scrollbar-color: #CBD5E1 #F1F5F9;
+    }
+    .product-table-wrap .table-responsive::-webkit-scrollbar {
+        height: 10px;
+    }
+    .product-table-wrap .table-responsive::-webkit-scrollbar-track {
+        background: #F1F5F9;
+    }
+    .product-table-wrap .table-responsive::-webkit-scrollbar-thumb {
+        background: #CBD5E1;
+        border-radius: 999px;
+    }
+    .product-table-wrap .table-responsive::-webkit-scrollbar-thumb:hover {
+        background: #94A3B8;
+    }
+
     .product-table {
         margin: 0;
+        min-width: 1420px;
         --bs-table-hover-bg: #F8FAFC;
     }
 
@@ -438,6 +535,70 @@
         color: #16A34A;
     }
 
+    /* ── Sản phẩm nổi bật (ngôi sao) ── */
+    .product-featured-star {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        border: 0;
+        background: transparent;
+        color: #cbd5e1;
+        font-size: 15px;
+        cursor: pointer;
+        transition: color 0.15s, background 0.15s, transform 0.1s;
+    }
+    .product-featured-star:hover {
+        background: #fef3c7;
+        color: #f59e0b;
+    }
+    .product-featured-star:active { transform: scale(0.9); }
+    .product-featured-star.is-active { color: #f59e0b; }
+    [data-theme="dark"] .product-featured-star { color: #475569; }
+    [data-theme="dark"] .product-featured-star:hover { background: rgba(245,158,11,.12); color: #f59e0b; }
+    [data-theme="dark"] .product-featured-star.is-active { color: #f59e0b; }
+
+    /* ── Sửa nhanh Giá/Giảm giá (double-click) ── */
+    .product-quickedit-cell { cursor: pointer; position: relative; min-width: 150px; }
+    .product-quickedit-form {
+        display: flex;
+        align-items: flex-end;
+        gap: 8px;
+        background: #fff;
+        border: 1.5px solid #174761;
+        border-radius: 8px;
+        padding: 8px;
+        position: absolute;
+        top: -8px;
+        left: 0;
+        z-index: 20;
+        box-shadow: 0 8px 24px rgba(0,0,0,.12);
+        cursor: default;
+    }
+    .product-quickedit-row { display: flex; flex-direction: column; gap: 2px; }
+    .product-quickedit-row label { font-size: 10px; font-weight: 700; color: #6b7280; text-transform: uppercase; white-space: nowrap; }
+    .product-quickedit-input {
+        width: 100px;
+        height: 32px;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        padding: 0 8px;
+        font-size: 13px;
+        outline: none;
+    }
+    .product-quickedit-input:focus { border-color: #174761; box-shadow: 0 0 0 2px rgba(23,71,97,.12); }
+    .product-quickedit-actions { display: flex; gap: 4px; }
+    .product-quickedit-save, .product-quickedit-cancel {
+        width: 32px; height: 32px; border-radius: 6px; border: 0;
+        display: flex; align-items: center; justify-content: center; cursor: pointer;
+    }
+    .product-quickedit-save { background: #dcfce7; color: #16a34a; }
+    .product-quickedit-save:hover { background: #bbf7d0; }
+    .product-quickedit-cancel { background: #f3f4f6; color: #6b7280; }
+    .product-quickedit-cancel:hover { background: #e5e7eb; }
+    [data-theme="dark"] .product-quickedit-form { background: #0F1B31; border-color: #3B82F6; }
+    [data-theme="dark"] .product-quickedit-input { background: #0F1B31; border-color: #2A3B59; color: #E2E8F0; }
+    [data-theme="dark"] .product-quickedit-row label { color: #94A3B8; }
+
     .price-display {
         display: flex;
         flex-direction: column;
@@ -574,6 +735,18 @@
     [data-theme="dark"] .product-table-wrap {
         background: #0F1B31 !important;
         border-color: #22324D !important;
+    }
+    [data-theme="dark"] .product-table-wrap .table-responsive {
+        scrollbar-color: #334155 #0F1B31;
+    }
+    [data-theme="dark"] .product-table-wrap .table-responsive::-webkit-scrollbar-track {
+        background: #0F1B31;
+    }
+    [data-theme="dark"] .product-table-wrap .table-responsive::-webkit-scrollbar-thumb {
+        background: #334155;
+    }
+    [data-theme="dark"] .product-table-wrap .table-responsive::-webkit-scrollbar-thumb:hover {
+        background: #475569;
     }
 
     [data-theme="dark"] .product-table {
@@ -904,4 +1077,60 @@
 
     /* ── Panel "Sửa sản phẩm" trượt từ phải ── */
     .product-edit-offcanvas { width: min(1100px, 95vw) !important; }
+
+    /* ── Rich text editor (Quill) cho Mô tả — cho phép kéo lên/xuống để đổi chiều cao ── */
+    #descriptionEditor {
+        min-height: 220px;
+        background: #fff;
+        font-size: 14px;
+    }
+    .ql-toolbar.ql-snow {
+        border-radius: 6px 6px 0 0;
+        background: #f9fafb;
+    }
+    .ql-container.ql-snow {
+        border-radius: 0 0 6px 6px;
+        display: block;
+        width: 100% !important;
+        height: auto !important;
+        resize: vertical !important;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+        min-height: 150px;
+        max-height: 480px;
+    }
+    .ql-editor {
+        min-height: 150px;
+        height: 100% !important;
+        color: #111827 !important;
+    }
+    .ql-editor.ql-blank::before {
+        color: #9ca3af !important;
+        font-style: normal;
+    }
+    .edit-field.is-invalid .ql-toolbar,
+    .edit-field.is-invalid .ql-container {
+        border-color: #dc3545;
+    }
+
+    /* ── Dark mode ── */
+    [data-theme="dark"] #descriptionEditor { background: #0F1B31 !important; }
+    [data-theme="dark"] .ql-toolbar.ql-snow {
+        background: #0F1B31 !important;
+        border-color: #2A3B59 !important;
+    }
+    [data-theme="dark"] .ql-container.ql-snow { border-color: #2A3B59 !important; }
+    [data-theme="dark"] .ql-editor { color: #E2E8F0 !important; }
+    [data-theme="dark"] .ql-editor.ql-blank::before { color: #64748B !important; }
+    [data-theme="dark"] .ql-snow .ql-stroke { stroke: #94A3B8 !important; }
+    [data-theme="dark"] .ql-snow .ql-fill { fill: #94A3B8 !important; }
+    [data-theme="dark"] .ql-snow .ql-picker { color: #94A3B8 !important; }
+    [data-theme="dark"] .ql-toolbar.ql-snow button:hover .ql-stroke,
+    [data-theme="dark"] .ql-toolbar.ql-snow button.ql-active .ql-stroke {
+        stroke: #3B82F6 !important;
+    }
+    [data-theme="dark"] .ql-toolbar.ql-snow button:hover .ql-fill,
+    [data-theme="dark"] .ql-toolbar.ql-snow button.ql-active .ql-fill {
+        fill: #3B82F6 !important;
+    }
     </style>

@@ -56,13 +56,11 @@
                             <div class="form-text">Để trống để tự động tạo từ tên.</div>
                         </div>
 
-                        <div class="edit-field mb-0">
-                            <label for="description">Mô tả <span class="text-danger">*</span></label>
-                            <textarea id="description" name="description" rows="10"
-                                class="form-control @error('description') is-invalid @enderror"
-                                style="min-height: 220px; resize: vertical;"
-                                required>{{ old('description', $product->description) }}</textarea>
-                            @error('description') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        <div class="edit-field mb-0 @error('description') is-invalid @enderror">
+                            <label for="descriptionEditor">Mô tả <span class="text-danger">*</span></label>
+                            <div id="descriptionEditor">{!! old('description', $product->description) !!}</div>
+                            <textarea id="description" name="description" class="d-none" required>{{ old('description', $product->description) }}</textarea>
+                            @error('description') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                         </div>
                     </div>
                 </div>
@@ -343,6 +341,31 @@
     const form = document.getElementById('editProductForm');
     if (!form || form.dataset.wired === '1') return;
     form.dataset.wired = '1';
+
+    /* ═══════════════════════════════════════════
+       0. RICH TEXT EDITOR (Quill) CHO MÔ TẢ
+    ═══════════════════════════════════════════ */
+    (function initDescriptionEditor() {
+        const descTextarea = form.querySelector('#description');
+        const editorEl = form.querySelector('#descriptionEditor');
+        if (!descTextarea || !editorEl || typeof Quill === 'undefined') return;
+
+        const quill = new Quill(editorEl, {
+            theme: 'snow',
+            placeholder: 'Nhập mô tả chi tiết về sản phẩm, chất liệu, hướng dẫn sử dụng...',
+            modules: {
+                toolbar: [
+                    ['bold', 'italic'],
+                    [{ list: 'bullet' }],
+                    ['link', 'image'],
+                ],
+            },
+        });
+
+        quill.on('text-change', function () {
+            descTextarea.value = quill.root.innerHTML === '<p><br></p>' ? '' : quill.root.innerHTML;
+        });
+    })();
 
     /* ═══════════════════════════════════════════
        1. IMAGE SLOTS

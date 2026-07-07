@@ -4,6 +4,7 @@
 
 @push('styles')
     @include('admin.products.styles')
+    <link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet">
     <style>
     .create-header-title {
         font-size: 25px;
@@ -83,6 +84,7 @@
 <main class="app-main container-fluid py-4">
     <x-notification />
 
+    <script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
     @include('admin.products.partials.edit-content', ['standalone' => true])
 </main>
 @endsection

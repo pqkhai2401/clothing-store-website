@@ -417,4 +417,152 @@ document.addEventListener('change', function (e) {
         })
         .finally(() => { toggle.disabled = false; });
 });
+
+/* ── Đánh dấu / bỏ đánh dấu "Sản phẩm nổi bật" bằng icon ngôi sao ──
+   Dùng event delegation vì bảng được nạp lại qua AJAX. */
+document.addEventListener('click', function (e) {
+    const star = e.target.closest('.product-featured-star');
+    if (!star) return;
+
+    const url = star.dataset.toggleFeaturedUrl;
+    const wasActive = star.classList.contains('is-active');
+    star.disabled = true;
+    star.classList.toggle('is-active');
+
+    fetch(url, {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+        },
+        body: JSON.stringify({}),
+    })
+        .then(res => { if (!res.ok) throw new Error('request-failed'); return res.json(); })
+        .then(data => {
+            star.classList.toggle('is-active', data.is_featured);
+            star.title = data.is_featured ? 'Bỏ đánh dấu nổi bật' : 'Đánh dấu sản phẩm nổi bật';
+            showProductToast(data.message);
+        })
+        .catch(() => {
+            star.classList.toggle('is-active', wasActive);
+            showProductToast('Không thể cập nhật trạng thái nổi bật. Vui lòng thử lại.', 'error');
+        })
+        .finally(() => { star.disabled = false; });
+});
+
+/* ── Sửa nhanh Giá / Giảm giá bằng double-click ngay trên dòng bảng ──
+   Dùng event delegation vì bảng được nạp lại qua AJAX. */
+(function () {
+    function formatMoney(num) {
+        return Math.round(num || 0).toLocaleString('vi-VN') + '₫';
+    }
+
+    function closeCell(cell) {
+        cell.querySelector('.product-quickedit-view').classList.remove('d-none');
+        cell.querySelector('.product-quickedit-form').classList.add('d-none');
+    }
+
+    function closeAllCells() {
+        document.querySelectorAll('.product-quickedit-cell').forEach(closeCell);
+    }
+
+    document.addEventListener('dblclick', function (e) {
+        const cell = e.target.closest('.product-quickedit-cell');
+        if (!cell) return;
+        closeAllCells();
+        cell.querySelector('.product-quickedit-view').classList.add('d-none');
+        cell.querySelector('.product-quickedit-form').classList.remove('d-none');
+        cell.querySelector('[data-field="price"]')?.focus();
+    });
+
+    document.addEventListener('click', function (e) {
+        if (!e.target.closest('.product-quickedit-cell')) closeAllCells();
+    });
+
+    document.addEventListener('click', function (e) {
+        const cancelBtn = e.target.closest('.product-quickedit-cancel');
+        if (!cancelBtn) return;
+        const cell = cancelBtn.closest('.product-quickedit-cell');
+        const priceInput = cell.querySelector('[data-field="price"]');
+        const discountInput = cell.querySelector('[data-field="discount"]');
+        priceInput.value = priceInput.defaultValue;
+        discountInput.value = discountInput.defaultValue;
+        closeCell(cell);
+    });
+
+    function saveCell(cell) {
+        const url = cell.dataset.quickeditUrl;
+        const priceInput = cell.querySelector('[data-field="price"]');
+        const discountInput = cell.querySelector('[data-field="discount"]');
+        const saveBtn = cell.querySelector('.product-quickedit-save');
+        const viewEl = cell.querySelector('.product-quickedit-view');
+
+        saveBtn.disabled = true;
+
+        fetch(url, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+            },
+            body: JSON.stringify({ price: priceInput.value, discount: discountInput.value }),
+        })
+            .then(res => res.json().then(data => ({ ok: res.ok, data })))
+            .then(({ ok, data }) => {
+                if (!ok) {
+                    showProductToast(data.message || 'Không thể cập nhật giá.', 'error');
+                    return;
+                }
+
+                priceInput.value = data.price;
+                discountInput.value = data.discount;
+                priceInput.defaultValue = data.price;
+                discountInput.defaultValue = data.discount;
+
+                if (data.discount > 0) {
+                    viewEl.innerHTML = `
+                        <div class="price-display">
+                            <span class="price-sale">${formatMoney(data.price * (100 - data.discount) / 100)}</span>
+                            <span class="price-original">${formatMoney(data.price)}</span>
+                        </div>
+                    `;
+                } else {
+                    viewEl.innerHTML = `<span class="price-normal">${formatMoney(data.price)}</span>`;
+                }
+
+                closeCell(cell);
+                showProductToast(data.message);
+            })
+            .catch(() => {
+                showProductToast('Không thể kết nối tới máy chủ. Vui lòng thử lại.', 'error');
+            })
+            .finally(() => { saveBtn.disabled = false; });
+    }
+
+    document.addEventListener('click', function (e) {
+        const saveBtn = e.target.closest('.product-quickedit-save');
+        if (!saveBtn) return;
+        e.stopPropagation();
+        saveCell(saveBtn.closest('.product-quickedit-cell'));
+    });
+
+    document.addEventListener('click', function (e) {
+        if (e.target.closest('.product-quickedit-form')) e.stopPropagation();
+    });
+
+    document.addEventListener('keydown', function (e) {
+        const cell = e.target.closest('.product-quickedit-cell');
+        if (!cell) return;
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            saveCell(cell);
+        } else if (e.key === 'Escape') {
+            cell.querySelector('.product-quickedit-cancel')?.click();
+        }
+    });
+})();
 </script>

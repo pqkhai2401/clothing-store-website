@@ -23,6 +23,9 @@
         <table class="table table-hover product-table align-middle" id="orderTable">
             <thead>
                 <tr>
+                    <th style="width: 44px;">
+                        <input type="checkbox" class="form-check-input product-check hk-cb-all">
+                    </th>
                     <th style="width:160px;">
                         Mã đơn hàng
                     </th>
@@ -58,7 +61,13 @@
             </thead>
             <tbody>
                 @forelse($orders as $order)
+                    @php
+                        $orderPhone = ($order->phone && $order->phone !== '0') ? $order->phone : null;
+                    @endphp
                     <tr>
+                        <td>
+                            <input type="checkbox" class="form-check-input product-check hk-cb-row" value="{{ $order->id }}">
+                        </td>
                         <td data-sort-value="{{ $order->order_code ?? '' }}">
                             <span class="order-code">{{ $order->order_code ?? '—' }}</span>
                         </td>
@@ -68,8 +77,12 @@
                                 <div class="text-muted" style="font-size:11px;">{{ $order->user->email }}</div>
                             @endif
                         </td>
-                        <td style="color:#64748B;font-size:13px;" data-sort-value="{{ $order->phone ?? '' }}">
-                            {{ $order->phone ?? '—' }}
+                        <td style="color:#64748B;font-size:13px;" data-sort-value="{{ $orderPhone ?? '' }}">
+                            @if($orderPhone)
+                                {{ $orderPhone }}
+                            @else
+                                <span class="text-muted fst-italic">Chưa cập nhật</span>
+                            @endif
                         </td>
                         <td data-sort-value="{{ $order->total_money }}">
                             <span class="fw-bold" style="color:#0F172A;">
@@ -120,7 +133,7 @@
                     </tr>
                 @empty
                     <tr data-empty-row>
-                        <td colspan="9" class="text-center py-5">
+                        <td colspan="10" class="text-center py-5">
                             <i class="fa-solid fa-inbox text-muted mb-3" style="font-size:42px;display:block;"></i>
                             <div class="fw-semibold text-muted">Chưa có đơn hàng nào</div>
                         </td>
@@ -135,5 +148,11 @@
     @include('layouts.components.pagination', [
         'paginator' => $orders,
         'itemLabel' => 'đơn hàng',
+        'bulkCustomActionsUrl'   => route('admin.orders.bulkUpdateStatus'),
+        'bulkCustomActionsField' => 'status',
+        'bulkCustomActions' => [
+            ['value' => 'processing', 'label' => 'Duyệt hàng loạt', 'class' => 'hk-pg-sel-status--active'],
+            ['value' => 'cancelled',  'label' => 'Hủy hàng loạt',   'class' => 'hk-pg-sel-status--inactive'],
+        ],
     ])
 </div>
