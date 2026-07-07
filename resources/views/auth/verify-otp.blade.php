@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Quên mật khẩu | HK Store')
+@section('title', 'Xác thực OTP | HK Store')
 @section('auth_standalone', true)
 @section('body_class', 'auth-standalone-body')
 
@@ -54,6 +54,10 @@
         line-height: 1.5;
     }
 
+    .auth-form-subtitle strong {
+        color: #111111;
+    }
+
     .auth-field {
         position: relative;
         margin-bottom: 10px;
@@ -71,10 +75,13 @@
         font-weight: 600;
         outline: none;
         box-shadow: none;
+        letter-spacing: .5em;
+        text-align: center;
     }
 
     .auth-input::placeholder {
         color: transparent;
+        letter-spacing: normal;
     }
 
     .auth-input:hover {
@@ -106,6 +113,7 @@
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+        letter-spacing: normal;
     }
 
     .auth-input:focus + .auth-floating-label,
@@ -216,33 +224,36 @@
 <section class="auth-section">
     <div class="auth-box">
         <div class="auth-brand">HK STORE</div>
-        <h1 class="auth-form-title">Quên mật khẩu</h1>
-        <p class="auth-form-subtitle">Nhập email đã đăng ký để nhận mã xác thực (OTP) đặt lại mật khẩu.</p>
+        <h1 class="auth-form-title">Xác thực OTP</h1>
+        <p class="auth-form-subtitle">
+            Mã xác thực gồm 6 số đã được gửi tới email <strong>{{ $email }}</strong>. Vui lòng nhập mã trong vòng 5 phút.
+        </p>
 
         @if (session('success'))
             <div class="auth-form-success">{{ session('success') }}</div>
         @endif
 
-        <form action="{{ route('auth.password.send') }}" method="POST">
+        <form action="{{ route('auth.password.verify.submit') }}" method="POST">
             @csrf
 
             <div class="auth-field">
-                <input type="email" name="email" id="email"
-                    class="auth-input @error('email') is-invalid @enderror"
-                    value="{{ old('email') }}"
+                <input type="text" name="otp" id="otp"
+                    class="auth-input @error('otp') is-invalid @enderror"
                     placeholder=" "
-                    autocomplete="email"
+                    inputmode="numeric"
+                    maxlength="6"
+                    autocomplete="one-time-code"
                     autofocus>
-                <label for="email" class="auth-floating-label">Email của bạn</label>
-                @error('email')
+                <label for="otp" class="auth-floating-label">Mã OTP (6 số)</label>
+                @error('otp')
                     <span class="invalid-feedback">{{ $message }}</span>
                 @enderror
             </div>
 
-            <button type="submit" class="btn auth-submit">Gửi mã xác thực</button>
+            <button type="submit" class="btn auth-submit">Xác nhận</button>
 
             <div class="auth-links">
-                <a href="{{ route('auth.loginpage') }}" class="auth-link">Quay lại đăng nhập</a>
+                <a href="{{ route('auth.password.request') }}" class="auth-link">Gửi lại mã khác</a>
             </div>
         </form>
     </div>

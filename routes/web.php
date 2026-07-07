@@ -3,6 +3,7 @@ use App\Http\Controllers\User\ProductController;
 use App\Http\Controllers\User\WishlistController;
 use App\Http\Controllers\User\AddressController;
 use App\Http\Controllers\User\AuthController;
+use App\Http\Controllers\User\ForgotPasswordController;
 use App\Http\Controllers\User\CartController;
 use App\Http\Controllers\User\CheckoutController;
 use App\Http\Controllers\User\LocationController;
@@ -89,7 +90,16 @@ Route::get('/auth/google/redirect', [AuthController::class, 'redirectToGoogle'])
     ->name('auth.google.redirect')
     ->middleware('redirect.authenticated');
 Route::get('/auth/google/callback', [AuthController::class, 'handleGoogleCallback'])->name('auth.google.callback');
-Route::view('/forgot-password', 'auth.forgot-password')
-    ->name('auth.password.request')
-    ->middleware('redirect.authenticated');
+// Quên mật khẩu (Forgot Password) - quy trình: Nhập Email -> Gửi OTP -> Xác thực OTP -> Đặt lại mật khẩu
+Route::middleware('redirect.authenticated')->group(function () {
+    Route::get('/forgot-password', [ForgotPasswordController::class, 'showForgotForm'])->name('auth.password.request');
+    Route::post('/forgot-password', [ForgotPasswordController::class, 'sendOtp'])->name('auth.password.send');
+
+    Route::get('/verify-otp', [ForgotPasswordController::class, 'showVerifyForm'])->name('auth.password.verify');
+    Route::post('/verify-otp', [ForgotPasswordController::class, 'verifyOtp'])->name('auth.password.verify.submit');
+
+    Route::get('/reset-password', [ForgotPasswordController::class, 'showResetForm'])->name('auth.password.reset');
+    Route::post('/reset-password', [ForgotPasswordController::class, 'resetPassword'])->name('auth.password.update');
+});
+
 Route::get('/logout', action: [AuthController::class, 'webLogout'])->name('auth.logout');

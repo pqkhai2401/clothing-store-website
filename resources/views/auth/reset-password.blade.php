@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Quên mật khẩu | HK Store')
+@section('title', 'Đặt lại mật khẩu | HK Store')
 @section('auth_standalone', true)
 @section('body_class', 'auth-standalone-body')
 
@@ -119,6 +119,27 @@
         color: #e60012;
     }
 
+    .password-toggle {
+        position: absolute;
+        top: 24px;
+        right: 12px;
+        width: 36px;
+        height: 36px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #111111;
+        background: transparent;
+        border: 0;
+        transform: translateY(-50%);
+        cursor: pointer;
+        z-index: 3;
+    }
+
+    .password-field .auth-input {
+        padding-right: 52px;
+    }
+
     .auth-submit {
         width: 100%;
         min-height: 44px;
@@ -137,35 +158,6 @@
     .auth-submit:hover {
         outline: 2px solid #000000;
         outline-offset: 2px;
-    }
-
-    .auth-links {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 16px;
-        margin: 14px 0 0;
-    }
-
-    .auth-link {
-        color: #123bdc;
-        font-size: 14px;
-        font-weight: 700;
-        text-decoration: none;
-    }
-
-    .auth-link:hover {
-        text-decoration: underline;
-    }
-
-    .auth-form-success {
-        margin: 0 0 14px;
-        padding: 10px 14px;
-        color: #155724;
-        background: #e6f4ea;
-        border: 1px solid #c3e6cb;
-        font-size: 13px;
-        font-weight: 700;
     }
 
     .invalid-feedback,
@@ -216,35 +208,57 @@
 <section class="auth-section">
     <div class="auth-box">
         <div class="auth-brand">HK STORE</div>
-        <h1 class="auth-form-title">Quên mật khẩu</h1>
-        <p class="auth-form-subtitle">Nhập email đã đăng ký để nhận mã xác thực (OTP) đặt lại mật khẩu.</p>
+        <h1 class="auth-form-title">Đặt lại mật khẩu</h1>
+        <p class="auth-form-subtitle">Tạo mật khẩu mới cho tài khoản của bạn (tối thiểu 8 ký tự).</p>
 
-        @if (session('success'))
-            <div class="auth-form-success">{{ session('success') }}</div>
-        @endif
-
-        <form action="{{ route('auth.password.send') }}" method="POST">
+        <form action="{{ route('auth.password.update') }}" method="POST">
             @csrf
 
-            <div class="auth-field">
-                <input type="email" name="email" id="email"
-                    class="auth-input @error('email') is-invalid @enderror"
-                    value="{{ old('email') }}"
+            <div class="auth-field password-field">
+                <input type="password" name="password" id="password"
+                    class="auth-input @error('password') is-invalid @enderror"
                     placeholder=" "
-                    autocomplete="email"
+                    autocomplete="new-password"
                     autofocus>
-                <label for="email" class="auth-floating-label">Email của bạn</label>
-                @error('email')
+                <label for="password" class="auth-floating-label">Mật khẩu mới</label>
+                <button type="button" class="password-toggle" data-toggle-password="password" aria-label="Hiện mật khẩu">
+                    <i class="bi bi-eye"></i>
+                </button>
+                @error('password')
                     <span class="invalid-feedback">{{ $message }}</span>
                 @enderror
             </div>
 
-            <button type="submit" class="btn auth-submit">Gửi mã xác thực</button>
-
-            <div class="auth-links">
-                <a href="{{ route('auth.loginpage') }}" class="auth-link">Quay lại đăng nhập</a>
+            <div class="auth-field password-field">
+                <input type="password" name="password_confirmation" id="password_confirmation"
+                    class="auth-input"
+                    placeholder=" "
+                    autocomplete="new-password">
+                <label for="password_confirmation" class="auth-floating-label">Xác nhận mật khẩu</label>
+                <button type="button" class="password-toggle" data-toggle-password="password_confirmation" aria-label="Hiện mật khẩu">
+                    <i class="bi bi-eye"></i>
+                </button>
             </div>
+
+            <button type="submit" class="btn auth-submit">Cập nhật mật khẩu</button>
         </form>
     </div>
 </section>
 @endsection
+
+@push('scripts')
+<script>
+    document.querySelectorAll('[data-toggle-password]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var input = document.getElementById(btn.dataset.togglePassword);
+            var icon  = btn.querySelector('i');
+            if (!input || !icon) return;
+            var hidden = input.type === 'password';
+            input.type = hidden ? 'text' : 'password';
+            icon.classList.toggle('bi-eye', !hidden);
+            icon.classList.toggle('bi-eye-slash', hidden);
+            btn.setAttribute('aria-label', hidden ? 'Ẩn mật khẩu' : 'Hiện mật khẩu');
+        });
+    });
+</script>
+@endpush
