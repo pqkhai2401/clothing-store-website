@@ -729,22 +729,22 @@
 
         function validateCartSelection() {
             if (!selectedColorId) {
-                alert('Vui lòng chọn màu sắc.');
+                window.showToast('Vui lòng chọn màu sắc.', 'error');
                 return false;
             }
 
             if (!selectedSizeId) {
-                alert('Vui lòng chọn kích thước.');
+                window.showToast('Vui lòng chọn kích thước.', 'error');
                 return false;
             }
 
             if (currentStock <= 0) {
-                alert('Biến thể đã chọn hiện đã hết hàng.');
+                window.showToast('Biến thể đã chọn hiện đã hết hàng.', 'error');
                 return false;
             }
 
             if (selectedQuantity() > currentStock) {
-                alert('Số lượng vượt quá tồn kho hiện có.');
+                window.showToast('Số lượng vượt quá tồn kho hiện có.', 'error');
                 return false;
             }
 
@@ -784,16 +784,23 @@
 
                 if (!response.ok) {
                     const message = data.message || Object.values(data.errors || {})?.[0]?.[0] || 'Không thể thêm sản phẩm vào giỏ hàng.';
-                    alert(message);
+                    window.showToast(message, 'error');
                     return;
                 }
 
-                alert(data.message || 'Đã thêm sản phẩm vào giỏ hàng.');
-                window.location.href = redirectToCheckout
-                    ? (data.checkout_url || '{{ route('checkout.index') }}')
-                    : (data.cart_url || '{{ route('cart.index') }}');
+                if (data.cart_count !== undefined) {
+                    window.updateCartBadge(data.cart_count);
+                }
+
+                if (redirectToCheckout) {
+                    // "Mua ngay" -> chuyển thẳng sang trang thanh toán
+                    window.location.href = data.checkout_url || '{{ route('checkout.index') }}';
+                } else {
+                    // "Thêm vào giỏ hàng" -> ở lại trang chi tiết sản phẩm, chỉ hiển thị toast
+                    window.showToast(data.message || 'Đã thêm sản phẩm vào giỏ hàng.', 'success');
+                }
             } catch (error) {
-                alert('Có lỗi xảy ra khi thêm sản phẩm vào giỏ hàng. Vui lòng thử lại.');
+                window.showToast('Có lỗi xảy ra khi thêm sản phẩm vào giỏ hàng. Vui lòng thử lại.', 'error');
             } finally {
                 targetButton.disabled = false;
                 targetButton.innerHTML = originalHtml;
