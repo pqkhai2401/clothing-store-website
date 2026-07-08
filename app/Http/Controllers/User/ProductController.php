@@ -2,12 +2,15 @@
 
 namespace App\Http\Controllers\User;
 
+use App\Enums\OrderStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Brand;
 use App\Models\Category;
+use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\ProductView;
+use App\Models\Review;
 use App\Models\Tag;
 use App\Models\Wishlist;
 use Carbon\Carbon;
@@ -91,13 +94,54 @@ class ProductController extends Controller
             ? Wishlist::where('user_id', Auth::id())->where('product_id', $product->id)->exists()
             : false;
 
+        // ============================================================
+        //  DỮ LIỆU CHO KHU VỰC ĐÁNH GIÁ SẢN PHẨM
+        // ============================================================
+
+        // Danh sách đánh giá đã được AI DUYỆT (approved) -> hiển thị công khai.
+        $reviews = Review::approved()
+            ->where('product_id', $product->id)
+            ->with('user')
+            ->latest()
+            ->get();
+
+        // Mặc định: khách vãng lai / chưa đăng nhập thì không được đánh giá.
+        $canReview     = false;   // Đủ điều kiện viết đánh giá hay không.
+        $hasReviewed   = false;   // User đã từng đánh giá sản phẩm này chưa.
+        $averageRating = round((float) $reviews->avg('rating'), 1); // Điểm trung bình.
+
+        if (Auth::check()) {
+            $userId = Auth::id();
+
+            // Điều kiện đánh giá: có đơn hàng ở trạng thái "completed" chứa sản phẩm này.
+            // (order_items -> product_variant -> product_id).
+            $hasCompletedPurchase = Order::where('user_id', $userId)
+                ->where('status', OrderStatus::COMPLETED->value)
+                ->whereHas('orderItems.productVariant', function ($query) use ($product) {
+                    $query->where('product_id', $product->id);
+                })
+                ->exists();
+
+            // Kiểm tra user đã đánh giá sản phẩm này chưa (chống hiển thị form trùng).
+            $hasReviewed = Review::where('user_id', $userId)
+                ->where('product_id', $product->id)
+                ->exists();
+
+            // Chỉ cho phép đánh giá khi: đã mua & hoàn thành, và CHƯA từng đánh giá.
+            $canReview = $hasCompletedPurchase && !$hasReviewed;
+        }
+
         return view('user.products.show', compact(
             'product',
             'colors',
             'sizes',
             'defaultVariant',
             'relatedProducts',
-            'isInWishlist'
+            'isInWishlist',
+            'reviews',
+            'canReview',
+            'hasReviewed',
+            'averageRating'
         ));
     }
 

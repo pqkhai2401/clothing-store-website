@@ -334,6 +334,109 @@
         text-align: center;
         margin-bottom: 40px;
     }
+
+    /* ===== Khu vực Đánh giá sản phẩm ===== */
+    .reviews-section {
+        border-top: 1px solid var(--border-color, #e5e5e5);
+        padding-top: 40px;
+        margin-top: 20px;
+    }
+
+    .reviews-section-title {
+        font-family: var(--font-serif);
+        font-size: 26px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 4px;
+    }
+
+    /* Bộ chấm sao trong FORM (cho phép click chọn) — dùng radio ẩn + label icon.
+       Kỹ thuật: đảo chiều flex (row-reverse) để hiệu ứng hover/checked tô sáng
+       từ sao đang trỏ trở về sao 1 bằng CSS thuần, không cần JS. */
+    .star-rating-input {
+        display: inline-flex;
+        flex-direction: row-reverse;
+        gap: 6px;
+        font-size: 30px;
+        line-height: 1;
+    }
+
+    .star-rating-input input[type="radio"] {
+        display: none;
+    }
+
+    .star-rating-input label {
+        color: #d9d9d9;
+        cursor: pointer;
+        transition: color 0.15s ease;
+    }
+
+    .star-rating-input label:hover,
+    .star-rating-input label:hover ~ label,
+    .star-rating-input input[type="radio"]:checked ~ label {
+        color: #f5b301; /* Vàng hổ phách sang trọng */
+    }
+
+    /* Nút gửi đánh giá: vuông vức, sang trọng theo phong cách HK Store */
+    .btn-submit-review {
+        border-radius: 0;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        font-size: 13px;
+        font-weight: 600;
+        padding: 14px 40px;
+        background-color: var(--primary-color, #111);
+        color: #fff;
+        border: none;
+        transition: opacity 0.2s ease;
+    }
+
+    .btn-submit-review:hover {
+        opacity: 0.85;
+        color: #fff;
+    }
+
+    /* Card hiển thị từng đánh giá đã duyệt */
+    .review-item {
+        border-bottom: 1px solid var(--border-color, #eee);
+        padding: 20px 0;
+    }
+
+    .review-item:last-child {
+        border-bottom: none;
+    }
+
+    .review-stars-static {
+        color: #f5b301;
+        font-size: 15px;
+        letter-spacing: 2px;
+    }
+
+    .review-author {
+        font-weight: 600;
+        font-size: 14px;
+    }
+
+    .review-date {
+        font-size: 12px;
+        color: var(--muted-text);
+    }
+
+    .review-comment {
+        font-size: 14px;
+        line-height: 1.6;
+        margin-top: 8px;
+        color: var(--body-text, #333);
+    }
+
+    /* Ô nhắc điều kiện đánh giá khi user chưa đủ điều kiện */
+    .review-notice {
+        border: 1px dashed var(--border-color, #ccc);
+        padding: 20px;
+        text-align: center;
+        font-size: 14px;
+        color: var(--muted-text);
+    }
 </style>
 @endsection
 
@@ -538,6 +641,145 @@
                 </div>
             </div>
         </div>
+
+        {{-- ============================================================= --}}
+        {{-- ===== KHU VỰC ĐÁNH GIÁ SẢN PHẨM (REVIEWS) ================== --}}
+        {{-- ============================================================= --}}
+        <section class="reviews-section">
+            <div class="row">
+                <div class="col-lg-10 mx-auto">
+
+                    {{-- Tiêu đề + điểm trung bình --}}
+                    <h2 class="reviews-section-title">Đánh giá sản phẩm</h2>
+                    <div class="mb-4">
+                        @if($reviews->count() > 0)
+                            <span class="review-stars-static">
+                                {{-- Vẽ 5 sao theo điểm trung bình (làm tròn) --}}
+                                @for($i = 1; $i <= 5; $i++)
+                                    <i class="bi {{ $i <= round($averageRating) ? 'bi-star-fill' : 'bi-star' }}"></i>
+                                @endfor
+                            </span>
+                            <span class="ms-2 fw-semibold">{{ number_format($averageRating, 1) }}/5</span>
+                            <span class="review-date">({{ $reviews->count() }} đánh giá)</span>
+                        @else
+                            <span class="review-date">Chưa có đánh giá nào cho sản phẩm này.</span>
+                        @endif
+                    </div>
+
+                    {{-- ----- Thông báo flash sau khi gửi đánh giá ----- --}}
+                    @if(session('success'))
+                        <div class="alert alert-success rounded-0">{{ session('success') }}</div>
+                    @endif
+                    @if(session('error'))
+                        <div class="alert alert-danger rounded-0">{{ session('error') }}</div>
+                    @endif
+                    {{-- Hiển thị lỗi validate (nếu có) --}}
+                    @if($errors->any())
+                        <div class="alert alert-danger rounded-0">
+                            <ul class="mb-0 ps-3">
+                                @foreach($errors->all() as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
+
+                    {{-- ----- FORM VIẾT ĐÁNH GIÁ ----- --}}
+                    {{--
+                        Logic hiển thị (điều kiện lấy từ Controller):
+                        1. Chưa đăng nhập  -> mời đăng nhập.
+                        2. Đã đánh giá rồi -> báo đã đánh giá.
+                        3. $canReview = true (đã mua + hoàn thành + chưa đánh giá) -> hiện form.
+                        4. Còn lại -> nhắc "cần mua sản phẩm này để đánh giá".
+                    --}}
+                    @auth
+                        @if($canReview)
+                            <div class="mb-5">
+                                <h5 class="mb-3">Viết đánh giá của bạn</h5>
+                                <form action="{{ route('reviews.store', $product->id) }}" method="POST">
+                                    @csrf
+
+                                    {{-- Bộ chấm sao 1-5: dùng radio ẩn, click label để chọn --}}
+                                    <div class="mb-3">
+                                        <label class="form-label d-block mb-2">Chất lượng sản phẩm</label>
+                                        <div class="star-rating-input">
+                                            {{-- Đặt từ 5 -> 1 để kết hợp với CSS row-reverse tô sáng đúng chiều --}}
+                                            @for($star = 5; $star >= 1; $star--)
+                                                <input type="radio"
+                                                       id="star{{ $star }}"
+                                                       name="rating"
+                                                       value="{{ $star }}"
+                                                       {{ old('rating') == $star ? 'checked' : '' }}>
+                                                <label for="star{{ $star }}" title="{{ $star }} sao">
+                                                    <i class="bi bi-star-fill"></i>
+                                                </label>
+                                            @endfor
+                                        </div>
+                                    </div>
+
+                                    {{-- Ô nhập nội dung bình luận --}}
+                                    <div class="mb-3">
+                                        <label for="comment" class="form-label">Nội dung đánh giá</label>
+                                        <textarea name="comment"
+                                                  id="comment"
+                                                  rows="4"
+                                                  class="form-control rounded-0"
+                                                  maxlength="1000"
+                                                  placeholder="Chia sẻ cảm nhận của bạn về chất liệu, kích cỡ, dịch vụ...">{{ old('comment') }}</textarea>
+                                    </div>
+
+                                    <button type="submit" class="btn btn-submit-review">Gửi đánh giá</button>
+                                </form>
+                            </div>
+                        @elseif($hasReviewed)
+                            <div class="review-notice mb-5">
+                                Bạn đã đánh giá sản phẩm này. Cảm ơn bạn đã đóng góp ý kiến!
+                            </div>
+                        @else
+                            <div class="review-notice mb-5">
+                                Bạn cần mua sản phẩm này để có thể đánh giá.
+                            </div>
+                        @endif
+                    @else
+                        <div class="review-notice mb-5">
+                            Vui lòng <a href="{{ route('auth.loginpage') }}">đăng nhập</a> để viết đánh giá.
+                            Bạn cần mua sản phẩm này để có thể đánh giá.
+                        </div>
+                    @endauth
+
+                    {{-- ----- DANH SÁCH ĐÁNH GIÁ ĐÃ DUYỆT (approved) ----- --}}
+                    <div class="reviews-list">
+                        @forelse($reviews as $review)
+                            <div class="review-item">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <span class="review-author">
+                                            {{ $review->user->username ?? $review->user->name ?? 'Khách hàng' }}
+                                        </span>
+                                        <span class="badge bg-success ms-2" style="border-radius:0;font-weight:400;">
+                                            <i class="bi bi-patch-check-fill"></i> Đã mua hàng
+                                        </span>
+                                    </div>
+                                    <span class="review-date">{{ $review->created_at->format('d/m/Y') }}</span>
+                                </div>
+
+                                {{-- Số sao của đánh giá --}}
+                                <div class="review-stars-static mt-1">
+                                    @for($i = 1; $i <= 5; $i++)
+                                        <i class="bi {{ $i <= $review->rating ? 'bi-star-fill' : 'bi-star' }}"></i>
+                                    @endfor
+                                </div>
+
+                                <p class="review-comment">{{ $review->comment }}</p>
+                            </div>
+                        @empty
+                            <p class="review-date">Hãy là người đầu tiên đánh giá sản phẩm này!</p>
+                        @endforelse
+                    </div>
+
+                </div>
+            </div>
+        </section>
 
         {{-- ===== SẢN PHẨM LIÊN QUAN ===== --}}
         @if($relatedProducts->count() > 0)
