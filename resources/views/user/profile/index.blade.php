@@ -341,6 +341,11 @@
             toggleBtn.textContent = 'Hủy';
         @endif
 
+        // Hiển thị thông báo cập nhật thành công bằng toast dùng chung của toàn hệ thống
+        @if(session('success'))
+            window.showToast?.(@json(session('success')), 'success');
+        @endif
+
         // Xem trước ảnh đại diện ngay khi người dùng chọn file (Real-time Preview)
         const avatarInput = document.getElementById('avatar-input');
         const avatarPreview = document.getElementById('avatar-preview');
