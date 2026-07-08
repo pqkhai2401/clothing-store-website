@@ -42,11 +42,20 @@
                                 @endfor
                             </select>
                         </div>
+                        <div class="col-md-2 col-lg-2">
+                            <select name="status" data-admin-filter class="form-select" style="font-size:13px;">
+                                <option value="">Tất cả trạng thái</option>
+                                <option value="pending"  {{ $statusFilter === 'pending'  ? 'selected' : '' }}>Chờ duyệt</option>
+                                <option value="approved" {{ $statusFilter === 'approved' ? 'selected' : '' }}>Đã duyệt</option>
+                                <option value="flagged"  {{ $statusFilter === 'flagged'  ? 'selected' : '' }}>Chờ Admin (gắn cờ)</option>
+                                <option value="rejected" {{ $statusFilter === 'rejected' ? 'selected' : '' }}>Bị từ chối</option>
+                            </select>
+                        </div>
                         <div class="col-auto">
                             <button type="submit" class="btn btn-outline-primary fw-semibold">
                                 <i class="fa-solid fa-filter me-1"></i> Lọc
                             </button>
-                            @if($keyword || $ratingFilter)
+                            @if($keyword || $ratingFilter || $statusFilter)
                                 <a href="{{ route('admin.reviews.list') }}" class="btn btn-outline-secondary fw-semibold ms-1">
                                     <i class="fa-solid fa-xmark me-1"></i> Xóa lọc
                                 </a>

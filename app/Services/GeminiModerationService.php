@@ -79,21 +79,25 @@ class GeminiModerationService
             throw new RuntimeException('Chưa cấu hình GEMINI_API_KEY trong file .env');
         }
 
-        // 2. Gửi request POST lên Gemini.
-        //    - withoutVerifying(): tắt kiểm tra chứng chỉ SSL để tránh lỗi
-        //      "SSL certificate problem" thường gặp khi chạy local trên Windows
-        //      (XAMPP/Laragon) do bộ chứng chỉ CA chưa được cấu hình đầy đủ.
-        //      LƯU Ý: chỉ nên dùng ở môi trường phát triển, KHÔNG dùng cho production.
+        // 2. Khởi tạo HTTP client.
         //    - timeout(20): tối đa chờ 20 giây để tránh treo hàng đợi.
         //    - retry(2, 500): thử lại tối đa 2 lần, mỗi lần cách nhau 500ms
         //      để phòng lỗi mạng chập chờn.
-        //    - Truyền API key qua query string ?key=... theo chuẩn của Google.
-        $response = Http::withoutVerifying()
-            ->timeout(20)
-            ->retry(2, 500)
-            ->post($this->endpoint . '?key=' . $this->apiKey, $this->buildPayload($comment));
+        $http = Http::timeout(20)->retry(2, 500);
 
-        // 3. Nếu HTTP status không thành công (4xx/5xx) -> ném lỗi kèm nội dung
+        // 2b. CHỈ tắt kiểm tra chứng chỉ SSL khi chạy ở môi trường LOCAL.
+        //     Lý do: local trên Windows (XAMPP/Laragon) thường thiếu bộ chứng chỉ
+        //     CA nên gặp lỗi "SSL certificate problem". Trên production, server đã
+        //     có CA hợp lệ -> BẮT BUỘC giữ xác thực SSL để chống tấn công
+        //     man-in-the-middle (nếu tắt sẽ là lỗ hổng bảo mật nghiêm trọng).
+        if (app()->environment('local')) {
+            $http = $http->withoutVerifying();
+        }
+
+        // 3. Gửi request POST lên Gemini (API key truyền qua ?key=... theo chuẩn Google).
+        $response = $http->post($this->endpoint . '?key=' . $this->apiKey, $this->buildPayload($comment));
+
+        // 4. Nếu HTTP status không thành công (4xx/5xx) -> ném lỗi kèm nội dung
         //    để tiện ghi log và debug.
         if ($response->failed()) {
             Log::warning('Gemini API trả về lỗi HTTP', [
@@ -104,7 +108,7 @@ class GeminiModerationService
             throw new RuntimeException('Gemini API lỗi HTTP ' . $response->status());
         }
 
-        // 4. Trích xuất chuỗi văn bản JSON mà Gemini sinh ra.
+        // 5. Trích xuất chuỗi văn bản JSON mà Gemini sinh ra.
         //    Cấu trúc trả về của Gemini: candidates[0].content.parts[0].text
         $rawJson = $response->json('candidates.0.content.parts.0.text');
 
@@ -112,7 +116,7 @@ class GeminiModerationService
             throw new RuntimeException('Gemini không trả về nội dung (candidates rỗng).');
         }
 
-        // 5. Parse chuỗi JSON đó thành mảng PHP và chuẩn hóa dữ liệu.
+        // 6. Parse chuỗi JSON đó thành mảng PHP và chuẩn hóa dữ liệu.
         return $this->normalizeResult($rawJson);
     }
 
