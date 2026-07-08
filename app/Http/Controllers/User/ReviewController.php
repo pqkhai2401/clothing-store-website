@@ -8,6 +8,7 @@ use App\Jobs\ProcessReviewModeration;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\Review;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -24,8 +25,12 @@ class ReviewController extends Controller
      *
      * @param  Request  $request
      * @param  int      $productId  ID sản phẩm được đánh giá (lấy từ URL).
+     *
+     * Hỗ trợ 2 kiểu phản hồi:
+     *  - AJAX (từ trang đơn hàng)      -> trả JSON để hiển thị toast.
+     *  - Form thường (trang chi tiết SP) -> redirect back kèm flash message.
      */
-    public function store(Request $request, $productId): RedirectResponse
+    public function store(Request $request, $productId): JsonResponse|RedirectResponse
     {
         // -------------------------------------------------------------------
         // BƯỚC 1: VALIDATE DỮ LIỆU ĐẦU VÀO
@@ -65,7 +70,10 @@ class ReviewController extends Controller
 
         // Nếu không tìm thấy đơn hàng hợp lệ -> chặn, trả về thông báo lỗi.
         if (!$eligibleOrder) {
-            return back()->with('error', 'Bạn cần mua sản phẩm này để có thể đánh giá.');
+            $message = 'Bạn cần mua sản phẩm này để có thể đánh giá.';
+            return $request->wantsJson()
+                ? response()->json(['message' => $message], 403)
+                : back()->with('error', $message);
         }
 
         // -------------------------------------------------------------------
@@ -77,7 +85,10 @@ class ReviewController extends Controller
             ->exists();
 
         if ($alreadyReviewed) {
-            return back()->with('error', 'Bạn đã đánh giá sản phẩm này rồi.');
+            $message = 'Bạn đã đánh giá sản phẩm này rồi.';
+            return $request->wantsJson()
+                ? response()->json(['message' => $message], 409)
+                : back()->with('error', $message);
         }
 
         // -------------------------------------------------------------------
@@ -101,9 +112,10 @@ class ReviewController extends Controller
         // -------------------------------------------------------------------
         // BƯỚC 6: PHẢN HỒI THÀNH CÔNG
         // -------------------------------------------------------------------
-        return back()->with(
-            'success',
-            'Đánh giá của bạn đã được gửi thành công và đang được hệ thống kiểm duyệt tự động!'
-        );
+        $message = 'Đánh giá của bạn đã được gửi thành công và đang được hệ thống kiểm duyệt tự động!';
+
+        return $request->wantsJson()
+            ? response()->json(['success' => true, 'message' => $message], 201)
+            : back()->with('success', $message);
     }
 }

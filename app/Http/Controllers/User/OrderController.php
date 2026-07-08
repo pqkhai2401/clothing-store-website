@@ -4,6 +4,7 @@ namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Models\Review;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -40,7 +41,13 @@ class OrderController extends Controller
         $statusTabs = self::STATUS_TABS;
         $activeTab  = $status;
 
-        return view('user.orders.index', compact('orders', 'statusTabs', 'activeTab'));
+        // Danh sách ID sản phẩm mà user ĐÃ đánh giá -> dùng để ẩn/hiện nút
+        // "Đánh giá sản phẩm" trên từng dòng sản phẩm của đơn đã giao.
+        $reviewedProductIds = Review::where('user_id', $request->user()->id)
+            ->pluck('product_id')
+            ->all();
+
+        return view('user.orders.index', compact('orders', 'statusTabs', 'activeTab', 'reviewedProductIds'));
     }
 
     public function show(Request $request, int $id): View
