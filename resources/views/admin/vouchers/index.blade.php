@@ -77,6 +77,13 @@
             <div data-admin-table-area>
                 @include('admin.vouchers.partials.table')
             </div>
+
+            <div class="hk-cat-panel voucher-status-shared-panel" id="voucherStatusSharedPanel" hidden>
+                <div class="hk-cat-list" role="listbox">
+                    <button type="button" class="hk-cat-item" data-value="1" data-css="status-badge--active">Hoáº¡t Ä‘á»™ng</button>
+                    <button type="button" class="hk-cat-item" data-value="0" data-css="status-badge--inactive">KhÃ³a</button>
+                </div>
+            </div>
         </section>
     </div>
 @endsection

@@ -146,6 +146,7 @@ Route::middleware(['auth.login', 'admin'])
             ->prefix('goods-receipts')->name('goods-receipts.')->group(function () {
                 Route::get('/', [GoodsReceiptController::class, 'index'])->name('list');
                 Route::get('/create', [GoodsReceiptController::class, 'create'])->name('create');
+                Route::get('/stock-card/{variant}', [GoodsReceiptController::class, 'stockCard'])->name('stockCard');
                 Route::post('/', [GoodsReceiptController::class, 'store'])->name('store');
                 Route::post('/bulk-delete', [GoodsReceiptController::class, 'bulkDelete'])->name('bulkDelete');
                 Route::get('/{id}', [GoodsReceiptController::class, 'show'])->name('show');

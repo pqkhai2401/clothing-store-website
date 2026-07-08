@@ -60,12 +60,12 @@
                     <p class="product-header-desc mb-0">Danh sách tất cả đơn hàng trong hệ thống.</p>
                 </div>
                 <div class="product-header-actions">
-                    <a href="{{ route('admin.orders.create') }}" class="btn btn-dark product-action-btn">
-                        <i class="fa-solid fa-plus me-1"></i> Thêm đơn hàng
-                    </a>
                     <a href="{{ route('admin.orders.export') }}?{{ http_build_query(request()->except('page')) }}"
                        class="btn product-action-btn product-action-btn--neutral">
                         <i class="fa-solid fa-download me-1"></i> Xuất Excel
+                    </a>
+                      <a href="{{ route('admin.orders.create') }}" class="btn btn-dark product-action-btn">
+                        <i class="fa-solid fa-plus me-1"></i> Thêm đơn hàng
                     </a>
                 </div>
             </div>

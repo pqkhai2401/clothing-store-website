@@ -63,6 +63,14 @@
     .voucher-status-caret { font-size: 9px; opacity: .65; transition: transform .15s; }
     .voucher-status-trigger.is-open .voucher-status-caret { transform: rotate(180deg); }
     .voucher-status-dropdown .hk-cat-panel { left: 0; right: auto; width: 170px; }
+    .voucher-status-shared-panel {
+        position: fixed !important;
+        z-index: 3000 !important;
+        width: 180px !important;
+        max-height: none !important;
+        overflow: visible !important;
+        box-shadow: 0 18px 45px rgba(15, 23, 42, 0.18) !important;
+    }
 
     /* ── Nút Sửa/Xóa: icon thuần túy ── */
     .voucher-row-action-btn {
@@ -134,14 +142,17 @@
         background: #162843 !important;
         color: #CBD5E1 !important;
     }
-    [data-theme="dark"] .voucher-status-dropdown .hk-cat-panel {
+    [data-theme="dark"] .voucher-status-dropdown .hk-cat-panel,
+    [data-theme="dark"] .voucher-status-shared-panel {
         background: #101C33 !important;
         border-color: #2A3B59 !important;
     }
-    [data-theme="dark"] .voucher-status-dropdown .hk-cat-item {
+    [data-theme="dark"] .voucher-status-dropdown .hk-cat-item,
+    [data-theme="dark"] .voucher-status-shared-panel .hk-cat-item {
         color: #E2E8F0 !important;
     }
-    [data-theme="dark"] .voucher-status-dropdown .hk-cat-item:hover {
+    [data-theme="dark"] .voucher-status-dropdown .hk-cat-item:hover,
+    [data-theme="dark"] .voucher-status-shared-panel .hk-cat-item:hover {
         background: #162843 !important;
     }
     [data-theme="dark"] .voucher-row-action-btn {

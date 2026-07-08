@@ -104,7 +104,7 @@ class StockIssueController extends Controller
         ])->findOrFail($id);
 
         // Panel trượt tại danh sách tải nội dung chi tiết qua AJAX (không chuyển trang).
-        if ($request->ajax()) {
+        if ($request->expectsJson() || $request->ajax()) {
             return response()->json([
                 'html' => view('admin.stock-issues.partials.show-content', compact('stockIssue'))->render(),
             ]);

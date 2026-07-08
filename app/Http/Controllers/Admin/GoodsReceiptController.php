@@ -5,9 +5,13 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\GoodsReceipt;
+use App\Models\GoodsReceiptItem;
+use App\Models\OrderItem;
 use App\Models\ProductVariant;
 use App\Models\StockIssue;
+use App\Models\StockIssueItem;
 use App\Models\Stocktake;
+use App\Models\StocktakeItem;
 use App\Models\Supplier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -244,6 +248,113 @@ class GoodsReceiptController extends Controller
         $variants = $this->goodsReceiptVariants();
 
         return view('admin.goods-receipts.create', compact('suppliers', 'variants'));
+    }
+
+    public function stockCard(ProductVariant $variant)
+    {
+        $variant->load(['product:id,name,thumbnail', 'color:id,name,hex_code', 'size:id,name']);
+
+        $transactions = collect();
+
+        GoodsReceiptItem::query()
+            ->with(['goodsReceipt.creator'])
+            ->where('product_variant_id', $variant->id)
+            ->whereHas('goodsReceipt', fn ($query) => $query->whereIn('status', [
+                GoodsReceipt::STATUS_COMPLETED,
+                GoodsReceipt::STATUS_ADJUSTED,
+            ]))
+            ->get()
+            ->each(function (GoodsReceiptItem $item) use ($transactions) {
+                $receipt = $item->goodsReceipt;
+                $transactions->push([
+                    'at' => $receipt?->completed_at ?? $receipt?->created_at,
+                    'type' => 'nhap_kho',
+                    'type_label' => 'Nhập kho',
+                    'document_code' => $receipt?->code,
+                    'document_url' => $receipt ? route('admin.goods-receipts.show', $receipt->id) : null,
+                    'quantity_change' => (int) $item->quantity,
+                    'user' => $receipt?->creator?->username ?? 'N/A',
+                ]);
+            });
+
+        StockIssueItem::query()
+            ->with(['stockIssue.creator'])
+            ->where('product_variant_id', $variant->id)
+            ->whereHas('stockIssue', fn ($query) => $query->whereIn('status', [
+                StockIssue::STATUS_ISSUED,
+                StockIssue::STATUS_ADJUSTED,
+            ]))
+            ->get()
+            ->each(function (StockIssueItem $item) use ($transactions) {
+                $issue = $item->stockIssue;
+                $transactions->push([
+                    'at' => $issue?->issued_at ?? $issue?->created_at,
+                    'type' => 'xuat_kho',
+                    'type_label' => 'Xuất kho',
+                    'document_code' => $issue?->code,
+                    'document_url' => $issue ? route('admin.stock-issues.show', $issue->id) : null,
+                    'quantity_change' => -1 * (int) $item->quantity,
+                    'user' => $issue?->creator?->username ?? 'N/A',
+                ]);
+            });
+
+        StocktakeItem::query()
+            ->with(['stocktake.processor', 'stocktake.creator'])
+            ->where('product_variant_id', $variant->id)
+            ->whereHas('stocktake', fn ($query) => $query->where('status', Stocktake::STATUS_APPROVED))
+            ->get()
+            ->each(function (StocktakeItem $item) use ($transactions) {
+                $diff = $item->diff();
+                if ($diff === 0) {
+                    return;
+                }
+
+                $stocktake = $item->stocktake;
+                $transactions->push([
+                    'at' => $stocktake?->processed_at ?? $stocktake?->created_at,
+                    'type' => 'dieu_chinh_kho',
+                    'type_label' => 'Điều chỉnh kho',
+                    'document_code' => $stocktake?->code,
+                    'document_url' => null,
+                    'quantity_change' => $diff,
+                    'user' => $stocktake?->processor?->username ?? $stocktake?->creator?->username ?? 'N/A',
+                ]);
+            });
+
+        OrderItem::query()
+            ->with(['order.user'])
+            ->where('product_variant_id', $variant->id)
+            ->whereHas('order', fn ($query) => $query->whereIn('status', ['completed', 'cancelled']))
+            ->get()
+            ->each(function (OrderItem $item) use ($transactions) {
+                $order = $item->order;
+                $isCancelled = $order?->status === 'cancelled';
+                $transactions->push([
+                    'at' => $order?->updated_at ?? $order?->created_at,
+                    'type' => $isCancelled ? 'order_cancelled' : 'xuat_kho',
+                    'type_label' => $isCancelled ? 'Order Cancelled' : 'Xuất kho',
+                    'document_code' => $order?->order_code,
+                    'document_url' => $order ? route('admin.orders.detail', $order->id) : null,
+                    'quantity_change' => ($isCancelled ? 1 : -1) * (int) $item->quantity,
+                    'user' => $order?->user?->username ?? 'Hệ thống',
+                ]);
+            });
+
+        $runningStock = (int) $variant->stock;
+        $transactions = $transactions
+            ->filter(fn ($transaction) => ! empty($transaction['at']))
+            ->sortByDesc('at')
+            ->values()
+            ->map(function (array $transaction) use (&$runningStock) {
+                $transaction['ending_stock'] = $runningStock;
+                $runningStock -= (int) $transaction['quantity_change'];
+
+                return $transaction;
+            });
+
+        return response()->json([
+            'html' => view('admin.goods-receipts.partials.stock-card', compact('variant', 'transactions'))->render(),
+        ]);
     }
 
     private function activeSuppliers()

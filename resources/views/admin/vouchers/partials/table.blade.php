@@ -107,11 +107,13 @@
                             </div>
                             <span class="voucher-expiry-badge {{ $expiryCss }}">{{ $expiryLabel }}</span>
                         </td>
-                        <td data-sort-value="{{ $voucher->status ? 1 : 0 }}">
+                        <td data-sort-value="{{ $voucher->status ? 1 : 0 }}" data-voucher-status-cell="{{ $voucher->id }}">
                             <div class="hk-cat-filter voucher-status-dropdown" data-voucher-id="{{ $voucher->id }}"
                                 data-toggle-url="{{ route('admin.vouchers.toggleStatus', $voucher->id) }}">
                                 <button type="button" class="status-badge voucher-status-trigger {{ $voucher->status ? 'status-badge--active' : 'status-badge--inactive' }}"
-                                    data-value="{{ $voucher->status ? 1 : 0 }}" aria-haspopup="listbox" aria-expanded="false">
+                                    data-value="{{ $voucher->status ? 1 : 0 }}"
+                                    data-toggle-url="{{ route('admin.vouchers.toggleStatus', $voucher->id) }}"
+                                    aria-haspopup="listbox" aria-expanded="false">
                                     <span class="voucher-status-trigger-label">{{ $voucher->status ? 'Hoạt động' : 'Khóa' }}</span>
                                     <i class="fa-solid fa-chevron-down voucher-status-caret"></i>
                                 </button>

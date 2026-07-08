@@ -12,7 +12,7 @@
     .gr-badge--low-stock { background: #fef3c7; color: #92400e; }
     .gr-badge--out-of-stock { background: #fee2e2; color: #991b1b; }
 
-    /* ── Chi tiết phiếu xuất kho (panel trượt) ── */
+    /* ── Chi tiết phiếu xuất kho / nhập kho ── */
     .si-show-table { width: 100%; border-collapse: collapse; font-size: 13px; }
     .si-show-table thead th {
         background: #f9fafb; text-align: left; padding: 10px 12px; font-weight: 700;
@@ -22,6 +22,9 @@
     .si-show-product { display: flex; align-items: center; gap: 10px; }
     .si-show-thumb { width: 42px; height: 42px; border-radius: 6px; object-fit: cover; flex-shrink: 0; background: #f3f4f6; }
     .si-show-dot { width: 10px; height: 10px; border-radius: 50%; border: 1px solid rgba(0,0,0,.08); flex-shrink: 0; display: inline-block; }
+    .si-show-dialog { max-width: min(1040px, 94vw); }
+    .si-show-modal-content { border: 0; border-radius: 18px; overflow: hidden; box-shadow: 0 24px 70px rgba(15, 23, 42, .24); }
+    .si-show-modal-body { max-height: min(78vh, 760px); overflow: auto; background: #f8fafc; padding: 18px; }
     .gr-show-table { width: 100%; border-collapse: collapse; font-size: 13px; }
     .gr-show-table thead th {
         background: #f9fafb; text-align: left; padding: 10px 12px; font-weight: 700;
@@ -132,11 +135,64 @@
     .gr-status-filter .hk-cat-panel { width: 160px; }
 
     /* ── Row product cell ── */
-    .gr-ov-product { display: flex; align-items: center; gap: 10px; }
-    .gr-ov-thumb { width: 42px; height: 42px; border-radius: 8px; object-fit: cover; flex-shrink: 0; background: #f3f4f6; }
+    #inventoryOverviewTable {
+        min-width: 1070px;
+        table-layout: fixed;
+    }
+    #inventoryOverviewTable thead th,
+    #inventoryOverviewTable tbody td {
+        padding: 9px 10px;
+    }
+    .gr-ov-product { display: flex; align-items: center; gap: 9px; min-width: 0; }
+    .gr-ov-thumb { width: 38px; height: 38px; border-radius: 8px; object-fit: cover; flex-shrink: 0; background: #f3f4f6; }
+    .gr-ov-name { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .gr-ov-variant { font-size: 12px; color: #6b7280; }
     .si-hidden-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
     .si-hidden-scrollbar::-webkit-scrollbar { width: 0; height: 0; }
+
+    .skc-dialog { max-width: min(1120px, 94vw); }
+    .skc-content { border: 0; border-radius: 18px; overflow: hidden; box-shadow: 0 24px 70px rgba(15, 23, 42, .22); }
+    #stockCardDocumentModal { z-index: 1075; }
+    .modal-backdrop + .modal-backdrop { z-index: 1070; }
+    .skc-doc-dialog { max-width: min(940px, 92vw); }
+    .skc-doc-content { border: 0; border-radius: 16px; overflow: hidden; box-shadow: 0 28px 80px rgba(15, 23, 42, .28); }
+    .skc-doc-header { background: #fff; padding: 16px 18px; }
+    .skc-doc-title { margin: 0; color: #0f172a; font-size: 17px; font-weight: 800; }
+    .skc-doc-body { max-height: min(72vh, 720px); overflow: auto; background: #f8fafc; padding: 18px; }
+    .skc-header { padding: 18px 22px; background: #fff; }
+    .skc-product { display: flex; align-items: center; gap: 14px; min-width: 0; }
+    .skc-thumb { width: 56px; height: 56px; border-radius: 12px; object-fit: cover; background: #f3f4f6; border: 1px solid #e5e7eb; }
+    .skc-title { margin: 0 0 6px; color: #0f172a; font-size: 18px; font-weight: 800; line-height: 1.25; }
+    .skc-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; color: #64748b; font-size: 13px; }
+    .skc-meta strong { color: #0f172a; }
+    .skc-dot { width: 4px; height: 4px; border-radius: 999px; background: #cbd5e1; }
+    .skc-body { padding: 18px 22px 22px; background: #f8fafc; }
+    .skc-table-wrap { overflow: auto; border: 1px solid #e2e8f0; border-radius: 14px; background: #fff; }
+    .skc-table { width: 100%; min-width: 880px; border-collapse: collapse; font-size: 13px; }
+    .skc-table thead th {
+        padding: 13px 14px; background: #f1f5f9; color: #475569;
+        font-weight: 800; text-align: left; white-space: nowrap; border-bottom: 1px solid #e2e8f0;
+    }
+    .skc-table tbody td { padding: 13px 14px; color: #0f172a; border-bottom: 1px solid #eef2f7; vertical-align: middle; }
+    .skc-table tbody tr:last-child td { border-bottom: 0; }
+    .skc-date, .skc-user { color: #475569 !important; font-weight: 600; white-space: nowrap; }
+    .skc-doc-link { color: #2563eb; font-weight: 800; text-decoration: none; white-space: nowrap; }
+    .skc-doc-link:hover { text-decoration: underline; }
+    .skc-doc-link--static { color: #334155; }
+    .skc-badge {
+        display: inline-flex; align-items: center; justify-content: center;
+        min-height: 26px; padding: 4px 10px; border-radius: 999px;
+        font-size: 12px; font-weight: 800; white-space: nowrap;
+    }
+    .skc-badge--in { background: #dcfce7; color: #166534; }
+    .skc-badge--out { background: #dbeafe; color: #1d4ed8; }
+    .skc-badge--cancel { background: #f3e8ff; color: #7e22ce; }
+    .skc-badge--adjust { background: #ffedd5; color: #c2410c; }
+    .skc-qty { font-weight: 900; white-space: nowrap; }
+    .skc-qty--pos { color: #16a34a; }
+    .skc-qty--neg { color: #dc2626; }
+    .skc-ending { color: #0f172a; font-weight: 900; }
+    .skc-empty { padding: 34px 16px !important; text-align: center; color: #94a3b8 !important; font-weight: 700; }
     </style>
 @endpush
 
@@ -297,6 +353,30 @@
                     @include('admin.goods-receipts.partials.overview-table')
                 </div>
 
+                <div class="modal fade" id="stockCardModal" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered skc-dialog">
+                        <div class="modal-content skc-content" id="stockCardModalContent">
+                            <div class="modal-body text-center py-5">
+                                <div class="spinner-border text-secondary" role="status"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal fade" id="stockCardDocumentModal" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered skc-doc-dialog">
+                        <div class="modal-content skc-doc-content">
+                            <div class="modal-header skc-doc-header border-bottom">
+                                <h2 class="skc-doc-title" id="stockCardDocumentTitle">Chi tiết chứng từ</h2>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+                            </div>
+                            <div class="modal-body skc-doc-body" id="stockCardDocumentBody">
+                                <div class="text-center py-5"><div class="spinner-border text-secondary" role="status"></div></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
             @elseif($tab === 'inbound')
 
                 <form method="GET" action="{{ route('admin.goods-receipts.list') }}" id="goodsReceiptSearchForm"
@@ -391,12 +471,18 @@
                     'variants' => $stockIssueVariants ?? collect(),
                 ])
 
-                <div class="offcanvas offcanvas-end si-offcanvas" tabindex="-1" id="stockIssueShowOffcanvas">
-                    <div class="offcanvas-header border-bottom">
-                        <h2 class="offcanvas-title fw-bold" style="font-size:16px;">Chi tiết phiếu xuất kho</h2>
-                        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Đóng"></button>
+                <div class="modal fade" id="stockIssueShowModal" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered si-show-dialog">
+                        <div class="modal-content si-show-modal-content">
+                            <div class="modal-header border-bottom bg-white">
+                                <h2 class="modal-title fw-bold" style="font-size:16px;">Chi tiết phiếu xuất kho</h2>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+                            </div>
+                            <div class="modal-body si-show-modal-body" id="stockIssueShowBody">
+                                <div class="text-center py-5"><div class="spinner-border text-secondary" role="status"></div></div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="offcanvas-body flex-grow-1 overflow-auto" id="stockIssueShowBody"></div>
                 </div>
 
                 {{-- Panel trạng thái dùng chung cho mọi dòng bảng, nổi ra ngoài (position:fixed) để không bị cắt bởi vùng cuộn của bảng. --}}
@@ -559,6 +645,73 @@
             label: 'hkGrStockStatusLabel', list: 'hkGrStockStatusList', hidden: 'grStockStatusFilter',
         });
 
+        /* ── Thẻ kho biến thể: nạp lịch sử giao dịch qua AJAX vào modal ── */
+        (function () {
+            const stockCardModal = document.getElementById('stockCardModal');
+            const stockCardContent = document.getElementById('stockCardModalContent');
+            const documentModal = document.getElementById('stockCardDocumentModal');
+            const documentTitle = document.getElementById('stockCardDocumentTitle');
+            const documentBody = document.getElementById('stockCardDocumentBody');
+            if (!stockCardModal || !stockCardContent) return;
+
+            document.addEventListener('click', function (e) {
+                const trigger = e.target.closest('[data-stock-card-trigger]');
+                if (!trigger) return;
+
+                const url = trigger.dataset.stockCardUrl;
+                if (!url) return;
+
+                stockCardContent.innerHTML = '<div class="modal-body text-center py-5"><div class="spinner-border text-secondary" role="status"></div></div>';
+                bootstrap.Modal.getOrCreateInstance(stockCardModal).show();
+
+                fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
+                    .then(res => {
+                        if (!res.ok) throw new Error('request-failed');
+                        return res.json();
+                    })
+                    .then(data => { stockCardContent.innerHTML = data.html; })
+                    .catch(() => {
+                        stockCardContent.innerHTML = '<div class="modal-body text-danger p-4">Không thể tải thẻ kho. Vui lòng thử lại.</div>';
+                    });
+            });
+
+            document.addEventListener('click', function (e) {
+                const docLink = e.target.closest('[data-stock-card-document-trigger]');
+                if (!docLink || !stockCardContent.contains(docLink)) return;
+                e.preventDefault();
+
+                const url = docLink.dataset.documentUrl || docLink.getAttribute('href');
+                if (!url || !documentModal || !documentBody) return;
+
+                if (documentTitle) {
+                    documentTitle.textContent = `Chi tiết chứng từ ${docLink.dataset.documentCode || ''}`.trim();
+                }
+                documentBody.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-secondary" role="status"></div></div>';
+                bootstrap.Modal.getOrCreateInstance(documentModal).show();
+
+                fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
+                    .then(res => {
+                        if (!res.ok) throw new Error('request-failed');
+                        return res.json();
+                    })
+                    .then(data => { documentBody.innerHTML = data.html; })
+                    .catch(() => {
+                        documentBody.innerHTML = '<div class="text-danger p-4">Không thể tải chi tiết chứng từ. Vui lòng thử lại.</div>';
+                    });
+            });
+
+            stockCardModal.addEventListener('hidden.bs.modal', function () {
+                stockCardContent.innerHTML = '<div class="modal-body text-center py-5"><div class="spinner-border text-secondary" role="status"></div></div>';
+            });
+
+            documentModal?.addEventListener('hidden.bs.modal', function () {
+                documentBody.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-secondary" role="status"></div></div>';
+                if (stockCardModal.classList.contains('show')) {
+                    document.body.classList.add('modal-open');
+                }
+            });
+        })();
+
         wireHkFilterDropdown({
             root: 'hkGrInboundStatusFilter', trigger: 'hkGrInboundStatusTrigger', panel: 'hkGrInboundStatusPanel',
             label: 'hkGrInboundStatusLabel', list: 'hkGrInboundStatusList', hidden: 'grInboundStatusFilter',
@@ -716,30 +869,38 @@
                 });
         });
 
-        /* ── Xem chi tiết phiếu xuất kho: panel trượt từ phải, nạp nội dung qua AJAX ──
+        /* ── Xem chi tiết phiếu xuất kho: popup AJAX giống thẻ kho ──
            Dùng event delegation vì các dòng bảng được nạp lại qua AJAX. */
-        document.addEventListener('click', function (e) {
-            const trigger = e.target.closest('[data-stock-issue-show-trigger]');
-            if (!trigger) return;
-
-            const url = trigger.dataset.showUrl;
-            const offcanvasEl = document.getElementById('stockIssueShowOffcanvas');
+        (function () {
+            const modalEl = document.getElementById('stockIssueShowModal');
             const body = document.getElementById('stockIssueShowBody');
-            if (!url || !offcanvasEl || !body) return;
+            if (!modalEl || !body) return;
 
-            body.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-secondary" role="status"></div></div>';
-            bootstrap.Offcanvas.getOrCreateInstance(offcanvasEl).show();
+            document.addEventListener('click', function (e) {
+                const trigger = e.target.closest('[data-stock-issue-show-trigger]');
+                if (!trigger) return;
 
-            fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
-                .then(res => {
-                    if (!res.ok) throw new Error('request-failed');
-                    return res.json();
-                })
-                .then(data => { body.innerHTML = data.html; })
-                .catch(() => {
-                    body.innerHTML = '<div class="text-danger p-4">Không thể tải chi tiết phiếu xuất kho. Vui lòng thử lại.</div>';
-                });
-        });
+                const url = trigger.dataset.showUrl;
+                if (!url) return;
+
+                body.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-secondary" role="status"></div></div>';
+                bootstrap.Modal.getOrCreateInstance(modalEl).show();
+
+                fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
+                    .then(res => {
+                        if (!res.ok) throw new Error('request-failed');
+                        return res.json();
+                    })
+                    .then(data => { body.innerHTML = data.html; })
+                    .catch(() => {
+                        body.innerHTML = '<div class="text-danger p-4">Không thể tải chi tiết phiếu xuất kho. Vui lòng thử lại.</div>';
+                    });
+            });
+
+            modalEl.addEventListener('hidden.bs.modal', function () {
+                body.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-secondary" role="status"></div></div>';
+            });
+        })();
 
         /* ── Low-stock alert card: click to filter table by "Sắp hết hàng" ── */
         var card   = document.getElementById('grLowStockCard');

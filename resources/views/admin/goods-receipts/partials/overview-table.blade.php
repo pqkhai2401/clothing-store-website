@@ -7,21 +7,21 @@
         <table class="table table-hover product-table align-middle" id="inventoryOverviewTable">
             <thead>
                 <tr>
-                    <th style="width:130px;">SKU</th>
-                    <th>Sản phẩm</th>
+                    <th style="width:150px;">SKU</th>
+                    <th style="width:340px;">Sản phẩm</th>
                     <th style="width:150px;">Biến thể</th>
-                    <th style="width:130px;">
+                    <th style="width:120px;">
                         <button type="button" class="product-sort-btn" data-sort-key="cost_price" data-sort-type="number">
                             Giá vốn <span class="product-sort-icon">↑↓</span>
                         </button>
                     </th>
-                    <th style="width:110px;">
+                    <th style="width:100px;">
                         <button type="button" class="product-sort-btn" data-sort-key="stock" data-sort-type="number">
                             Tồn kho <span class="product-sort-icon">↑↓</span>
                         </button>
                     </th>
-                    <th style="width:150px;">Trạng thái</th>
-                    <th class="text-end pe-4" style="width:90px;">Thao tác</th>
+                    <th style="width:130px;">Trạng thái</th>
+                    <th class="text-end pe-3" style="width:80px;">Thao tác</th>
                 </tr>
             </thead>
             <tbody>
@@ -45,7 +45,7 @@
                         <td>
                             <div class="gr-ov-product">
                                 <img class="gr-ov-thumb" src="{{ $thumbUrl }}" alt="">
-                                <span class="fw-bold">{{ $variant->product?->name ?? 'Sản phẩm đã xóa' }}</span>
+                                <span class="gr-ov-name fw-bold">{{ $variant->product?->name ?? 'Sản phẩm đã xóa' }}</span>
                             </div>
                         </td>
                         <td class="gr-ov-variant">
@@ -59,10 +59,13 @@
                         <td>
                             <span class="gr-badge {{ $statusClass }}">{{ $statusLabel }}</span>
                         </td>
-                        <td class="text-end pe-4">
-                            <button type="button" class="product-more-btn" title="Điều chỉnh số lượng (đang phát triển)"
-                                onclick="alert('Tính năng điều chỉnh số lượng đang được phát triển.')">
-                                <i class="fa-regular fa-pen-to-square"></i>
+                        <td class="text-end pe-3">
+                            <button type="button"
+                                class="product-more-btn"
+                                data-stock-card-trigger
+                                data-stock-card-url="{{ route('admin.goods-receipts.stockCard', $variant->id) }}"
+                                title="Xem thẻ kho">
+                                <i class="fa-regular fa-rectangle-list"></i>
                             </button>
                         </td>
                     </tr>
