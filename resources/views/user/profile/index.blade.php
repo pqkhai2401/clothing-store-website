@@ -7,7 +7,7 @@
 @section('css')
 <style>
     .profile-section {
-        max-width: 500px;
+        max-width: 800px;
         margin: 40px auto;
         padding: 0 15px;
     }
@@ -118,6 +118,39 @@
         margin: 20px 0;
     }
 
+    /* Khu vực ảnh đại diện bên trái */
+    .avatar-wrapper {
+        text-align: center;
+    }
+
+    .avatar-preview {
+        width: 160px;
+        height: 160px;
+        object-fit: cover;
+        border-radius: 50%;
+    }
+
+    .btn-change-avatar {
+        display: inline-block;
+        margin-top: 14px;
+        background-color: transparent;
+        color: var(--primary-color);
+        border: 1px solid var(--primary-color);
+        border-radius: 0;
+        padding: 6px 16px;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .btn-change-avatar:hover {
+        background-color: var(--primary-color);
+        color: #fff;
+    }
+
     @media (max-width: 576px) {
         .profile-section {
             max-width: 100%;
@@ -166,58 +199,87 @@
     <h2>Thông Tin Cá Nhân</h2>
 
     {{-- Profile Update Form --}}
-    <form action="{{ route('profile.update') }}" method="POST" class="profile-form">
+    {{-- enctype="multipart/form-data" là bắt buộc để form có thể gửi được file ảnh lên server --}}
+    <form action="{{ route('profile.update') }}" method="POST" class="profile-form" enctype="multipart/form-data">
         @csrf
         @method('PUT')
 
-        <div class="mb-3">
-            <label for="full_name" class="form-label">Họ và tên</label>
-            <input type="text" class="form-control @error('username') is-invalid @enderror" id="username" name="username" value="{{ old('username', $user->username) }}">
-            @error('username')
-                <div class="invalid-feedback">{{ $message }}</div>
-            @enderror
-        </div>
+        <div class="row">
+            {{-- Cột trái: Ảnh đại diện --}}
+            <div class="col-md-5 col-lg-4 mb-4 mb-md-0">
+                <div class="avatar-wrapper">
+                    <img
+                        id="avatar-preview"
+                        src="{{ $user->avatar_url ? asset('storage/' . $user->avatar_url) : 'https://ui-avatars.com/api/?name=' . urlencode($user->username) . '&background=random' }}"
+                        alt="Ảnh đại diện"
+                        class="avatar-preview rounded-circle img-thumbnail"
+                    >
 
-        <div class="mb-3">
-            <label for="phone_number" class="form-label">Số điện thoại</label>
-            <input type="text" class="form-control @error('phone_number') is-invalid @enderror" id="phone_number" name="phone_number" value="{{ old('phone_number', $user->phone_number) }}">
-            @error('phone_number')
-                <div class="invalid-feedback">{{ $message }}</div>
-            @enderror
-        </div>
+                    {{-- Input file bị ẩn, được kích hoạt gián tiếp qua nút bấm --}}
+                    <input type="file" name="avatar" id="avatar-input" accept="image/*" class="d-none">
 
-        <div class="mb-3">
-            <label for="gender" class="form-label">Giới tính</label>
-            <select class="form-select @error('gender') is-invalid @enderror" id="gender" name="gender">
-                <option value="" disabled {{ old('gender', $user->gender) ? '' : 'selected' }}>-- Chọn giới tính --</option>
-                <option value="nam" {{ old('gender', $user->gender) === 'nam' ? 'selected' : '' }}>Nam</option>
-                <option value="nu" {{ old('gender', $user->gender) === 'nu' ? 'selected' : '' }}>Nữ</option>
-                <option value="khac" {{ old('gender', $user->gender) === 'khac' ? 'selected' : '' }}>Khác</option>
-            </select>
-            @error('gender')
-                <div class="invalid-feedback">{{ $message }}</div>
-            @enderror
-        </div>
+                    <div>
+                        <label for="avatar-input" class="btn-change-avatar">Thay đổi ảnh</label>
+                    </div>
 
-        <div class="mb-3">
-            <label for="email" class="form-label">Email</label>
-            <input type="email" class="form-control" id="email" value="{{ $user->email }}" readonly>
-        </div>
+                    @error('avatar')
+                        <div class="text-danger mt-2" style="font-size: 12px;">{{ $message }}</div>
+                    @enderror
+                </div>
+            </div>
 
-        @if(!$user->google_id)
-        {{-- Password Section --}}
-        <div class="password-section">
-            <label class="form-label">Mật khẩu</label>
-            <div class="password-display">
-                <span class="password-dots">********</span>
-                <button type="button" class="btn-change-password" id="toggleChangePassword">Đổi mật khẩu</button>
+            {{-- Cột phải: Thông tin cá nhân --}}
+            <div class="col-md-7 col-lg-8">
+                <div class="mb-3">
+                    <label for="full_name" class="form-label">Họ và tên</label>
+                    <input type="text" class="form-control @error('username') is-invalid @enderror" id="username" name="username" value="{{ old('username', $user->username) }}">
+                    @error('username')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                </div>
+
+                <div class="mb-3">
+                    <label for="phone_number" class="form-label">Số điện thoại</label>
+                    <input type="text" class="form-control @error('phone_number') is-invalid @enderror" id="phone_number" name="phone_number" value="{{ old('phone_number', $user->phone_number) }}">
+                    @error('phone_number')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                </div>
+
+                <div class="mb-3">
+                    <label for="gender" class="form-label">Giới tính</label>
+                    <select class="form-select @error('gender') is-invalid @enderror" id="gender" name="gender">
+                        <option value="" disabled {{ old('gender', $user->gender) ? '' : 'selected' }}>-- Chọn giới tính --</option>
+                        <option value="nam" {{ old('gender', $user->gender) === 'nam' ? 'selected' : '' }}>Nam</option>
+                        <option value="nu" {{ old('gender', $user->gender) === 'nu' ? 'selected' : '' }}>Nữ</option>
+                        <option value="khac" {{ old('gender', $user->gender) === 'khac' ? 'selected' : '' }}>Khác</option>
+                    </select>
+                    @error('gender')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                </div>
+
+                <div class="mb-3">
+                    <label for="email" class="form-label">Email</label>
+                    <input type="email" class="form-control" id="email" value="{{ $user->email }}" readonly>
+                </div>
+
+                @if(!$user->google_id)
+                {{-- Password Section --}}
+                <div class="password-section">
+                    <label class="form-label">Mật khẩu</label>
+                    <div class="password-display">
+                        <span class="password-dots">********</span>
+                        <button type="button" class="btn-change-password" id="toggleChangePassword">Đổi mật khẩu</button>
+                    </div>
+                </div>
+                @endif
+
+                <div class="divider"></div>
+
+                <button type="submit" class="btn btn-update">Cập nhật tài khoản</button>
             </div>
         </div>
-        @endif
-
-        <div class="divider"></div>
-
-        <button type="submit" class="btn btn-update">Cập nhật tài khoản</button>
     </form>
 
     @if(!$user->google_id)
@@ -275,6 +337,24 @@
             form.classList.add('show');
             toggleBtn.textContent = 'Hủy';
         @endif
+
+        // Xem trước ảnh đại diện ngay khi người dùng chọn file (Real-time Preview)
+        const avatarInput = document.getElementById('avatar-input');
+        const avatarPreview = document.getElementById('avatar-preview');
+
+        avatarInput.addEventListener('change', function(event) {
+            const selectedFile = event.target.files[0];
+
+            // Nếu người dùng không chọn file nào thì không xử lý gì thêm
+            if (!selectedFile) {
+                return;
+            }
+
+            // Dùng URL.createObjectURL để tạo một đường dẫn tạm trỏ tới file trên máy người dùng
+            // và gán trực tiếp vào thuộc tính src của thẻ <img> để xem trước
+            const objectUrl = URL.createObjectURL(selectedFile);
+            avatarPreview.src = objectUrl;
+        });
     });
 </script>
 @endpush
