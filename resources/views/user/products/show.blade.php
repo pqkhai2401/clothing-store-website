@@ -417,6 +417,17 @@
         font-size: 14px;
     }
 
+    /* Ảnh đại diện người đánh giá */
+    .review-avatar {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        object-fit: cover;
+        flex-shrink: 0;
+        border: 1px solid var(--border-color, #e5e5e5);
+        background-color: var(--hover-bg, #f3f3f3);
+    }
+
     .review-date {
         font-size: 12px;
         color: var(--muted-text);
@@ -750,21 +761,31 @@
                     {{-- ----- DANH SÁCH ĐÁNH GIÁ ĐÃ DUYỆT (approved) ----- --}}
                     <div class="reviews-list">
                         @forelse($reviews as $review)
+                            @php
+                                // Tên hiển thị + ảnh đại diện của người đánh giá.
+                                // Nếu user có avatar_url -> lấy từ storage; nếu không -> ảnh chữ cái tự sinh.
+                                $rvAuthor = $review->user->username ?? $review->user->name ?? 'Khách hàng';
+                                $rvAvatar = $review->user->avatar_url
+                                    ? asset('storage/' . $review->user->avatar_url)
+                                    : 'https://ui-avatars.com/api/?name=' . urlencode($rvAuthor) . '&background=random';
+                            @endphp
                             <div class="review-item">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <span class="review-author">
-                                            {{ $review->user->username ?? $review->user->name ?? 'Khách hàng' }}
-                                        </span>
-                                        <span class="badge bg-success ms-2" style="border-radius:0;font-weight:400;">
-                                            <i class="bi bi-patch-check-fill"></i> Đã mua hàng
-                                        </span>
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="d-flex align-items-center gap-2">
+                                        {{-- Ảnh đại diện người dùng --}}
+                                        <img src="{{ $rvAvatar }}" alt="{{ $rvAuthor }}" class="review-avatar">
+                                        <div>
+                                            <span class="review-author">{{ $rvAuthor }}</span>
+                                            <span class="badge bg-success ms-1" style="border-radius:0;font-weight:400;">
+                                                <i class="bi bi-patch-check-fill"></i> Đã mua hàng
+                                            </span>
+                                        </div>
                                     </div>
                                     <span class="review-date">{{ $review->created_at->format('d/m/Y') }}</span>
                                 </div>
 
                                 {{-- Số sao của đánh giá --}}
-                                <div class="review-stars-static mt-1">
+                                <div class="review-stars-static mt-2">
                                     @for($i = 1; $i <= 5; $i++)
                                         <i class="bi {{ $i <= $review->rating ? 'bi-star-fill' : 'bi-star' }}"></i>
                                     @endfor
