@@ -106,10 +106,16 @@
 
                 <!-- User Account Dropdown -->
                 <div class="dropdown d-inline-block">
-                    <button class="btn-icon" type="button" id="userMenuButton" data-bs-toggle="dropdown" aria-expanded="false" title="Tài khoản">
-                        <i class="bi bi-person"></i>
+                    <button class="btn-icon d-flex align-items-center" type="button" id="userMenuButton" data-bs-toggle="dropdown" aria-expanded="false" title="Tài khoản">
                         @auth
-                            <span class="ms-1 d-none d-lg-inline fw-medium" style="font-size: 14px;">Xin chào, {{ auth()->user()->username }}</span>
+                            <img
+                                src="{{ auth()->user()->avatar_url ? asset('storage/' . auth()->user()->avatar_url) : 'https://ui-avatars.com/api/?name=' . urlencode(auth()->user()->username) . '&background=random' }}"
+                                alt="Ảnh đại diện"
+                                class="rounded-circle me-2 nav-mini-avatar"
+                            >
+                            <span class="d-none d-lg-inline fw-medium" style="font-size: 14px;">Xin chào, {{ auth()->user()->username }}</span>
+                        @else
+                            <i class="bi bi-person"></i>
                         @endauth
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenuButton">
@@ -171,6 +177,14 @@
 </header>
 
 <style>
+/* ===== Mini Avatar (Navbar) ===== */
+.nav-mini-avatar {
+    width: 32px;
+    height: 32px;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
 /* ===== Site Navigation Search ===== */
 
 .nav-search-backdrop {
