@@ -179,27 +179,236 @@
         color: #DC2626;
     }
 
-    /* ── Lọc theo khoảng ngày hiệu lực ── */
-    .voucher-date-range {
-        display: flex;
-        align-items: center;
-        gap: 8px;
+    /* ── Period Picker (Bộ lọc kỳ: Năm / Quý / Tháng) ── */
+    .vk-period-wrap {
+        position: relative;
     }
-    .voucher-date-input {
-        min-height: 38px;
-        width: 155px;
-        border: 1px solid #D8E0EA;
+    .vk-period-trigger {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        height: 38px;
+        padding: 0 14px;
+        background: #fff;
+        border: 1.5px solid #D8E0EA;
         border-radius: 10px;
         font-size: 13px;
+        font-weight: 600;
+        color: #374151;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: border-color .15s, box-shadow .15s;
     }
-    .voucher-date-input:focus {
+    .vk-period-trigger:hover {
         border-color: #16A34A;
-        box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.12);
     }
-    .voucher-date-sep {
-        color: #94A3B8;
+    .vk-period-trigger.is-active {
+        border-color: #16A34A;
+        background: #F0FDF4;
+        color: #15803D;
+    }
+    .vk-period-trigger.is-open {
+        border-color: #16A34A;
+        box-shadow: 0 0 0 3px rgba(22,163,74,.12);
+    }
+    .vk-period-caret {
+        font-size: 10px;
+        opacity: .65;
+        transition: transform .15s;
+    }
+    .vk-period-trigger.is-open .vk-period-caret { transform: rotate(180deg); }
+
+    /* Panel */
+    .vk-period-panel {
+        position: absolute;
+        top: calc(100% + 6px);
+        left: 0;
+        z-index: 2000;
+        width: 320px;
+        background: #fff;
+        border: 1.5px solid #E2E8F0;
+        border-radius: 14px;
+        box-shadow: 0 16px 40px rgba(15,23,42,.14);
+        padding: 14px;
+    }
+    .vk-period-panel[hidden] { display: none !important; }
+
+    /* Date inputs row (đặt BÊN NGOÀI, cạnh nút Chọn kỳ) */
+    .vk-date-range {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .vk-date-range-input {
+        height: 38px;
+        width: 142px;
+        border: 1.5px solid #D8E0EA;
+        border-radius: 10px;
+        font-size: 12px;
+        padding: 0 8px;
+        color: #374151;
+        background: #fff;
+        transition: border-color .15s;
+    }
+    .vk-date-range-input:focus {
+        outline: none;
+        border-color: #16A34A;
+        box-shadow: 0 0 0 3px rgba(22,163,74,.1);
+    }
+    .vk-date-range-sep { color: #94A3B8; font-weight: 700; font-size: 13px; }
+
+    [data-theme="dark"] .vk-date-range-input {
+        background: #0A1628;
+        border-color: #2A3B59;
+        color: #CBD5E1;
+    }
+
+    /* Quick row */
+    .vk-quick-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 14px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid #F1F5F9;
+    }
+    .vk-quick-btn {
+        flex: 1;
+        height: 32px;
+        background: #F8FAFC;
+        border: 1.5px solid #E2E8F0;
+        border-radius: 8px;
+        font-size: 12px;
         font-weight: 700;
+        color: #374151;
+        cursor: pointer;
+        transition: background .12s, border-color .12s, color .12s;
     }
+    .vk-quick-btn:hover {
+        background: #F0FDF4;
+        border-color: #86EFAC;
+        color: #15803D;
+    }
+    .vk-quick-clear {
+        height: 32px;
+        padding: 0 10px;
+        background: #FFF5F5;
+        border: 1.5px solid #FECACA;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 700;
+        color: #DC2626;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: background .12s;
+    }
+    .vk-quick-clear:hover { background: #FEE2E2; }
+
+    /* Section labels + year row */
+    .vk-section-label {
+        font-size: 11px;
+        font-weight: 800;
+        color: #64748B;
+        text-transform: uppercase;
+        letter-spacing: .07em;
+        margin-bottom: 8px;
+        display: block;
+    }
+    .vk-section-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 12px;
+    }
+    .vk-section-row .vk-section-label { margin-bottom: 0; }
+    .vk-year-select {
+        height: 30px;
+        border: 1.5px solid #D8E0EA;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 700;
+        color: #374151;
+        padding: 0 8px;
+        background: #fff;
+        cursor: pointer;
+    }
+    .vk-year-select:focus {
+        outline: none;
+        border-color: #16A34A;
+        box-shadow: 0 0 0 3px rgba(22,163,74,.1);
+    }
+
+    /* Chip rows */
+    .vk-chip-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-bottom: 12px;
+    }
+    .vk-chip-row--months .vk-chip {
+        width: calc(25% - 5px);
+    }
+    .vk-chip {
+        height: 30px;
+        padding: 0 10px;
+        background: #F8FAFC;
+        border: 1.5px solid #E2E8F0;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 600;
+        color: #374151;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: background .12s, border-color .12s, color .12s;
+    }
+    .vk-chip:hover {
+        background: #F0FDF4;
+        border-color: #86EFAC;
+        color: #15803D;
+    }
+    .vk-chip.is-active {
+        background: #16A34A;
+        border-color: #15803D;
+        color: #fff;
+    }
+
+    /* Dark mode */
+    [data-theme="dark"] .vk-period-trigger {
+        background: #101C33;
+        border-color: #2A3B59;
+        color: #CBD5E1;
+    }
+    [data-theme="dark"] .vk-period-trigger.is-active {
+        background: rgba(22,163,74,.12);
+        border-color: #16A34A;
+        color: #86EFAC;
+    }
+    [data-theme="dark"] .vk-period-panel {
+        background: #101C33;
+        border-color: #2A3B59;
+        box-shadow: 0 16px 40px rgba(0,0,0,.45);
+    }
+    [data-theme="dark"] .vk-date-input,
+    [data-theme="dark"] .vk-year-select {
+        background: #0A1628;
+        border-color: #2A3B59;
+        color: #CBD5E1;
+    }
+    [data-theme="dark"] .vk-chip,
+    [data-theme="dark"] .vk-quick-btn {
+        background: #0D1B31;
+        border-color: #2A3B59;
+        color: #CBD5E1;
+    }
+    [data-theme="dark"] .vk-chip:hover,
+    [data-theme="dark"] .vk-quick-btn:hover {
+        background: rgba(22,163,74,.12);
+        border-color: #16A34A;
+        color: #86EFAC;
+    }
+    [data-theme="dark"] .vk-quick-row { border-bottom-color: #1E2D45; }
+    [data-theme="dark"] .vk-section-label { color: #94A3B8; }
+
 
     /* Gộp bảng + thanh phân trang thành 1 khối liền */
     .product-admin-page .voucher-table-wrap,
@@ -431,7 +640,7 @@
     .voucher-field textarea {
         height: auto !important;
         resize: vertical !important;
-        min-height: 97px !important;
+        min-height: 128px !important;
         font-size: 13.5px !important;
         line-height: 1.5 !important;
     }

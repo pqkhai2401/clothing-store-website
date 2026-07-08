@@ -157,13 +157,12 @@ class VoucherController extends Controller
 
     private function validationRules(?string $ignoreId = null): array
     {
-        return [
+        $rules = [
             'code'                => [
                 'required', 'string', 'max:50',
                 Rule::unique('vouchers', 'code')->ignore($ignoreId),
             ],
             'type'                => ['required', Rule::in(['percentage', 'fixed'])],
-            'value'               => ['required', 'numeric', 'min:0'],
             'min_order_amount'    => ['nullable', 'numeric', 'min:0'],
             'max_discount_amount' => ['nullable', 'numeric', 'min:0'],
             'quantity'            => ['required', 'integer', 'min:1'],
@@ -172,6 +171,14 @@ class VoucherController extends Controller
             'status'              => ['nullable', 'boolean'],
             'description'         => ['nullable', 'string', 'max:1000'],
         ];
+
+        if (request()->input('type') === 'percentage') {
+            $rules['value'] = ['required', 'numeric', 'min:0', 'max:100'];
+        } else {
+            $rules['value'] = ['required', 'numeric', 'min:0'];
+        }
+
+        return $rules;
     }
 
     private function validationMessages(): array
@@ -181,6 +188,8 @@ class VoucherController extends Controller
             'code.unique'         => 'Mã voucher này đã tồn tại.',
             'type.required'       => 'Vui lòng chọn kiểu giảm giá.',
             'value.required'      => 'Vui lòng nhập giá trị giảm.',
+            'value.min'           => 'Giá trị giảm không được nhỏ hơn 0.',
+            'value.max'           => 'Phần trăm giảm không được vượt quá 100%.',
             'quantity.required'   => 'Vui lòng nhập số lượng phát hành.',
             'quantity.min'        => 'Số lượng phát hành phải lớn hơn 0.',
             'start_date.required' => 'Vui lòng chọn thời gian bắt đầu.',
@@ -193,6 +202,10 @@ class VoucherController extends Controller
     {
         $request->merge(['code' => strtoupper(trim((string) $request->input('code')))]);
 
+        if ($request->input('type') === 'fixed') {
+            $request->merge(['max_discount_amount' => null]);
+        }
+
         $validated = $request->validate($this->validationRules(), $this->validationMessages());
         $validated['status'] = $request->boolean('status');
 
@@ -202,11 +215,15 @@ class VoucherController extends Controller
             ->with('success', "Thêm voucher \"{$voucher->code}\" thành công.");
     }
 
-    public function edit(string $id)
+    public function edit(Request $request, string $id)
     {
         $voucher = Voucher::findOrFail($id);
 
-        return view('admin.vouchers.edit', compact('voucher'));
+        if ($request->ajax()) {
+            return view('admin.vouchers.edit', compact('voucher'));
+        }
+
+        return redirect()->route('admin.vouchers.list', ['edit' => $id]);
     }
 
     public function update(Request $request, string $id)
@@ -214,6 +231,10 @@ class VoucherController extends Controller
         $voucher = Voucher::findOrFail($id);
 
         $request->merge(['code' => strtoupper(trim((string) $request->input('code')))]);
+
+        if ($request->input('type') === 'fixed') {
+            $request->merge(['max_discount_amount' => null]);
+        }
 
         $rules = $this->validationRules($id);
         $rules['quantity'][] = function ($attribute, $value, $fail) use ($voucher) {

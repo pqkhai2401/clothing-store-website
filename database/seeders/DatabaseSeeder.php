@@ -35,6 +35,7 @@ class DatabaseSeeder extends Seeder
             WishlistSeeder::class,
             OrderSeeder::class,
             CollectionSeeder::class,
+            VoucherSeeder::class,
         ]);
     }
 }

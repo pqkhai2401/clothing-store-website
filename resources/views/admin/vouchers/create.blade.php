@@ -253,15 +253,42 @@
     const hidden  = document.getElementById('vcTypeHidden');
     const valueHint = document.getElementById('vcValueHint');
 
+    const valueInput = document.getElementById('value');
+    const maxDiscountInput = document.getElementById('max_discount_amount');
+
     function open()  { panel.hidden = false; trigger.classList.add('is-open'); trigger.setAttribute('aria-expanded', 'true'); }
     function close() { panel.hidden = true;  trigger.classList.remove('is-open'); trigger.setAttribute('aria-expanded', 'false'); }
 
     function syncHint() {
         if (!valueHint) return;
-        valueHint.textContent = hidden.value === 'fixed'
-            ? 'Nhập số tiền giảm cố định (VNĐ).'
-            : 'Nhập phần trăm giảm (0–100).';
+        if (hidden.value === 'fixed') {
+            valueHint.textContent = 'Nhập số tiền giảm cố định (VNĐ).';
+            valueInput?.removeAttribute('max');
+            if (maxDiscountInput) {
+                maxDiscountInput.setAttribute('disabled', 'disabled');
+                maxDiscountInput.value = '';
+                maxDiscountInput.placeholder = 'Không áp dụng cho tiền mặt';
+            }
+        } else {
+            valueHint.textContent = 'Nhập phần trăm giảm (0–100).';
+            valueInput?.setAttribute('max', '100');
+            if (valueInput && parseFloat(valueInput.value) > 100) {
+                valueInput.value = 100;
+            }
+            if (maxDiscountInput) {
+                maxDiscountInput.removeAttribute('disabled');
+                maxDiscountInput.placeholder = 'Không giới hạn';
+            }
+        }
     }
+
+    valueInput?.addEventListener('input', function () {
+        if (hidden.value === 'percentage') {
+            if (parseFloat(this.value) > 100) {
+                this.value = 100;
+            }
+        }
+    });
 
     trigger?.addEventListener('click', () => panel.hidden ? open() : close());
 

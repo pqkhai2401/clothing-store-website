@@ -17,10 +17,15 @@
                     <p class="product-header-desc mb-0">Danh sách tất cả mã giảm giá trong hệ thống.</p>
                 </div>
                 <div class="product-header-actions">
-                    <a href="{{ route('admin.vouchers.export') }}?{{ http_build_query(request()->except('page')) }}"
+                    {{-- Nút Xuất Excel: ưu tiên checkbox đã chọn, nếu không thì theo bộ lọc --}}
+                    <button type="button" id="voucherExportBtn"
                        class="btn product-action-btn product-action-btn--neutral">
                         <i class="fa-solid fa-download me-1"></i> Xuất Excel
-                    </a>
+                    </button>
+                    {{-- Form ẩn để POST danh sách IDs sang export --}}
+                    <form id="voucherExportForm" method="GET" action="{{ route('admin.vouchers.export') }}" style="display:none;">
+                        @csrf
+                    </form>
                     <a href="{{ route('admin.vouchers.trash') }}" class="btn product-action-btn product-action-btn--trash">
                         <i class="fa-regular fa-trash-can me-1"></i> Th&#249;ng r&#225;c
                     </a>
@@ -85,13 +90,66 @@
                         </div>
                     </div>
 
-                    <div class="voucher-date-range">
-                        <input type="date" name="date_from" id="voucherDateFrom" data-admin-filter class="form-control voucher-date-input"
-                            value="{{ $dateFrom ?? '' }}" title="Từ ngày">
-                        <span class="voucher-date-sep">—</span>
-                        <input type="date" name="date_to" id="voucherDateTo" data-admin-filter class="form-control voucher-date-input"
-                            value="{{ $dateTo ?? '' }}" title="Đến ngày">
+                    {{-- Bộ lọc kỳ: dropdown chọn nhanh Năm / Quý / Tháng --}}
+                    @php
+                        $dfVal = $dateFrom ?? '';
+                        $dtVal = $dateTo   ?? '';
+                        $periodLabel = 'Chọn kỳ';
+                    @endphp
+
+                    <div class="vk-period-wrap" id="vkPeriodWrap">
+                        <button type="button" class="vk-period-trigger {{ ($dfVal || $dtVal) ? 'is-active' : '' }}" id="vkPeriodTrigger" aria-haspopup="true" aria-expanded="false">
+                            <i class="fa-regular fa-calendar me-1"></i>
+                            <span id="vkPeriodLabel">{{ $periodLabel }}</span>
+                            <i class="fa-solid fa-chevron-down vk-period-caret"></i>
+                        </button>
+
+                        <div class="vk-period-panel" id="vkPeriodPanel" hidden>
+                            {{-- Quick actions --}}
+                            <div class="vk-quick-row">
+                                <button type="button" class="vk-quick-btn" id="vkBtnThisYear">Năm nay</button>
+                                <button type="button" class="vk-quick-btn" id="vkBtnLastYear">Năm ngoái</button>
+                                <button type="button" class="vk-quick-clear" id="vkBtnClear">Xoá chọn</button>
+                            </div>
+
+                            {{-- Năm --}}
+                            <div class="vk-section-row">
+                                <span class="vk-section-label">Năm</span>
+                                <select class="vk-year-select" id="vkYearSelect">
+                                    @for($y = now()->year + 1; $y >= now()->year - 4; $y--)
+                                        <option value="{{ $y }}" {{ $y == now()->year ? 'selected' : '' }}>{{ $y }}</option>
+                                    @endfor
+                                </select>
+                            </div>
+
+                            {{-- Quý --}}
+                            <div class="vk-section-label">QUÝ</div>
+                            <div class="vk-chip-row">
+                                <button type="button" class="vk-chip" data-quarter="1">Quý 1</button>
+                                <button type="button" class="vk-chip" data-quarter="2">Quý 2</button>
+                                <button type="button" class="vk-chip" data-quarter="3">Quý 3</button>
+                                <button type="button" class="vk-chip" data-quarter="4">Quý 4</button>
+                            </div>
+
+                            {{-- Tháng --}}
+                            <div class="vk-section-label">THÁNG</div>
+                            <div class="vk-chip-row vk-chip-row--months">
+                                @for($m = 1; $m <= 12; $m++)
+                                    <button type="button" class="vk-chip" data-month="{{ $m }}">Th {{ $m }}</button>
+                                @endfor
+                            </div>
+                        </div>
                     </div>
+
+                    {{-- 2 ô ngày đặt ra ngoài, cạnh nút Chọn kỳ --}}
+                    <div class="vk-date-range">
+                        <input type="date" name="date_from" id="voucherDateFrom" data-admin-filter class="form-control vk-date-range-input"
+                            value="{{ $dfVal }}" title="Từ ngày">
+                        <span class="vk-date-range-sep">—</span>
+                        <input type="date" name="date_to" id="voucherDateTo" data-admin-filter class="form-control vk-date-range-input"
+                            value="{{ $dtVal }}" title="Đến ngày">
+                    </div>
+
                 </div>
             </form>
 
@@ -439,6 +497,9 @@
                 const hidden = body.querySelector('#vcTypeHidden');
                 const valueHint = body.querySelector('#vcValueHint');
 
+                const valueInput = form.querySelector('#value');
+                const maxDiscountInput = form.querySelector('#max_discount_amount');
+
                 codeInput?.addEventListener('input', function () {
                     const pos = this.selectionStart;
                     this.value = this.value.toUpperCase();
@@ -447,10 +508,34 @@
 
                 function syncHint() {
                     if (!valueHint || !hidden) return;
-                    valueHint.textContent = hidden.value === 'fixed'
-                        ? 'Nhap so tien giam co dinh (VND).'
-                        : 'Nhap phan tram giam (0-100).';
+                    if (hidden.value === 'fixed') {
+                        valueHint.textContent = 'Nhap so tien giam co dinh (VND).';
+                        valueInput?.removeAttribute('max');
+                        if (maxDiscountInput) {
+                            maxDiscountInput.setAttribute('disabled', 'disabled');
+                            maxDiscountInput.value = '';
+                            maxDiscountInput.placeholder = 'Khong ap dung cho tien mat';
+                        }
+                    } else {
+                        valueHint.textContent = 'Nhap phan tram giam (0-100).';
+                        valueInput?.setAttribute('max', '100');
+                        if (valueInput && parseFloat(valueInput.value) > 100) {
+                            valueInput.value = 100;
+                        }
+                        if (maxDiscountInput) {
+                            maxDiscountInput.removeAttribute('disabled');
+                            maxDiscountInput.placeholder = 'Khong gioi han';
+                        }
+                    }
                 }
+
+                valueInput?.addEventListener('input', function () {
+                    if (hidden.value === 'percentage') {
+                        if (parseFloat(this.value) > 100) {
+                            this.value = 100;
+                        }
+                    }
+                });
 
                 trigger?.addEventListener('click', function () {
                     panel.hidden = !panel.hidden;
@@ -543,7 +628,260 @@
             document.addEventListener('keydown', function (e) {
                 if (e.key === 'Escape' && !modal.hidden) closeModal();
             });
+
+            // Auto open edit modal if ?edit=ID exists in URL parameters (redirected from direct link)
+            (function autoOpenEditModal() {
+                const params = new URLSearchParams(window.location.search);
+                const editId = params.get('edit');
+                if (editId) {
+                    const cleanSearch = window.location.search.replace(/[?&]edit=[^&]+/, '').replace(/^&/, '?').replace(/\?$/, '');
+                    const newUrl = window.location.pathname + cleanSearch;
+                    window.history.replaceState({}, '', newUrl);
+
+                    openEdit(`/admin/vouchers/${editId}/edit`);
+                }
+            }());
         }());
+
+        /* ─────────────────────────────────────────────────────
+         * PERIOD PICKER — Chọn kỳ (Năm / Quý / Tháng)
+         * ───────────────────────────────────────────────────── */
+        (function () {
+            const trigger    = document.getElementById('vkPeriodTrigger');
+            const panel      = document.getElementById('vkPeriodPanel');
+            const label      = document.getElementById('vkPeriodLabel');
+            const inputFrom  = document.getElementById('voucherDateFrom');
+            const inputTo    = document.getElementById('voucherDateTo');
+            const yearSelect = document.getElementById('vkYearSelect');
+
+            if (!trigger) return;
+
+            /* ── helpers ── */
+            function pad2(n) { return String(n).padStart(2, '0'); }
+
+            function fmtDisplay(from, to) {
+                /* from/to: 'YYYY-MM-DD' */
+                if (!from && !to) return 'Chọn kỳ';
+                const f = from ? from.split('-').reverse().join('/') : '?';
+                const t = to   ? to.split('-').reverse().join('/')   : '?';
+                return f + ' – ' + t;
+            }
+
+            function applyDates(from, to, chipLabel) {
+                inputFrom.value = from;
+                inputTo.value   = to;
+
+                label.textContent = chipLabel || fmtDisplay(from, to);
+                trigger.classList.toggle('is-active', !!(from || to));
+
+                /* sync active chip */
+                panel.querySelectorAll('.vk-chip').forEach(function (c) {
+                    c.classList.remove('is-active');
+                });
+
+                /* trigger realtime-table filter */
+                inputFrom.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+
+            function getYear() { return parseInt(yearSelect.value, 10); }
+
+            /* ── open / close ── */
+            function openPanel() {
+                panel.hidden = false;
+                trigger.classList.add('is-open');
+                trigger.setAttribute('aria-expanded', 'true');
+            }
+            function closePanel() {
+                panel.hidden = true;
+                trigger.classList.remove('is-open');
+                trigger.setAttribute('aria-expanded', 'false');
+            }
+
+            trigger.addEventListener('click', function (e) {
+                e.stopPropagation();
+                panel.hidden ? openPanel() : closePanel();
+            });
+
+            document.addEventListener('click', function (e) {
+                if (!panel.hidden && !document.getElementById('vkPeriodWrap')?.contains(e.target)) {
+                    closePanel();
+                }
+            });
+
+            const nowYear = new Date().getFullYear();
+            const yearsBack = 6;
+            function iso(y, m, d) { return y + '-' + pad2(m) + '-' + pad2(d); }
+            function lastDayOfMonth(y, m) { return new Date(y, m, 0).getDate(); }
+            function yearRange(y) { return [iso(y, 1, 1), iso(y, 12, 31)]; }
+            function quarterRange(y, q) {
+                const startMonth = (q - 1) * 3 + 1;
+                const endMonth   = startMonth + 2;
+                return [iso(y, startMonth, 1), iso(y, endMonth, lastDayOfMonth(y, endMonth))];
+            }
+            function monthRange(y, m) {
+                return [iso(y, m, 1), iso(y, m, lastDayOfMonth(y, m))];
+            }
+
+            function syncLabelFromInputs() {
+                const fromVal = inputFrom.value;
+                const toVal   = inputTo.value;
+                if (!fromVal || !toVal) {
+                    label.textContent = 'Chọn kỳ';
+                    trigger.classList.remove('is-active');
+                    panel.querySelectorAll('.vk-chip').forEach(c => c.classList.remove('is-active'));
+                    return;
+                }
+
+                trigger.classList.add('is-active');
+
+                for (let y = nowYear; y >= nowYear - yearsBack; y--) {
+                    const yr = yearRange(y);
+                    if (fromVal === yr[0] && toVal === yr[1]) {
+                        label.textContent = y === nowYear ? 'Năm nay' : (y === nowYear - 1 ? 'Năm ngoái' : 'Năm ' + y);
+                        yearSelect.value = String(y);
+                        
+                        panel.querySelectorAll('.vk-chip').forEach(c => c.classList.remove('is-active'));
+                        return;
+                    }
+                    for (let q = 1; q <= 4; q++) {
+                        const qr = quarterRange(y, q);
+                        if (fromVal === qr[0] && toVal === qr[1]) {
+                            label.textContent = 'Quý ' + q + ' năm ' + y;
+                            yearSelect.value = String(y);
+                            
+                            panel.querySelectorAll('.vk-chip').forEach(c => {
+                                c.classList.toggle('is-active', c.dataset.quarter === String(q));
+                            });
+                            return;
+                        }
+                    }
+                    for (let m = 1; m <= 12; m++) {
+                        const mr = monthRange(y, m);
+                        if (fromVal === mr[0] && toVal === mr[1]) {
+                            label.textContent = 'Tháng ' + m + '/' + y;
+                            yearSelect.value = String(y);
+                            
+                            panel.querySelectorAll('.vk-chip').forEach(c => {
+                                c.classList.toggle('is-active', c.dataset.month === String(m));
+                            });
+                            return;
+                        }
+                    }
+                }
+
+                label.textContent = fmtDisplay(fromVal, toVal);
+                panel.querySelectorAll('.vk-chip').forEach(c => c.classList.remove('is-active'));
+            }
+
+            inputFrom.addEventListener('change', syncLabelFromInputs);
+            inputTo.addEventListener('change', syncLabelFromInputs);
+
+            /* ── Năm nay / Năm ngoái / Xoá chọn ── */
+            document.getElementById('vkBtnThisYear')?.addEventListener('click', function () {
+                const y = new Date().getFullYear();
+                applyDates(y + '-01-01', y + '-12-31', 'Năm nay');
+                if (yearSelect) yearSelect.value = y;
+                closePanel();
+            });
+
+            document.getElementById('vkBtnLastYear')?.addEventListener('click', function () {
+                const y = new Date().getFullYear() - 1;
+                applyDates(y + '-01-01', y + '-12-31', 'Năm ngoái');
+                if (yearSelect) yearSelect.value = y;
+                closePanel();
+            });
+
+            document.getElementById('vkBtnClear')?.addEventListener('click', function () {
+                applyDates('', '', 'Chọn kỳ');
+                closePanel();
+            });
+
+            /* ── Quý ── */
+            panel.querySelectorAll('.vk-chip[data-quarter]').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    const q = parseInt(this.dataset.quarter, 10);
+                    const y = getYear();
+                    const startMonth = (q - 1) * 3 + 1;
+                    const endMonth   = q * 3;
+                    const lastDay    = new Date(y, endMonth, 0).getDate();
+                    const from = y + '-' + pad2(startMonth) + '-01';
+                    const to   = y + '-' + pad2(endMonth)   + '-' + pad2(lastDay);
+                    applyDates(from, to, 'Quý ' + q + ' năm ' + y);
+                    this.classList.add('is-active');
+                    closePanel();
+                });
+            });
+
+            /* ── Tháng ── */
+            panel.querySelectorAll('.vk-chip[data-month]').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    const m = parseInt(this.dataset.month, 10);
+                    const y = getYear();
+                    const lastDay = new Date(y, m, 0).getDate();
+                    const from = y + '-' + pad2(m) + '-01';
+                    const to   = y + '-' + pad2(m) + '-' + pad2(lastDay);
+                    applyDates(from, to, 'Tháng ' + m + '/' + y);
+                    this.classList.add('is-active');
+                    closePanel();
+                });
+            });
+
+            /* ── Năm select (chỉ đổi năm, giữ tháng/quý đã chọn) ── */
+            yearSelect?.addEventListener('change', function () {
+                const activeChip = panel.querySelector('.vk-chip.is-active');
+                if (!activeChip) return;
+                /* re-trigger same chip at new year */
+                activeChip.click();
+            });
+
+            /* Chạy đồng bộ nhãn lần đầu khi load trang */
+            syncLabelFromInputs();
+        }());
+
+
+        /* ─────────────────────────────────────────────────────
+         * EXPORT EXCEL — Ưu tiên checkbox, fallback bộ lọc
+         * ───────────────────────────────────────────────────── */
+        (function () {
+            const exportBtn  = document.getElementById('voucherExportBtn');
+            const exportForm = document.getElementById('voucherExportForm');
+            if (!exportBtn || !exportForm) return;
+
+            exportBtn.addEventListener('click', function () {
+                /* Xoá inputs cũ trong form */
+                exportForm.querySelectorAll('input:not([name="_token"])').forEach(i => i.remove());
+
+                /* Thu thập checkbox đang được chọn */
+                const tableArea = document.querySelector('[data-admin-table-area]');
+                const checked   = Array.from(tableArea?.querySelectorAll('.hk-cb-row:checked') || []);
+
+                if (checked.length > 0) {
+                    /* Chế độ 1: xuất đúng danh sách ID checkbox */
+                    checked.forEach(function (cb) {
+                        const inp = document.createElement('input');
+                        inp.type  = 'hidden';
+                        inp.name  = 'ids[]';
+                        inp.value = cb.value;
+                        exportForm.appendChild(inp);
+                    });
+                } else {
+                    /* Chế độ 2: xuất theo bộ lọc hiện tại */
+                    const params = new URLSearchParams(window.location.search);
+                    ['search','status','type','date_from','date_to'].forEach(function (key) {
+                        if (params.get(key)) {
+                            const inp = document.createElement('input');
+                            inp.type  = 'hidden';
+                            inp.name  = key;
+                            inp.value = params.get(key);
+                            exportForm.appendChild(inp);
+                        }
+                    });
+                }
+
+                exportForm.submit();
+            });
+        }());
+
     }());
     </script>
 @endpush
