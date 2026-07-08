@@ -62,7 +62,7 @@
     .voucher-status-trigger:focus { outline: none; box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.15); }
     .voucher-status-caret { font-size: 9px; opacity: .65; transition: transform .15s; }
     .voucher-status-trigger.is-open .voucher-status-caret { transform: rotate(180deg); }
-    .voucher-status-dropdown .hk-cat-panel { left: 0; right: auto; width: 170px; }
+    .voucher-status-dropdown .hk-cat-panel { display: none !important; left: 0; right: auto; width: 170px; }
     .voucher-status-shared-panel {
         position: fixed !important;
         z-index: 3000 !important;
@@ -265,6 +265,15 @@
         background: #F8FAFC !important;
         border-color: #CBD5E1 !important;
         color: #0F172A !important;
+    }
+
+    #description,
+    .voucher-field textarea {
+        height: auto !important;
+        resize: vertical !important;
+        min-height: 97px !important;
+        font-size: 13.5px !important;
+        line-height: 1.5 !important;
     }
 
     @media (max-width: 767.98px) {

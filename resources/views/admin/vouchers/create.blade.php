@@ -7,17 +7,92 @@
     <style>
         .create-header-title { font-size: 25px; font-weight: 800; color: #000 !important; margin-bottom: 4px; }
         .create-header-desc { color: #64748b; font-size: 14px; margin: 0; }
+        .voucher-create-page { padding-bottom: 92px; }
+        .voucher-back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 40px;
+            padding: 8px 16px;
+            border: 1.5px solid #CBD5E1;
+            border-radius: 10px;
+            background: #fff;
+            color: #475569;
+            font-size: 13px;
+            font-weight: 700;
+            text-decoration: none;
+           
+        }
+        .voucher-back-btn:hover {
+            background: #F8FAFC;
+            border-color: #94A3B8;
+            color: #0F172A;
+        }
+        .voucher-create-sticky-actions {
+            position: fixed;
+            left: 250px;
+            right: 0;
+            bottom: 0;
+            z-index: 1040;
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 10px;
+            min-height: 76px;
+            padding: 14px 32px;
+            background: rgba(248, 250, 252, .96);
+            border-top: 1px solid #D8E0EA;
+            box-shadow: 0 -10px 24px rgba(15, 23, 42, .08);
+            backdrop-filter: blur(10px);
+           
+        }
+        .sidebar-collapse .voucher-create-sticky-actions {
+            left: 0;
+        }
+        .voucher-create-sticky-actions .btn {
+            min-width: 128px;
+            min-height: 42px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 800;
+        }
+        .voucher-create-sticky-actions .btn-dark {
+            background: #059669 !important;
+            border-color: #059669 !important;
+        }
+        .voucher-create-sticky-actions .btn-dark:hover {
+            background: #047857 !important;
+            border-color: #047857 !important;
+        }
+        .voucher-create-sticky-actions .btn-light {
+            background: #fff !important;
+            border: 1.5px solid #D8E0EA !important;
+            color: #475569 !important;
+        }
+        .voucher-create-sticky-actions .btn-light:hover {
+            background: #F8FAFC !important;
+            border-color: #CBD5E1 !important;
+            color: #0F172A !important;
+        }
+        .voucher-status-toggle .form-check-input {
+            width: 30px;
+            height: 16px;
+            margin-top: 0;
+        }
 
         /* ── Dropdown tuỳ chỉnh (bo viền) thay cho <select> mặc định của trình duyệt ── */
         .voucher-field .vc-dropdown.hk-cat-filter { width: 100%; flex: none; }
         .vc-dropdown .hk-cat-trigger { min-height: 34px; font-size: 13px; }
         .vc-dropdown.is-invalid .hk-cat-trigger { border-color: #dc3545; }
         .vc-dropdown .hk-cat-panel { left: 0; right: auto; width: 100%; }
+        @media (max-width: 991.98px) {
+            .voucher-create-sticky-actions { left: 0; padding-inline: 16px; }
+        }
     </style>
 @endpush
 
 @section('content')
-<main class="app-main container-fluid py-4">
+<main class="app-main container-fluid py-4 voucher-create-page">
     <x-notification />
 
     <div class="d-flex align-items-center justify-content-between gap-3 mb-4 flex-wrap">
@@ -25,11 +100,9 @@
             <h1 class="create-header-title mb-1">Thêm voucher</h1>
             <p class="create-header-desc mb-0">Tạo mã giảm giá mới cho hệ thống.</p>
         </div>
-        <div class="small text-muted">
-            Trang chủ <span class="mx-1">/</span>
-            <a href="{{ route('admin.vouchers.list') }}" class="text-decoration-none">Voucher</a>
-            <span class="mx-1">/</span> Thêm mới
-        </div>
+        <a href="{{ route('admin.vouchers.list') }}" class="voucher-back-btn">
+            <i class="fa-solid fa-arrow-left"></i> Quay l&#7841;i
+        </a>
     </div>
 
     <form method="POST" action="{{ route('admin.vouchers.store') }}" id="voucherCreateForm">
@@ -138,23 +211,24 @@
 
                         <div class="voucher-field mb-0">
                             <label for="description">Ghi chú</label>
-                            <textarea id="description" name="description" rows="4"
+                            <textarea id="description" name="description" rows="6"
                                 class="form-control @error('description') is-invalid @enderror"
-                                placeholder="Mô tả ngắn về voucher này...">{{ old('description') }}</textarea>
+                                placeholder="Nhập mô tả hoặc điều kiện áp dụng cho voucher...">{{ old('description') }}</textarea>
                             @error('description') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
                     </div>
                 </div>
 
-                <div class="voucher-form-actions">
-                    <a href="{{ route('admin.vouchers.list') }}" class="btn btn-light">
-                        <i class="fa-solid fa-arrow-left me-1"></i> Hủy
-                    </a>
-                    <button type="submit" class="btn btn-dark">
-                        <i class="fa-solid fa-floppy-disk me-1"></i> Lưu voucher
-                    </button>
-                </div>
             </div>
+        </div>
+
+        <div class="voucher-create-sticky-actions">
+            <a href="{{ route('admin.vouchers.list') }}" class="btn btn-light">
+                <i class="fa-solid fa-arrow-left me-1"></i> H&#7911;y
+            </a>
+            <button type="submit" class="btn btn-dark">
+                <i class="fa-solid fa-floppy-disk me-1"></i> L&#432;u voucher
+            </button>
         </div>
     </form>
 </main>

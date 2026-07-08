@@ -16,13 +16,13 @@
                     <h1 class="product-header-title mb-2">Quản lý voucher</h1>
                     <p class="product-header-desc mb-0">Danh sách tất cả mã giảm giá trong hệ thống.</p>
                 </div>
-                <div class="product-header-actions">
-                    <a href="{{ route('admin.vouchers.create') }}" class="btn btn-dark product-action-btn">
-                        <i class="fa-solid fa-plus me-1"></i> Thêm voucher
-                    </a>
+                <div class="product-header-actions">  
                     <a href="{{ route('admin.vouchers.export') }}?{{ http_build_query(request()->except('page')) }}"
                        class="btn product-action-btn product-action-btn--neutral">
                         <i class="fa-solid fa-download me-1"></i> Xuất Excel
+                    </a>
+                      <a href="{{ route('admin.vouchers.create') }}" class="btn btn-dark product-action-btn">
+                        <i class="fa-solid fa-plus me-1"></i> Thêm voucher
                     </a>
                 </div>
             </div>
@@ -194,6 +194,130 @@
                     closeAllPanels();
                 }
             });
+        }());
+
+        /* Panel tráº¡ng thÃ¡i ná»•i ngoÃ i báº£ng Ä‘á»ƒ khÃ´ng bá»‹ che bá»Ÿi table/pagination. */
+        (function () {
+            const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+            const panel = document.getElementById('voucherStatusSharedPanel');
+            let activeTrigger = null;
+
+            if (!panel) return;
+
+            function syncActive(value) {
+                panel.querySelectorAll('.hk-cat-item').forEach(function (item) {
+                    item.textContent = item.dataset.value === '1' ? 'Ho\u1ea1t \u0111\u1ed9ng' : 'Kh\u00f3a';
+                    item.classList.toggle('is-active', item.dataset.value === value);
+                });
+            }
+
+            function placePanel(trigger) {
+                panel.hidden = false;
+                const rect = trigger.getBoundingClientRect();
+                const width = panel.offsetWidth || 180;
+                const height = panel.offsetHeight || 96;
+                const gap = 8;
+                const safe = 12;
+                const top = rect.bottom + gap + height <= window.innerHeight - safe
+                    ? rect.bottom + gap
+                    : Math.max(safe, rect.top - height - gap);
+                const left = Math.min(Math.max(safe, rect.left), window.innerWidth - width - safe);
+
+                panel.style.top = `${top}px`;
+                panel.style.left = `${left}px`;
+            }
+
+            function closePanel() {
+                panel.hidden = true;
+                if (activeTrigger) {
+                    activeTrigger.classList.remove('is-open');
+                    activeTrigger.setAttribute('aria-expanded', 'false');
+                }
+                activeTrigger = null;
+            }
+
+            function openPanel(trigger) {
+                if (activeTrigger && activeTrigger !== trigger) {
+                    activeTrigger.classList.remove('is-open');
+                    activeTrigger.setAttribute('aria-expanded', 'false');
+                }
+
+                activeTrigger = trigger;
+                syncActive(trigger.dataset.value);
+                placePanel(trigger);
+                trigger.classList.add('is-open');
+                trigger.setAttribute('aria-expanded', 'true');
+            }
+
+            document.addEventListener('click', async function (e) {
+                const trigger = e.target.closest('.voucher-status-trigger');
+                if (trigger) {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+
+                    if (activeTrigger === trigger && !panel.hidden) {
+                        closePanel();
+                    } else {
+                        openPanel(trigger);
+                    }
+                    return;
+                }
+
+                const item = e.target.closest('#voucherStatusSharedPanel .hk-cat-item');
+                if (item) {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+
+                    const btn = activeTrigger;
+                    if (!btn) return;
+
+                    const newValue = item.dataset.value;
+                    const newCss = item.dataset.css;
+                    const newLabel = item.textContent.trim();
+                    const previousValue = btn.dataset.value;
+                    const previousCss = Array.from(btn.classList).find(c => c.startsWith('status-badge--'));
+                    const previousLabel = btn.querySelector('.voucher-status-trigger-label')?.textContent ?? '';
+                    const toggleUrl = btn.dataset.toggleUrl || btn.closest('.voucher-status-dropdown')?.dataset.toggleUrl;
+
+                    closePanel();
+                    if (newValue === previousValue) return;
+
+                    btn.disabled = true;
+                    try {
+                        const res = await fetch(toggleUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'X-CSRF-TOKEN': csrf,
+                            },
+                            body: new URLSearchParams({ _method: 'PATCH' }),
+                        });
+
+                        if (!res.ok) throw new Error('toggle failed');
+
+                        btn.className = 'status-badge voucher-status-trigger ' + newCss;
+                        btn.dataset.value = newValue;
+                        btn.querySelector('.voucher-status-trigger-label').textContent = newLabel;
+                        btn.closest('td')?.setAttribute('data-sort-value', newValue);
+                    } catch {
+                        alert('KhÃ´ng thá»ƒ cáº­p nháº­t tráº¡ng thÃ¡i. Vui lÃ²ng thá»­ láº¡i.');
+                        btn.className = 'status-badge voucher-status-trigger ' + (previousCss ?? '');
+                        btn.dataset.value = previousValue;
+                        btn.querySelector('.voucher-status-trigger-label').textContent = previousLabel;
+                    } finally {
+                        btn.disabled = false;
+                    }
+                    return;
+                }
+
+                if (!e.target.closest('#voucherStatusSharedPanel')) closePanel();
+            }, true);
+
+            window.addEventListener('scroll', function () {
+                if (activeTrigger && !panel.hidden) placePanel(activeTrigger);
+            }, true);
+            window.addEventListener('resize', closePanel);
         }());
     }());
     </script>

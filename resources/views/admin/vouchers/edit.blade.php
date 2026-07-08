@@ -141,9 +141,9 @@
 
                         <div class="voucher-field mb-0">
                             <label for="description">Ghi chú</label>
-                            <textarea id="description" name="description" rows="4"
+                            <textarea id="description" name="description" rows="6"
                                 class="form-control @error('description') is-invalid @enderror"
-                                placeholder="Mô tả ngắn về voucher này...">{{ old('description', $voucher->description) }}</textarea>
+                                placeholder="Nhập mô tả hoặc điều kiện áp dụng cho voucher...">{{ old('description', $voucher->description) }}</textarea>
                             @error('description') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
                     </div>
