@@ -16,6 +16,7 @@ use App\Http\Controllers\Admin\SupplierController;
 use App\Http\Controllers\Admin\ProfileController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\VoucherController;
+use App\Http\Controllers\Admin\CollectionController;
 
 $accountRoutes = function (string $accountType): void {
     Route::get('/', [UserController::class, 'index'])->name('list')->defaults('account_type', $accountType);
@@ -199,12 +200,27 @@ Route::middleware(['auth.login', 'admin'])
             ->prefix('vouchers')->name('vouchers.')->group(function () {
                 Route::get('/', [VoucherController::class, 'index'])->name('list');
                 Route::get('/export', [VoucherController::class, 'export'])->name('export');
+                Route::get('/trash', [VoucherController::class, 'trash'])->name('trash');
+                Route::post('/trash/bulk-restore', [VoucherController::class, 'bulkRestore'])->name('bulkRestore');
+                Route::post('/trash/bulk-force-delete', [VoucherController::class, 'bulkForceDelete'])->name('bulkForceDelete');
                 Route::get('/create', [VoucherController::class, 'create'])->name('create');
                 Route::post('/', [VoucherController::class, 'store'])->name('store');
                 Route::get('/{id}/edit', [VoucherController::class, 'edit'])->name('edit');
                 Route::put('/{id}', [VoucherController::class, 'update'])->name('update');
                 Route::patch('/{id}/toggle-status', [VoucherController::class, 'toggleStatus'])->name('toggleStatus');
+                Route::patch('/{id}/restore', [VoucherController::class, 'restore'])->name('restore');
+                Route::delete('/{id}/force-delete', [VoucherController::class, 'forceDelete'])->name('forceDelete');
                 Route::delete('/{id}', [VoucherController::class, 'destroy'])->name('destroy');
                 Route::post('/bulk-delete', [VoucherController::class, 'bulkDelete'])->name('bulkDelete');
+            });
+
+        Route::middleware('permission:manage-collections')
+            ->prefix('collections')->name('collections.')->group(function () {
+                Route::get('/', [CollectionController::class, 'index'])->name('list');
+                Route::get('/create', [CollectionController::class, 'create'])->name('create');
+                Route::post('/', [CollectionController::class, 'store'])->name('store');
+                Route::get('/{id}/edit', [CollectionController::class, 'edit'])->name('edit');
+                Route::put('/{id}', [CollectionController::class, 'update'])->name('update');
+                Route::delete('/{id}', [CollectionController::class, 'destroy'])->name('destroy');
             });
     });

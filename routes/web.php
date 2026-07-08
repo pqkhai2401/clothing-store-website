@@ -8,12 +8,11 @@ use App\Http\Controllers\User\CheckoutController;
 use App\Http\Controllers\User\OrderController;
 use App\Http\Controllers\User\ProfileController;
 
+use App\Http\Controllers\User\HomeController;
 use Illuminate\Support\Facades\Route;
 
 
-Route::get('/', function () {
-    return view('user.home.index');
-})->name('home');
+Route::get('/', [HomeController::class, 'index'])->name('home');
 
 Route::name('404-not-found')->get('404-not-found', function () {
     return view('404');
@@ -33,6 +32,10 @@ Route::get('/san-pham/{slug}', [ProductController::class, 'show'])->name('produc
 // Route danh mục sản phẩm: /danh-muc/{slug}?gender=men|women
 Route::get('/danh-muc/{slug}', [ProductController::class, 'getProductsByCategory'])
     ->name('category.products');
+
+// Route bộ sưu tập mùa: /bo-suu-tap/{slug}
+Route::get('/bo-suu-tap/{slug}', [ProductController::class, 'getProductsByCollection'])
+    ->name('collections.show');
 
 Route::middleware('auth')->group(function () {
     Route::get('/cart', [CartController::class, 'index'])->name('cart.index');

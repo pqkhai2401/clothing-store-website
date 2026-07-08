@@ -47,6 +47,18 @@
     .voucher-expiry-badge--active  { background: #ECFDF5; border: 1.5px solid #86EFAC; color: #16A34A; }
     .voucher-expiry-badge--soon    { background: #FFFBEB; border: 1.5px solid #FDE68A; color: #92400E; }
     .voucher-expiry-badge--expired { background: #FEF2F2; border: 1.5px solid #FECACA; color: #DC2626; }
+    .voucher-expiry-badge--paused  { background: #F1F5F9; border: 1.5px solid #CBD5E1; color: #64748B; }
+
+    .product-action-btn--trash {
+        background: #fff !important;
+        border: 1.5px solid #FCA5A5 !important;
+        color: #DC2626 !important;
+    }
+    .product-action-btn--trash:hover {
+        background: #FEF2F2 !important;
+        border-color: #EF4444 !important;
+        color: #B91C1C !important;
+    }
 
     /* ── Sổ xuống chọn nhanh trạng thái ngay trong bảng ── */
     .voucher-status-dropdown { position: relative; display: inline-block; width: auto; }
@@ -70,6 +82,78 @@
         max-height: none !important;
         overflow: visible !important;
         box-shadow: 0 18px 45px rgba(15, 23, 42, 0.18) !important;
+    }
+
+    .voucher-edit-modal[hidden] { display: none !important; }
+    .voucher-edit-modal {
+        position: fixed;
+        inset: 0;
+        z-index: 3060;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+    }
+    .voucher-edit-modal__overlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.52);
+        backdrop-filter: blur(3px);
+    }
+    .voucher-edit-modal__dialog {
+        position: relative;
+        width: min(980px, calc(100vw - 48px));
+        max-height: calc(100vh - 48px);
+        overflow: hidden;
+        border-radius: 18px;
+        background: #fff;
+        box-shadow: 0 24px 70px rgba(15, 23, 42, 0.28);
+        display: flex;
+        flex-direction: column;
+    }
+    .voucher-edit-modal__header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 16px;
+        padding: 20px 24px;
+        border-bottom: 1px solid #E2E8F0;
+    }
+    .voucher-edit-modal__header h2 {
+        margin: 0;
+        color: #0F172A;
+        font-size: 22px;
+        font-weight: 900;
+    }
+    .voucher-edit-modal__header p {
+        margin: 4px 0 0;
+        color: #64748B;
+        font-size: 13px;
+    }
+    .voucher-edit-modal__close {
+        width: 38px;
+        height: 38px;
+        border: 0;
+        border-radius: 10px;
+        background: #F1F5F9;
+        color: #64748B;
+        font-size: 17px;
+    }
+    .voucher-edit-modal__body {
+        overflow: auto;
+        padding: 22px 24px 24px;
+    }
+    .voucher-edit-modal__body .app-main,
+    .voucher-edit-modal__body main {
+        padding: 0 !important;
+    }
+    .voucher-edit-modal__body .voucher-form-actions {
+        position: sticky;
+        bottom: -24px;
+        margin: 18px -24px -24px;
+        padding: 14px 24px;
+        background: #F8FAFC;
+        border-top: 1px solid #E2E8F0;
     }
 
     /* ── Nút Sửa/Xóa: icon thuần túy ── */
@@ -138,6 +222,7 @@
     [data-theme="dark"] .voucher-expiry-badge--active   { background: rgba(34,197,94,0.12) !important; border-color: rgba(34,197,94,0.3) !important; color: #86EFAC !important; }
     [data-theme="dark"] .voucher-expiry-badge--soon     { background: rgba(251,191,36,0.12) !important; border-color: rgba(251,191,36,0.3) !important; color: #FCD34D !important; }
     [data-theme="dark"] .voucher-expiry-badge--expired  { background: rgba(239,68,68,0.12) !important; border-color: rgba(239,68,68,0.3) !important; color: #FCA5A5 !important; }
+    [data-theme="dark"] .voucher-expiry-badge--paused   { background: rgba(148,163,184,0.12) !important; border-color: rgba(148,163,184,0.3) !important; color: #CBD5E1 !important; }
     [data-theme="dark"] .voucher-code {
         background: #162843 !important;
         color: #CBD5E1 !important;
@@ -172,6 +257,7 @@
     #voucherFilterForm .product-toolbar-left { gap: 6px !important; }
     #voucherFilterForm .product-search { width: 190px !important; flex: 0 0 190px !important; }
     #voucherFilterForm .hk-cat-filter { width: 150px !important; flex: 0 0 150px !important; }
+    #voucherFilterForm #hkVoucherTypeDrop { width: 190px !important; flex-basis: 190px !important; }
     #voucherFilterForm .voucher-date-range { gap: 4px !important; }
     #voucherFilterForm .voucher-date-input {
         width: 130px !important;
@@ -189,6 +275,80 @@
     .product-admin-page .voucher-code {
         font-size: 11px !important;
         padding: 2px 5px !important;
+    }
+
+    .voucher-trash-back-btn {
+        min-height: 42px;
+        padding: 9px 18px;
+        border-radius: 10px !important;
+        font-size: 13px;
+        color: #475569;
+        background: #fff;
+    }
+    .voucher-trash-table-wrap {
+        overflow: hidden;
+        border: 1px solid #D8E0EA;
+        border-radius: 12px;
+        background: #fff;
+        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.04), 0 2px 4px -2px rgb(0 0 0 / 0.04);
+    }
+    .voucher-trash-table {
+        margin-bottom: 0;
+        color: #0F172A;
+    }
+    .voucher-trash-table thead th {
+        height: 58px;
+        background: #F1F5F9;
+        border-bottom: 1px solid #D8E0EA;
+        color: #334155;
+        font-size: 14px;
+        font-weight: 800;
+        vertical-align: middle;
+        white-space: nowrap;
+    }
+    .voucher-trash-table tbody td {
+        height: 62px;
+        border-color: #E2E8F0;
+        vertical-align: middle;
+        font-size: 13px;
+    }
+    .voucher-trash-id {
+        color: #64748B;
+        font-weight: 700;
+    }
+    .voucher-trash-value {
+        color: #0F172A;
+        font-size: 14px;
+        font-weight: 800;
+    }
+    .voucher-trash-sub,
+    .voucher-trash-date-range,
+    .voucher-trash-date {
+        color: #64748B;
+        font-size: 12px;
+    }
+    .voucher-trash-table .btn-sm {
+        min-height: 32px;
+        border-radius: 8px;
+        font-size: 12px;
+    }
+    .voucher-trash-pagination {
+        background: #fff;
+        border-color: #E2E8F0 !important;
+    }
+    [data-theme="dark"] .voucher-trash-table-wrap,
+    [data-theme="dark"] .voucher-trash-pagination {
+        background: #0F1B31;
+        border-color: #22324D !important;
+    }
+    [data-theme="dark"] .voucher-trash-table thead th {
+        background: #14233A;
+        border-color: #22324D;
+        color: #CBD5E1;
+    }
+    [data-theme="dark"] .voucher-trash-table tbody td {
+        border-color: #22324D;
+        color: #E2E8F0;
     }
 </style>
 

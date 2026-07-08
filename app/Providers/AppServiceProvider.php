@@ -125,6 +125,14 @@ class AppServiceProvider extends ServiceProvider
                         'parent'         => [],
                     ],
                     [
+                        'permission'     => 'manage-collections',
+                        'title'          => 'Quản lý Bộ sưu tập',
+                        'url'            => $r('admin.collections.list', '/admin/collections'),
+                        'active_pattern' => 'admin/collections*',
+                        'icon'           => 'fa-solid fa-umbrella-beach',
+                        'parent'         => [],
+                    ],
+                    [
                         'permission'     => 'manage-brands',
                         'title'          => 'Quản lý thương hiệu',
                         'url'            => $r('admin.brands.list', '/admin/brands'),

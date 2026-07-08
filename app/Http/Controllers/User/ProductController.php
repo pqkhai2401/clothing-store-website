@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\ProductView;
 use App\Models\Wishlist;
+use App\Models\Collection as ProductCollection;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -75,14 +76,8 @@ class ProductController extends Controller
         // Biến thể mặc định (đầu tiên) để hiển thị SKU và giá ban đầu
         $defaultVariant = $product->productVariants->first();
 
-        // Lấy 4 sản phẩm liên quan cùng danh mục
-        $relatedProducts = Product::where('category_id', $product->category_id)
-            ->where('id', '!=', $product->id)
-            ->where('status', true)
-            ->with('category')
-            ->latest()
-            ->limit(4)
-            ->get();
+        // Lấy 4 sản phẩm tương tự bằng thuật toán AI Content-based filtering
+        $relatedProducts = \App\Services\RecommendationService::getSimilarProducts($product, 4);
 
         // Kiểm tra sản phẩm có trong wishlist của user không (dùng cho nút ❤️ real-time)
         $isInWishlist = Auth::check()
@@ -189,6 +184,14 @@ class ProductController extends Controller
                 $sub->where('name', 'LIKE', "%{$q}%")
                     ->orWhereHas('category', fn ($c) => $c->where('name', 'LIKE', "%{$q}%"));
             });
+
+            // Ghi nhận lịch sử tìm kiếm cho người dùng đã đăng nhập phục vụ AI gợi ý
+            if (Auth::check()) {
+                \App\Models\SearchHistory::create([
+                    'user_id' => Auth::id(),
+                    'keyword' => $q,
+                ]);
+            }
         }
 
         $products = $query->with('category')
@@ -278,6 +281,37 @@ class ProductController extends Controller
             'category'    => $category,
             'pageTitle'   => $pageTitle,
             'currentSlug' => $slug,
+            'gender'      => $gender,
+        ]);
+    }
+
+    // Hiển thị sản phẩm theo bộ sưu tập mùa
+    public function getProductsByCollection(Request $request, string $slug)
+    {
+        $collection = ProductCollection::where('slug', $slug)->where('status', true)->firstOrFail();
+
+        $query = $collection->products()->where('status', true);
+
+        // Lọc theo giới tính 
+        $gender = $request->query('gender');
+        if ($gender === 'men') {
+            $query->whereIn('gender', ['men', 'unisex']);
+        } elseif ($gender === 'women') {
+            $query->whereIn('gender', ['women', 'unisex']);
+        }
+
+        // Sắp xếp theo mới nhất + phân trang 12 sản phẩm
+        $products = $query->with('category')
+            ->latest()
+            ->paginate(12)
+            ->appends($request->query());
+
+        $pageTitle = $collection->name;
+
+        return view('user.collections.show', [
+            'collection'  => $collection,
+            'products'    => $products,
+            'pageTitle'   => $pageTitle,
             'gender'      => $gender,
         ]);
     }

@@ -94,6 +94,14 @@ class Product extends Model
         return $this->belongsToMany(Tag::class, 'product_tags')->withTimestamps();
     }
 
+    /**
+     * The collections that contain this product.
+     */
+    public function collections(): BelongsToMany
+    {
+        return $this->belongsToMany(Collection::class, 'collection_product');
+    }
+
     public function getFinalPriceAttribute()
     {
         return $this->price *

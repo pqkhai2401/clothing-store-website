@@ -24,6 +24,7 @@ class VoucherController extends Controller
     {
         $search       = trim((string) $request->input('search', $request->input('keyword')));
         $statusFilter = $request->input('status', '');
+        $typeFilter   = $request->input('type', '');
         $dateFrom     = $request->input('date_from');
         $dateTo       = $request->input('date_to');
 
@@ -35,6 +36,10 @@ class VoucherController extends Controller
 
         if (in_array($statusFilter, ['0', '1'], true)) {
             $query->where('status', (bool) (int) $statusFilter);
+        }
+
+        if (in_array($typeFilter, ['percentage', 'fixed'], true)) {
+            $query->where('type', $typeFilter);
         }
 
         if ($dateFrom) {
@@ -67,6 +72,7 @@ class VoucherController extends Controller
     {
         $keyword      = trim((string) $request->input('search', $request->input('keyword')));
         $statusFilter = $request->input('status', '');
+        $typeFilter   = $request->input('type', '');
         $dateFrom     = $request->input('date_from', '');
         $dateTo       = $request->input('date_to', '');
         $sort         = $request->input('sort', 'created_at');
@@ -108,6 +114,7 @@ class VoucherController extends Controller
         return view('admin.vouchers.index', array_merge($tableData, $statsData, [
             'keyword'      => $keyword,
             'statusFilter' => $statusFilter,
+            'typeFilter'   => $typeFilter,
             'dateFrom'     => $dateFrom,
             'dateTo'       => $dateTo,
             'perPage'      => $perPage,
@@ -122,6 +129,30 @@ class VoucherController extends Controller
     public function create()
     {
         return view('admin.vouchers.create');
+    }
+
+    public function trash(Request $request)
+    {
+        $keyword = trim((string) $request->input('search', ''));
+        $perPage = in_array((int) $request->input('per_page'), [10, 25, 50, 100], true)
+            ? (int) $request->input('per_page')
+            : 10;
+
+        $query = Voucher::onlyTrashed()->orderByDesc('deleted_at');
+
+        if ($keyword !== '') {
+            $query->where('code', 'like', "%{$keyword}%");
+        }
+
+        $vouchers = $query->paginate($perPage)->withQueryString();
+
+        if ($request->ajax()) {
+            return response()->json([
+                'html' => view('admin.vouchers.partials.trash-table', compact('vouchers'))->render(),
+            ]);
+        }
+
+        return view('admin.vouchers.trash', compact('vouchers', 'keyword', 'perPage'));
     }
 
     private function validationRules(?string $ignoreId = null): array
@@ -196,6 +227,13 @@ class VoucherController extends Controller
 
         $voucher->update($validated);
 
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => "Cap nhat voucher \"{$voucher->code}\" thanh cong.",
+            ]);
+        }
+
         return redirect()->route('admin.vouchers.list')
             ->with('success', "Cập nhật voucher \"{$voucher->code}\" thành công.");
     }
@@ -236,5 +274,48 @@ class VoucherController extends Controller
         $deleted = Voucher::whereIn('id', $ids)->delete();
 
         return back()->with('success', "Đã xóa {$deleted} voucher thành công.");
+    }
+    public function restore(string $id)
+    {
+        $voucher = Voucher::onlyTrashed()->findOrFail($id);
+        $voucher->restore();
+
+        return back()->with('success', "Da khoi phuc voucher \"{$voucher->code}\" thanh cong.");
+    }
+
+    public function forceDelete(string $id)
+    {
+        $voucher = Voucher::onlyTrashed()->findOrFail($id);
+        $code = $voucher->code;
+        $voucher->forceDelete();
+
+        return back()->with('success', "Da xoa vinh vien voucher \"{$code}\".");
+    }
+
+    public function bulkRestore(Request $request)
+    {
+        $ids = array_filter((array) $request->input('ids', []), 'is_numeric');
+
+        if (empty($ids)) {
+            return back()->with('error', 'Vui long chon it nhat mot voucher de khoi phuc.');
+        }
+
+        $restored = Voucher::onlyTrashed()->whereIn('id', $ids)->restore();
+
+        return back()->with('success', "Da khoi phuc {$restored} voucher thanh cong.");
+    }
+
+    public function bulkForceDelete(Request $request)
+    {
+        $ids = array_filter((array) $request->input('ids', []), 'is_numeric');
+
+        if (empty($ids)) {
+            return back()->with('error', 'Vui long chon it nhat mot voucher de xoa vinh vien.');
+        }
+
+        $count = Voucher::onlyTrashed()->whereIn('id', $ids)->count();
+        Voucher::onlyTrashed()->whereIn('id', $ids)->forceDelete();
+
+        return back()->with('success', "Da xoa vinh vien {$count} voucher.");
     }
 }

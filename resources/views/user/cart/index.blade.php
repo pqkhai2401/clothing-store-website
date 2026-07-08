@@ -687,6 +687,19 @@
     </div>
     @endif
 
+    <!-- AI Recommended Products (Cross-selling) -->
+    @if(isset($recommendedProducts) && $recommendedProducts->isNotEmpty())
+        <div class="row mt-5 pt-4 border-top">
+            <div class="col-12">
+                <div class="section-header text-center mb-5">
+                    <h2 class="section-title" style="font-size: 24px; letter-spacing: 1px; text-transform: uppercase;">Có thể bạn cũng thích</h2>
+                    <div class="section-subtitle" style="font-size: 12px; color: var(--muted-text);"><i class="bi bi-cpu me-1"></i> Gợi ý cá nhân hóa từ AI của HK Store</div>
+                </div>
+                @include('partials.product-grid', ['products' => $recommendedProducts, 'cols' => 'col-6 col-md-3'])
+            </div>
+        </div>
+    @endif
+
 </div>
 
 <!-- ══ Sticky bottom bar (shown only when cart has items) ══ -->

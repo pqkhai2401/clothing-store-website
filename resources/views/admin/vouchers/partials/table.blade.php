@@ -25,7 +25,7 @@
                     <th style="width: 44px;">
                         <input type="checkbox" class="form-check-input product-check hk-cb-all">
                     </th>
-                    <th style="width:150px;">Mã code</th>
+                    <th style="width:150px;">Mã Voucher</th>
                     <th style="width:110px;">Kiểu giảm</th>
                     <th style="width:130px;">
                         <button type="button" class="product-sort-btn {{ $isActive('value') }}" data-sort-key="value" data-sort-type="number">
@@ -52,7 +52,10 @@
                     @php
                         $isExpired = $voucher->end_date < $now;
                         $isDepleted = $voucher->used_count >= $voucher->quantity;
-                        if ($isExpired) {
+                        if (! $voucher->status) {
+                            $expiryCss = 'voucher-expiry-badge--paused';
+                            $expiryLabel = 'Tạm hoãn';
+                        } elseif ($isExpired) {
                             $expiryCss = 'voucher-expiry-badge--expired';
                             $expiryLabel = 'Đã hết hạn';
                         } elseif ($isDepleted) {
@@ -105,7 +108,10 @@
                             <div style="color:#64748B;font-size:12px;">
                                 {{ $voucher->start_date?->format('d/m/Y') ?? '—' }} - {{ $voucher->end_date?->format('d/m/Y') ?? '—' }}
                             </div>
-                            <span class="voucher-expiry-badge {{ $expiryCss }}">{{ $expiryLabel }}</span>
+                            <span class="voucher-expiry-badge {{ $expiryCss }}"
+                                data-voucher-expiry-badge
+                                data-active-css="{{ $voucher->end_date < $now || $voucher->used_count >= $voucher->quantity ? 'voucher-expiry-badge--expired' : ($voucher->end_date <= $now->copy()->addDays(3) ? 'voucher-expiry-badge--soon' : 'voucher-expiry-badge--active') }}"
+                                data-active-label="{{ $voucher->end_date < $now ? 'Đã hết hạn' : ($voucher->used_count >= $voucher->quantity ? 'Hết lượt dùng' : ($voucher->end_date <= $now->copy()->addDays(3) ? 'Sắp hết hạn' : 'Còn hạn')) }}">{{ $expiryLabel }}</span>
                         </td>
                         <td data-sort-value="{{ $voucher->status ? 1 : 0 }}" data-voucher-status-cell="{{ $voucher->id }}">
                             <div class="hk-cat-filter voucher-status-dropdown" data-voucher-id="{{ $voucher->id }}"
@@ -127,7 +133,7 @@
                         </td>
                         <td class="text-center">
                             <div class="d-flex align-items-center justify-content-center gap-1">
-                                <a href="{{ route('admin.vouchers.edit', $voucher->id) }}" class="voucher-row-action-btn" title="Sửa">
+                                <a href="{{ route('admin.vouchers.edit', $voucher->id) }}" class="voucher-row-action-btn" data-voucher-edit-url="{{ route('admin.vouchers.edit', $voucher->id) }}" title="Sửa">
                                     <i class="fa-regular fa-pen-to-square"></i>
                                 </a>
                                 <button type="button" class="voucher-row-action-btn"

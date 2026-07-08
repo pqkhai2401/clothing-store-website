@@ -16,12 +16,15 @@
                     <h1 class="product-header-title mb-2">Quản lý voucher</h1>
                     <p class="product-header-desc mb-0">Danh sách tất cả mã giảm giá trong hệ thống.</p>
                 </div>
-                <div class="product-header-actions">  
+                <div class="product-header-actions">
                     <a href="{{ route('admin.vouchers.export') }}?{{ http_build_query(request()->except('page')) }}"
                        class="btn product-action-btn product-action-btn--neutral">
                         <i class="fa-solid fa-download me-1"></i> Xuất Excel
                     </a>
-                      <a href="{{ route('admin.vouchers.create') }}" class="btn btn-dark product-action-btn">
+                    <a href="{{ route('admin.vouchers.trash') }}" class="btn product-action-btn product-action-btn--trash">
+                        <i class="fa-regular fa-trash-can me-1"></i> Th&#249;ng r&#225;c
+                    </a>
+                    <a href="{{ route('admin.vouchers.create') }}" class="btn btn-dark product-action-btn">
                         <i class="fa-solid fa-plus me-1"></i> Thêm voucher
                     </a>
                 </div>
@@ -33,6 +36,8 @@
 
             @php
                 $statusVal = $statusFilter ?? '';
+                $typeVal = $typeFilter ?? '';
+                $typeLabelMap = ['' => 'Tất cả kiểu giảm', 'percentage' => 'Theo phần trăm %', 'fixed' => 'Theo số tiền cố định'];
                 $statusLabelMap = ['' => 'Tất cả trạng thái', '1' => 'Hoạt động', '0' => 'Khóa'];
             @endphp
 
@@ -40,6 +45,7 @@
                   class="product-toolbar">
                 <input type="hidden" name="per_page" value="{{ $perPage }}">
                 <input type="hidden" name="status" data-admin-filter id="voucherStatusHidden" value="{{ $statusVal }}">
+                <input type="hidden" name="type" data-admin-filter id="voucherTypeHidden" value="{{ $typeVal }}">
 
                 <div class="product-toolbar-left">
                     <input type="search" name="search" data-admin-search id="voucherSearch"
@@ -64,6 +70,21 @@
                     </div>
 
                     {{-- Lọc theo khoảng ngày hiệu lực --}}
+                    <div class="hk-cat-filter" id="hkVoucherTypeDrop">
+                        <button type="button" class="hk-cat-trigger" id="hkVoucherTypeTrigger"
+                            aria-haspopup="listbox" aria-expanded="false">
+                            <span class="hk-cat-trigger-label" id="hkVoucherTypeLabel">{{ $typeLabelMap[$typeVal] ?? 'Tất cả kiểu giảm' }}</span>
+                            <i class="fa-solid fa-chevron-down hk-cat-arrow"></i>
+                        </button>
+                        <div class="hk-cat-panel" id="hkVoucherTypePanel" hidden>
+                            <div class="hk-cat-list" id="hkVoucherTypeList" role="listbox">
+                                <button type="button" class="hk-cat-item {{ $typeVal === '' ? 'is-active' : '' }}" data-value="" data-label="Tất cả kiểu giảm">Tất cả kiểu giảm</button>
+                                <button type="button" class="hk-cat-item {{ $typeVal === 'percentage' ? 'is-active' : '' }}" data-value="percentage" data-label="Theo phần trăm %">Theo phần trăm %</button>
+                                <button type="button" class="hk-cat-item {{ $typeVal === 'fixed' ? 'is-active' : '' }}" data-value="fixed" data-label="Theo số tiền cố định">Theo số tiền cố định</button>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="voucher-date-range">
                         <input type="date" name="date_from" id="voucherDateFrom" data-admin-filter class="form-control voucher-date-input"
                             value="{{ $dateFrom ?? '' }}" title="Từ ngày">
@@ -82,6 +103,23 @@
                 <div class="hk-cat-list" role="listbox">
                     <button type="button" class="hk-cat-item" data-value="1" data-css="status-badge--active">Hoáº¡t Ä‘á»™ng</button>
                     <button type="button" class="hk-cat-item" data-value="0" data-css="status-badge--inactive">KhÃ³a</button>
+                </div>
+            </div>
+            <div class="voucher-edit-modal" id="voucherEditModal" hidden>
+                <div class="voucher-edit-modal__overlay" data-voucher-edit-close></div>
+                <div class="voucher-edit-modal__dialog" role="dialog" aria-modal="true">
+                    <div class="voucher-edit-modal__header">
+                        <div>
+                            <h2>S&#7917;a voucher</h2>
+                            <p>C&#7853;p nh&#7853;t th&#244;ng tin m&#227; gi&#7843;m gi&#225;.</p>
+                        </div>
+                        <button type="button" class="voucher-edit-modal__close" data-voucher-edit-close aria-label="Dong">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                    <div class="voucher-edit-modal__body" id="voucherEditModalBody">
+                        <div class="text-center text-muted py-5">Dang tai...</div>
+                    </div>
                 </div>
             </div>
         </section>
@@ -120,6 +158,35 @@
 
             document.addEventListener('click', function (e) {
                 if (!panel.hidden && !document.getElementById('hkVoucherStatusDrop')?.contains(e.target)) close();
+            });
+        }());
+
+        (function () {
+            const trigger = document.getElementById('hkVoucherTypeTrigger');
+            const panel   = document.getElementById('hkVoucherTypePanel');
+            const label   = document.getElementById('hkVoucherTypeLabel');
+            const list    = document.getElementById('hkVoucherTypeList');
+            const hidden  = document.getElementById('voucherTypeHidden');
+            if (!trigger) return;
+
+            function open()  { panel.hidden = false; trigger.classList.add('is-open'); trigger.setAttribute('aria-expanded', 'true'); }
+            function close() { panel.hidden = true;  trigger.classList.remove('is-open'); trigger.setAttribute('aria-expanded', 'false'); }
+
+            trigger.addEventListener('click', () => panel.hidden ? open() : close());
+
+            list.addEventListener('click', function (e) {
+                const btn = e.target.closest('.hk-cat-item');
+                if (!btn) return;
+                list.querySelectorAll('.hk-cat-item').forEach(b => b.classList.remove('is-active'));
+                btn.classList.add('is-active');
+                label.textContent = btn.dataset.label;
+                hidden.value = btn.dataset.value;
+                close();
+                hidden.dispatchEvent(new Event('change', { bubbles: true }));
+            });
+
+            document.addEventListener('click', function (e) {
+                if (!panel.hidden && !document.getElementById('hkVoucherTypeDrop')?.contains(e.target)) close();
             });
         }());
 
@@ -300,6 +367,17 @@
                         btn.dataset.value = newValue;
                         btn.querySelector('.voucher-status-trigger-label').textContent = newLabel;
                         btn.closest('td')?.setAttribute('data-sort-value', newValue);
+                        const expiryBadge = btn.closest('tr')?.querySelector('[data-voucher-expiry-badge]');
+                        if (expiryBadge) {
+                            expiryBadge.classList.remove('voucher-expiry-badge--active', 'voucher-expiry-badge--soon', 'voucher-expiry-badge--expired', 'voucher-expiry-badge--paused');
+                            if (newValue === '0') {
+                                expiryBadge.classList.add('voucher-expiry-badge--paused');
+                                expiryBadge.textContent = 'Tạm hoãn';
+                            } else {
+                                expiryBadge.classList.add(expiryBadge.dataset.activeCss || 'voucher-expiry-badge--active');
+                                expiryBadge.textContent = expiryBadge.dataset.activeLabel || 'Còn hạn';
+                            }
+                        }
                     } catch {
                         alert('KhÃ´ng thá»ƒ cáº­p nháº­t tráº¡ng thÃ¡i. Vui lÃ²ng thá»­ láº¡i.');
                         btn.className = 'status-badge voucher-status-trigger ' + (previousCss ?? '');
@@ -318,6 +396,153 @@
                 if (activeTrigger && !panel.hidden) placePanel(activeTrigger);
             }, true);
             window.addEventListener('resize', closePanel);
+        }());
+
+        (function () {
+            const topTrash = document.getElementById('voucherBulkTrashTop');
+            if (!topTrash) return;
+
+            topTrash.addEventListener('click', function () {
+                const tableArea = document.querySelector('[data-admin-table-area]');
+                const checked = Array.from(tableArea?.querySelectorAll('.hk-cb-row:checked') || []);
+                if (!checked.length) {
+                    alert('Vui long chon it nhat mot voucher de xoa.');
+                    return;
+                }
+
+                const paginationDeleteBtn = tableArea?.querySelector('.hk-pg-sel-delete');
+                if (paginationDeleteBtn) {
+                    paginationDeleteBtn.click();
+                }
+            });
+        }());
+
+        (function () {
+            const modal = document.getElementById('voucherEditModal');
+            const body = document.getElementById('voucherEditModalBody');
+            const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+            if (!modal || !body) return;
+
+            function closeModal() {
+                modal.hidden = true;
+                body.innerHTML = '<div class="text-center text-muted py-5">Dang tai...</div>';
+                document.body.style.overflow = '';
+            }
+
+            function initModalForm() {
+                const form = body.querySelector('#voucherEditForm');
+                const codeInput = body.querySelector('#code');
+                const trigger = body.querySelector('#vcTypeTrigger');
+                const panel = body.querySelector('#vcTypePanel');
+                const label = body.querySelector('#vcTypeLabel');
+                const list = body.querySelector('#vcTypeList');
+                const hidden = body.querySelector('#vcTypeHidden');
+                const valueHint = body.querySelector('#vcValueHint');
+
+                codeInput?.addEventListener('input', function () {
+                    const pos = this.selectionStart;
+                    this.value = this.value.toUpperCase();
+                    this.setSelectionRange(pos, pos);
+                });
+
+                function syncHint() {
+                    if (!valueHint || !hidden) return;
+                    valueHint.textContent = hidden.value === 'fixed'
+                        ? 'Nhap so tien giam co dinh (VND).'
+                        : 'Nhap phan tram giam (0-100).';
+                }
+
+                trigger?.addEventListener('click', function () {
+                    panel.hidden = !panel.hidden;
+                    trigger.classList.toggle('is-open', !panel.hidden);
+                });
+
+                list?.addEventListener('click', function (e) {
+                    const btn = e.target.closest('.hk-cat-item');
+                    if (!btn) return;
+                    list.querySelectorAll('.hk-cat-item').forEach(b => b.classList.remove('is-active'));
+                    btn.classList.add('is-active');
+                    label.textContent = btn.dataset.label;
+                    hidden.value = btn.dataset.value;
+                    panel.hidden = true;
+                    syncHint();
+                });
+
+                form?.addEventListener('submit', async function (e) {
+                    e.preventDefault();
+                    const submitBtn = form.querySelector('button[type="submit"]');
+                    submitBtn?.setAttribute('disabled', 'disabled');
+
+                    try {
+                        const res = await fetch(form.action, {
+                            method: 'POST',
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'X-CSRF-TOKEN': csrf,
+                            },
+                            body: new FormData(form),
+                        });
+
+                        if (!res.ok) {
+                            if (res.status === 422) {
+                                alert('Du lieu chua hop le. Vui long kiem tra lai form.');
+                                return;
+                            }
+                            throw new Error('update failed');
+                        }
+
+                        closeModal();
+                        window.location.reload();
+                    } catch {
+                        alert('Khong the cap nhat voucher. Vui long thu lai.');
+                    } finally {
+                        submitBtn?.removeAttribute('disabled');
+                    }
+                });
+
+                syncHint();
+            }
+
+            async function openEdit(url) {
+                modal.hidden = false;
+                document.body.style.overflow = 'hidden';
+                body.innerHTML = '<div class="text-center text-muted py-5">Dang tai...</div>';
+
+                try {
+                    const res = await fetch(url, {
+                        headers: {
+                            'Accept': 'text/html',
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                    });
+                    const html = await res.text();
+                    const doc = new DOMParser().parseFromString(html, 'text/html');
+                    const form = doc.querySelector('#voucherEditForm');
+                    if (!form) throw new Error('form not found');
+
+                    body.innerHTML = '';
+                    body.appendChild(form);
+                    initModalForm();
+                } catch {
+                    body.innerHTML = '<div class="alert alert-danger mb-0">Khong the tai form chinh sua voucher.</div>';
+                }
+            }
+
+            document.addEventListener('click', function (e) {
+                const editLink = e.target.closest('[data-voucher-edit-url]');
+                if (editLink) {
+                    e.preventDefault();
+                    openEdit(editLink.dataset.voucherEditUrl || editLink.href);
+                    return;
+                }
+
+                if (e.target.closest('[data-voucher-edit-close]')) closeModal();
+            });
+
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape' && !modal.hidden) closeModal();
+            });
         }());
     }());
     </script>

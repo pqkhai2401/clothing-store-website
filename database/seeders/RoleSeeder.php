@@ -34,7 +34,7 @@ class RoleSeeder extends Seeder
             'manage-revenue',     // Thống kê doanh thu
             'manage-suppliers',      // Quản lý nhà cung cấp
             'manage-vouchers',    // Quản lý voucher
-
+            'manage-collections', // Quản lý bộ sưu tập
         ];
 
         foreach ($allPermissions as $permission) {

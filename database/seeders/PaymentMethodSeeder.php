@@ -25,16 +25,6 @@ class PaymentMethodSeeder extends Seeder
                 'status' => true,
                 'image' => 'https://cdn.haitrieu.com/wp-content/uploads/2022/10/Logo-VNPAY-QR.png',
             ],
-            [
-                'name' => 'Momo',
-                'status' => true,
-                'image' => 'https://cdn.haitrieu.com/wp-content/uploads/2022/10/Logo-MoMo-Square.png',
-            ],
-            [
-                'name' => 'ZaloPay',
-                'status' => true,
-                'image' => 'https://cdn.haitrieu.com/wp-content/uploads/2022/01/Logo-ZaloPay-Square.png',
-            ],
         ];
 
         foreach ($methods as $method) {
