@@ -3,6 +3,7 @@
         background: #f8fafc;
         min-height: calc(100vh - 56px);
         padding-top: 0 !important;
+        
     }
 
     .product-header-title {

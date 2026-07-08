@@ -105,7 +105,7 @@
         .order-period-panel {
             left: 0;
             right: auto;
-            width: 260px;
+            width: 295px;
             padding: 14px;
         }
         .order-period-quick-row {
@@ -129,6 +129,11 @@
             background: #F0FDF4;
             border-color: #16A34A;
             color: #16A34A;
+        }
+        .order-period-quick-btn.order-period-clear-btn:hover {
+            background: #FEF2F2 !important;
+            border-color: #EF4444 !important;
+            color: #EF4444 !important;
         }
         .order-period-year-row {
             display: flex;
@@ -286,7 +291,7 @@
             gap: 4px !important;
         }
         #orderFilterForm .order-date-input {
-            width: 100px !important;
+            width: 118px !important;
             min-height: 34px !important;
             height: 34px !important;
             font-size: 12px !important;

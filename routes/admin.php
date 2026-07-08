@@ -15,6 +15,7 @@ use App\Http\Controllers\Admin\StocktakeController;
 use App\Http\Controllers\Admin\SupplierController;
 use App\Http\Controllers\Admin\ProfileController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\VoucherController;
 
 $accountRoutes = function (string $accountType): void {
     Route::get('/', [UserController::class, 'index'])->name('list')->defaults('account_type', $accountType);
@@ -192,4 +193,17 @@ Route::middleware(['auth.login', 'admin'])
             Route::post('/bulk-delete', [ReviewController::class, 'bulkDelete'])->name('bulkDelete');
             $trashRoutes(ReviewController::class)();
         });
+
+        Route::middleware('permission:manage-vouchers')
+            ->prefix('vouchers')->name('vouchers.')->group(function () {
+                Route::get('/', [VoucherController::class, 'index'])->name('list');
+                Route::get('/export', [VoucherController::class, 'export'])->name('export');
+                Route::get('/create', [VoucherController::class, 'create'])->name('create');
+                Route::post('/', [VoucherController::class, 'store'])->name('store');
+                Route::get('/{id}/edit', [VoucherController::class, 'edit'])->name('edit');
+                Route::put('/{id}', [VoucherController::class, 'update'])->name('update');
+                Route::patch('/{id}/toggle-status', [VoucherController::class, 'toggleStatus'])->name('toggleStatus');
+                Route::delete('/{id}', [VoucherController::class, 'destroy'])->name('destroy');
+                Route::post('/bulk-delete', [VoucherController::class, 'bulkDelete'])->name('bulkDelete');
+            });
     });

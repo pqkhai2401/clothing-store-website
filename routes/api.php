@@ -10,6 +10,9 @@ Route::get('/test', function () {
 // API kiểm tra biến thể sản phẩm (màu + size) để lấy tồn kho, SKU, giá
 Route::post('/products/check-variant', [\App\Http\Controllers\User\ProductController::class, 'checkVariant']);
 
+// API áp dụng mã giảm giá (voucher) cho giỏ hàng
+Route::post('/vouchers/apply', [\App\Http\Controllers\Api\VoucherController::class, 'apply'])->name('api.vouchers.apply');
+
 
 // Auth
 Route::prefix('auth')->group(function () {

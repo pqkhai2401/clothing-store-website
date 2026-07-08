@@ -165,6 +165,14 @@ class AppServiceProvider extends ServiceProvider
                         'parent'         => [],
                     ],
                     [
+                        'permission'     => 'manage-vouchers',
+                        'title'          => 'Quản lý voucher',
+                        'url'            => $r('admin.vouchers.list', '/admin/vouchers'),
+                        'active_pattern' => 'admin/vouchers*',
+                        'icon'           => 'fa-solid fa-ticket',
+                        'parent'         => [],
+                    ],
+                    [
                         'permission'     => 'manage-revenue',
                         'title'          => 'Thống kê doanh thu',
                         'url'            => $r('admin.revenue.index', '/admin/revenue'),

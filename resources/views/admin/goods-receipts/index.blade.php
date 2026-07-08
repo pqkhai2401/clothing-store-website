@@ -69,8 +69,10 @@
     .gr-tab.is-active { color: #111827; font-weight: 700; border-bottom-color: #16a34a; }
 
     /* ── Header actions ── */
-    .gr-header-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-    .gr-header-row .product-header-actions { margin-top: 18px; }
+    .product-admin-page .product-header-actions {
+        margin-top: 15px !important;
+    }
+
     .gr-btn-navy {
         background: #1e293b; border-color: #1e293b; color: #fff;
     }
@@ -139,11 +141,11 @@
 @endpush
 
 @section('content')
-    <main class="app-main product-admin-page container-fluid py-4">
+    <div class="product-admin-page container-fluid py-4">
         <x-notification />
 
         <section class="px-3 px-md-4">
-            <div class="gr-header-row">
+            <div class="d-flex align-items-start justify-content-between flex-wrap gap-3">
                 <div>
                     <h1 class="product-header-title mb-2">Quản lý kho hàng</h1>
                     <p class="product-header-desc mb-0">Theo dõi tồn kho thực tế và thực hiện điều chỉnh số lượng.</p>
@@ -457,7 +459,7 @@
 
             @endif
         </section>
-    </main>
+    </div>
 @endsection
 
 @push('scripts')

@@ -141,6 +141,7 @@
                             <div class="order-period-quick-row">
                                 <button type="button" class="order-period-quick-btn" id="orderPeriodThisYear">Năm nay</button>
                                 <button type="button" class="order-period-quick-btn" id="orderPeriodLastYear">Năm ngoái</button>
+                                <button type="button" class="order-period-quick-btn order-period-clear-btn" id="orderPeriodClear" style="color: #EF4444;">Xoá chọn</button>
                             </div>
 
                             <div class="order-period-year-row">
@@ -654,6 +655,24 @@
 
                 label.textContent = 'Khoảng đã chọn';
             }());
+
+            // Nút xóa chọn kỳ
+            document.getElementById('orderPeriodClear')?.addEventListener('click', function () {
+                fromInput.value = '';
+                toInput.value   = '';
+                label.textContent = 'Chọn kỳ';
+                close();
+                fromInput.dispatchEvent(new Event('change', { bubbles: true }));
+            });
+
+            // Lắng nghe thay đổi trực tiếp trên inputs ngày để cập nhật nhãn
+            const handleManualDateClear = function () {
+                if (fromInput.value === '' && toInput.value === '') {
+                    label.textContent = 'Chọn kỳ';
+                }
+            };
+            fromInput.addEventListener('change', handleManualDateClear);
+            toInput.addEventListener('change', handleManualDateClear);
         }());
 
     }());

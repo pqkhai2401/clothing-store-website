@@ -42,6 +42,7 @@
         'admin.staff.create'     => route('admin.staff.list'),
         'admin.customers.create' => route('admin.customers.list'),
         'admin.users.create'     => route('admin.users.list'),
+        'admin.products.create'  => route('admin.products.list'),
         'admin.products.trash'   => route('admin.products.list'),
         'admin.categories.trash' => route('admin.categories.list'),
         'admin.brands.trash'     => route('admin.brands.list'),
