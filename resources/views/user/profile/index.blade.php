@@ -196,6 +196,9 @@
 
 @section('content')
 <div class="profile-section">
+    {{-- Nút "Quay lại" đặt ngay trên cùng khối nội dung trang cá nhân --}}
+    <x-back-button />
+
     <h2>Thông Tin Cá Nhân</h2>
 
     {{-- Profile Update Form --}}

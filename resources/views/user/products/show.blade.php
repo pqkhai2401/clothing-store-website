@@ -366,6 +366,9 @@
     ])
 
     <div class="container-fluid px-lg-5 mt-4">
+        {{-- Nút "Quay lại" đặt ngay dưới breadcrumb, trên cùng khối nội dung --}}
+        <x-back-button />
+
         {{-- ===== Khu vực chính: Ảnh bên trái + Thông tin bên phải ===== --}}
         <div class="row mb-5">
 

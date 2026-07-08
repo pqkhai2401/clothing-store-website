@@ -915,6 +915,9 @@
 @section('content')
 <div class="container-fluid px-lg-5 my-5">
 
+    {{-- Nút "Quay lại" đặt ngay trên cùng khối nội dung trang thanh toán --}}
+    <x-back-button />
+
     <div class="checkout-grid">
 
         <!-- ══ LEFT COLUMN: Shipping + Payment ══ -->
