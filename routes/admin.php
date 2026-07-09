@@ -215,6 +215,9 @@ Route::middleware(['auth.login', 'admin'])
 
         Route::prefix('reviews')->name('reviews.')->group(function () use ($trashRoutes) {
             Route::get('/', [ReviewController::class, 'index'])->name('list');
+            // Duyệt / Từ chối thủ công (Admin kiểm duyệt tay các review flagged).
+            Route::patch('/{id}/approve', [ReviewController::class, 'approve'])->name('approve');
+            Route::patch('/{id}/reject', [ReviewController::class, 'reject'])->name('reject');
             Route::delete('/{id}', [ReviewController::class, 'destroy'])->name('destroy');
             Route::post('/bulk-delete', [ReviewController::class, 'bulkDelete'])->name('bulkDelete');
             $trashRoutes(ReviewController::class)();

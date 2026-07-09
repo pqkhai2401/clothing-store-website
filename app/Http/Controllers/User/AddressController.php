@@ -15,7 +15,7 @@ class AddressController extends Controller
             ->addresses()
             ->orderByDesc('is_default')
             ->orderByDesc('id')
-            ->get(['id', 'city', 'ward', 'apartment_number', 'is_default']);
+            ->get(['id', 'city', 'district', 'ward', 'apartment_number', 'is_default']);
 
         return response()->json($addresses);
     }
@@ -25,12 +25,13 @@ class AddressController extends Controller
         $validated = $request->validate([
             'apartment_number' => ['required', 'string', 'max:255'],
             'ward'             => ['required', 'string', 'max:255'],
+            'district'         => ['nullable', 'string', 'max:255'],
             'city'             => ['required', 'string', 'max:255'],
             'is_default'       => ['boolean'],
         ], [
             'apartment_number.required' => 'Vui lòng nhập địa chỉ cụ thể.',
-            'ward.required'             => 'Vui lòng nhập phường/xã.',
-            'city.required'             => 'Vui lòng nhập tỉnh/thành phố.',
+            'ward.required'             => 'Vui lòng chọn phường/xã.',
+            'city.required'             => 'Vui lòng chọn tỉnh/thành phố.',
         ]);
 
         $user = $request->user();
@@ -42,7 +43,7 @@ class AddressController extends Controller
         $address = $user->addresses()->create($validated);
 
         return response()->json([
-            'address' => $address->only(['id', 'city', 'ward', 'apartment_number', 'is_default']),
+            'address' => $address->only(['id', 'city', 'district', 'ward', 'apartment_number', 'is_default']),
             'message' => 'Đã lưu địa chỉ.',
         ], 201);
     }

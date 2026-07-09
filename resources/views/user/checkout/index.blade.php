@@ -921,6 +921,9 @@
 @section('content')
 <div class="container-fluid px-lg-5 my-5">
 
+    {{-- Nút "Quay lại" đặt ngay trên cùng khối nội dung trang thanh toán --}}
+    <x-back-button />
+
     <div class="checkout-grid">
 
         <!-- ══ LEFT COLUMN: Shipping + Payment ══ -->
@@ -973,38 +976,59 @@
                                 value="{{ auth()->user()->email }}" readonly>
                         </div>
 
+                        <!-- Tỉnh/Thành phố -->
+                        <div class="col-12">
+                            <div class="form-group mb-3">
+                                <label for="province" class="form-label">Tỉnh/Thành phố</label>
+                                <select id="province" name="city"
+                                    class="form-select @error('city') is-invalid @enderror" required
+                                    data-selected="{{ old('city', $address->city ?? '') }}">
+                                    <option value="" selected disabled>Chọn tỉnh/thành phố</option>
+                                </select>
+                                @error('city')
+                                    <div class="invalid-feedback d-block">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+
+                        <!-- Quận/Huyện: mặc định khóa, chỉ mở khi đã chọn Tỉnh/Thành phố -->
+                        <div class="col-12">
+                            <div class="form-group mb-3">
+                                <label for="district" class="form-label">Quận/Huyện</label>
+                                <select id="district" name="district"
+                                    class="form-select @error('district') is-invalid @enderror" required disabled
+                                    data-selected="{{ old('district', $address->district ?? '') }}">
+                                    <option value="" selected disabled>Chọn quận/huyện</option>
+                                </select>
+                                @error('district')
+                                    <div class="invalid-feedback d-block">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+
+                        <!-- Phường/Xã: mặc định khóa, chỉ mở khi đã chọn Quận/Huyện -->
+                        <div class="col-12">
+                            <div class="form-group mb-3">
+                                <label for="ward" class="form-label">Phường/Xã</label>
+                                <select id="ward" name="ward"
+                                    class="form-select @error('ward') is-invalid @enderror" required disabled
+                                    data-selected="{{ old('ward', $address->ward ?? '') }}">
+                                    <option value="" selected disabled>Chọn phường/xã</option>
+                                </select>
+                                @error('ward')
+                                    <div class="invalid-feedback d-block">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+
                         <!-- Street address -->
                         <div class="col-12">
-                            <label for="apartment_number" class="form-label">Địa chỉ (sau khi sắp nhập)</label>
+                            <label for="apartment_number" class="form-label">Địa chỉ (số nhà, tên đường)</label>
                             <input type="text" name="apartment_number" id="apartment_number"
                                 class="form-control @error('apartment_number') is-invalid @enderror"
                                 value="{{ old('apartment_number', $address->apartment_number ?? '') }}"
-                                placeholder="Nhập địa chỉ" required>
+                                placeholder="Nhập số nhà, tên đường" required>
                             @error('apartment_number')
-                                <div class="invalid-feedback d-block">{{ $message }}</div>
-                            @enderror
-                        </div>
-
-                        <!-- Ward -->
-                        <div class="col-12">
-                            <label for="ward" class="form-label">Phường/Xã</label>
-                            <input type="text" name="ward" id="ward"
-                                class="form-control @error('ward') is-invalid @enderror"
-                                value="{{ old('ward', $address->ward ?? '') }}"
-                                placeholder="Nhập phường/xã" required>
-                            @error('ward')
-                                <div class="invalid-feedback d-block">{{ $message }}</div>
-                            @enderror
-                        </div>
-                     
-                        <!-- City -->
-                        <div class="col-12">
-                            <label for="city" class="form-label">Tỉnh/Thành phố</label>
-                            <input type="text" name="city" id="city"
-                                class="form-control @error('city') is-invalid @enderror"
-                                value="{{ old('city', $address->city ?? '') }}"
-                                placeholder="Chọn tỉnh/thành phố" required>
-                            @error('city')
                                 <div class="invalid-feedback d-block">{{ $message }}</div>
                             @enderror
                         </div>
@@ -1379,6 +1403,156 @@
 </script>
 
 <script>
+/* ══ Cascading Dropdown: Tỉnh/Thành phố → Quận/Huyện → Phường/Xã ══ */
+/* Dữ liệu được lấy qua các route proxy của Laravel (LocationController) để tránh lỗi CORS. */
+(function () {
+    const provinceSelect = document.getElementById('province');
+    const districtSelect = document.getElementById('district');
+    const wardSelect      = document.getElementById('ward');
+
+    if (!provinceSelect || !districtSelect || !wardSelect) return;
+
+    /* Escape chuỗi trước khi chèn vào HTML để tránh lỗi hiển thị/XSS */
+    function escapeHtml(str) {
+        return String(str)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    /* Đổ danh sách item (tỉnh/quận/phường) vào 1 thẻ <select>.
+       value của <option> là TÊN tiếng Việt (để lưu DB hiển thị tường minh),
+       còn "code" (mã hành chính) được lưu ở data-code để dùng gọi API tầng kế tiếp. */
+    function fillSelect(select, items, placeholder) {
+        const options = items.map(item =>
+            `<option value="${escapeHtml(item.name)}" data-code="${item.code}">${escapeHtml(item.name)}</option>`
+        ).join('');
+        select.innerHTML = `<option value="" selected disabled>${escapeHtml(placeholder)}</option>` + options;
+    }
+
+    /* Xóa sạch dữ liệu cũ của 1 select và khóa/mở khóa lại */
+    function resetSelect(select, placeholder, disabled) {
+        select.innerHTML = `<option value="" selected disabled>${escapeHtml(placeholder)}</option>`;
+        select.disabled = disabled;
+    }
+
+    /* Chọn 1 option theo đúng tên (dùng khi tự động điền lại địa chỉ đã lưu) */
+    function selectByName(select, name) {
+        const match = Array.from(select.options).find(opt => opt.value === name);
+        if (match) select.value = name;
+        return match;
+    }
+
+    /* Gọi API lấy Quận/Huyện theo mã Tỉnh, có thể tự chọn sẵn 1 quận/huyện theo tên */
+    async function loadDistricts(provinceCode, autoSelectName = null) {
+        try {
+            const res  = await fetch(`/api/location/districts/${provinceCode}`, { headers: { 'Accept': 'application/json' } });
+            const data = await res.json();
+            fillSelect(districtSelect, data, 'Chọn quận/huyện');
+            districtSelect.disabled = false;
+
+            if (autoSelectName) {
+                selectByName(districtSelect, autoSelectName);
+            }
+        } catch {
+            resetSelect(districtSelect, 'Không thể tải danh sách', true);
+        }
+    }
+
+    /* Gọi API lấy Phường/Xã theo mã Quận/Huyện, có thể tự chọn sẵn 1 phường/xã theo tên */
+    async function loadWards(districtCode, autoSelectName = null) {
+        try {
+            const res  = await fetch(`/api/location/wards/${districtCode}`, { headers: { 'Accept': 'application/json' } });
+            const data = await res.json();
+            fillSelect(wardSelect, data, 'Chọn phường/xã');
+            wardSelect.disabled = false;
+
+            if (autoSelectName) {
+                selectByName(wardSelect, autoSelectName);
+            }
+        } catch {
+            resetSelect(wardSelect, 'Không thể tải danh sách', true);
+        }
+    }
+
+    /* Chọn Tỉnh/Thành phố theo tên rồi tự động tải tiếp Quận/Huyện + Phường/Xã đã lưu (nếu có) */
+    async function selectProvinceByName(cityName, districtName, wardName) {
+        const matched = selectByName(provinceSelect, cityName);
+        const code     = matched?.dataset.code;
+        if (!code) return;
+
+        districtSelect.disabled = false;
+        await loadDistricts(code, districtName);
+
+        if (districtName) {
+            const districtOption = districtSelect.options[districtSelect.selectedIndex];
+            const districtCode   = districtOption?.dataset.code;
+            if (districtCode && wardName) {
+                wardSelect.disabled = false;
+                await loadWards(districtCode, wardName);
+            }
+        }
+    }
+
+    /* Khi người dùng chọn Tỉnh/Thành phố: mở khóa Quận/Huyện, xóa sạch Quận/Huyện + Phường/Xã cũ */
+    provinceSelect.addEventListener('change', async function () {
+        const option = provinceSelect.options[provinceSelect.selectedIndex];
+        const code    = option?.dataset.code;
+
+        resetSelect(districtSelect, 'Chọn quận/huyện', true);
+        resetSelect(wardSelect, 'Chọn phường/xã', true);
+
+        if (!code) return;
+        districtSelect.disabled = false;
+        await loadDistricts(code);
+    });
+
+    /* Khi người dùng chọn Quận/Huyện: mở khóa Phường/Xã, xóa sạch Phường/Xã cũ */
+    districtSelect.addEventListener('change', async function () {
+        const option = districtSelect.options[districtSelect.selectedIndex];
+        const code    = option?.dataset.code;
+
+        resetSelect(wardSelect, 'Chọn phường/xã', true);
+
+        if (!code) return;
+        wardSelect.disabled = false;
+        await loadWards(code);
+    });
+
+    /* Hàm dùng lại từ nơi khác (Sổ địa chỉ) để tự động điền 3 ô chọn từ dữ liệu địa chỉ đã lưu */
+    window.applyCheckoutLocation = async function (cityName, districtName, wardName) {
+        if (!cityName) return;
+        await selectProvinceByName(cityName, districtName, wardName);
+    };
+
+    /* Ngay khi trang web vừa tải xong: tự động gọi API lấy danh sách Tỉnh/Thành phố */
+    document.addEventListener('DOMContentLoaded', async function () {
+        try {
+            const res  = await fetch('{{ route('location.provinces') }}', { headers: { 'Accept': 'application/json' } });
+            const data = await res.json();
+            fillSelect(provinceSelect, data, 'Chọn tỉnh/thành phố');
+        } catch {
+            resetSelect(provinceSelect, 'Không thể tải danh sách', false);
+            return;
+        }
+
+        // Nếu form có giá trị cũ (old() do validate lỗi, hoặc địa chỉ gần nhất của user) thì tự chọn lại.
+        // Đặt trong try/catch RIÊNG để nếu bước này lỗi (mất mạng khi tải Quận/Huyện...) thì
+        // KHÔNG làm mất danh sách Tỉnh/Thành phố vừa tải thành công ở trên.
+        try {
+            const oldCity     = provinceSelect.dataset.selected;
+            const oldDistrict = districtSelect.dataset.selected;
+            const oldWard      = wardSelect.dataset.selected;
+            if (oldCity) {
+                await selectProvinceByName(oldCity, oldDistrict, oldWard);
+            }
+        } catch (e) {
+            console.error('Không thể tự động điền lại địa chỉ đã lưu:', e);
+        }
+    });
+})();
+</script>
+
+<script>
 /* ══ Address Book Modal ══ */
 (function () {
     const csrf     = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
@@ -1571,11 +1745,10 @@
         });
     }
 
-    function applyAddress(item) {
+    async function applyAddress(item) {
         setVal('apartment_number', item.dataset.apartment);
-        setVal('ward',             item.dataset.ward);
-        setVal('city',             item.dataset.city);
-        ['apartment_number', 'ward', 'city'].forEach(flashField);
+        await window.applyCheckoutLocation?.(item.dataset.city, item.dataset.district, item.dataset.ward);
+        ['apartment_number', 'ward', 'district', 'province'].forEach(flashField);
         showToast('Đã áp dụng địa chỉ');
     }
 
@@ -1629,13 +1802,12 @@
 
             const addr = data.address;
             setVal('apartment_number', addr.apartment_number);
-            setVal('ward',             addr.ward);
-            setVal('city',             addr.city);
+            await window.applyCheckoutLocation?.(addr.city, addr.district, addr.ward);
 
             const phoneInput = document.getElementById('addrFormPhone');
             if (phoneInput?.value) setVal('phone', phoneInput.value);
 
-            ['apartment_number', 'ward', 'city'].forEach(flashField);
+            ['apartment_number', 'ward', 'district', 'province'].forEach(flashField);
             closeModal();
             showToast('Địa chỉ đã được lưu và áp dụng');
         } catch {

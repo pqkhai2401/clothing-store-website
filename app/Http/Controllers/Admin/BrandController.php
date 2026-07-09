@@ -238,7 +238,7 @@ class BrandController extends Controller
     private function brandDeleteBlocker(Brand $brand): ?string
     {
         if ($brand->products()->exists()) {
-            return 'Không thể xóa thương hiệu này vì vẫn còn sản phẩm liên kết.';
+            return 'Không thể xóa thương hiệu này vì vẫn còn sản phẩm liên kết. Vui lòng chuyển sản phẩm sang thương hiệu khác trước khi xóa.';
         }
 
         return null;

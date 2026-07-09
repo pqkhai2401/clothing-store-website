@@ -20,7 +20,7 @@ class RoleSeeder extends Seeder
         // Tạo permissions
         $allPermissions = [
             'access-admin',       // Truy cập trang quản trị
-            'view-dashboard',     // Xem dashboard
+            'view-dashboard',     // Xem dashboard 
             'manage-staff',       // Quản lý nhân sự (chỉ admin)
             'manage-customers',   // Quản lý khách hàng
             'manage-products',    // Quản lý sản phẩm

@@ -63,10 +63,7 @@ class CategoryController extends Controller
             'status.required'  => 'Vui lòng chọn trạng thái.',
         ]);
 
-        $slug = Str::slug($validated['name']);
-        if (Category::where('slug', $slug)->exists()) {
-            $slug = $slug . '-' . time();
-        }
+        $slug = $this->uniqueCategorySlug(Str::slug($validated['name']));
 
         $category = Category::create([
             'name'      => $validated['name'],
@@ -120,9 +117,7 @@ class CategoryController extends Controller
             ? Str::slug($validated['slug'])
             : Str::slug($validated['name']);
 
-        if (Category::where('slug', $slug)->where('id', '!=', $id)->exists()) {
-            $slug = $slug . '-' . $id;
-        }
+        $slug = $this->uniqueCategorySlug($slug, (int) $id);
 
         $category->update([
             'name'      => $validated['name'],
@@ -141,22 +136,6 @@ class CategoryController extends Controller
         if ($message = $this->categoryDeleteBlocker($category)) {
             return redirect()->route('admin.categories.list')
                 ->with('error', $message);
-        }
-
-        // Kiểm tra chính danh mục có sản phẩm đang bán không
-        $selfActiveCount = $category->products()->where('status', true)->count();
-        if ($selfActiveCount > 0) {
-            return redirect()->route('admin.categories.list')
-                ->with('error', 'Không thể xóa danh mục này vì vẫn còn sản phẩm đang bán. Vui lòng chuyển sản phẩm sang danh mục khác hoặc ngừng bán sản phẩm trước khi xóa.');
-        }
-
-        // Kiểm tra danh mục con có sản phẩm đang bán không
-        $childHasActive = $category->childrenCategories()
-            ->whereHas('products', fn ($q) => $q->where('status', true))
-            ->exists();
-        if ($childHasActive) {
-            return redirect()->route('admin.categories.list')
-                ->with('error', 'Không thể xóa danh mục này vì danh mục con vẫn còn sản phẩm đang bán.');
         }
 
         $category->delete();
@@ -281,17 +260,18 @@ class CategoryController extends Controller
         foreach ($categories as $category) {
             $count += (int) $category->forceDelete();
         }
+
         return back()->with('success', "Đã xóa vĩnh viễn {$count} danh mục.");
     }
 
     private function categoryDeleteBlocker(Category $category, array $selectedIds = []): ?string
     {
         if ($category->products()->where('status', true)->exists()) {
-            return 'Không thể xóa danh mục này vì vẫn còn sản phẩm đang bán.';
+            return 'Không thể xóa danh mục này vì vẫn còn sản phẩm đang bán. Vui lòng chuyển sản phẩm sang danh mục khác hoặc ngừng bán sản phẩm trước khi xóa.';
         }
 
         if ($category->childrenCategories()
-            ->whereHas('products', fn ($query) => $query->where('status', true))
+            ->whereHas('products', fn ($q) => $q->where('status', true))
             ->exists()) {
             return 'Không thể xóa danh mục này vì danh mục con vẫn còn sản phẩm đang bán.';
         }
@@ -300,7 +280,7 @@ class CategoryController extends Controller
         if ($category->childrenCategories()
             ->when($selectedIds !== [], fn ($query) => $query->whereNotIn('id', $selectedIds))
             ->exists()) {
-            return 'Không thể xóa danh mục cha khi vẫn còn danh mục con.';
+            return 'Không thể xóa danh mục cha khi vẫn còn danh mục con. Vui lòng xóa hoặc chuyển danh mục con trước.';
         }
 
         return null;
@@ -314,11 +294,28 @@ class CategoryController extends Controller
 
         if ($category->childrenCategories()
             ->withTrashed()
-            ->whereHas('products', fn ($query) => $query->withTrashed())
+            ->whereHas('products', fn ($q) => $q->withTrashed())
             ->exists()) {
             return 'Không thể xóa vĩnh viễn danh mục này vì danh mục con vẫn còn sản phẩm liên kết.';
         }
 
         return null;
+    }
+
+    private function uniqueCategorySlug(string $slug, ?int $ignoreId = null): string
+    {
+        $baseSlug = $slug !== '' ? $slug : 'danh-muc';
+        $candidate = $baseSlug;
+        $suffix = 1;
+
+        while (Category::withTrashed()
+            ->where('slug', $candidate)
+            ->when($ignoreId !== null, fn ($query) => $query->where('id', '!=', $ignoreId))
+            ->exists()) {
+            $candidate = $baseSlug . '-' . $suffix;
+            $suffix++;
+        }
+
+        return $candidate;
     }
 }

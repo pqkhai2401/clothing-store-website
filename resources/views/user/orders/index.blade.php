@@ -471,6 +471,151 @@
         margin-bottom: 10px;
     }
     @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+    /* ── Cột phải của mỗi dòng sản phẩm (giá + nút đánh giá) ── */
+    .order-item-right {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 8px;
+        flex-shrink: 0;
+    }
+
+    .btn-review-product {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 12.5px;
+        font-weight: 600;
+        color: #d97706;
+        border: 1.5px solid #d97706;
+        background: transparent;
+        padding: 6px 14px;
+        border-radius: 6px;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: all 0.2s;
+    }
+
+    .btn-review-product:hover { background: #d97706; color: #fff; }
+
+    .review-done {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 12px;
+        font-weight: 600;
+        color: #16a34a;
+        white-space: nowrap;
+    }
+
+    /* ── Modal đánh giá sản phẩm ── */
+    #reviewOverlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 1060;
+        align-items: center;
+        justify-content: center;
+        padding: 20px 16px;
+        overflow-y: auto;
+    }
+
+    #reviewOverlay.open { display: flex; }
+
+    .rv-modal {
+        background: #fff;
+        border-radius: 12px;
+        width: 100%;
+        max-width: 480px;
+        box-shadow: 0 24px 60px rgba(0,0,0,0.18);
+        animation: odSlideIn 0.25s cubic-bezier(0.34,1.28,0.64,1) forwards;
+        margin: auto;
+    }
+
+    .rv-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 18px 22px 14px;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .rv-title { font-size: 17px; font-weight: 700; flex: 1; }
+
+    .rv-body { padding: 20px 22px; }
+
+    .rv-product {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 18px;
+    }
+
+    .rv-product img,
+    .rv-product .rv-noimg {
+        width: 54px; height: 54px; object-fit: cover;
+        border-radius: 6px; background: #f3f4f6; flex-shrink: 0;
+        display: flex; align-items: center; justify-content: center;
+    }
+
+    .rv-product-name { font-size: 14px; font-weight: 600; color: #111; line-height: 1.4; }
+
+    .rv-label { font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 8px; }
+
+    /* Bộ chấm sao (radio ẩn + label, tô sáng bằng CSS row-reverse) */
+    .rv-stars {
+        display: inline-flex;
+        flex-direction: row-reverse;
+        gap: 6px;
+        font-size: 30px;
+        line-height: 1;
+        margin-bottom: 18px;
+    }
+
+    .rv-stars input { display: none; }
+
+    .rv-stars label { color: #d9d9d9; cursor: pointer; transition: color 0.15s; }
+
+    .rv-stars label:hover,
+    .rv-stars label:hover ~ label,
+    .rv-stars input:checked ~ label { color: #f5b301; }
+
+    .rv-textarea {
+        width: 100%;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        padding: 10px 12px;
+        font-size: 14px;
+        resize: vertical;
+        min-height: 90px;
+    }
+
+    .rv-textarea:focus { outline: none; border-color: #d97706; }
+
+    .rv-footer {
+        padding: 14px 22px 18px;
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+    }
+
+    .rv-btn-cancel {
+        font-size: 13px; font-weight: 600; padding: 9px 20px;
+        border-radius: 6px; border: 1px solid #d1d5db;
+        background: #f9fafb; cursor: pointer; transition: background 0.2s;
+    }
+    .rv-btn-cancel:hover { background: #e5e7eb; }
+
+    .rv-btn-submit {
+        font-size: 13px; font-weight: 700; padding: 9px 24px;
+        border-radius: 6px; border: none;
+        background: var(--primary-color, #111); color: #fff;
+        cursor: pointer; transition: opacity 0.2s;
+    }
+    .rv-btn-submit:hover { opacity: 0.85; }
+    .rv-btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
 </style>
 @endsection
 
@@ -545,8 +690,24 @@
                             </div>
                             <div class="order-item-qty">Số lượng: <span>{{ $item->quantity }}</span></div>
                         </div>
-                        <div class="order-item-price">
-                            {{ number_format($item->unit_price * $item->quantity, 0, ',', '.') }} đ
+                        <div class="order-item-right">
+                            <div class="order-item-price">
+                                {{ number_format($item->unit_price * $item->quantity, 0, ',', '.') }} đ
+                            </div>
+
+                            {{-- Nút đánh giá: chỉ hiện với đơn ĐÃ GIAO (completed) --}}
+                            @if($order->status === 'completed' && $product)
+                                @if(in_array($product->id, $reviewedProductIds))
+                                    <span class="review-done"><i class="bi bi-check-circle-fill"></i> Đã đánh giá</span>
+                                @else
+                                    <button type="button" class="btn-review-product"
+                                            data-review-product-id="{{ $product->id }}"
+                                            data-review-product-name="{{ $product->name }}"
+                                            data-review-image="{{ $image ? asset($image) : '' }}">
+                                        <i class="bi bi-star"></i> Đánh giá
+                                    </button>
+                                @endif
+                            @endif
                         </div>
                     </div>
                 @endforeach
@@ -608,6 +769,45 @@
             <button class="od-btn-close" id="odBtnClose">Đóng</button>
         </div>
     </div>
+</div>
+
+{{-- Modal đánh giá sản phẩm --}}
+<div id="reviewOverlay">
+    <form class="rv-modal" id="reviewForm">
+        @csrf
+        <div class="rv-header">
+            <div class="rv-title">Đánh giá sản phẩm</div>
+            <button type="button" class="od-close" id="rvClose" title="Đóng"><i class="bi bi-x-lg"></i></button>
+        </div>
+
+        <div class="rv-body">
+            {{-- Thông tin sản phẩm đang đánh giá --}}
+            <div class="rv-product">
+                <img id="rvProductImage" src="" alt="" style="display:none;">
+                <div class="rv-noimg" id="rvProductNoImg"><i class="bi bi-image" style="color:#d1d5db;font-size:20px;"></i></div>
+                <div class="rv-product-name" id="rvProductName">—</div>
+            </div>
+
+            {{-- Bộ chấm sao 1-5 (đặt 5 -> 1 để kết hợp CSS row-reverse) --}}
+            <div class="rv-label">Chất lượng sản phẩm</div>
+            <div class="rv-stars" id="rvStars">
+                @for($star = 5; $star >= 1; $star--)
+                    <input type="radio" id="rvStar{{ $star }}" name="rating" value="{{ $star }}">
+                    <label for="rvStar{{ $star }}" title="{{ $star }} sao"><i class="bi bi-star-fill"></i></label>
+                @endfor
+            </div>
+
+            {{-- Nội dung bình luận --}}
+            <div class="rv-label">Nội dung đánh giá</div>
+            <textarea class="rv-textarea" id="rvComment" name="comment" maxlength="1000"
+                      placeholder="Chia sẻ cảm nhận của bạn về chất liệu, kích cỡ, dịch vụ..."></textarea>
+        </div>
+
+        <div class="rv-footer">
+            <button type="button" class="rv-btn-cancel" id="rvCancel">Hủy</button>
+            <button type="submit" class="rv-btn-submit" id="rvSubmit">Gửi đánh giá</button>
+        </div>
+    </form>
 </div>
 @endsection
 
@@ -827,6 +1027,118 @@
                 body.innerHTML = `<div style="text-align:center;padding:40px;color:#ef4444;">Không thể tải dữ liệu. Vui lòng thử lại.</div>`;
             }
         });
+    });
+})();
+
+/* =========================================================================
+ *  MODAL ĐÁNH GIÁ SẢN PHẨM (gửi AJAX, phản hồi bằng toast chung)
+ * ========================================================================= */
+(function () {
+    const overlay   = document.getElementById('reviewOverlay');
+    if (!overlay) return;
+
+    const form      = document.getElementById('reviewForm');
+    const nameEl    = document.getElementById('rvProductName');
+    const imgEl     = document.getElementById('rvProductImage');
+    const noImgEl   = document.getElementById('rvProductNoImg');
+    const commentEl = document.getElementById('rvComment');
+    const submitBtn = document.getElementById('rvSubmit');
+    const csrf      = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+
+    let currentProductId = null;   // sản phẩm đang được đánh giá
+    let currentButton    = null;   // nút "Đánh giá" vừa bấm (để thay bằng "Đã đánh giá")
+
+    function openModal() { overlay.classList.add('open'); document.body.style.overflow = 'hidden'; }
+
+    function closeModal() {
+        overlay.classList.remove('open');
+        document.body.style.overflow = '';
+        currentProductId = null;
+        currentButton    = null;
+    }
+
+    document.getElementById('rvClose').addEventListener('click', closeModal);
+    document.getElementById('rvCancel').addEventListener('click', closeModal);
+    overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && overlay.classList.contains('open')) closeModal(); });
+
+    /* ── Mở modal khi bấm nút "Đánh giá" trên từng dòng sản phẩm ── */
+    document.querySelectorAll('.btn-review-product').forEach(btn => {
+        btn.addEventListener('click', function () {
+            currentProductId = this.dataset.reviewProductId;
+            currentButton    = this;
+
+            // Điền thông tin sản phẩm vào modal
+            nameEl.textContent = this.dataset.reviewProductName || 'Sản phẩm';
+            const img = this.dataset.reviewImage;
+            if (img) {
+                imgEl.src = img; imgEl.style.display = ''; noImgEl.style.display = 'none';
+            } else {
+                imgEl.style.display = 'none'; noImgEl.style.display = 'flex';
+            }
+
+            // Reset form về trạng thái trống
+            form.querySelectorAll('input[name="rating"]').forEach(r => r.checked = false);
+            commentEl.value = '';
+
+            openModal();
+        });
+    });
+
+    /* ── Gửi đánh giá qua AJAX ── */
+    form.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        if (!currentProductId) return;
+
+        const rating  = form.querySelector('input[name="rating"]:checked')?.value;
+        const comment = commentEl.value.trim();
+
+        // Validate phía client cho trải nghiệm nhanh
+        if (!rating) { window.showToast('Vui lòng chọn số sao đánh giá.', 'error'); return; }
+        if (!comment) { window.showToast('Vui lòng nhập nội dung đánh giá.', 'error'); return; }
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Đang gửi...';
+
+        try {
+            const res = await fetch(`/san-pham/${currentProductId}/danh-gia`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrf,
+                },
+                body: JSON.stringify({ rating, comment }),
+            });
+
+            const data = await res.json().catch(() => ({}));
+
+            if (!res.ok) {
+                // Lấy thông báo lỗi: 422 (validate) hoặc 403/409 (nghiệp vụ)
+                const msg = data.message
+                    || Object.values(data.errors || {})?.[0]?.[0]
+                    || 'Không thể gửi đánh giá. Vui lòng thử lại.';
+                window.showToast(msg, 'error');
+                return;
+            }
+
+            // Thành công -> toast + đổi nút thành nhãn "Đã đánh giá"
+            window.showToast(data.message || 'Đã gửi đánh giá thành công!', 'success');
+
+            if (currentButton) {
+                const done = document.createElement('span');
+                done.className = 'review-done';
+                done.innerHTML = '<i class="bi bi-check-circle-fill"></i> Đã đánh giá';
+                currentButton.replaceWith(done);
+            }
+
+            closeModal();
+        } catch {
+            window.showToast('Không thể kết nối. Vui lòng thử lại.', 'error');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Gửi đánh giá';
+        }
     });
 })();
 </script>

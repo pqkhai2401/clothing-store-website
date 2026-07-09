@@ -1,0 +1,88 @@
+name: clothing-store-api
+region: sgp
+services:
+  - name: api
+    github:
+      branch: main
+      deploy_on_push: true
+      repo: YOUR_GITHUB_USERNAME/clothing-store-website
+    build_command: composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
+    run_command: heroku-php-apache2 public/
+    source_dir: /
+    http_port: 8080
+    instance_count: 1
+    instance_size_slug: apps-s-1vcpu-0.5gb
+    routes:
+      - path: /
+    envs:
+      - key: APP_NAME
+        value: "HK Store"
+        scope: RUN_AND_BUILD_TIME
+      - key: APP_ENV
+        value: production
+        scope: RUN_AND_BUILD_TIME
+      - key: APP_DEBUG
+        value: "false"
+        scope: RUN_AND_BUILD_TIME
+      - key: APP_KEY
+        value: ""
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
+      - key: APP_URL
+        scope: RUN_AND_BUILD_TIME
+        value: ""  # Điền sau khi có URL
+      - key: LOG_CHANNEL
+        value: stderr
+        scope: RUN_TIME
+      - key: LOG_LEVEL
+        value: error
+        scope: RUN_TIME
+      - key: DB_CONNECTION
+        value: mysql
+        scope: RUN_AND_BUILD_TIME
+      - key: DB_PORT
+        value: "25060"
+        scope: RUN_AND_BUILD_TIME
+      - key: DB_DATABASE
+        value: cloth_db
+        scope: RUN_AND_BUILD_TIME
+      - key: MYSQL_ATTR_SSL_CA
+        value: /etc/ssl/certs/ca-certificates.crt
+        scope: RUN_AND_BUILD_TIME
+      - key: SESSION_DRIVER
+        value: database
+        scope: RUN_TIME
+      - key: CACHE_STORE
+        value: database
+        scope: RUN_TIME
+      - key: QUEUE_CONNECTION
+        value: database
+        scope: RUN_TIME
+      - key: MAIL_MAILER
+        value: smtp
+        scope: RUN_TIME
+      - key: MAIL_HOST
+        value: smtp.gmail.com
+        scope: RUN_TIME
+      - key: MAIL_PORT
+        value: "587"
+        scope: RUN_TIME
+      - key: MAIL_ENCRYPTION
+        value: tls
+        scope: RUN_TIME
+      - key: MAIL_FROM_NAME
+        value: "HK STORE"
+        scope: RUN_TIME
+      - key: GEMINI_MODEL
+        value: gemini-2.0-flash
+        scope: RUN_TIME
+      - key: GEMINI_DEMO_MODE
+        value: "false"
+        scope: RUN_TIME
+
+databases:
+  - cluster_name: clothing-store-db
+    db_name: cloth_db
+    db_user: doadmin
+    engine: MYSQL
+    production: true

@@ -546,8 +546,19 @@ class ProductController extends Controller
         if (empty($ids)) {
             return back()->with('error', 'Vui lòng chọn ít nhất một sản phẩm.');
         }
-        $count = Product::onlyTrashed()->whereIn('id', $ids)->count();
-        Product::onlyTrashed()->whereIn('id', $ids)->forceDelete();
+        $products = Product::onlyTrashed()->whereIn('id', $ids)->get();
+        $blockers = $products
+            ->map(fn (Product $product) => $this->productForceDeleteBlocker($product))
+            ->filter();
+
+        if ($blockers->isNotEmpty()) {
+            return back()->with('error', $blockers->first());
+        }
+
+        $count = 0;
+        foreach ($products as $product) {
+            $count += (int) $product->forceDelete();
+        }
         return back()->with('success', "Đã xóa vĩnh viễn {$count} sản phẩm.");
     }
 
@@ -595,8 +606,26 @@ class ProductController extends Controller
 
     public function forceDelete(string $id)
     {
-        Product::onlyTrashed()->findOrFail($id)->forceDelete();
+        $product = Product::onlyTrashed()->findOrFail($id);
+
+        if ($message = $this->productForceDeleteBlocker($product)) {
+            return redirect()->route('admin.products.trash')
+                ->with('error', $message);
+        }
+
+        $product->forceDelete();
 
         return redirect()->route('admin.products.trash')->with('success', 'Xóa vĩnh viễn sản phẩm thành công');
+    }
+
+    private function productForceDeleteBlocker(Product $product): ?string
+    {
+        if ($product->productVariants()
+            ->whereHas('orderItems')
+            ->exists()) {
+            return 'Không thể xóa vĩnh viễn sản phẩm này vì đã phát sinh đơn hàng. Hãy giữ sản phẩm trong thùng rác để bảo toàn lịch sử đơn hàng.';
+        }
+
+        return null;
     }
 }

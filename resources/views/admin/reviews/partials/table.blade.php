@@ -10,8 +10,9 @@
                                 <th style="width:150px;">Khách hàng</th>
                                 <th style="width:110px;">Đánh giá</th>
                                 <th>Nhận xét</th>
+                                <th style="width:150px;">Trạng thái</th>
                                 <th style="width:110px;">Ngày</th>
-                                <th class="text-center" style="width:80px;">Thao tác</th>
+                                <th class="text-center" style="width:160px;">Thao tác</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -57,21 +58,69 @@
                                             {{ $review->comment ? \Illuminate\Support\Str::limit($review->comment, 80) : '—' }}
                                         </span>
                                     </td>
+                                    <td>
+                                        {{-- Badge trạng thái kiểm duyệt --}}
+                                        @php
+                                            $statusMeta = [
+                                                'pending'  => ['Chờ duyệt',  'rv-badge-pending'],
+                                                'approved' => ['Đã duyệt',   'rv-badge-approved'],
+                                                'rejected' => ['Từ chối',    'rv-badge-rejected'],
+                                                'flagged'  => ['Chờ Admin',  'rv-badge-flagged'],
+                                            ];
+                                            [$statusLabel, $statusClass] = $statusMeta[$review->status] ?? ['—', 'rv-badge-pending'];
+                                        @endphp
+                                        <span class="rv-badge {{ $statusClass }}">{{ $statusLabel }}</span>
+
+                                        {{-- Điểm tin cậy AI + lý do (hiện tooltip khi rê chuột) --}}
+                                        @if(!is_null($review->ai_score) || $review->ai_reason)
+                                            <div class="rv-ai-info" title="{{ $review->ai_reason }}">
+                                                <i class="fa-solid fa-robot"></i>
+                                                AI: {{ $review->ai_score ?? 0 }}%
+                                            </div>
+                                        @endif
+                                    </td>
                                     <td class="text-muted" style="font-size:12px;">
                                         {{ $review->created_at?->format('d/m/Y') ?? '—' }}
                                     </td>
                                     <td class="text-center">
-                                        <button type="button" class="btn btn-sm btn-outline-danger" title="Xóa"
-                                            data-delete-url="{{ route('admin.reviews.destroy', $review->id) }}"
-                                            data-delete-name="{{ $review->user?->username ?? 'đánh giá này' }}"
-                                            data-delete-type="đánh giá">
-                                            <i class="fa-solid fa-trash"></i>
-                                        </button>
+                                        <div class="d-inline-flex gap-1">
+                                            {{-- Nút DUYỆT: hiện khi review chưa ở trạng thái approved --}}
+                                            @if($review->status !== 'approved')
+                                                <form action="{{ route('admin.reviews.approve', $review->id) }}" method="POST"
+                                                      onsubmit="return confirm('Duyệt và hiển thị công khai đánh giá này?');" class="d-inline">
+                                                    @csrf
+                                                    @method('PATCH')
+                                                    <button type="submit" class="btn btn-sm btn-outline-success" title="Duyệt">
+                                                        <i class="fa-solid fa-check"></i>
+                                                    </button>
+                                                </form>
+                                            @endif
+
+                                            {{-- Nút TỪ CHỐI: hiện khi review chưa ở trạng thái rejected --}}
+                                            @if($review->status !== 'rejected')
+                                                <form action="{{ route('admin.reviews.reject', $review->id) }}" method="POST"
+                                                      onsubmit="return confirm('Từ chối và ẩn đánh giá này khỏi website?');" class="d-inline">
+                                                    @csrf
+                                                    @method('PATCH')
+                                                    <button type="submit" class="btn btn-sm btn-outline-warning" title="Từ chối">
+                                                        <i class="fa-solid fa-ban"></i>
+                                                    </button>
+                                                </form>
+                                            @endif
+
+                                            {{-- Nút XÓA (đưa vào thùng rác) --}}
+                                            <button type="button" class="btn btn-sm btn-outline-danger" title="Xóa"
+                                                data-delete-url="{{ route('admin.reviews.destroy', $review->id) }}"
+                                                data-delete-name="{{ $review->user?->username ?? 'đánh giá này' }}"
+                                                data-delete-type="đánh giá">
+                                                <i class="fa-solid fa-trash"></i>
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="9" class="text-center py-5">
+                                    <td colspan="10" class="text-center py-5">
                                         <i class="fa-solid fa-inbox text-muted mb-3" style="font-size:42px;display:block;"></i>
                                         <div class="fw-semibold text-muted">Chưa có đánh giá nào</div>
                                     </td>

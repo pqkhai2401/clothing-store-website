@@ -743,6 +743,9 @@
 
     <div class="container-fluid px-lg-5">
 
+        {{-- Nút "Quay lại" đặt ngay dưới breadcrumb, trên khối tiêu đề trang --}}
+        <x-back-button />
+
         {{-- =============================================
              PAGE HEADER
              ============================================= --}}

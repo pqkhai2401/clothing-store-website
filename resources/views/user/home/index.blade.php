@@ -105,36 +105,6 @@
             height: 350px;
         }
     }
-
-
-
-    /* Promotional Section */
-    .promo-section {
-        height: 60vh;
-        background-image: linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.3)), url("{{ asset('images/promo_banner.png') }}");
-        background-size: cover;
-        background-position: center;
-        background-attachment: fixed;
-        display: flex;
-        align-items: center;
-        color: #ffffff;
-    }
-
-    .promo-title {
-        font-size: 3rem;
-        margin-bottom: 20px;
-    }
-
-    @media (max-width: 768px) {
-        .promo-section {
-            height: 45vh;
-            background-attachment: scroll;
-        }
-        .promo-title {
-            font-size: 2rem;
-        }
-    }
-
     /* Section Title */
     .section-header {
         margin-bottom: 50px;
@@ -220,6 +190,30 @@
                         </div>
                     </div>
                 @endforeach
+                <!-- Men -->
+                <div class="col-md-6">
+                    <div class="category-container">
+                        <div class="category-img-wrapper">
+                            <img src="{{ asset('images/category_men.png') }}" alt="Men's Collection" class="category-img">
+                        </div>
+                        <div class="category-overlay">
+                            <h3 class="category-title">Nam</h3>
+                            <a href="{{ url('/men') }}" class="category-link">Xem Bộ Sưu Tập</a>
+                        </div>
+                    </div>
+                </div>
+                <!-- Women -->
+                <div class="col-md-6">
+                    <div class="category-container">
+                        <div class="category-img-wrapper">
+                            <img src="{{ asset('images/category_women.png') }}" alt="Bộ Sưu Tập Nữ" class="category-img">
+                        </div>
+                        <div class="category-overlay">
+                            <h3 class="category-title">Nữ</h3>
+                            <a href="{{ url('/women') }}" class="category-link">Xem Bộ Sưu Tập</a>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </section>
@@ -251,18 +245,19 @@
         </div>
     </section>
 
-    <!-- 6. Trending Products -->
+    <!-- 6. products with the most views -->
     <section class="py-5 bg-light">
         <div class="container-fluid px-lg-5">
             <div class="section-header text-center">
-                <h2 class="section-title">Đang Thịnh Hành</h2>
-                <div class="section-subtitle">Những phong cách nổi bật được yêu thích nhất</div>
+                <h2 class="section-title">ĐƯỢC QUAN TÂM NHIỀU NHẤT</h2>
+                <div class="section-subtitle">Khám phá những sản phẩm được xem nhiều nhất trên cửa hàng.</div>
             </div>
             
             @include('partials.product-grid', ['products' => $trendingNow, 'cols' => 'col-6 col-md-3'])
         </div>
     </section>
 
+{{--
     <!-- 7. Promotional Banner -->
     <section class="promo-section">
         <div class="container">
@@ -311,4 +306,5 @@
             @include('partials.review-list', ['reviews' => $mockReviews])
         </div>
     </section>
+--}}
 @endsection

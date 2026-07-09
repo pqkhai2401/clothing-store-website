@@ -53,6 +53,7 @@ class CheckoutController extends Controller
         $validated = $request->validate([
             'phone'             => ['required', 'string', 'max:20'],
             'city'              => ['required', 'string', 'max:255'],
+            'district'          => ['required', 'string', 'max:255'],
             'ward'              => ['required', 'string', 'max:255'],
             'apartment_number'  => ['required', 'string', 'max:255'],
             'note'              => ['nullable', 'string', 'max:1000'],
@@ -60,8 +61,9 @@ class CheckoutController extends Controller
             'agree_policy'      => ['accepted'],
         ], [
             'phone.required'             => 'Vui lòng nhập số điện thoại.',
-            'city.required'              => 'Vui lòng nhập tỉnh/thành phố.',
-            'ward.required'              => 'Vui lòng nhập phường/xã.',
+            'city.required'              => 'Vui lòng chọn tỉnh/thành phố.',
+            'district.required'          => 'Vui lòng chọn quận/huyện.',
+            'ward.required'              => 'Vui lòng chọn phường/xã.',
             'apartment_number.required'  => 'Vui lòng nhập địa chỉ cụ thể.',
             'payment_method_id.required' => 'Vui lòng chọn phương thức thanh toán.',
             'payment_method_id.exists'   => 'Phương thức thanh toán không hợp lệ.',
@@ -95,6 +97,7 @@ class CheckoutController extends Controller
             $address = Address::firstOrCreate([
                 'user_id'          => $user->id,
                 'city'             => $validated['city'],
+                'district'         => $validated['district'],
                 'ward'             => $validated['ward'],
                 'apartment_number' => $validated['apartment_number'],
             ]);

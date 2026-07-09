@@ -247,7 +247,7 @@ class ColorController extends Controller
     private function colorDeleteBlocker(Color $color): ?string
     {
         if ($color->productVariants()->exists()) {
-            return 'Không thể xóa màu sắc này vì vẫn còn biến thể sản phẩm liên kết.';
+            return 'Không thể xóa màu sắc này vì vẫn còn biến thể sản phẩm đang sử dụng màu này.';
         }
 
         return null;

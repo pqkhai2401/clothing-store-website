@@ -20,8 +20,9 @@ class LogAuthenticationActivity
     /**
      * Chống ghi trùng trong cùng một request.
      *
-     * Luồng đăng nhập của dự án có thể bắn sự kiện Login nhiều lần trong cùng
-     * một request, nên cần khử trùng theo "event:userId" trong vòng đời tiến trình.
+     * Luồng đăng nhập của dự án bắn sự kiện Login hai lần (một lần từ
+     * Auth::attempt, một lần từ sub-request OAuth password-grant), nên
+     * cần khử trùng theo "event:userId" trong vòng đời tiến trình.
      *
      * @var array<string, bool>
      */

@@ -3,11 +3,14 @@ use App\Http\Controllers\User\ProductController;
 use App\Http\Controllers\User\WishlistController;
 use App\Http\Controllers\User\AddressController;
 use App\Http\Controllers\User\AuthController;
+use App\Http\Controllers\User\ForgotPasswordController;
 use App\Http\Controllers\User\CartController;
 use App\Http\Controllers\User\CheckoutController;
 use App\Http\Controllers\User\PayosController;
+use App\Http\Controllers\User\LocationController;
 use App\Http\Controllers\User\OrderController;
 use App\Http\Controllers\User\ProfileController;
+use App\Http\Controllers\User\ReviewController;
 
 use App\Http\Controllers\User\HomeController;
 use Illuminate\Support\Facades\Route;
@@ -26,6 +29,11 @@ Route::get('/new-arrivals', [ProductController::class, 'index'])->name('new-arri
 Route::get('/collections', [ProductController::class, 'index'])->name('collections');
 Route::get('/search', [ProductController::class, 'search'])->name('search');
 Route::get('/api/search/suggestions', [ProductController::class, 'suggestions'])->name('search.suggestions');
+
+// Route proxy lấy dữ liệu Tỉnh/Thành - Quận/Huyện - Phường/Xã (tránh lỗi CORS khi gọi trực tiếp API bên thứ ba)
+Route::get('/api/location/provinces', [LocationController::class, 'provinces'])->name('location.provinces');
+Route::get('/api/location/districts/{province_code}', [LocationController::class, 'districts'])->name('location.districts');
+Route::get('/api/location/wards/{district_code}', [LocationController::class, 'wards'])->name('location.wards');
 
 // Route chi tiết sản phẩm: /san-pham/{slug}
 Route::get('/san-pham/{slug}', [ProductController::class, 'show'])->name('products.show');
@@ -57,6 +65,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/user/addresses', [AddressController::class, 'index'])->name('addresses.index');
     Route::post('/user/addresses', [AddressController::class, 'store'])->name('addresses.store');
     Route::delete('/user/addresses/{address}', [AddressController::class, 'destroy'])->name('addresses.destroy');
+
+    // Gửi đánh giá sản phẩm (yêu cầu đăng nhập). {product} là ID sản phẩm.
+    Route::post('/san-pham/{product}/danh-gia', [ReviewController::class, 'store'])->name('reviews.store');
 });
 
 
@@ -93,7 +104,16 @@ Route::get('/auth/google/redirect', [AuthController::class, 'redirectToGoogle'])
     ->name('auth.google.redirect')
     ->middleware('redirect.authenticated');
 Route::get('/auth/google/callback', [AuthController::class, 'handleGoogleCallback'])->name('auth.google.callback');
-Route::view('/forgot-password', 'auth.forgot-password')
-    ->name('auth.password.request')
-    ->middleware('redirect.authenticated');
+// Quên mật khẩu (Forgot Password) - quy trình: Nhập Email -> Gửi OTP -> Xác thực OTP -> Đặt lại mật khẩu
+Route::middleware('redirect.authenticated')->group(function () {
+    Route::get('/forgot-password', [ForgotPasswordController::class, 'showForgotForm'])->name('auth.password.request');
+    Route::post('/forgot-password', [ForgotPasswordController::class, 'sendOtp'])->name('auth.password.send');
+
+    Route::get('/verify-otp', [ForgotPasswordController::class, 'showVerifyForm'])->name('auth.password.verify');
+    Route::post('/verify-otp', [ForgotPasswordController::class, 'verifyOtp'])->name('auth.password.verify.submit');
+
+    Route::get('/reset-password', [ForgotPasswordController::class, 'showResetForm'])->name('auth.password.reset');
+    Route::post('/reset-password', [ForgotPasswordController::class, 'resetPassword'])->name('auth.password.update');
+});
+
 Route::get('/logout', action: [AuthController::class, 'webLogout'])->name('auth.logout');
