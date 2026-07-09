@@ -13,8 +13,10 @@ use App\Models\ProductVariant;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Maatwebsite\Excel\Facades\Excel;
 
 class OrderController extends Controller
@@ -127,7 +129,11 @@ class OrderController extends Controller
         return [
             'periodLabel'     => $periodLabel,
             'periodOrders'    => $rangeQuery()->count(),
-            'periodRevenue'   => $rangeQuery()->where('status', '!=', 'cancelled')->sum('total_money'),
+            'periodRevenue'   => $rangeQuery()
+                ->where('status', '!=', 'cancelled')
+                ->where(fn ($q) => $q->where('status', 'completed')
+                                     ->orWhere('payment_status', 'paid'))
+                ->sum('total_money'),
             'cancelledOrders' => $rangeQuery()->where('status', 'cancelled')->count(),
             'pendingOrders'   => Order::where('status', 'pending')->count(),
         ];
@@ -255,16 +261,15 @@ class OrderController extends Controller
                     $order->update(['status' => $validated['status']]);
                     if (in_array($validated['status'], ['processing', 'shipping'], true)) {
                         $this->autoGenerateStockIssueForOrder($order);
+                    } elseif ($validated['status'] === 'cancelled') {
+                        $this->restoreStockForCancelledOrder($order);
                     }
                 });
                 $updated++;
-            } catch (ValidationException $e) {
-                // Return exact validation error to admin
-                throw $e;
-            } catch (\Exception $e) {
-                throw ValidationException::withMessages([
-                    'status' => ['Lỗi khi xử lý đơn hàng #' . ($order->order_code ?? $order->id) . ': ' . $e->getMessage()]
-                ]);
+            } catch (\Throwable $e) {
+                // Bỏ qua đơn xử lý lỗi (vd không đủ tồn kho) và tiếp tục các đơn còn lại;
+                // mỗi đơn nằm trong transaction riêng nên chỉ đơn lỗi bị rollback.
+                continue;
             }
         }
 
@@ -429,6 +434,13 @@ class OrderController extends Controller
                 ]);
             }
 
+            // Nếu tạo đơn ở trạng thái đã "xuất hàng" thì trừ kho ngay (giống luồng update).
+            // autoGenerateStockIssueForOrder tự khóa + kiểm tra tồn từng biến thể và ném
+            // ValidationException nếu thiếu → nằm trong transaction nên rollback cả đơn.
+            if (in_array($order->status, ['processing', 'shipping', 'completed'], true)) {
+                $this->autoGenerateStockIssueForOrder($order);
+            }
+
             return $order;
         });
 
@@ -494,6 +506,8 @@ class OrderController extends Controller
 
             if (in_array($newStatus, ['processing', 'shipping'], true) && !in_array($oldStatus, ['processing', 'shipping'], true)) {
                 $this->autoGenerateStockIssueForOrder($order);
+            } elseif ($newStatus === 'cancelled') {
+                $this->restoreStockForCancelledOrder($order);
             }
         });
 
@@ -612,6 +626,58 @@ class OrderController extends Controller
             'user_id' => Auth::id() ?? 1,
             'action' => 'confirmed',
             'message' => 'Hoàn tất xuất kho tự động',
+        ]);
+    }
+
+    /**
+     * Hoàn kho khi hủy đơn đã trừ kho: đảo ngược phiếu xuất kho tự động (issue_type = sale,
+     * status = completed) gắn với đơn — cộng lại tồn, ghi StockMovement 'import' và đánh dấu
+     * phiếu xuất kho là đã hủy. Nếu đơn chưa từng trừ kho (vd pending → cancelled) thì bỏ qua.
+     */
+    private function restoreStockForCancelledOrder(Order $order): void
+    {
+        $stockIssue = \App\Models\StockIssue::with('items')
+            ->where('order_id', $order->id)
+            ->where('issue_type', \App\Models\StockIssue::ISSUE_TYPE_SALE)
+            ->where('status', \App\Models\StockIssue::STATUS_COMPLETED)
+            ->first();
+        if (!$stockIssue) {
+            return;
+        }
+
+        foreach ($stockIssue->items as $item) {
+            $variant = \App\Models\ProductVariant::lockForUpdate()->find($item->product_variant_id);
+            if (!$variant) {
+                continue;
+            }
+
+            $beforeQty = $variant->stock;
+            $afterQty = $beforeQty + $item->quantity;
+            $variant->update(['stock' => $afterQty]);
+
+            \App\Models\StockMovement::create([
+                'product_variant_id' => $variant->id,
+                'reference_type' => 'stock_issue',
+                'reference_id' => $stockIssue->id,
+                'movement_type' => 'import',
+                'quantity' => $item->quantity,
+                'before_quantity' => $beforeQty,
+                'after_quantity' => $afterQty,
+                'created_by' => Auth::id() ?? 1,
+            ]);
+        }
+
+        $stockIssue->update([
+            'status' => \App\Models\StockIssue::STATUS_CANCELLED,
+            'cancelled_by' => Auth::id() ?? 1,
+            'cancelled_at' => now(),
+        ]);
+
+        \App\Models\StockIssueLog::create([
+            'stock_issue_id' => $stockIssue->id,
+            'user_id' => Auth::id() ?? 1,
+            'action' => 'cancelled',
+            'message' => 'Hoàn kho tự động do hủy đơn hàng #' . ($order->order_code ?? $order->id),
         ]);
     }
 }
