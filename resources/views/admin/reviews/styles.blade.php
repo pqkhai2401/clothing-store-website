@@ -12,6 +12,22 @@
             width: 40px; height: 40px; object-fit: cover;
             border-radius: 4px; border: 1px solid #e5e7eb;
         }
+
+        /* ===== Badge trạng thái kiểm duyệt ===== */
+        .rv-badge {
+            display: inline-block; padding: 3px 9px; border-radius: 12px;
+            font-size: 11px; font-weight: 700; line-height: 1.4; white-space: nowrap;
+        }
+        .rv-badge-pending  { background: #f3f4f6; color: #4b5563; }
+        .rv-badge-approved { background: #dcfce7; color: #166534; }
+        .rv-badge-rejected { background: #fee2e2; color: #991b1b; }
+        .rv-badge-flagged  { background: #fef3c7; color: #92400e; }
+
+        /* Thông tin điểm tin cậy AI */
+        .rv-ai-info {
+            margin-top: 4px; font-size: 11px; color: #6b7280; cursor: help;
+        }
+        .rv-ai-info i { color: #6366f1; margin-right: 2px; }
     </style>
 
 

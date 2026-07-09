@@ -492,6 +492,9 @@
 @section('content')
 <div class="container-fluid px-lg-5 my-5 cart-page-wrapper">
 
+    {{-- Nút "Quay lại" đặt ngay trên cùng khối nội dung trang giỏ hàng --}}
+    <x-back-button />
+
     <!-- Page heading -->
     <div class="d-flex align-items-center justify-content-between mb-4">
         <h1 class="cart-page-title">Giỏ hàng</h1>

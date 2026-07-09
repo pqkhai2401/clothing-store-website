@@ -109,9 +109,8 @@ class AuthController extends AppBaseController
                     $phoneCandidate = $this->normalizeVietnamesePhone($login);
                     $isEmail = filter_var($login, FILTER_VALIDATE_EMAIL);
                     $isVietnamesePhone = preg_match('/^0(3|5|7|8|9)[0-9]{8}$/', $phoneCandidate) === 1;
-                    $isExistingUsername = User::where('username', $login)->exists();
 
-                    if (! $isEmail && ! $isVietnamesePhone && ! $isExistingUsername) {
+                    if (! $isEmail && ! $isVietnamesePhone) {
                         $fail('Email/SĐT không hợp lệ.');
                     }
                 },
@@ -135,7 +134,6 @@ class AuthController extends AppBaseController
         $loginPhone = $this->normalizeVietnamesePhone($login);
         $user = User::where('email', $login)
             ->orWhere('phone_number', $loginPhone)
-            ->orWhere('username', $login)
             ->first();
 
         if (! $user || ! Hash::check($request->input('password'), $user->password)) {

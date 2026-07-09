@@ -29,7 +29,7 @@
 
     <!-- Main Content Area -->
     <main>
-        @unless(View::hasSection('auth_standalone') || request()->routeIs('auth.registerpage') || request()->routeIs('auth.loginpage'))
+        @unless(View::hasSection('auth_standalone') || request()->routeIs('auth.registerpage') || request()->routeIs('auth.loginpage') || request()->routeIs('profile.index'))
             @if(View::hasSection('hide_flash_errors'))
                 @include('partials.flash-message-success-only')
             @else
@@ -40,7 +40,6 @@
     </main>
 
     @unless(View::hasSection('auth_standalone'))
-        @include('partials.newsletter')
         @include('partials.footer')
     @endunless
 
