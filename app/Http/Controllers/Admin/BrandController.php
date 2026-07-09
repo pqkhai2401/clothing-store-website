@@ -105,6 +105,12 @@ class BrandController extends Controller
     public function destroy(string $id)
     {
         $brand = Brand::findOrFail($id);
+
+        if ($message = $this->brandDeleteBlocker($brand)) {
+            return redirect()->route('admin.brands.list')
+                ->with('error', $message);
+        }
+
         $brand->delete();
 
         return redirect()->route('admin.brands.list')->with('success', 'Xóa thương hiệu thành công');
@@ -135,7 +141,19 @@ class BrandController extends Controller
             return back()->with('error', 'Vui lòng chọn ít nhất một thương hiệu để xóa.');
         }
 
-        $deleted = Brand::whereIn('id', $ids)->delete();
+        $brands = Brand::whereIn('id', $ids)->get();
+        $blockers = $brands
+            ->map(fn (Brand $brand) => $this->brandDeleteBlocker($brand))
+            ->filter();
+
+        if ($blockers->isNotEmpty()) {
+            return back()->with('error', $blockers->first());
+        }
+
+        $deleted = 0;
+        foreach ($brands as $brand) {
+            $deleted += (int) $brand->delete();
+        }
 
         return back()->with('success', "Đã xóa {$deleted} thương hiệu thành công.");
     }
@@ -173,7 +191,14 @@ class BrandController extends Controller
 
     public function forceDelete(string $id)
     {
-        Brand::onlyTrashed()->findOrFail($id)->forceDelete();
+        $brand = Brand::onlyTrashed()->findOrFail($id);
+
+        if ($message = $this->brandForceDeleteBlocker($brand)) {
+            return redirect()->route('admin.brands.trash')
+                ->with('error', $message);
+        }
+
+        $brand->forceDelete();
 
         return redirect()->route('admin.brands.trash')->with('success', 'Xóa vĩnh viễn thương hiệu thành công');
     }
@@ -194,8 +219,37 @@ class BrandController extends Controller
         if (empty($ids)) {
             return back()->with('error', 'Vui lòng chọn ít nhất một thương hiệu.');
         }
-        $count = Brand::onlyTrashed()->whereIn('id', $ids)->count();
-        Brand::onlyTrashed()->whereIn('id', $ids)->forceDelete();
+        $brands = Brand::onlyTrashed()->whereIn('id', $ids)->get();
+        $blockers = $brands
+            ->map(fn (Brand $brand) => $this->brandForceDeleteBlocker($brand))
+            ->filter();
+
+        if ($blockers->isNotEmpty()) {
+            return back()->with('error', $blockers->first());
+        }
+
+        $count = 0;
+        foreach ($brands as $brand) {
+            $count += (int) $brand->forceDelete();
+        }
         return back()->with('success', "Đã xóa vĩnh viễn {$count} thương hiệu.");
+    }
+
+    private function brandDeleteBlocker(Brand $brand): ?string
+    {
+        if ($brand->products()->exists()) {
+            return 'Không thể xóa thương hiệu này vì vẫn còn sản phẩm liên kết. Vui lòng chuyển sản phẩm sang thương hiệu khác trước khi xóa.';
+        }
+
+        return null;
+    }
+
+    private function brandForceDeleteBlocker(Brand $brand): ?string
+    {
+        if ($brand->products()->withTrashed()->exists()) {
+            return 'Không thể xóa vĩnh viễn thương hiệu này vì vẫn còn sản phẩm liên kết.';
+        }
+
+        return null;
     }
 }

@@ -18,6 +18,7 @@ use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\VoucherController;
 use App\Http\Controllers\Admin\CollectionController;
 use App\Http\Controllers\Admin\WarehouseController;
+use App\Http\Controllers\Admin\ActivityLogController;
 
 $accountRoutes = function (string $accountType): void {
     Route::get('/', [UserController::class, 'index'])->name('list')->defaults('account_type', $accountType);
@@ -238,6 +239,15 @@ Route::middleware(['auth.login', 'admin'])
                 Route::delete('/{id}/force-delete', [VoucherController::class, 'forceDelete'])->name('forceDelete');
                 Route::delete('/{id}', [VoucherController::class, 'destroy'])->name('destroy');
                 Route::post('/bulk-delete', [VoucherController::class, 'bulkDelete'])->name('bulkDelete');
+            });
+
+        Route::middleware('permission:manage-logs')
+            ->prefix('logs')->name('logs.')->group(function () {
+                Route::get('/', [ActivityLogController::class, 'index'])->name('list');
+                Route::get('/export', [ActivityLogController::class, 'export'])->name('export');
+                Route::post('/prune', [ActivityLogController::class, 'prune'])->name('prune');
+                Route::post('/bulk-delete', [ActivityLogController::class, 'bulkDelete'])->name('bulkDelete');
+                Route::get('/{id}', [ActivityLogController::class, 'show'])->name('show')->whereNumber('id');
             });
 
         Route::middleware('permission:manage-collections')

@@ -20,7 +20,7 @@ class RoleSeeder extends Seeder
         // Tạo permissions
         $allPermissions = [
             'access-admin',       // Truy cập trang quản trị
-            'view-dashboard',     // Xem dashboard
+            'view-dashboard',     // Xem dashboard 
             'manage-staff',       // Quản lý nhân sự (chỉ admin)
             'manage-customers',   // Quản lý khách hàng
             'manage-products',    // Quản lý sản phẩm
@@ -35,6 +35,7 @@ class RoleSeeder extends Seeder
             'manage-suppliers',      // Quản lý nhà cung cấp
             'manage-vouchers',    // Quản lý voucher
             'manage-collections', // Quản lý bộ sưu tập
+            'manage-logs',        // Nhật ký làm việc (chỉ admin)
         ];
 
         foreach ($allPermissions as $permission) {
@@ -45,9 +46,12 @@ class RoleSeeder extends Seeder
         $admin = Role::firstOrCreate(['name' => UserRole::ADMIN->value, 'guard_name' => 'web']);
         $admin->syncPermissions($allPermissions);
 
-        // Staff có tất cả TRỪ manage-staff
+        // Staff có tất cả TRỪ manage-staff và manage-logs (nhật ký chỉ dành cho admin)
         $staff = Role::firstOrCreate(['name' => UserRole::STAFF->value, 'guard_name' => 'web']);
-        $staffPermissions = array_values(array_filter($allPermissions, fn ($p) => $p !== 'manage-staff'));
+        $staffPermissions = array_values(array_filter(
+            $allPermissions,
+            fn ($p) => ! in_array($p, ['manage-staff', 'manage-logs'], true)
+        ));
         $staff->syncPermissions($staffPermissions);
 
         // Customer không có permission nào trên admin panel
