@@ -122,13 +122,13 @@ class CheckoutController extends Controller
             foreach ($cartItems as $item) {
                 $variant = $item->productVariant;
                 $unitPrice = $variant->sale_price > 0 ? (float) $variant->sale_price : (float) $variant->product->final_price;
-                $costPrice = $variant->cost_price > 0 ? (float) $variant->cost_price : (float) $variant->product->cost_price;
 
+                // Giá vốn được snapshot qua StockIssueItem lúc admin xuất kho, không lưu ở order_items
+                // (cột này không tồn tại + không fillable nên trước đây bị Eloquent bỏ im lặng).
                 OrderItem::create([
                     'order_id'           => $order->id,
                     'product_variant_id' => $item->product_variant_id,
                     'unit_price'         => $unitPrice,
-                    'cost_price'         => $costPrice,
                     'quantity'           => $item->quantity,
                 ]);
             }
