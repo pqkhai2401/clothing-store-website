@@ -7,39 +7,43 @@
                         <input type="checkbox" class="form-check-input product-check hk-cb-all">
                     </th>
                     <th style="width:76px;">ID</th>
-                    <th style="width:170px;">Mã phiếu xuất</th>
-                    <th>Lý do xuất kho</th>
-                    <th style="width:150px;">Trạng thái</th>
-                    <th style="width:160px;">Người tạo</th>
-                    <th style="width:160px;">Người xóa</th>
+                    <th style="width:170px;">Mã phiếu nhập</th>
+                    <th>Nhà cung cấp</th>
+                    <th style="width:120px;">Số SP</th>
+                    <th style="width:150px;">Tổng giá trị</th>
+                    <th style="width:140px;">Trạng thái</th>
+                    <th style="width:150px;">Người tạo</th>
+                    <th style="width:150px;">Người xóa</th>
                     <th style="width:140px;">Ngày xóa</th>
                     <th class="text-end pe-4" style="width:90px;">Thao tác</th>
                 </tr>
             </thead>
             <tbody>
-                @forelse($stockIssues as $issue)
+                @forelse($goodsReceipts as $receipt)
                     <tr>
                         <td class="hk-cb-td">
-                            <input type="checkbox" class="form-check-input product-check hk-cb-row" value="{{ $issue->id }}">
+                            <input type="checkbox" class="form-check-input product-check hk-cb-row" value="{{ $receipt->id }}">
                         </td>
-                        <td style="opacity:.55;">{{ $issue->id }}</td>
-                        <td class="fw-bold">{{ $issue->code }}</td>
-                        <td>{{ $issue->reason }}</td>
+                        <td style="opacity:.55;">{{ $receipt->id }}</td>
+                        <td class="fw-bold">{{ $receipt->code }}</td>
+                        <td>{{ $receipt->supplier->name ?? 'N/A' }}</td>
+                        <td>{{ number_format($receipt->items_count ?? 0) }}</td>
+                        <td class="fw-semibold">{{ number_format($receipt->total_amount, 0, ',', '.') }}đ</td>
                         <td>
-                            @if($issue->isCompleted())
-                                <span class="gr-badge gr-badge--completed">Đã xuất kho</span>
-                            @elseif($issue->isCancelled())
-                                <span class="gr-badge gr-badge--cancelled">Đã hủy</span>
+                            @if($receipt->isCompleted())
+                                <span class="gr-badge gr-badge--completed">Hoàn tất</span>
+                            @elseif($receipt->isAdjusted())
+                                <span class="gr-badge gr-badge--adjusted">Đã điều chỉnh</span>
                             @else
                                 <span class="gr-badge gr-badge--draft">Nháp</span>
                             @endif
                         </td>
-                        <td>{{ $issue->creator->username ?? 'N/A' }}</td>
-                        <td>{{ $issue->deleter->username ?? 'N/A' }}</td>
-                        <td>{{ $issue->deleted_at?->format('d/m/Y H:i') }}</td>
+                        <td>{{ $receipt->creator->username ?? 'N/A' }}</td>
+                        <td>{{ $receipt->deleter->username ?? 'N/A' }}</td>
+                        <td>{{ $receipt->deleted_at?->format('d/m/Y H:i') }}</td>
                         <td class="text-end pe-4">
                             <div class="d-inline-flex align-items-center gap-1">
-                                <form method="POST" action="{{ route('admin.stock-issues.restore', $issue->id) }}">
+                                <form method="POST" action="{{ route('admin.goods-receipts.restore', $receipt->id) }}">
                                     @csrf @method('PATCH')
                                     <button type="submit"
                                         class="product-more-btn text-success d-inline-flex align-items-center justify-content-center"
@@ -49,9 +53,9 @@
                                 </form>
                                 <button type="button"
                                     class="product-more-btn text-danger d-inline-flex align-items-center justify-content-center"
-                                    data-delete-url="{{ route('admin.stock-issues.forceDelete', $issue->id) }}"
-                                    data-delete-name="{{ $issue->code }}"
-                                    data-delete-type="phiếu xuất kho (vĩnh viễn)"
+                                    data-delete-url="{{ route('admin.goods-receipts.forceDelete', $receipt->id) }}"
+                                    data-delete-name="{{ $receipt->code }}"
+                                    data-delete-type="phiếu nhập kho (vĩnh viễn)"
                                     title="Xóa vĩnh viễn">
                                     <i class="fa-solid fa-trash"></i>
                                 </button>
@@ -60,7 +64,7 @@
                     </tr>
                 @empty
                     <tr data-empty-row>
-                        <td colspan="9" class="text-center py-5">
+                        <td colspan="11" class="text-center py-5">
                             <i class="fa-solid fa-inbox text-muted mb-3" style="font-size:42px;display:block;"></i>
                             <div class="fw-semibold text-muted">Thùng rác trống</div>
                         </td>
@@ -73,10 +77,11 @@
 
 <div class="bg-white border border-top-0 rounded-bottom px-3 py-2">
     @include('layouts.components.pagination', [
-        'paginator' => $stockIssues,
-        'itemLabel' => 'phiếu xuất kho',
-        'bulkRestoreUrl' => route('admin.stock-issues.bulkRestore'),
-        'bulkDeleteUrl' => route('admin.stock-issues.bulkForceDelete'),
+        'paginator' => $goodsReceipts,
+        'itemLabel' => 'phiếu nhập kho',
+        'bulkRestoreUrl' => route('admin.goods-receipts.bulkRestore'),
+        'bulkDeleteUrl' => route('admin.goods-receipts.bulkForceDelete'),
         'bulkDeleteLabel' => 'Xóa vĩnh viễn đã chọn',
     ])
 </div>
+

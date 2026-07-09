@@ -244,14 +244,29 @@ class OrderController extends Controller
             'status.in'    => 'Trạng thái không hợp lệ.',
         ]);
 
-        $eligibleIds = Order::whereIn('id', $validated['ids'])
-            ->get(['id', 'status'])
-            ->filter(fn (Order $order) => self::isValidStatusTransition($order->status, $validated['status']))
-            ->pluck('id');
+        $eligibleOrders = Order::whereIn('id', $validated['ids'])
+            ->get()
+            ->filter(fn (Order $order) => self::isValidStatusTransition($order->status, $validated['status']));
 
-        $updated = $eligibleIds->isNotEmpty()
-            ? Order::whereIn('id', $eligibleIds)->update(['status' => $validated['status']])
-            : 0;
+        $updated = 0;
+        foreach ($eligibleOrders as $order) {
+            try {
+                DB::transaction(function () use ($order, $validated) {
+                    $order->update(['status' => $validated['status']]);
+                    if (in_array($validated['status'], ['processing', 'shipping'], true)) {
+                        $this->autoGenerateStockIssueForOrder($order);
+                    }
+                });
+                $updated++;
+            } catch (ValidationException $e) {
+                // Return exact validation error to admin
+                throw $e;
+            } catch (\Exception $e) {
+                throw ValidationException::withMessages([
+                    'status' => ['Lỗi khi xử lý đơn hàng #' . ($order->order_code ?? $order->id) . ': ' . $e->getMessage()]
+                ]);
+            }
+        }
 
         $skipped = count($validated['ids']) - $updated;
 
@@ -260,7 +275,7 @@ class OrderController extends Controller
             : "Đã duyệt {$updated} đơn hàng sang trạng thái Đang xử lý.";
 
         if ($skipped > 0) {
-            $message .= " ({$skipped} đơn hàng không hợp lệ để chuyển trạng thái này đã bị bỏ qua.)";
+            $message .= " ({$skipped} đơn hàng không hợp lệ để chuyển trạng thái này hoặc không đủ tồn kho đã bị bỏ qua.)";
         }
 
         if ($request->expectsJson()) {
@@ -467,11 +482,20 @@ class OrderController extends Controller
             return back()->withErrors(['status' => $message])->withInput();
         }
 
-        $order->update([
-            'status' => $request->input('status'),
-            'payment_status' => $request->input('payment_status'),
-            'note' => $request->input('note'),
-        ]);
+        DB::transaction(function () use ($order, $request) {
+            $oldStatus = $order->status;
+            $newStatus = $request->input('status');
+
+            $order->update([
+                'status' => $newStatus,
+                'payment_status' => $request->input('payment_status'),
+                'note' => $request->input('note'),
+            ]);
+
+            if (in_array($newStatus, ['processing', 'shipping'], true) && !in_array($oldStatus, ['processing', 'shipping'], true)) {
+                $this->autoGenerateStockIssueForOrder($order);
+            }
+        });
 
         if ($request->expectsJson()) {
             return response()->json(['success' => true]);
@@ -479,5 +503,115 @@ class OrderController extends Controller
 
         return redirect()->route('admin.orders.detail', $id)
             ->with('success', 'Cập nhật đơn hàng thành công.');
+    }
+
+    private function autoGenerateStockIssueForOrder(Order $order): void
+    {
+        $exists = \App\Models\StockIssue::where('order_id', $order->id)
+            ->where('status', \App\Models\StockIssue::STATUS_COMPLETED)
+            ->exists();
+        if ($exists) {
+            return;
+        }
+
+        $orderItems = $order->orderItems()->with('productVariant.product')->get();
+        if ($orderItems->isEmpty()) {
+            return;
+        }
+
+        $warehouse = \App\Models\Warehouse::where('is_default', true)->where('status', true)->first()
+            ?? \App\Models\Warehouse::where('status', true)->first();
+        if (!$warehouse) {
+            throw new \Exception("Không tìm thấy kho hàng hoạt động nào trong hệ thống.");
+        }
+
+        // Generate PXK code
+        $prefix = 'PXK' . now()->format('Ymd');
+        $lastToday = \App\Models\StockIssue::withTrashed()->where('code', 'like', "{$prefix}%")
+            ->orderByDesc('code')
+            ->first();
+        $sequence = $lastToday ? ((int) substr($lastToday->code, -3)) + 1 : 1;
+        $code = $prefix . str_pad((string) $sequence, 3, '0', STR_PAD_LEFT);
+
+        $totalQty = $orderItems->sum('quantity');
+        $totalCost = $orderItems->sum(fn ($item) => $item->quantity * ($item->productVariant->cost_price ?? 0));
+        $totalSale = $orderItems->sum(fn ($item) => $item->quantity * $item->unit_price);
+
+        $stockIssue = \App\Models\StockIssue::create([
+            'code' => $code,
+            'issue_type' => \App\Models\StockIssue::ISSUE_TYPE_SALE,
+            'warehouse_id' => $warehouse->id,
+            'order_id' => $order->id,
+            'reason' => "Xuất kho tự động cho đơn hàng #" . ($order->order_code ?? $order->id),
+            'note' => $order->note,
+            'status' => \App\Models\StockIssue::STATUS_DRAFT,
+            'total_quantity' => $totalQty,
+            'total_cost_amount' => $totalCost,
+            'total_sale_amount' => $totalSale,
+            'total_amount' => $totalSale,
+            'created_by' => Auth::id() ?? 1, // Fallback if CLI/system
+        ]);
+
+        foreach ($orderItems as $item) {
+            $variant = $item->productVariant;
+            if (!$variant) continue;
+
+            $lockedVariant = \App\Models\ProductVariant::lockForUpdate()->find($variant->id);
+            if ($lockedVariant->stock < $item->quantity) {
+                $variantName = ($lockedVariant->product->name ?? 'Sản phẩm') 
+                    . ' - ' . ($lockedVariant->color->name ?? 'Không màu') 
+                    . ' - Size ' . ($lockedVariant->size->name ?? 'Không size') 
+                    . ' - SKU ' . ($lockedVariant->sku ?? 'N/A');
+                throw ValidationException::withMessages([
+                    'status' => ["Không đủ tồn kho để xuất. Sản phẩm [{$variantName}] hiện chỉ còn [{$lockedVariant->stock}] sản phẩm."]
+                ]);
+            }
+
+            $stockIssue->items()->create([
+                'product_id' => $lockedVariant->product_id,
+                'product_variant_id' => $lockedVariant->id,
+                'quantity' => $item->quantity,
+                'cost_price' => $lockedVariant->cost_price,
+                'sale_price' => $item->unit_price,
+                'total_cost' => $lockedVariant->cost_price * $item->quantity,
+                'total_sale' => $item->unit_price * $item->quantity,
+            ]);
+
+            $beforeQty = $lockedVariant->stock;
+            $afterQty = max(0, $beforeQty - $item->quantity);
+            $lockedVariant->update(['stock' => $afterQty]);
+
+            \App\Models\StockMovement::create([
+                'product_variant_id' => $lockedVariant->id,
+                'reference_type' => 'stock_issue',
+                'reference_id' => $stockIssue->id,
+                'movement_type' => 'export',
+                'quantity' => $item->quantity,
+                'before_quantity' => $beforeQty,
+                'after_quantity' => $afterQty,
+                'created_by' => Auth::id() ?? 1,
+            ]);
+        }
+
+        $stockIssue->update([
+            'status' => \App\Models\StockIssue::STATUS_COMPLETED,
+            'confirmed_by' => Auth::id() ?? 1,
+            'confirmed_at' => now(),
+            'issued_at' => now(),
+        ]);
+
+        \App\Models\StockIssueLog::create([
+            'stock_issue_id' => $stockIssue->id,
+            'user_id' => Auth::id() ?? 1,
+            'action' => 'created',
+            'message' => 'Tạo phiếu xuất kho tự động từ đơn hàng #' . ($order->order_code ?? $order->id),
+        ]);
+
+        \App\Models\StockIssueLog::create([
+            'stock_issue_id' => $stockIssue->id,
+            'user_id' => Auth::id() ?? 1,
+            'action' => 'confirmed',
+            'message' => 'Hoàn tất xuất kho tự động',
+        ]);
     }
 }

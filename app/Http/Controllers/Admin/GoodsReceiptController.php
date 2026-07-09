@@ -6,17 +6,22 @@ use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\GoodsReceipt;
 use App\Models\GoodsReceiptItem;
+use App\Models\GoodsReceiptLog;
+use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\ProductVariant;
 use App\Models\StockIssue;
 use App\Models\StockIssueItem;
+use App\Models\StockMovement;
 use App\Models\Stocktake;
 use App\Models\StocktakeItem;
 use App\Models\Supplier;
+use App\Models\Warehouse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class GoodsReceiptController extends Controller
 {
@@ -98,7 +103,7 @@ class GoodsReceiptController extends Controller
             });
         }
 
-        if (in_array($status, [StockIssue::STATUS_DRAFT, StockIssue::STATUS_ISSUED], true)) {
+        if (in_array($status, [StockIssue::STATUS_DRAFT, StockIssue::STATUS_COMPLETED, StockIssue::STATUS_CANCELLED], true)) {
             $query->where('status', $status);
         }
 
@@ -117,8 +122,10 @@ class GoodsReceiptController extends Controller
         }
 
         $stockIssueVariants = $this->stockIssueVariants();
+        $warehouses = Warehouse::where('status', true)->orderBy('is_default', 'desc')->orderBy('name')->get();
+        $orders = Order::orderByDesc('id')->get(['id', 'order_code']);
 
-        return view('admin.goods-receipts.index', compact('stockIssues', 'keyword', 'status', 'perPage', 'stockIssueVariants') + ['tab' => 'outbound']);
+        return view('admin.goods-receipts.index', compact('stockIssues', 'keyword', 'status', 'perPage', 'stockIssueVariants', 'warehouses', 'orders') + ['tab' => 'outbound']);
     }
 
     private function overviewIndex(Request $request)
@@ -211,7 +218,7 @@ class GoodsReceiptController extends Controller
             });
         }
 
-        if (in_array($status, [GoodsReceipt::STATUS_DRAFT, GoodsReceipt::STATUS_COMPLETED, GoodsReceipt::STATUS_ADJUSTED], true)) {
+        if (in_array($status, [GoodsReceipt::STATUS_DRAFT, GoodsReceipt::STATUS_COMPLETED, GoodsReceipt::STATUS_ADJUSTED, 'cancelled'], true)) {
             $query->where('status', $status);
         }
 
@@ -231,6 +238,7 @@ class GoodsReceiptController extends Controller
 
         $suppliers = $this->activeSuppliers();
         $goodsReceiptVariants = $this->goodsReceiptVariants();
+        $warehouses = Warehouse::where('status', true)->orderBy('is_default', 'desc')->orderBy('name')->get();
 
         return view('admin.goods-receipts.index', compact(
             'goodsReceipts',
@@ -238,16 +246,18 @@ class GoodsReceiptController extends Controller
             'perPage',
             'status',
             'suppliers',
-            'goodsReceiptVariants'
+            'goodsReceiptVariants',
+            'warehouses'
         ) + ['tab' => 'inbound']);
     }
 
     public function create()
     {
-        $suppliers = $this->activeSuppliers();
-        $variants = $this->goodsReceiptVariants();
+        $suppliers  = $this->activeSuppliers();
+        $variants   = $this->goodsReceiptVariants();
+        $warehouses = Warehouse::where('status', true)->orderBy('is_default', 'desc')->orderBy('name')->get();
 
-        return view('admin.goods-receipts.create', compact('suppliers', 'variants'));
+        return view('admin.goods-receipts.create', compact('suppliers', 'variants', 'warehouses'));
     }
 
     public function stockCard(ProductVariant $variant)
@@ -256,9 +266,15 @@ class GoodsReceiptController extends Controller
 
         $transactions = collect();
 
+        // Phiếu nhập/xuất tự sinh từ kiểm kê chỉ là chứng từ đối ứng của bút toán điều chỉnh;
+        // loại chúng khỏi thẻ kho để tránh cộng trùng với dòng "Điều chỉnh kho" bên dưới.
+        $stocktakeReceiptIds = Stocktake::whereNotNull('goods_receipt_id')->pluck('goods_receipt_id')->all();
+        $stocktakeIssueIds   = Stocktake::whereNotNull('stock_issue_id')->pluck('stock_issue_id')->all();
+
         GoodsReceiptItem::query()
             ->with(['goodsReceipt.creator'])
             ->where('product_variant_id', $variant->id)
+            ->when($stocktakeReceiptIds, fn ($query) => $query->whereNotIn('goods_receipt_id', $stocktakeReceiptIds))
             ->whereHas('goodsReceipt', fn ($query) => $query->whereIn('status', [
                 GoodsReceipt::STATUS_COMPLETED,
                 GoodsReceipt::STATUS_ADJUSTED,
@@ -280,10 +296,8 @@ class GoodsReceiptController extends Controller
         StockIssueItem::query()
             ->with(['stockIssue.creator'])
             ->where('product_variant_id', $variant->id)
-            ->whereHas('stockIssue', fn ($query) => $query->whereIn('status', [
-                StockIssue::STATUS_ISSUED,
-                StockIssue::STATUS_ADJUSTED,
-            ]))
+            ->when($stocktakeIssueIds, fn ($query) => $query->whereNotIn('stock_issue_id', $stocktakeIssueIds))
+            ->whereHas('stockIssue', fn ($query) => $query->where('status', StockIssue::STATUS_COMPLETED))
             ->get()
             ->each(function (StockIssueItem $item) use ($transactions) {
                 $issue = $item->stockIssue;
@@ -398,7 +412,8 @@ class GoodsReceiptController extends Controller
                 'color_hex'    => $v->color?->display_hex_code,
                 'size_name'    => $v->size?->name,
                 'stock'        => $v->stock,
-                'unit_price'   => (float) $v->sale_price,
+                'cost_price'   => (float) $v->cost_price,
+                'sale_price'   => (float) $v->sale_price,
             ])
             ->values();
     }
@@ -414,34 +429,90 @@ class GoodsReceiptController extends Controller
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'supplier_id'              => ['required', 'integer', Rule::exists('suppliers', 'id')],
+        $action = $request->input('action', 'draft');
+
+        $rules = [
+            'receipt_type'             => ['required', Rule::in([
+                GoodsReceipt::RECEIPT_TYPE_PURCHASE,
+                GoodsReceipt::RECEIPT_TYPE_ADJUSTMENT,
+                GoodsReceipt::RECEIPT_TYPE_RETURN,
+                GoodsReceipt::RECEIPT_TYPE_INITIAL,
+            ])],
+            'source_type'              => ['required', Rule::in([
+                GoodsReceipt::SOURCE_TYPE_SUPPLIER,
+                GoodsReceipt::SOURCE_TYPE_INTERNAL,
+            ])],
+            'supplier_id'              => [
+                'nullable', 'integer', Rule::exists('suppliers', 'id'),
+                Rule::requiredIf(fn () => $request->input('source_type') === GoodsReceipt::SOURCE_TYPE_SUPPLIER)
+            ],
+            'warehouse_id'             => ['required', 'integer', Rule::exists('warehouses', 'id')],
+            'received_at'              => ['required', 'date'],
+            'receipt_reason'           => [
+                'nullable', 'string', 'max:500',
+                Rule::requiredIf(fn () => $request->input('source_type') === GoodsReceipt::SOURCE_TYPE_INTERNAL && $request->input('receipt_type') === GoodsReceipt::RECEIPT_TYPE_ADJUSTMENT)
+            ],
             'note'                     => ['nullable', 'string', 'max:1000'],
             'action'                   => ['required', Rule::in(['draft', 'complete'])],
-            'items'                    => ['required', 'array', 'min:1'],
-            'items.*.product_variant_id' => ['required', 'integer', Rule::exists('product_variants', 'id')],
-            'items.*.quantity'         => ['required', 'integer', 'min:1'],
-            'items.*.cost_price'       => ['required', 'numeric', 'min:0'],
-        ], [
+        ];
+
+        if ($action === 'complete') {
+            $rules['items'] = ['required', 'array', 'min:1'];
+            $rules['items.*.product_variant_id'] = ['required', 'integer', Rule::exists('product_variants', 'id')];
+            $rules['items.*.quantity'] = ['required', 'integer', 'min:1'];
+            $rules['items.*.cost_price'] = ['required', 'numeric', 'min:0'];
+        } else {
+            $rules['items'] = ['nullable', 'array'];
+            $rules['items.*.product_variant_id'] = ['required', 'integer', Rule::exists('product_variants', 'id')];
+            $rules['items.*.quantity'] = ['required', 'integer', 'min:1'];
+            $rules['items.*.cost_price'] = ['required', 'numeric', 'min:0'];
+        }
+
+        $validated = $request->validate($rules, [
             'supplier_id.required' => 'Vui lòng chọn nhà cung cấp.',
+            'warehouse_id.required' => 'Vui lòng chọn kho nhận.',
+            'received_at.required'  => 'Vui lòng chọn ngày nhập kho.',
+            'receipt_reason.required' => 'Vui lòng nhập lý do nhập kho.',
             'items.required'       => 'Vui lòng chọn ít nhất một sản phẩm để nhập kho.',
             'items.min'            => 'Vui lòng chọn ít nhất một sản phẩm để nhập kho.',
         ]);
 
+        if (!empty($validated['items'])) {
+            $variantIds = collect($validated['items'])->pluck('product_variant_id');
+            if ($variantIds->duplicates()->isNotEmpty()) {
+                throw ValidationException::withMessages([
+                    'items' => 'Không được trùng cùng một biến thể sản phẩm trong một phiếu.'
+                ]);
+            }
+        }
+
         $goodsReceipt = DB::transaction(function () use ($validated) {
-            $totalAmount = collect($validated['items'])
-                ->sum(fn ($item) => $item['quantity'] * $item['cost_price']);
+            $validated['source_type'] ??= GoodsReceipt::SOURCE_TYPE_SUPPLIER;
+            $validated['receipt_type'] ??= GoodsReceipt::RECEIPT_TYPE_PURCHASE;
+            $validated['supplier_id'] = $validated['source_type'] === GoodsReceipt::SOURCE_TYPE_INTERNAL
+                ? null
+                : $validated['supplier_id'];
+
+            $groupedItems = $this->groupReceiptItems($validated['items'] ?? []);
+            $totalAmount = collect($groupedItems)->sum(fn ($item) => $item['quantity'] * $item['cost_price']);
+            $totalQuantity = collect($groupedItems)->sum(fn ($item) => $item['quantity']);
 
             $goodsReceipt = GoodsReceipt::create([
-                'code'         => $this->generateCode(),
-                'supplier_id'  => $validated['supplier_id'],
-                'note'         => $validated['note'] ?? null,
-                'status'       => GoodsReceipt::STATUS_DRAFT,
-                'total_amount' => $totalAmount,
-                'created_by'   => Auth::id(),
+                'code'           => $this->generateCode(),
+                'receipt_type'   => $validated['receipt_type'],
+                'source_type'    => $validated['source_type'],
+                'receipt_reason' => $validated['receipt_reason'] ?? null,
+                'supplier_id'    => $validated['supplier_id'],
+                'warehouse_id'   => $validated['warehouse_id'] ?? Warehouse::getDefault()?->id,
+                'note'           => $validated['note'] ?? null,
+                'status'         => GoodsReceipt::STATUS_DRAFT,
+                'total_amount'   => $totalAmount,
+                'total_quantity' => $totalQuantity,
+                'received_at'    => $validated['received_at'] ? \Carbon\Carbon::parse($validated['received_at']) : null,
+                'created_by'     => Auth::id(),
             ]);
 
-            foreach ($validated['items'] as $item) {
+            foreach ($groupedItems as $item) {
                 $goodsReceipt->items()->create([
                     'product_variant_id' => $item['product_variant_id'],
                     'quantity'           => $item['quantity'],
@@ -449,8 +520,12 @@ class GoodsReceiptController extends Controller
                 ]);
             }
 
+            $this->logGoodsReceipt($goodsReceipt, 'created', 'Tạo phiếu nhập mới');
+
             if ($validated['action'] === 'complete') {
                 $this->completeReceipt($goodsReceipt);
+            } else {
+                $this->logGoodsReceipt($goodsReceipt, 'draft_saved', 'Lưu nháp phiếu nhập');
             }
 
             return $goodsReceipt;
@@ -472,7 +547,8 @@ class GoodsReceiptController extends Controller
     public function show(Request $request, string $id)
     {
         $goodsReceipt = GoodsReceipt::with([
-            'supplier', 'creator', 'adjuster',
+            'supplier', 'creator', 'adjuster', 'adjustmentStockIssue', 'logs.user',
+            'confirmer', 'canceller', 'warehouse',
             'items.productVariant.product:id,name,thumbnail',
             'items.productVariant.color:id,name,hex_code',
             'items.productVariant.size:id,name',
@@ -489,75 +565,209 @@ class GoodsReceiptController extends Controller
 
     public function complete(string $id)
     {
-        $goodsReceipt = GoodsReceipt::with('items')->findOrFail($id);
-
-        if (!$goodsReceipt->isDraft()) {
-            return back()->with('error', 'Phiếu nhập kho này đã được hoàn tất trước đó.');
-        }
-
-        DB::transaction(fn () => $this->completeReceipt($goodsReceipt));
-
-        return back()->with('success', "Đã hoàn tất phiếu nhập kho \"{$goodsReceipt->code}\" và cập nhật tồn kho.");
-    }
-
-    public function adjust(Request $request, string $id)
-    {
-        $validated = $request->validate([
-            'adjustment_reason' => ['required', 'string', 'max:2000'],
-        ], [
-            'adjustment_reason.required' => 'Vui lòng nhập lý do điều chỉnh phiếu nhập kho.',
-        ]);
-
-        $goodsReceipt = GoodsReceipt::with('items')->findOrFail($id);
-
-        if (! $goodsReceipt->isCompleted()) {
-            return back()->with('error', 'Chỉ có thể điều chỉnh phiếu nhập kho đã hoàn tất và chưa từng điều chỉnh.');
-        }
-
+        $code = null;
         try {
-            $this->assertEnoughStockForReceiptAdjustment($goodsReceipt);
+            DB::transaction(function () use ($id, &$code) {
+                $goodsReceipt = GoodsReceipt::whereKey($id)->lockForUpdate()->firstOrFail();
+                $goodsReceipt->load('items');
+                $this->completeReceipt($goodsReceipt);
+                $code = $goodsReceipt->code;
+            });
         } catch (ValidationException $e) {
             return back()->with('error', collect($e->errors())->flatten()->first());
         }
 
-        $stockIssue = DB::transaction(function () use ($goodsReceipt, $validated) {
-            $stockIssue = StockIssue::create([
-                'code' => $this->generateStockIssueCode(),
-                'reason' => 'Điều chỉnh phiếu nhập sai',
-                'reason_type' => StockIssue::REASON_TYPE_ADJUSTMENT,
-                'note' => "Tự động sinh để điều chỉnh phiếu nhập {$goodsReceipt->code}. Lý do: {$validated['adjustment_reason']}",
-                'status' => StockIssue::STATUS_ISSUED,
-                'total_amount' => $goodsReceipt->items->sum(fn ($item) => $item->quantity * $item->cost_price),
-                'created_by' => Auth::id(),
-                'issued_at' => now(),
-            ]);
+        return back()->with('success', "Đã hoàn tất phiếu nhập kho \"{$code}\" và cập nhật tồn kho.");
+    }
 
-            foreach ($goodsReceipt->items as $item) {
-                $stockIssue->items()->create([
-                    'product_variant_id' => $item->product_variant_id,
+    public function adjust(Request $request, string $id)
+    {
+        return redirect()->route('admin.goods-receipts.list', ['tab' => 'inbound'])
+            ->with('error', 'Không thể hủy hoặc điều chỉnh phiếu đã hoàn tất. Chỉ phiếu nháp mới được hủy.');
+    }
+
+    public function edit(Request $request, string $id)
+    {
+        $goodsReceipt = GoodsReceipt::with('items.productVariant.product')->findOrFail($id);
+
+        if (! $goodsReceipt->isDraft()) {
+            $message = $goodsReceipt->isCompleted()
+                ? 'Không thể chỉnh sửa phiếu đã hoàn tất'
+                : 'Không thể chỉnh sửa phiếu đã hủy';
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json(['message' => $message], 422);
+            }
+            return redirect()->route('admin.goods-receipts.list', ['tab' => 'inbound'])
+                ->with('error', $message);
+        }
+
+        $suppliers  = $this->activeSuppliers();
+        $variants   = $this->goodsReceiptVariants();
+        $warehouses = Warehouse::where('status', true)->orderBy('is_default', 'desc')->orderBy('name')->get();
+
+        // Chuyển đổi chi tiết sản phẩm sang cấu trúc JSON phục vụ JS table
+        $selectedItems = [];
+        foreach ($goodsReceipt->items as $item) {
+            $variant = $item->productVariant;
+            if ($variant) {
+                $selectedItems[$variant->id] = [
+                    'variant' => [
+                        'id' => $variant->id,
+                        'product_name' => $variant->product->name ?? '',
+                        'sku' => $variant->sku,
+                        'color_name' => $variant->color->name ?? '',
+                        'color_hex' => $variant->color->hex_code ?? '#ccc',
+                        'size_name' => $variant->size->name ?? '',
+                        'thumbnail' => $variant->product->thumbnail ?? '',
+                        'stock' => $variant->stock,
+                        'cost_price' => (float)$item->cost_price,
+                    ],
                     'quantity' => $item->quantity,
-                    'unit_price' => $item->cost_price,
-                ]);
+                    'cost_price' => (float)$item->cost_price,
+                ];
+            }
+        }
 
-                $variant = ProductVariant::lockForUpdate()->find($item->product_variant_id);
-                if ($variant) {
-                    $variant->update(['stock' => $variant->stock - $item->quantity]);
-                }
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'html' => view('admin.goods-receipts.partials.edit-content', compact('goodsReceipt', 'suppliers', 'variants', 'warehouses', 'selectedItems'))->render(),
+            ]);
+        }
+
+        return view('admin.goods-receipts.edit', compact('goodsReceipt', 'suppliers', 'variants', 'warehouses', 'selectedItems'));
+    }
+
+    public function update(Request $request, string $id)
+    {
+        $goodsReceipt = GoodsReceipt::with('items')->findOrFail($id);
+
+        if (! $goodsReceipt->isDraft()) {
+            $message = $goodsReceipt->isCompleted()
+                ? 'Không thể chỉnh sửa phiếu đã hoàn tất'
+                : 'Không thể chỉnh sửa phiếu đã hủy';
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json(['message' => $message], 422);
+            }
+            return redirect()->route('admin.goods-receipts.list', ['tab' => 'inbound'])
+                ->with('error', $message);
+        }
+
+        $action = $request->input('action', 'draft');
+
+        $rules = [
+            'receipt_type'             => ['required', Rule::in([
+                GoodsReceipt::RECEIPT_TYPE_PURCHASE,
+                GoodsReceipt::RECEIPT_TYPE_ADJUSTMENT,
+                GoodsReceipt::RECEIPT_TYPE_RETURN,
+                GoodsReceipt::RECEIPT_TYPE_INITIAL,
+            ])],
+            'source_type'              => ['required', Rule::in([
+                GoodsReceipt::SOURCE_TYPE_SUPPLIER,
+                GoodsReceipt::SOURCE_TYPE_INTERNAL,
+            ])],
+            'supplier_id'              => [
+                'nullable', 'integer', Rule::exists('suppliers', 'id'),
+                Rule::requiredIf(fn () => $request->input('source_type') === GoodsReceipt::SOURCE_TYPE_SUPPLIER)
+            ],
+            'warehouse_id'             => ['required', 'integer', Rule::exists('warehouses', 'id')],
+            'received_at'              => ['required', 'date'],
+            'receipt_reason'           => [
+                'nullable', 'string', 'max:500',
+                Rule::requiredIf(fn () => $request->input('source_type') === GoodsReceipt::SOURCE_TYPE_INTERNAL && $request->input('receipt_type') === GoodsReceipt::RECEIPT_TYPE_ADJUSTMENT)
+            ],
+            'note'                     => ['nullable', 'string', 'max:1000'],
+            'action'                   => ['required', Rule::in(['draft', 'complete'])],
+        ];
+
+        if ($action === 'complete') {
+            $rules['items'] = ['required', 'array', 'min:1'];
+            $rules['items.*.product_variant_id'] = ['required', 'integer', Rule::exists('product_variants', 'id')];
+            $rules['items.*.quantity'] = ['required', 'integer', 'min:1'];
+            $rules['items.*.cost_price'] = ['required', 'numeric', 'min:0'];
+        } else {
+            $rules['items'] = ['nullable', 'array'];
+            $rules['items.*.product_variant_id'] = ['required', 'integer', Rule::exists('product_variants', 'id')];
+            $rules['items.*.quantity'] = ['required', 'integer', 'min:1'];
+            $rules['items.*.cost_price'] = ['required', 'numeric', 'min:0'];
+        }
+
+        $validated = $request->validate($rules, [
+            'supplier_id.required' => 'Vui lòng chọn nhà cung cấp.',
+            'warehouse_id.required' => 'Vui lòng chọn kho nhận.',
+            'received_at.required'  => 'Vui lòng chọn ngày nhập kho.',
+            'receipt_reason.required' => 'Vui lòng nhập lý do nhập kho.',
+            'items.required'       => 'Vui lòng chọn ít nhất một sản phẩm để nhập kho.',
+            'items.min'            => 'Vui lòng chọn ít nhất một sản phẩm để nhập kho.',
+        ]);
+
+        if (!empty($validated['items'])) {
+            $variantIds = collect($validated['items'])->pluck('product_variant_id');
+            if ($variantIds->duplicates()->isNotEmpty()) {
+                throw ValidationException::withMessages([
+                    'items' => 'Không được trùng cùng một biến thể sản phẩm trong một phiếu.'
+                ]);
+            }
+        }
+
+        DB::transaction(function () use ($goodsReceipt, $validated) {
+            $validated['source_type'] ??= GoodsReceipt::SOURCE_TYPE_SUPPLIER;
+            $validated['receipt_type'] ??= GoodsReceipt::RECEIPT_TYPE_PURCHASE;
+            $validated['supplier_id'] = $validated['source_type'] === GoodsReceipt::SOURCE_TYPE_INTERNAL
+                ? null
+                : $validated['supplier_id'];
+
+            $goodsReceipt->items()->delete();
+
+            $groupedItems = $this->groupReceiptItems($validated['items'] ?? []);
+
+            $totalAmount = 0;
+            $totalQuantity = 0;
+            foreach ($groupedItems as $item) {
+                $goodsReceipt->items()->create([
+                    'product_variant_id' => $item['product_variant_id'],
+                    'quantity'           => $item['quantity'],
+                    'cost_price'         => $item['cost_price'],
+                ]);
+                $totalAmount += $item['quantity'] * $item['cost_price'];
+                $totalQuantity += $item['quantity'];
             }
 
             $goodsReceipt->update([
-                'status' => GoodsReceipt::STATUS_ADJUSTED,
-                'adjusted_by' => Auth::id(),
-                'adjusted_at' => now(),
-                'adjustment_reason' => $validated['adjustment_reason'],
-                'adjustment_stock_issue_id' => $stockIssue->id,
+                'receipt_type'   => $validated['receipt_type'],
+                'source_type'    => $validated['source_type'],
+                'receipt_reason' => $validated['receipt_reason'] ?? null,
+                'supplier_id'    => $validated['supplier_id'],
+                'warehouse_id'   => $validated['warehouse_id'] ?? Warehouse::getDefault()?->id,
+                'received_at'    => $validated['received_at'] ? \Carbon\Carbon::parse($validated['received_at']) : null,
+                'note'           => $validated['note'],
+                'total_amount'   => $totalAmount,
+                'total_quantity' => $totalQuantity,
             ]);
 
-            return $stockIssue;
+            $this->logGoodsReceipt($goodsReceipt, 'updated', 'Cập nhật phiếu nhập kho');
+
+            if ($validated['action'] === 'complete') {
+                $goodsReceipt->load('items');
+                $this->completeReceipt($goodsReceipt);
+            } else {
+                $this->logGoodsReceipt($goodsReceipt, 'draft_saved', 'Lưu nháp phiếu nhập');
+            }
         });
 
-        return redirect()->route('admin.goods-receipts.list', ['tab' => 'inbound'])
-            ->with('success', "Đã điều chỉnh phiếu nhập \"{$goodsReceipt->code}\" và tự động sinh phiếu xuất \"{$stockIssue->code}\".");
+        $message = $validated['action'] === 'complete' 
+            ? 'Cập nhật và hoàn tất phiếu nhập kho thành công.'
+            : 'Cập nhật phiếu nháp thành công.';
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'message' => $message,
+                'code' => $goodsReceipt->code,
+                'show_url' => route('admin.goods-receipts.show', $goodsReceipt->id),
+                'table_url' => route('admin.goods-receipts.list', ['tab' => 'inbound']),
+            ]);
+        }
+
+        return redirect()->route('admin.goods-receipts.list', ['tab' => 'inbound'])->with('success', $message);
     }
 
     public function destroy(string $id)
@@ -565,15 +775,18 @@ class GoodsReceiptController extends Controller
         $goodsReceipt = GoodsReceipt::findOrFail($id);
 
         if (!$goodsReceipt->isDraft()) {
-            return back()->with('error', 'Không thể xóa phiếu nhập kho đã hoàn tất.');
+            return back()->with('error', 'Chỉ có thể hủy phiếu nhập kho đang ở trạng thái Nháp.');
         }
 
-        $goodsReceipt->deleted_by = Auth::id();
-        $goodsReceipt->save();
-        $goodsReceipt->delete();
+        $goodsReceipt->update([
+            'status' => GoodsReceipt::STATUS_CANCELLED,
+            'cancelled_by' => Auth::id(),
+            'cancelled_at' => now(),
+        ]);
+        $this->logGoodsReceipt($goodsReceipt, 'cancelled', "Hủy phiếu nhập kho \"{$goodsReceipt->code}\".");
 
         return redirect()->route('admin.goods-receipts.list', ['tab' => 'inbound'])
-            ->with('success', 'Xóa phiếu nhập kho thành công');
+            ->with('success', "Đã hủy phiếu nhập kho \"{$goodsReceipt->code}\" thành công.");
     }
 
     public function bulkDelete(Request $request)
@@ -581,32 +794,190 @@ class GoodsReceiptController extends Controller
         $ids = array_filter((array) $request->input('ids', []), 'is_numeric');
 
         if (empty($ids)) {
-            return back()->with('error', 'Vui lòng chọn ít nhất một phiếu nhập kho để xóa.');
+            return back()->with('error', 'Vui lòng chọn ít nhất một phiếu nhập kho để hủy.');
         }
 
-        // Chỉ cho xóa mềm phiếu Nháp. Phiếu đã hoàn tất đã làm thay đổi tồn kho nên phải giữ lại.
-        $query = GoodsReceipt::whereIn('id', $ids)->where('status', GoodsReceipt::STATUS_DRAFT);
-        $query->update(['deleted_by' => Auth::id()]);
-        $deleted = $query->delete();
+        // Chỉ cho phép hủy phiếu Nháp.
+        $receipts = GoodsReceipt::whereIn('id', $ids)->where('status', GoodsReceipt::STATUS_DRAFT)->get();
+        foreach ($receipts as $receipt) {
+            $receipt->update([
+                'status' => GoodsReceipt::STATUS_CANCELLED,
+                'cancelled_by' => Auth::id(),
+                'cancelled_at' => now(),
+            ]);
+            $this->logGoodsReceipt($receipt, 'cancelled', "Hủy phiếu nhập kho \"{$receipt->code}\".");
+        }
+        $count = $receipts->count();
 
-        return back()->with('success', "Đã xóa {$deleted} phiếu nhập kho thành công.");
+        return back()->with('success', "Đã hủy {$count} phiếu nhập kho thành công.");
+    }
+
+    public function trash(Request $request)
+    {
+        $keyword = trim((string) $request->input('search', $request->input('keyword')));
+        $perPage = in_array((int) $request->input('per_page'), [10, 25, 50], true)
+            ? (int) $request->input('per_page') : 10;
+
+        $query = GoodsReceipt::onlyTrashed()
+            ->with(['supplier', 'creator', 'deleter'])
+            ->withCount('items')
+            ->orderByDesc('deleted_at');
+
+        if ($keyword !== '') {
+            $query->where(function ($q) use ($keyword) {
+                $q->where('code', 'like', "%{$keyword}%")
+                    ->orWhereHas('supplier', fn ($sq) => $sq->where('name', 'like', "%{$keyword}%"));
+            });
+        }
+
+        $goodsReceipts = $query->paginate($perPage)->withQueryString();
+
+        if ($request->ajax()) {
+            return response()->json([
+                'html' => view('admin.goods-receipts.partials.trash-table', compact('goodsReceipts'))->render(),
+            ]);
+        }
+
+        return view('admin.goods-receipts.trash', compact('goodsReceipts', 'keyword', 'perPage'));
+    }
+
+    public function restore(string $id)
+    {
+        $goodsReceipt = GoodsReceipt::onlyTrashed()->findOrFail($id);
+        GoodsReceipt::onlyTrashed()->where('id', $goodsReceipt->id)->update(['deleted_by' => null]);
+        $goodsReceipt->restore();
+
+        return redirect()->route('admin.goods-receipts.trash')->with('success', 'Khôi phục phiếu nhập kho thành công');
+    }
+
+    public function forceDelete(string $id)
+    {
+        GoodsReceipt::onlyTrashed()->findOrFail($id)->forceDelete();
+
+        return redirect()->route('admin.goods-receipts.trash')->with('success', 'Đã xóa vĩnh viễn phiếu nhập kho');
+    }
+
+    public function bulkRestore(Request $request)
+    {
+        $ids = array_filter((array) $request->input('ids', []), 'is_numeric');
+        if (empty($ids)) {
+            return back()->with('error', 'Vui lòng chọn ít nhất một phiếu nhập kho.');
+        }
+
+        GoodsReceipt::onlyTrashed()->whereIn('id', $ids)->update(['deleted_by' => null]);
+        $restored = GoodsReceipt::onlyTrashed()->whereIn('id', $ids)->restore();
+
+        return back()->with('success', "Đã khôi phục {$restored} phiếu nhập kho thành công.");
+    }
+
+    public function bulkForceDelete(Request $request)
+    {
+        $ids = array_filter((array) $request->input('ids', []), 'is_numeric');
+        if (empty($ids)) {
+            return back()->with('error', 'Vui lòng chọn ít nhất một phiếu nhập kho.');
+        }
+
+        $count = GoodsReceipt::onlyTrashed()->whereIn('id', $ids)->count();
+        GoodsReceipt::onlyTrashed()->whereIn('id', $ids)->forceDelete();
+
+        return back()->with('success', "Đã xóa vĩnh viễn {$count} phiếu nhập kho.");
     }
 
     private function completeReceipt(GoodsReceipt $goodsReceipt): void
     {
+        if (! $goodsReceipt->isDraft()) {
+            throw ValidationException::withMessages([
+                'status' => 'Phiếu nhập kho này đã được xử lý, không thể cộng tồn kho lần nữa.',
+            ]);
+        }
+
+        $this->assertValidReceiptItems($goodsReceipt);
+
         foreach ($goodsReceipt->items as $item) {
             $variant = ProductVariant::lockForUpdate()->find($item->product_variant_id);
             if (!$variant) continue;
 
+            $beforeQuantity = (int) $variant->stock;
+            $afterQuantity = $beforeQuantity + (int) $item->quantity;
+
             $variant->update([
-                'stock'      => $variant->stock + $item->quantity,
+                'stock'      => $afterQuantity,
                 'cost_price' => $item->cost_price,
+            ]);
+
+            StockMovement::create([
+                'product_variant_id' => $variant->id,
+                'reference_type' => 'goods_receipt',
+                'reference_id' => $goodsReceipt->id,
+                'movement_type' => 'import',
+                'quantity' => (int) $item->quantity,
+                'before_quantity' => $beforeQuantity,
+                'after_quantity' => $afterQuantity,
+                'created_by' => Auth::id(),
             ]);
         }
 
+        $now = now();
         $goodsReceipt->update([
             'status'       => GoodsReceipt::STATUS_COMPLETED,
-            'completed_at' => now(),
+            'confirmed_by' => Auth::id(),
+            'confirmed_at' => $now,
+            'completed_at' => $now,
+        ]);
+
+        $this->logGoodsReceipt($goodsReceipt, 'confirmed', "Xác nhận nhập kho \"{$goodsReceipt->code}\" và cộng tồn kho.");
+    }
+
+    private function assertValidReceiptItems(GoodsReceipt $goodsReceipt): void
+    {
+        if ($goodsReceipt->items->isEmpty()) {
+            throw ValidationException::withMessages([
+                'items' => 'Phiếu nhập kho phải có ít nhất một mặt hàng.',
+            ]);
+        }
+
+        foreach ($goodsReceipt->items as $item) {
+            if ((int) $item->quantity <= 0) {
+                throw ValidationException::withMessages([
+                    'items' => 'Số lượng nhập từng dòng phải lớn hơn 0.',
+                ]);
+            }
+
+            if ((float) $item->cost_price < 0) {
+                throw ValidationException::withMessages([
+                    'items' => 'Đơn giá nhập từng dòng không được âm.',
+                ]);
+            }
+        }
+    }
+
+    private function groupReceiptItems(array $items): array
+    {
+        $groupedItems = [];
+        foreach ($items as $item) {
+            $vid = $item['product_variant_id'];
+            if (isset($groupedItems[$vid])) {
+                $groupedItems[$vid]['quantity'] += (int) $item['quantity'];
+                $groupedItems[$vid]['cost_price'] = max((float) $groupedItems[$vid]['cost_price'], (float) $item['cost_price']);
+            } else {
+                $groupedItems[$vid] = [
+                    'product_variant_id' => (int) $item['product_variant_id'],
+                    'quantity' => (int) $item['quantity'],
+                    'cost_price' => (float) $item['cost_price'],
+                ];
+            }
+        }
+
+        return $groupedItems;
+    }
+
+    private function logGoodsReceipt(GoodsReceipt $goodsReceipt, string $action, string $message): void
+    {
+        GoodsReceiptLog::create([
+            'goods_receipt_id' => $goodsReceipt->id,
+            'user_id' => Auth::id(),
+            'action' => $action,
+            'message' => $message,
         ]);
     }
 

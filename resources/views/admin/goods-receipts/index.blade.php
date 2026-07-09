@@ -11,6 +11,7 @@
     .gr-badge--in-stock { background: #dcfce7; color: #166534; }
     .gr-badge--low-stock { background: #fef3c7; color: #92400e; }
     .gr-badge--out-of-stock { background: #fee2e2; color: #991b1b; }
+    .gr-badge--cancelled { background: #e2e8f0; color: #475569; }
 
     /* ── Chi tiết phiếu xuất kho / nhập kho ── */
     .si-show-table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -50,6 +51,20 @@
     .gr-row-status-trigger.is-open i { transform: rotate(180deg); }
 
     .gr-row-status-shared-panel { position: fixed; z-index: 1080; }
+
+    .gr-receipt-modal-dialog { max-width: min(1120px, 94vw); }
+    .gr-receipt-modal-content {
+        border: 0;
+        border-radius: 18px;
+        overflow: hidden;
+        box-shadow: 0 24px 70px rgba(15, 23, 42, .24);
+    }
+    .gr-receipt-modal-body {
+        max-height: min(82vh, 780px);
+        overflow: auto;
+        background: #f8fafc;
+        padding: 20px;
+    }
 
     /* ── Tabs ── */
     .gr-tabs {
@@ -207,12 +222,12 @@
                     <p class="product-header-desc mb-0">Theo dõi tồn kho thực tế và thực hiện điều chỉnh số lượng.</p>
                 </div>
                 <div class="product-header-actions">
-                    @if(($tab ?? 'overview') === 'overview')
-                        <button type="button" class="btn gr-btn-navy product-action-btn"
-                            onclick="alert('Tính năng Cập nhật nhanh số lượng đang được phát triển.')">
-                            <i class="fa-solid fa-chart-column me-1"></i> Cập nhật nhanh số lượng
-                        </button>
-                    @elseif($tab === 'inbound')
+                    {{-- @if(($tab ?? 'overview') === 'overview') --}}
+                       
+                    @if($tab === 'inbound')
+                        <a href="{{ route('admin.goods-receipts.trash') }}" class="btn btn-light border product-action-btn">
+                            <i class="fa-regular fa-trash-can me-1"></i> Thùng rác
+                        </a>
                         <button type="button" class="btn btn-dark product-action-btn"
                             data-bs-toggle="offcanvas" data-bs-target="#goodsReceiptOffcanvas">
                             <i class="fa-solid fa-plus me-1"></i> Tạo phiếu nhập kho
@@ -226,6 +241,9 @@
                             <i class="fa-solid fa-plus me-1"></i> Tạo phiếu xuất kho
                         </button>
                     @elseif($tab === 'stocktake')
+                        <a href="{{ route('admin.stocktakes.trash') }}" class="btn btn-light border product-action-btn">
+                            <i class="fa-regular fa-trash-can me-1"></i> Thùng rác
+                        </a>
                         <button type="button" class="btn gr-btn-emerald product-action-btn"
                             data-bs-toggle="modal" data-bs-target="#stocktakeModal">
                             <i class="fa-regular fa-clipboard me-1"></i> Lập phiếu kiểm kê
@@ -342,10 +360,10 @@
                             </div>
                         </div>
 
-                        <button type="button" class="gr-filter-icon-btn" title="Bộ lọc nâng cao (đang phát triển)"
+                        {{-- <button type="button" class="gr-filter-icon-btn" title="Bộ lọc nâng cao (đang phát triển)"
                             onclick="alert('Bộ lọc nâng cao đang được phát triển.')">
                             <i class="fa-solid fa-sliders"></i>
-                        </button>
+                        </button> --}}
                     </div>
                 </form>
 
@@ -389,7 +407,7 @@
                             value="{{ $keyword }}"
                             placeholder="Tìm theo mã phiếu hoặc tên nhà cung cấp..." autocomplete="off">
                         @php
-                            $inboundStatusLabelMap = ['' => 'Tất cả trạng thái', 'draft' => 'Nháp', 'completed' => 'Hoàn tất'];
+                            $inboundStatusLabelMap = ['' => 'Tất cả trạng thái', 'draft' => 'Nháp', 'completed' => 'Hoàn tất', 'adjusted' => 'Đã điều chỉnh', 'cancelled' => 'Đã hủy'];
                         @endphp
                         <input type="hidden" name="status" id="grInboundStatusFilter" data-admin-filter value="{{ $status }}">
                         <div class="hk-cat-filter gr-status-filter" id="hkGrInboundStatusFilter">
@@ -417,12 +435,107 @@
                     'variants' => $goodsReceiptVariants ?? collect(),
                 ])
 
-                <div class="offcanvas offcanvas-end gr-offcanvas" tabindex="-1" id="goodsReceiptShowOffcanvas">
+                <div class="modal fade" id="goodsReceiptShowModal" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered gr-receipt-modal-dialog">
+                        <div class="modal-content gr-receipt-modal-content">
+                            <div class="modal-header border-bottom bg-white">
+                                <h2 class="modal-title fw-bold" style="font-size:18px;color:#1f2937;">Chi tiết phiếu nhập kho</h2>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+                            </div>
+                            <div class="modal-body gr-receipt-modal-body" id="goodsReceiptShowBody">
+                                <div class="text-center py-5"><div class="spinner-border text-secondary" role="status"></div></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal điều chỉnh phiếu nhập kho -->
+                <div class="modal fade" id="goodsReceiptAdjustModal" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered" style="max-width: 550px;">
+                        <div class="modal-content" style="border: 0; border-radius: 14px; overflow: hidden; box-shadow: 0 20px 50px rgba(15,23,42,.18);">
+                            <div class="modal-header border-bottom bg-white py-3 px-4">
+                                <h5 class="modal-title fw-bold" style="font-size: 16.5px; color: #0F172A;" id="grAdjustModalTitle">Điều chỉnh phiếu nhập kho</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+                            </div>
+                            <form id="goodsReceiptAdjustForm" method="POST">
+                                @csrf
+                                @method('PATCH')
+                                <div class="modal-body p-4 bg-light">
+                                    <div class="alert alert-warning border border-warning-subtle d-flex gap-2" style="font-size: 12.5px; border-radius: 10px; background: #FFFBEB; color: #92400E;">
+                                        <i class="fa-solid fa-triangle-exclamation mt-1"></i>
+                                        <div>
+                                            <strong>Lưu ý quan trọng:</strong> Hệ thống sẽ tự động sinh một phiếu xuất kho tương ứng để khấu trừ số lượng sản phẩm đã cộng sai khi hoàn tất.
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold d-block" style="font-size: 13px; color: #374151;">Phương án xử lý <span class="text-danger">*</span></label>
+                                        <div class="d-flex flex-column gap-2 mt-2">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="radio" name="adjustment_type" id="adj_cancel" value="cancel" checked style="cursor: pointer;">
+                                                <label class="form-check-label" for="adj_cancel" style="cursor: pointer; font-size:13px; font-weight:600;">
+                                                    <span class="badge bg-danger-subtle text-danger px-2 py-0.5" style="font-size:11px;">Hủy bỏ phiếu</span> (Phiếu nhập bị sai và hủy bỏ hẳn)
+                                                </label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="radio" name="adjustment_type" id="adj_correct" value="adjust" style="cursor: pointer;">
+                                                <label class="form-check-label" for="adj_correct" style="cursor: pointer; font-size:13px; font-weight:600;">
+                                                    <span class="badge bg-warning-subtle text-warning-emphasis px-2 py-0.5" style="font-size:11px;">Điều chỉnh phiếu</span> (Sẽ nhập lại phiếu mới chính xác thay thế)
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-0">
+                                        <label for="adjustment_reason" class="form-label fw-bold" style="font-size: 13px; color: #374151;">Lý do điều chỉnh / hủy <span class="text-danger">*</span></label>
+                                        <textarea class="form-control" id="adjustment_reason" name="adjustment_reason" rows="3" 
+                                            placeholder="Nhập lý do chi tiết tại đây..." required style="border-radius: 8px; font-size: 13px; border-color: #D8E0EA; resize: none;"></textarea>
+                                    </div>
+                                </div>
+                                <div class="modal-footer border-top bg-white py-3 px-4 d-flex justify-content-end gap-2">
+                                    <button type="button" class="btn btn-light border" data-bs-dismiss="modal" style="border-radius: 8px; font-size: 13px; font-weight: 700; min-height:38px;">Hủy</button>
+                                    <button type="submit" class="btn btn-dark" style="background: #059669 !important; border-color: #059669 !important; border-radius: 8px; font-size: 13px; font-weight: 700; min-height:38px;">Xác nhận</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                <!-- Offcanvas chỉnh sửa phiếu nhập kho (nháp) -->
+                <div class="offcanvas offcanvas-end gr-offcanvas" tabindex="-1" id="goodsReceiptEditOffcanvas" aria-labelledby="goodsReceiptEditOffcanvasLabel">
                     <div class="offcanvas-header border-bottom">
-                        <h2 class="offcanvas-title fw-bold" style="font-size:16px;">Chi tiết phiếu nhập kho</h2>
+                        <div>
+                            <div class="d-flex align-items-center gap-2">
+                                <h2 class="offcanvas-title mb-0" id="goodsReceiptEditOffcanvasLabel" style="font-size: 18px; font-weight: 800; color: #0F172A;">Chỉnh sửa phiếu nhập kho</h2>
+                                <span class="gr-badge gr-badge--draft">Nháp</span>
+                            </div>
+                            <p class="mb-0 text-muted" style="font-size:13px;">Chỉnh sửa nhà cung cấp và danh sách mặt hàng của phiếu nháp.</p>
+                        </div>
                         <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Đóng"></button>
                     </div>
-                    <div class="offcanvas-body flex-grow-1 overflow-auto" id="goodsReceiptShowBody"></div>
+                    <div class="offcanvas-body flex-grow-1 overflow-auto p-0" id="goodsReceiptEditBody">
+                        <div class="text-center py-5">
+                            <div class="spinner-border text-secondary" role="status"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Offcanvas chỉnh sửa phiếu xuất kho (nháp) -->
+                <div class="offcanvas offcanvas-end gr-offcanvas" tabindex="-1" id="stockIssueEditOffcanvas" aria-labelledby="stockIssueEditOffcanvasLabel">
+                    <div class="offcanvas-header border-bottom">
+                        <div>
+                            <div class="d-flex align-items-center gap-2">
+                                <h2 class="offcanvas-title mb-0" id="stockIssueEditOffcanvasLabel" style="font-size: 18px; font-weight: 800; color: #0F172A;">Chỉnh sửa phiếu xuất kho</h2>
+                                <span class="gr-badge gr-badge--draft">Nháp</span>
+                            </div>
+                            <p class="mb-0 text-muted" style="font-size:13px;">Chỉnh sửa loại xuất, kho xuất và danh sách mặt hàng của phiếu nháp.</p>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Đóng"></button>
+                    </div>
+                    <div class="offcanvas-body flex-grow-1 overflow-auto p-0" id="stockIssueEditBody">
+                        <div class="text-center py-5">
+                            <div class="spinner-border text-secondary" role="status"></div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="hk-cat-panel gr-row-status-shared-panel" id="grRowStatusPanel" hidden style="width:160px;">
@@ -444,7 +557,7 @@
                             value="{{ $keyword }}"
                             placeholder="Tìm theo mã phiếu xuất..." autocomplete="off">
                         @php
-                            $outboundStatusLabelMap = ['' => 'Tất cả trạng thái', 'draft' => 'Nháp', 'issued' => 'Đã xuất kho'];
+                            $outboundStatusLabelMap = ['' => 'Tất cả trạng thái', 'draft' => 'Nháp', 'completed' => 'Đã xuất kho', 'cancelled' => 'Đã hủy'];
                         @endphp
                         <input type="hidden" name="status" id="grOutboundStatusFilter" data-admin-filter value="{{ $status }}">
                         <div class="hk-cat-filter gr-status-filter" id="hkGrOutboundStatusFilter">
@@ -540,6 +653,14 @@
                                 <div class="spinner-border text-secondary" role="status"></div>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <div class="hk-cat-panel gr-row-status-shared-panel" id="grRowStatusPanel" hidden style="width:160px;">
+                    <div class="hk-cat-list">
+                        <button type="button" class="hk-cat-item is-active" data-value="pending">Chờ xử lý</button>
+                        <button type="button" class="hk-cat-item" data-value="approved" data-status-action-key="approve">Đã duyệt</button>
+                        <button type="button" class="hk-cat-item" data-value="rejected" data-status-action-key="reject">Đã hủy</button>
                     </div>
                 </div>
 
@@ -786,11 +907,15 @@
         (function () {
             const sharedPanel = document.getElementById('grRowStatusPanel');
             const actionBtn   = document.getElementById('grRowStatusIssueBtn');
-            if (!sharedPanel || !actionBtn) return;
+            if (!sharedPanel) return;
 
             function closePanel() {
                 sharedPanel.hidden = true;
                 document.querySelectorAll('.gr-row-status-trigger.is-open').forEach(t => t.classList.remove('is-open'));
+            }
+
+            function datasetKeyFor(action, suffix) {
+                return 'status' + action.charAt(0).toUpperCase() + action.slice(1) + suffix;
             }
 
             document.addEventListener('click', function (e) {
@@ -803,11 +928,19 @@
                         const rect = trigger.getBoundingClientRect();
                         sharedPanel.style.top  = (rect.bottom + 6) + 'px';
                         sharedPanel.style.left = Math.max(8, rect.right - 160) + 'px';
-                        actionBtn.dataset.statusAction = trigger.dataset.statusAction || 'issue';
-                        actionBtn.dataset.statusUrl = trigger.dataset.statusUrl || trigger.dataset.issueUrl;
-                        actionBtn.dataset.statusCode = trigger.dataset.statusCode || trigger.dataset.issueCode;
-                        actionBtn.dataset.statusConfirm = trigger.dataset.statusConfirm
-                            || `Xuất kho phiếu "${trigger.dataset.issueCode}" sẽ trừ tồn kho ngay lập tức. Tiếp tục?`;
+                        if (actionBtn) {
+                            actionBtn.dataset.statusAction = trigger.dataset.statusAction || 'issue';
+                            actionBtn.dataset.statusUrl = trigger.dataset.statusUrl || trigger.dataset.issueUrl;
+                            actionBtn.dataset.statusCode = trigger.dataset.statusCode || trigger.dataset.issueCode;
+                            actionBtn.dataset.statusConfirm = trigger.dataset.statusConfirm
+                                || `Xuất kho phiếu "${trigger.dataset.issueCode}" sẽ trừ tồn kho ngay lập tức. Tiếp tục?`;
+                        }
+                        sharedPanel.querySelectorAll('[data-status-action-key]').forEach(function (item) {
+                            const action = item.dataset.statusActionKey;
+                            item.dataset.statusUrl = trigger.dataset[datasetKeyFor(action, 'Url')] || '';
+                            item.dataset.statusCode = trigger.dataset.statusCode || trigger.dataset.issueCode || '';
+                            item.dataset.statusConfirm = trigger.dataset[datasetKeyFor(action, 'Confirm')] || '';
+                        });
                         sharedPanel.hidden = false;
                         trigger.classList.add('is-open');
                     }
@@ -816,9 +949,13 @@
 
                 const item = e.target.closest('#grRowStatusPanel .hk-cat-item');
                 if (item) {
-                    if (item.dataset.value === actionBtn.dataset.statusAction) {
-                        const url = actionBtn.dataset.statusUrl;
-                        const message = actionBtn.dataset.statusConfirm || 'Bạn có chắc chắn muốn cập nhật trạng thái phiếu này?';
+                    const isGenericAction = item.dataset.statusActionKey && item.dataset.statusUrl;
+                    const isLegacyAction = actionBtn && item.dataset.value === actionBtn.dataset.statusAction;
+
+                    if (isGenericAction || isLegacyAction) {
+                        const url = isGenericAction ? item.dataset.statusUrl : actionBtn.dataset.statusUrl;
+                        const message = (isGenericAction ? item.dataset.statusConfirm : actionBtn.dataset.statusConfirm)
+                            || 'Bạn có chắc chắn muốn cập nhật trạng thái phiếu này?';
                         if (url && confirm(message)) {
                             const form = document.createElement('form');
                             form.method = 'POST';
@@ -844,30 +981,68 @@
             window.addEventListener('resize', closePanel);
         })();
 
-        /* ── Xem chi tiết phiếu xuất kho: panel trượt từ phải, nạp nội dung qua AJAX ──
+        /* ── Xem chi tiết phiếu nhập kho: popup giữa màn hình, nạp nội dung qua AJAX ──
            Dùng event delegation vì các dòng bảng được nạp lại qua AJAX. */
-        document.addEventListener('click', function (e) {
-            const trigger = e.target.closest('[data-goods-receipt-show-trigger]');
-            if (!trigger) return;
-
-            const url = trigger.dataset.showUrl;
-            const offcanvasEl = document.getElementById('goodsReceiptShowOffcanvas');
+        (function () {
+            const modalEl = document.getElementById('goodsReceiptShowModal');
             const body = document.getElementById('goodsReceiptShowBody');
-            if (!url || !offcanvasEl || !body) return;
+            if (!modalEl || !body) return;
 
-            body.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-secondary" role="status"></div></div>';
-            bootstrap.Offcanvas.getOrCreateInstance(offcanvasEl).show();
+            document.addEventListener('click', function (e) {
+                const trigger = e.target.closest('[data-goods-receipt-show-trigger]');
+                if (!trigger) return;
 
-            fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
-                .then(res => {
-                    if (!res.ok) throw new Error('request-failed');
-                    return res.json();
-                })
-                .then(data => { body.innerHTML = data.html; })
-                .catch(() => {
-                    body.innerHTML = '<div class="text-danger p-4">Không thể tải chi tiết phiếu nhập kho. Vui lòng thử lại.</div>';
-                });
-        });
+                const url = trigger.dataset.showUrl;
+                if (!url) return;
+
+                body.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-secondary" role="status"></div></div>';
+                bootstrap.Modal.getOrCreateInstance(modalEl).show();
+
+                fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
+                    .then(res => {
+                        if (!res.ok) throw new Error('request-failed');
+                        return res.json();
+                    })
+                    .then(data => { body.innerHTML = data.html; })
+                    .catch(() => {
+                        body.innerHTML = '<div class="text-danger p-4">Không thể tải chi tiết phiếu nhập kho. Vui lòng thử lại.</div>';
+                    });
+            });
+
+            modalEl.addEventListener('hidden.bs.modal', function () {
+                body.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-secondary" role="status"></div></div>';
+            });
+        })();
+
+        (function () {
+            const adjustModalEl = document.getElementById('goodsReceiptAdjustModal');
+            const adjustForm    = document.getElementById('goodsReceiptAdjustForm');
+            const adjustTitle   = document.getElementById('grAdjustModalTitle');
+            const reasonInput   = document.getElementById('adjustment_reason');
+            const showModalEl   = document.getElementById('goodsReceiptShowModal');
+
+            if (!adjustModalEl || !adjustForm) return;
+
+            document.addEventListener('click', function (e) {
+                const trigger = e.target.closest('[data-goods-receipt-adjust-trigger]');
+                if (!trigger) return;
+
+                e.preventDefault();
+                const code = trigger.dataset.code || '';
+                const url = trigger.dataset.adjustUrl;
+
+                adjustForm.action = url;
+                if (adjustTitle) adjustTitle.textContent = `Điều chỉnh phiếu nhập kho ${code}`;
+                if (reasonInput) reasonInput.value = '';
+
+                // Đóng modal chi tiết trước để tránh chồng backdrop
+                if (showModalEl) {
+                    bootstrap.Modal.getOrCreateInstance(showModalEl).hide();
+                }
+
+                bootstrap.Modal.getOrCreateInstance(adjustModalEl).show();
+            });
+        }());
 
         /* ── Xem chi tiết phiếu xuất kho: popup AJAX giống thẻ kho ──
            Dùng event delegation vì các dòng bảng được nạp lại qua AJAX. */
@@ -898,6 +1073,102 @@
             });
 
             modalEl.addEventListener('hidden.bs.modal', function () {
+                body.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-secondary" role="status"></div></div>';
+            });
+        })();
+
+        /* ── Chỉnh sửa phiếu nhập kho (nháp): nạp form qua AJAX vào Offcanvas ── */
+        (function () {
+            const offcanvasEl = document.getElementById('goodsReceiptEditOffcanvas');
+            const body        = document.getElementById('goodsReceiptEditBody');
+            const showModalEl = document.getElementById('goodsReceiptShowModal');
+
+            if (!offcanvasEl || !body) return;
+
+            document.addEventListener('click', function (e) {
+                const trigger = e.target.closest('[data-goods-receipt-edit-trigger]');
+                if (!trigger) return;
+
+                e.preventDefault();
+                const url = trigger.dataset.editUrl;
+                if (!url) return;
+
+                body.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-secondary" role="status"></div></div>';
+
+                // Đóng modal chi tiết nếu đang mở để tránh đè backdrop
+                if (showModalEl) {
+                    bootstrap.Modal.getOrCreateInstance(showModalEl).hide();
+                }
+
+                // Mở offcanvas chỉnh sửa
+                bootstrap.Offcanvas.getOrCreateInstance(offcanvasEl).show();
+
+                // Gửi request AJAX lấy HTML form
+                fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
+                    .then(res => {
+                        if (!res.ok) throw new Error('request-failed');
+                        return res.json();
+                    })
+                    .then(data => {
+                        body.innerHTML = data.html;
+                        // Execute internal script tag inside data.html manually
+                        const scripts = body.getElementsByTagName('script');
+                        for (let i = 0; i < scripts.length; i++) {
+                            eval(scripts[i].innerText);
+                        }
+                    })
+                    .catch(() => {
+                        body.innerHTML = '<div class="text-danger p-4">Không thể tải nội dung chỉnh sửa. Vui lòng thử lại.</div>';
+                    });
+            });
+
+            offcanvasEl.addEventListener('hidden.bs.offcanvas', function () {
+                body.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-secondary" role="status"></div></div>';
+            });
+        })();
+
+        /* ── Chỉnh sửa phiếu xuất kho (nháp): nạp form qua AJAX vào Offcanvas ── */
+        (function () {
+            const offcanvasEl = document.getElementById('stockIssueEditOffcanvas');
+            const body        = document.getElementById('stockIssueEditBody');
+            const showModalEl = document.getElementById('goodsReceiptShowModal');
+
+            if (!offcanvasEl || !body) return;
+
+            document.addEventListener('click', function (e) {
+                const trigger = e.target.closest('[data-stock-issue-edit-trigger]');
+                if (!trigger) return;
+
+                e.preventDefault();
+                const url = trigger.dataset.editUrl;
+                if (!url) return;
+
+                body.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-secondary" role="status"></div></div>';
+
+                if (showModalEl) {
+                    bootstrap.Modal.getOrCreateInstance(showModalEl).hide();
+                }
+
+                bootstrap.Offcanvas.getOrCreateInstance(offcanvasEl).show();
+
+                fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
+                    .then(res => {
+                        if (!res.ok) throw new Error('request-failed');
+                        return res.json();
+                    })
+                    .then(data => {
+                        body.innerHTML = data.html;
+                        const scripts = body.getElementsByTagName('script');
+                        for (let i = 0; i < scripts.length; i++) {
+                            eval(scripts[i].innerText);
+                        }
+                    })
+                    .catch(() => {
+                        body.innerHTML = '<div class="text-danger p-4">Không thể tải nội dung chỉnh sửa. Vui lòng thử lại.</div>';
+                    });
+            });
+
+            offcanvasEl.addEventListener('hidden.bs.offcanvas', function () {
                 body.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-secondary" role="status"></div></div>';
             });
         })();

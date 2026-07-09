@@ -43,6 +43,10 @@
                         <td>
                             @if($receipt->isCompleted())
                                 <span class="gr-badge gr-badge--completed">Hoàn tất</span>
+                            @elseif($receipt->isAdjusted())
+                                <span class="gr-badge gr-badge--out-of-stock">Đã điều chỉnh</span>
+                            @elseif($receipt->status === 'cancelled')
+                                <span class="gr-badge gr-badge--cancelled">Đã hủy</span>
                             @else
                                 <button type="button" class="gr-row-status-trigger"
                                     data-row-status-trigger
@@ -66,6 +70,15 @@
                                     title="Xem chi tiết">
                                     <i class="fa-regular fa-eye"></i>
                                 </button>
+                                @if($receipt->isDraft())
+                                    <button type="button"
+                                        class="product-more-btn d-inline-flex align-items-center justify-content-center text-dark"
+                                        data-goods-receipt-edit-trigger
+                                        data-edit-url="{{ route('admin.goods-receipts.edit', $receipt->id) }}"
+                                        title="Chỉnh sửa phiếu nháp">
+                                        <i class="fa-regular fa-pen-to-square"></i>
+                                    </button>
+                                @endif
                                 @if($receipt->isDraft())
                                     <button type="button" class="product-more-btn text-danger d-inline-flex align-items-center justify-content-center"
                                         data-delete-url="{{ route('admin.goods-receipts.destroy', $receipt->id) }}"

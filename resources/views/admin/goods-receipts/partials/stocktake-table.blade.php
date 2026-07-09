@@ -35,7 +35,16 @@
                             @elseif($stocktake->isRejected())
                                 <span class="gr-badge gr-badge--out-of-stock">Đã hủy</span>
                             @else
-                                <span class="gr-badge gr-badge--draft">Chờ xử lý</span>
+                                <button type="button" class="gr-row-status-trigger"
+                                    data-row-status-trigger
+                                    data-status-approve-url="{{ route('admin.stocktakes.approve', $stocktake->id) }}"
+                                    data-status-reject-url="{{ route('admin.stocktakes.reject', $stocktake->id) }}"
+                                    data-status-code="{{ $stocktake->code }}"
+                                    data-status-approve-confirm="Duyệt phiếu kiểm kê &quot;{{ $stocktake->code }}&quot; sẽ cân bằng tồn kho và tự động sinh phiếu nhập/xuất kho nếu có chênh lệch. Tiếp tục?"
+                                    data-status-reject-confirm="Hủy bỏ phiếu kiểm kê &quot;{{ $stocktake->code }}&quot;? Phiếu sẽ chuyển sang trạng thái Đã hủy.">
+                                    <span>Chờ xử lý</span>
+                                    <i class="fa-solid fa-chevron-down" style="font-size:9px;"></i>
+                                </button>
                             @endif
                         </td>
                         <td>{{ $stocktake->created_at?->format('d/m/Y H:i') ?? '—' }}</td>
@@ -49,13 +58,24 @@
                             @endif
                         </td>
                         <td class="text-end pe-4">
-                            <button type="button"
-                                class="product-more-btn d-inline-flex align-items-center justify-content-center"
-                                data-stocktake-show-trigger
-                                data-show-url="{{ route('admin.stocktakes.show', $stocktake->id) }}"
-                                title="Xem chi tiết">
-                                <i class="fa-regular fa-eye"></i>
-                            </button>
+                            <div class="d-inline-flex align-items-center gap-1">
+                                <button type="button"
+                                    class="product-more-btn d-inline-flex align-items-center justify-content-center"
+                                    data-stocktake-show-trigger
+                                    data-show-url="{{ route('admin.stocktakes.show', $stocktake->id) }}"
+                                    title="Xem chi tiết">
+                                    <i class="fa-regular fa-eye"></i>
+                                </button>
+                                @if($stocktake->isPending())
+                                    <button type="button" class="product-more-btn text-danger d-inline-flex align-items-center justify-content-center"
+                                        data-delete-url="{{ route('admin.stocktakes.destroy', $stocktake->id) }}"
+                                        data-delete-name="{{ $stocktake->code }}"
+                                        data-delete-type="phiếu kiểm kê"
+                                        title="Xóa">
+                                        <i class="fa-regular fa-trash-can"></i>
+                                    </button>
+                                @endif
+                            </div>
                         </td>
                     </tr>
                 @empty

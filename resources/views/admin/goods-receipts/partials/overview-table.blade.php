@@ -65,7 +65,7 @@
                                 data-stock-card-trigger
                                 data-stock-card-url="{{ route('admin.goods-receipts.stockCard', $variant->id) }}"
                                 title="Xem thẻ kho">
-                                <i class="fa-regular fa-rectangle-list"></i>
+                                <i class="fa-regular fa-eye"></i>
                             </button>
                         </td>
                     </tr>

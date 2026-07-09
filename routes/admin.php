@@ -17,6 +17,7 @@ use App\Http\Controllers\Admin\ProfileController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\VoucherController;
 use App\Http\Controllers\Admin\CollectionController;
+use App\Http\Controllers\Admin\WarehouseController;
 
 $accountRoutes = function (string $accountType): void {
     Route::get('/', [UserController::class, 'index'])->name('list')->defaults('account_type', $accountType);
@@ -150,9 +151,22 @@ Route::middleware(['auth.login', 'admin'])
                 Route::get('/stock-card/{variant}', [GoodsReceiptController::class, 'stockCard'])->name('stockCard');
                 Route::post('/', [GoodsReceiptController::class, 'store'])->name('store');
                 Route::post('/bulk-delete', [GoodsReceiptController::class, 'bulkDelete'])->name('bulkDelete');
+                Route::post('/trash/bulk-restore', [GoodsReceiptController::class, 'bulkRestore'])->name('bulkRestore');
+                Route::post('/trash/bulk-force-delete', [GoodsReceiptController::class, 'bulkForceDelete'])->name('bulkForceDelete');
+                Route::get('/trash', [GoodsReceiptController::class, 'trash'])->name('trash');
+                Route::get('/{id}/edit', [GoodsReceiptController::class, 'edit'])->name('edit');
+                Route::put('/{id}', [GoodsReceiptController::class, 'update'])->name('update');
                 Route::get('/{id}', [GoodsReceiptController::class, 'show'])->name('show');
                 Route::patch('/{id}/complete', [GoodsReceiptController::class, 'complete'])->name('complete');
+                Route::patch('/{id}/adjust', [GoodsReceiptController::class, 'adjust'])->name('adjust');
+                Route::patch('/{id}/restore', [GoodsReceiptController::class, 'restore'])->name('restore');
+                Route::delete('/{id}/force-delete', [GoodsReceiptController::class, 'forceDelete'])->name('forceDelete');
                 Route::delete('/{id}', [GoodsReceiptController::class, 'destroy'])->name('destroy');
+            });
+
+        Route::middleware('permission:manage-goods-receipts')
+            ->prefix('warehouses')->name('warehouses.')->group(function () {
+                Route::post('/', [WarehouseController::class, 'store'])->name('store');
             });
 
         Route::middleware('permission:manage-goods-receipts')
@@ -164,16 +178,25 @@ Route::middleware(['auth.login', 'admin'])
                 Route::post('/trash/bulk-force-delete', [StockIssueController::class, 'bulkForceDelete'])->name('bulkForceDelete');
                 $trashRoutes(StockIssueController::class)();
                 Route::get('/{id}', [StockIssueController::class, 'show'])->name('show');
-                Route::patch('/{id}/issue', [StockIssueController::class, 'issue'])->name('issue');
+                Route::get('/{id}/edit', [StockIssueController::class, 'edit'])->name('edit');
+                Route::put('/{id}', [StockIssueController::class, 'update'])->name('update');
+                Route::patch('/{id}/issue', [StockIssueController::class, 'confirm'])->name('issue');
+                Route::patch('/{id}/cancel', [StockIssueController::class, 'cancel'])->name('cancel');
                 Route::delete('/{id}', [StockIssueController::class, 'destroy'])->name('destroy');
             });
 
         Route::middleware('permission:manage-goods-receipts')
             ->prefix('stocktakes')->name('stocktakes.')->group(function () {
                 Route::post('/', [StocktakeController::class, 'store'])->name('store');
+                Route::post('/trash/bulk-restore', [StocktakeController::class, 'bulkRestore'])->name('bulkRestore');
+                Route::post('/trash/bulk-force-delete', [StocktakeController::class, 'bulkForceDelete'])->name('bulkForceDelete');
+                Route::get('/trash', [StocktakeController::class, 'trash'])->name('trash');
                 Route::get('/{id}', [StocktakeController::class, 'show'])->name('show');
                 Route::patch('/{id}/approve', [StocktakeController::class, 'approve'])->name('approve');
                 Route::patch('/{id}/reject', [StocktakeController::class, 'reject'])->name('reject');
+                Route::patch('/{id}/restore', [StocktakeController::class, 'restore'])->name('restore');
+                Route::delete('/{id}/force-delete', [StocktakeController::class, 'forceDelete'])->name('forceDelete');
+                Route::delete('/{id}', [StocktakeController::class, 'destroy'])->name('destroy');
             });
 
         Route::prefix('orders')->name('orders.')->group(function () {

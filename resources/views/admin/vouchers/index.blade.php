@@ -569,18 +569,21 @@
                             body: new FormData(form),
                         });
 
-                        if (!res.ok) {
-                            if (res.status === 422) {
-                                alert('Du lieu chua hop le. Vui long kiem tra lai form.');
-                                return;
-                            }
-                            throw new Error('update failed');
+                        if (res.status === 422) {
+                            const data = await res.json();
+                            const msgs = Object.values(data.errors || {}).flat();
+                            showAdminToast(msgs.length ? msgs.join('<br>') : 'Dữ liệu chưa hợp lệ. Vui lòng kiểm tra lại.', 'error');
+                            return;
                         }
 
+                        if (!res.ok) throw new Error('update failed');
+
+                        const data = await res.json();
                         closeModal();
-                        window.location.reload();
+                        showAdminToast(data.message || 'Cập nhật voucher thành công.', 'success');
+                        setTimeout(() => window.reloadAdminTable?.(), 600);
                     } catch {
-                        alert('Khong the cap nhat voucher. Vui long thu lai.');
+                        showAdminToast('Không thể cập nhật voucher. Vui lòng thử lại.', 'error');
                     } finally {
                         submitBtn?.removeAttribute('disabled');
                     }
@@ -883,5 +886,46 @@
         }());
 
     }());
+
+    /* ── Toast helper — dùng chung toàn trang voucher ── */
+    window.showAdminToast = function (message, type) {
+        type = type || 'success';
+        var container = document.getElementById('toast-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'toast-container';
+            container.style.cssText = 'position:fixed;top:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:10px;pointer-events:none;';
+            document.body.appendChild(container);
+        }
+
+        var iconPaths = {
+            success: '<path d="M8 12l2.5 2.5L16 9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>',
+            error:   '<path d="M9 9l6 6M15 9l-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>',
+            warning: '<path d="M12 9v4M12 17h.01" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>',
+            info:    '<path d="M12 16v-4M12 8h.01" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>',
+        };
+
+        var toast = document.createElement('div');
+        toast.className = 'custom-toast server-toast toast-' + type;
+        toast.innerHTML =
+            '<div class="toast-content">' +
+                '<div class="toast-icon">' +
+                    '<svg viewBox="0 0 24 24" width="22" height="22" style="flex-shrink:0;display:block;">' +
+                        (iconPaths[type] || iconPaths.success) +
+                    '</svg>' +
+                '</div>' +
+                '<div class="toast-message">' + message + '</div>' +
+            '</div>' +
+            '<span class="toast-close" onclick="closeServerToast(this)">&times;</span>';
+
+        container.appendChild(toast);
+
+        setTimeout(function () {
+            if (document.body.contains(toast)) {
+                toast.classList.add('hiding');
+                setTimeout(function () { toast.remove(); }, 300);
+            }
+        }, 5000);
+    };
     </script>
 @endpush

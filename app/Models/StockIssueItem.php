@@ -12,19 +12,31 @@ class StockIssueItem extends Model
 
     protected $fillable = [
         'stock_issue_id',
+        'product_id',
         'product_variant_id',
         'quantity',
-        'unit_price',
+        'cost_price',
+        'sale_price',
+        'total_cost',
+        'total_sale',
     ];
 
     protected $casts = [
         'quantity'   => 'integer',
-        'unit_price' => 'decimal:2',
+        'cost_price' => 'decimal:2',
+        'sale_price' => 'decimal:2',
+        'total_cost' => 'decimal:2',
+        'total_sale' => 'decimal:2',
     ];
 
     public function stockIssue(): BelongsTo
     {
         return $this->belongsTo(StockIssue::class);
+    }
+
+    public function product(): BelongsTo
+    {
+        return $this->belongsTo(Product::class);
     }
 
     public function productVariant(): BelongsTo
