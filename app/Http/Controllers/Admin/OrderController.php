@@ -421,7 +421,8 @@ class OrderController extends Controller
                 'total_money'       => $totalMoney,
                 'shipping_fee'      => $validated['shipping_fee'],
                 'status'            => $validated['status'],
-                'payment_status'    => $validated['payment_status'],
+                // Đơn tạo thẳng ở trạng thái "Hoàn thành" coi như đã thu tiền → tự đánh dấu đã thanh toán.
+                'payment_status'    => $validated['status'] === 'completed' ? 'paid' : $validated['payment_status'],
             ]);
 
             foreach ($validated['items'] as $item) {
@@ -498,9 +499,13 @@ class OrderController extends Controller
             $oldStatus = $order->status;
             $newStatus = $request->input('status');
 
+            // Đơn "Hoàn thành" coi như đã thu tiền (COD thu khi giao xong) → tự đánh dấu đã thanh toán,
+            // tránh tình trạng đơn hoàn thành nhưng payment_status vẫn "Chưa thanh toán".
+            $paymentStatus = $newStatus === 'completed' ? 'paid' : $request->input('payment_status');
+
             $order->update([
                 'status' => $newStatus,
-                'payment_status' => $request->input('payment_status'),
+                'payment_status' => $paymentStatus,
                 'note' => $request->input('note'),
             ]);
 

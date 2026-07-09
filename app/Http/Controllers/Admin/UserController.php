@@ -6,8 +6,10 @@ use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
+use OwenIt\Auditing\Events\AuditCustom;
 use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
@@ -326,7 +328,14 @@ class UserController extends Controller
         if ($canChangeRole) {
             $roleForUser = $this->roleForContext($context['type'], $validated['role_id'] ?? null, $user);
             if ($roleForUser) {
+                $oldRoleName = $user->roles()->first()?->name;
                 $user->syncRoles([$roleForUser->name]);
+
+                // Vai trò được lưu ở bảng pivot của Spatie nên không được audit
+                // tự động — ghi thủ công một bản ghi "Đổi vai trò" vào nhật ký.
+                if ($oldRoleName !== $roleForUser->name) {
+                    $this->recordRoleChangeAudit($user, $oldRoleName, $roleForUser->name);
+                }
             }
         }
 
@@ -521,6 +530,24 @@ class UserController extends Controller
         $user->forceDelete();
 
         return redirect()->route($context['routePrefix'].'.trash')->with('success', 'Xóa vĩnh viễn '.$context['itemLabelLower'].' thành công');
+    }
+
+    /**
+     * Ghi một bản ghi nhật ký "Đổi vai trò" cho tài khoản.
+     *
+     * Vai trò lưu ở bảng pivot của Spatie nên laravel-auditing không tự ghi,
+     * vì vậy phải phát AuditCustom thủ công với nhãn tiếng Việt.
+     */
+    private function recordRoleChangeAudit(User $user, ?string $oldRole, string $newRole): void
+    {
+        $labels = UserRole::labels();
+
+        $user->auditEvent = 'role_updated';
+        $user->isCustomEvent = true;
+        $user->auditCustomOld = ['role' => $oldRole ? ($labels[$oldRole] ?? $oldRole) : 'Chưa có vai trò'];
+        $user->auditCustomNew = ['role' => $labels[$newRole] ?? $newRole];
+
+        Event::dispatch(new AuditCustom($user));
     }
 
     private function validationErrorResponse(Request $request, string $field, string $message)
