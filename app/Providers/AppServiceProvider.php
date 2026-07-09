@@ -11,6 +11,7 @@ use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Passport\Passport;
@@ -31,6 +32,10 @@ class AppServiceProvider extends ServiceProvider
     {
         Paginator::useBootstrapFive();
         Passport::enablePasswordGrant();
+
+        if ($this->app->environment('production')) {
+            URL::forceScheme('https');
+        }
 
         // Ghi nhật ký đăng nhập / đăng xuất của nhân sự quản trị
         Event::listen(Login::class, [LogAuthenticationActivity::class, 'handleLogin']);

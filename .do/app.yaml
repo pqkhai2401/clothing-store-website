@@ -14,7 +14,7 @@ services:
     instance_size_slug: apps-s-1vcpu-0.5gb
     routes:
       - path: /
-    envs:
+    envs: &api_envs
       - key: APP_NAME
         value: "HK Store"
         scope: RUN_AND_BUILD_TIME
@@ -141,6 +141,19 @@ services:
       - key: GEMINI_DEMO_MODE
         value: "false"
         scope: RUN_TIME
+
+workers:
+  - name: queue-worker
+    github:
+      branch: main
+      deploy_on_push: true
+      repo: pqkhai2401/clothing-store-website
+    build_command: npm ci && npm run build && composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
+    run_command: php artisan queue:work --tries=3 --timeout=90 --sleep=3
+    source_dir: /
+    instance_count: 1
+    instance_size_slug: apps-s-1vcpu-0.5gb
+    envs: *api_envs
 
 databases:
   - name: clothing-store-db
