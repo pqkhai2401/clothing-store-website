@@ -87,18 +87,11 @@ class OrderController extends Controller
         try {
             DB::beginTransaction();
 
-            // Bước 1: Cập nhật trạng thái đơn hàng thành 'cancelled'
+            // Chỉ cho hủy đơn ở trạng thái pending/unpaid (đã chặn ở trên). Đơn pending CHƯA bị
+            // trừ kho (kho chỉ trừ khi admin chuyển sang 'processing'), nên KHÔNG cộng lại tồn —
+            // cộng lại sẽ tạo tồn kho ảo.
             $order->update(['status' => 'cancelled']);
 
-            // Bước 2: Hoàn lại tồn kho cho từng sản phẩm trong đơn
-            foreach ($order->orderItems as $item) {
-                if ($item->productVariant) {
-                    // Cộng lại số lượng đã mua vào stock của biến thể
-                    $item->productVariant->increment('stock', $item->quantity);
-                }
-            }
-
-            // Bước 3: Mọi thứ thành công — commit xuống database
             DB::commit();
 
             return response()->json([

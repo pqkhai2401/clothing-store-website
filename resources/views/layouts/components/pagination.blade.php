@@ -7,6 +7,9 @@
     $bulkDeleteLabel = $bulkDeleteLabel ?? 'Xóa đã chọn';
     $bulkRestoreUrl  = $bulkRestoreUrl ?? null;
     $bulkStatusUrl   = $bulkStatusUrl ?? null;
+    $bulkCustomActionsUrl   = $bulkCustomActionsUrl ?? null;
+    $bulkCustomActionsField = $bulkCustomActionsField ?? 'value';
+    $bulkCustomActions      = $bulkCustomActions ?? null;
     $currentPerPage = (int) $paginator->perPage();
     $perPageOptions = [10, 25, 50, 100];
     $total          = $paginator->total();
@@ -48,6 +51,15 @@
                     <button type="button" class="hk-pg-sel-status hk-pg-sel-status--inactive" data-status="0">
                         Ngưng hoạt động đã chọn
                     </button>
+                </span>
+            @endif
+            @if ($bulkCustomActions && $bulkCustomActionsUrl)
+                <span class="hk-pg-status-actions" data-bulk-field="{{ $bulkCustomActionsField }}">
+                    @foreach ($bulkCustomActions as $action)
+                        <button type="button" class="hk-pg-sel-status {{ $action['class'] ?? '' }}" data-custom-value="{{ $action['value'] }}">
+                            {{ $action['label'] }}
+                        </button>
+                    @endforeach
                 </span>
             @endif
         </div>
@@ -128,6 +140,12 @@
 <form id="{{ $uid }}_bsf" method="POST" action="{{ $bulkStatusUrl }}" style="display:none;">
     @csrf
     @method('PATCH')
+</form>
+@endif
+
+@if ($bulkCustomActions && $bulkCustomActionsUrl)
+<form id="{{ $uid }}_bcf" method="POST" action="{{ $bulkCustomActionsUrl }}" style="display:none;">
+    @csrf
 </form>
 @endif
 

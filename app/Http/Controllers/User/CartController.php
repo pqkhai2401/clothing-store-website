@@ -20,11 +20,14 @@ class CartController extends Controller
 
         [$subtotal, $shippingFee, $total] = CartPricingService::totals($cartItems);
 
+        $recommendedProducts = \App\Services\RecommendationService::getPersonalizedRecommendations($request->user(), 4);
+
         return view('user.cart.index', [
-            'cartItems'   => $cartItems,
-            'subtotal'    => $subtotal,
-            'shippingFee' => $shippingFee,
-            'total'       => $total,
+            'cartItems'           => $cartItems,
+            'subtotal'            => $subtotal,
+            'shippingFee'         => $shippingFee,
+            'total'               => $total,
+            'recommendedProducts' => $recommendedProducts,
         ]);
     }
 

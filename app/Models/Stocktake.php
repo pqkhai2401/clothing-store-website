@@ -6,10 +6,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Stocktake extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     public const STATUS_PENDING  = 'pending';
     public const STATUS_APPROVED = 'approved';
@@ -24,6 +25,7 @@ class Stocktake extends Model
         'processed_at',
         'stock_issue_id',
         'goods_receipt_id',
+        'deleted_by',
     ];
 
     protected $casts = [
@@ -38,6 +40,11 @@ class Stocktake extends Model
     public function processor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'processed_by');
+    }
+
+    public function deleter(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'deleted_by');
     }
 
     public function items(): HasMany

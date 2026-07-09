@@ -11,21 +11,23 @@
                             ID <span class="product-sort-icon">↓</span>
                         </button>
                     </th>
-                    <th style="width:170px;">Mã phiếu xuất</th>
-                    <th>Lý do xuất kho</th>
-                    <th style="width:110px;">Số lượng SP</th>
-                    <th style="width:150px;">
+                    <th style="width:140px;">Mã phiếu xuất</th>
+                    <th style="width:130px;">Loại xuất kho</th>
+                    <th style="width:130px;">Kho xuất</th>
+                    <th>Lý do / Ghi chú</th>
+                    <th style="width:100px;">Số lượng SP</th>
+                    <th style="width:130px;">
                         <button type="button" class="product-sort-btn" data-sort-key="total_amount" data-sort-type="number">
-                            Tổng giá trị xuất <span class="product-sort-icon">↑↓</span>
+                            Tổng GT xuất <span class="product-sort-icon">↑↓</span>
                         </button>
                     </th>
-                    <th style="width:150px;">Trạng thái</th>
-                    <th style="width:140px;">
+                    <th style="width:130px;">Trạng thái</th>
+                    <th style="width:120px;">
                         <button type="button" class="product-sort-btn" data-sort-key="created_at">
                             Ngày tạo <span class="product-sort-icon">↑↓</span>
                         </button>
                     </th>
-                    <th style="width:150px;">Người tạo</th>
+                    <th style="width:120px;">Người tạo</th>
                     <th class="text-end pe-4" style="width:110px;">Thao tác</th>
                 </tr>
             </thead>
@@ -42,20 +44,33 @@
                                 data-show-url="{{ route('admin.stock-issues.show', $issue->id) }}"
                                 onclick="event.preventDefault();">{{ $issue->code }}</a>
                         </td>
-                        <td>{{ $issue->reason }}</td>
-                        <td>{{ number_format($issue->items_quantity_sum ?? 0) }}</td>
-                        <td class="fw-semibold">{{ number_format($issue->total_amount, 0, ',', '.') }}đ</td>
                         <td>
-                            @if($issue->isIssued())
+                            @php
+                                $typeBadgeCss = [
+                                    'sale' => 'text-bg-info',
+                                    'return_supplier' => 'text-bg-warning',
+                                    'adjustment' => 'text-bg-secondary',
+                                    'damaged' => 'text-bg-danger',
+                                    'transfer' => 'text-bg-dark',
+                                ];
+                            @endphp
+                            <span class="badge {{ $typeBadgeCss[$issue->issue_type] ?? 'text-bg-light' }}" style="font-size:11px; font-weight:600;">
+                                {{ \App\Models\StockIssue::ISSUE_TYPE_LABELS[$issue->issue_type] ?? $issue->issue_type }}
+                            </span>
+                        </td>
+                        <td class="text-muted">{{ $issue->warehouse->name ?? '—' }}</td>
+                        <td class="text-muted" style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                            {{ $issue->reason ?? $issue->note ?? '—' }}
+                        </td>
+                        <td class="fw-semibold">{{ number_format($issue->total_quantity ?? 0) }}</td>
+                        <td class="fw-semibold">{{ number_format($issue->total_sale_amount, 0, ',', '.') }}đ</td>
+                        <td>
+                            @if($issue->isCompleted())
                                 <span class="gr-badge gr-badge--completed">Đã xuất kho</span>
+                            @elseif($issue->isCancelled())
+                                <span class="gr-badge gr-badge--cancelled">Đã hủy</span>
                             @else
-                                <button type="button" class="gr-row-status-trigger"
-                                    data-row-status-trigger
-                                    data-issue-url="{{ route('admin.stock-issues.issue', $issue->id) }}"
-                                    data-issue-code="{{ $issue->code }}">
-                                    <span>Nháp</span>
-                                    <i class="fa-solid fa-chevron-down" style="font-size:9px;"></i>
-                                </button>
+                                <span class="gr-badge gr-badge--draft">Nháp</span>
                             @endif
                         </td>
                         <td>{{ $issue->created_at?->format('d/m/Y H:i') ?? '—' }}</td>
@@ -70,6 +85,15 @@
                                     <i class="fa-regular fa-eye"></i>
                                 </button>
                                 @if($issue->isDraft())
+                                    <button type="button"
+                                        class="product-more-btn d-inline-flex align-items-center justify-content-center text-dark"
+                                        data-stock-issue-edit-trigger
+                                        data-edit-url="{{ route('admin.stock-issues.edit', $issue->id) }}"
+                                        title="Chỉnh sửa phiếu nháp">
+                                        <i class="fa-regular fa-pen-to-square"></i>
+                                    </button>
+                                @endif
+                                @if($issue->isDraft() || $issue->isCancelled())
                                     <button type="button" class="product-more-btn text-danger d-inline-flex align-items-center justify-content-center"
                                         data-delete-url="{{ route('admin.stock-issues.destroy', $issue->id) }}"
                                         data-delete-name="{{ $issue->code }}"
@@ -83,7 +107,7 @@
                     </tr>
                 @empty
                     <tr data-empty-row>
-                        <td colspan="10" class="text-center py-5">
+                        <td colspan="12" class="text-center py-5">
                             <i class="fa-solid fa-truck-ramp-box text-muted mb-3" style="font-size:42px;display:block;"></i>
                             <div class="fw-semibold text-muted">Chưa có phiếu xuất kho nào</div>
                         </td>

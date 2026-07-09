@@ -303,48 +303,64 @@
                         </div>
 
                         {{-- Giới tính --}}
+                        @php
+                            $oldGender = old('gender');
+                            $oldGenderLabel = $genders[$oldGender] ?? '— Chọn giới tính —';
+                        @endphp
                         <div class="edit-field">
-                            <label for="gender">Giới tính <span class="text-danger">*</span></label>
-                            <select id="gender" name="gender"
-                                class="form-select @error('gender') is-invalid @enderror" required>
-                                @foreach($genders as $value => $label)
-                                    <option value="{{ $value }}"
-                                        {{ old('gender') === $value ? 'selected' : '' }}>
-                                        {{ $label }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            @error('gender') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                        </div>
-
-                        {{-- Giá vốn (đứng riêng, dùng cho phân tích tài chính) --}}
-                        <div class="edit-field">
-                            <label for="cost_price">Giá vốn (₫)</label>
-                            <input type="number" id="cost_price" name="cost_price" min="0" step="1000"
-                                class="form-control @error('cost_price') is-invalid @enderror"
-                                value="{{ old('cost_price', 0) }}">
-                            @error('cost_price') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                            <div class="form-text">Dùng làm giá vốn mặc định cho các biến thể &amp; phân tích lợi nhuận.</div>
-                        </div>
-
-                        {{-- Giá bán --}}
-                        <div class="row g-3">
-                            <div class="col-7">
-                                <div class="edit-field mb-0">
-                                    <label for="price">Giá gốc (₫) <span class="text-danger">*</span></label>
-                                    <input type="number" id="price" name="price" min="0" step="1000"
-                                        class="form-control @error('price') is-invalid @enderror"
-                                        value="{{ old('price', 0) }}" required>
-                                    @error('price') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                            <label>Giới tính <span class="text-danger">*</span></label>
+                            <input type="hidden" name="gender" id="gender" value="{{ $oldGender ?? '' }}">
+                            <div class="hk-cat-filter hk-cat-form w-100 @error('gender') is-invalid @enderror" id="hkGenderWrap">
+                                <button type="button" class="hk-cat-trigger w-100" id="hkGenderTrigger">
+                                    <span class="hk-cat-trigger-label" id="hkGenderLabel">{{ $oldGenderLabel }}</span>
+                                    <i class="fa-solid fa-chevron-down hk-cat-arrow"></i>
+                                </button>
+                                <div class="hk-cat-panel" id="hkGenderPanel" hidden>
+                                    <div class="hk-cat-list" id="hkGenderList">
+                                        @foreach($genders as $value => $label)
+                                            <button type="button" class="hk-cat-item {{ $oldGender === $value ? 'is-active' : '' }}"
+                                                data-value="{{ $value }}"
+                                                data-label="{{ $label }}">
+                                                {{ $label }}
+                                            </button>
+                                        @endforeach
+                                    </div>
                                 </div>
                             </div>
-                            <div class="col-5">
-                                <div class="edit-field mb-0">
-                                    <label for="discount">Giảm giá (%)</label>
-                                    <input type="number" id="discount" name="discount" min="0" max="100"
-                                        class="form-control @error('discount') is-invalid @enderror"
-                                        value="{{ old('discount', 0) }}" required>
-                                    @error('discount') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                            @error('gender') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                        </div>
+
+                        {{-- Khung giá chung (ẩn hiện động bằng JS khi có biến thể) --}}
+                        <div id="generalPricingWrapper">
+                            {{-- Giá vốn (đứng riêng, dùng cho phân tích tài chính) --}}
+                            <div class="edit-field">
+                                <label for="cost_price">Giá vốn (₫)</label>
+                                <input type="number" id="cost_price" name="cost_price" min="0" step="1000"
+                                    class="form-control @error('cost_price') is-invalid @enderror"
+                                    value="{{ old('cost_price', 0) }}">
+                                @error('cost_price') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                <div class="form-text">Dùng làm giá vốn mặc định cho các biến thể &amp; phân tích lợi nhuận.</div>
+                            </div>
+
+                            {{-- Giá bán --}}
+                            <div class="row g-3">
+                                <div class="col-7">
+                                    <div class="edit-field mb-0">
+                                        <label for="price">Giá gốc (₫) <span class="text-danger">*</span></label>
+                                        <input type="number" id="price" name="price" min="0" step="1000"
+                                            class="form-control @error('price') is-invalid @enderror"
+                                            value="{{ old('price', 0) }}" required>
+                                        @error('price') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                    </div>
+                                </div>
+                                <div class="col-5">
+                                    <div class="edit-field mb-0">
+                                        <label for="discount">Giảm giá (%)</label>
+                                        <input type="number" id="discount" name="discount" min="0" max="100"
+                                            class="form-control @error('discount') is-invalid @enderror"
+                                            value="{{ old('discount', 0) }}" required>
+                                        @error('discount') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -632,6 +648,16 @@
         wrapId:    'hkBrandWrap',
     });
 
+    setupHkCat({
+        triggerId: 'hkGenderTrigger',
+        panelId:   'hkGenderPanel',
+        labelId:   'hkGenderLabel',
+        searchId:  null,
+        listId:    'hkGenderList',
+        hiddenId:  'gender',
+        wrapId:    'hkGenderWrap',
+    });
+
     /* validate required fields on submit */
     document.getElementById('createProductForm').addEventListener('submit', function (e) {
         let ok = true;
@@ -641,6 +667,10 @@
         }
         if (!document.getElementById('brandId').value) {
             document.getElementById('hkBrandWrap').classList.add('is-invalid');
+            ok = false;
+        }
+        if (!document.getElementById('gender').value) {
+            document.getElementById('hkGenderWrap').classList.add('is-invalid');
             ok = false;
         }
         if (!descTextarea.value.trim()) {

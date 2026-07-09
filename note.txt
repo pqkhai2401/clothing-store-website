@@ -12,5 +12,9 @@ php artisan passport:client --password --name="Login Client" --provider=users -n
 php artisan storage:link
 
 
+#Cài đặt thanh toán
+composer require payos/payos
+
+
 
 

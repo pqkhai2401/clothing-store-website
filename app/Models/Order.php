@@ -8,19 +8,23 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class Order extends Model
+class Order extends Model implements \OwenIt\Auditing\Contracts\Auditable
 {
     use HasFactory, SoftDeletes;
+    use \OwenIt\Auditing\Auditable;
 
     protected $fillable = [
         'user_id',
         'address_id',
         'payment_method_id',
+        'voucher_id',
         'order_code',
+        'payos_order_code',
         'phone',
         'note',
         'total_money',
         'shipping_fee',
+        'discount_amount',
         'status',
         'payment_status',
     ];
@@ -28,6 +32,7 @@ class Order extends Model
     protected $casts = [
         'total_money' => 'decimal:2',
         'shipping_fee' => 'decimal:2',
+        'discount_amount' => 'decimal:2',
     ];
 
     /**
@@ -60,5 +65,13 @@ class Order extends Model
     public function orderItems(): HasMany
     {
         return $this->hasMany(OrderItem::class);
+    }
+
+    /**
+     * Get the voucher applied to this order.
+     */
+    public function voucher(): BelongsTo
+    {
+        return $this->belongsTo(Voucher::class);
     }
 }

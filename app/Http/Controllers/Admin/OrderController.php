@@ -2,10 +2,22 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\UserRole;
+use App\Exports\OrdersExport;
 use App\Http\Controllers\Controller;
+use App\Models\Address;
 use App\Models\Order;
+use App\Models\OrderItem;
+use App\Models\PaymentMethod;
+use App\Models\ProductVariant;
+use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
+use Maatwebsite\Excel\Facades\Excel;
 
 class OrderController extends Controller
 {
@@ -30,18 +42,114 @@ class OrderController extends Controller
         'cancelled' => 'text-bg-secondary',
     ];
 
-    public function index(Request $request)
+    /**
+     * Các bước chuyển trạng thái hợp lệ theo vòng đời đơn hàng. Đơn đã "Hoàn thành" hoặc
+     * "Đã hủy" là trạng thái cuối (terminal), không cho chuyển tiếp/nhảy cóc/lùi lại.
+     */
+    public const STATUS_TRANSITIONS = [
+        'pending'    => ['processing', 'cancelled'],
+        'processing' => ['shipping', 'cancelled'],
+        'shipping'   => ['completed'],
+        'completed'  => [],
+        'cancelled'  => [],
+    ];
+
+    /**
+     * Danh sách trạng thái được phép chọn cho một đơn đang ở trạng thái hiện tại
+     * (luôn gồm chính trạng thái hiện tại — coi như lựa chọn "không đổi").
+     */
+    public static function allowedStatusOptions(string $currentStatus): array
     {
-        $search = trim((string) $request->input('search', $request->input('keyword')));
-        $keyword = $search;
-        $statusFilter = $request->input('status', '');
+        $allowedKeys = array_merge([$currentStatus], self::STATUS_TRANSITIONS[$currentStatus] ?? []);
+
+        return array_intersect_key(self::STATUS_LABELS, array_flip($allowedKeys));
+    }
+
+    private static function isValidStatusTransition(string $from, string $to): bool
+    {
+        return $to === $from || in_array($to, self::STATUS_TRANSITIONS[$from] ?? [], true);
+    }
+
+    /**
+     * Suy ra khoảng ngày + nhãn hiển thị cho thẻ thống kê từ date_from/date_to đang áp dụng.
+     * Nếu không lọc gì cả, mặc định thống kê theo năm hiện tại. Nếu khoảng ngày khớp đúng
+     * trọn 1 năm/quý/tháng (của bất kỳ năm nào) thì hiển thị nhãn tương ứng (vd "Năm 2025",
+     * "Quý 2/2025", "Tháng 6/2025"), ngược lại là "khoảng đã chọn".
+     */
+    private function resolveStatsRange(string $dateFrom, string $dateTo): array
+    {
+        if ($dateFrom === '' && $dateTo === '') {
+            $from = now()->startOfYear();
+            $to   = now()->endOfYear();
+
+            return [$from->toDateString(), $to->toDateString(), 'năm ' . $from->year];
+        }
+
+        try {
+            $from = \Carbon\Carbon::parse($dateFrom)->startOfDay();
+            $to   = \Carbon\Carbon::parse($dateTo)->startOfDay();
+        } catch (\Throwable) {
+            return [$dateFrom, $dateTo, 'khoảng đã chọn'];
+        }
+
+        if ($from->year === $to->year
+            && $from->isSameDay($from->copy()->startOfYear())
+            && $to->isSameDay($to->copy()->endOfYear())
+        ) {
+            return [$dateFrom, $dateTo, 'năm ' . $from->year];
+        }
+
+        if ($from->year === $to->year
+            && $from->quarter === $to->quarter
+            && $from->isSameDay($from->copy()->startOfQuarter())
+            && $to->isSameDay($to->copy()->endOfQuarter())
+        ) {
+            return [$dateFrom, $dateTo, 'quý ' . $from->quarter . '/' . $from->year];
+        }
+
+        if ($from->year === $to->year
+            && $from->month === $to->month
+            && $from->isSameDay($from->copy()->startOfMonth())
+            && $to->isSameDay($to->copy()->endOfMonth())
+        ) {
+            return [$dateFrom, $dateTo, 'tháng ' . $from->month . '/' . $from->year];
+        }
+
+        return [$dateFrom, $dateTo, 'khoảng đã chọn'];
+    }
+
+    private function buildStatsData(string $dateFrom, string $dateTo): array
+    {
+        [$statsFrom, $statsTo, $periodLabel] = $this->resolveStatsRange($dateFrom, $dateTo);
+
+        $rangeQuery = fn () => Order::query()
+            ->when($statsFrom !== '', fn ($q) => $q->whereDate('created_at', '>=', $statsFrom))
+            ->when($statsTo !== '', fn ($q) => $q->whereDate('created_at', '<=', $statsTo));
+
+        return [
+            'periodLabel'     => $periodLabel,
+            'periodOrders'    => $rangeQuery()->count(),
+            'periodRevenue'   => $rangeQuery()
+                ->where('status', '!=', 'cancelled')
+                ->where(fn ($q) => $q->where('status', 'completed')
+                                     ->orWhere('payment_status', 'paid'))
+                ->sum('total_money'),
+            'cancelledOrders' => $rangeQuery()->where('status', 'cancelled')->count(),
+            'pendingOrders'   => Order::where('status', 'pending')->count(),
+        ];
+    }
+
+    /**
+     * Xây dựng query đơn hàng theo các bộ lọc dùng chung cho danh sách (index) và xuất Excel (export),
+     * đảm bảo file xuất ra luôn khớp đúng bộ lọc đang áp dụng trên giao diện.
+     */
+    public function buildFilteredQuery(Request $request): Builder
+    {
+        $search        = trim((string) $request->input('search', $request->input('keyword')));
+        $statusFilter  = $request->input('status', '');
         $paymentFilter = $request->input('payment_status', '');
-        $sort      = $request->input('sort', 'created_at');
-        $direction = in_array($request->input('direction'), ['asc', 'desc'], true)
-            ? $request->input('direction') : 'desc';
-        $perPage = in_array((int) $request->input('per_page'), [10, 25, 50], true)
-            ? (int) $request->input('per_page')
-            : 10;
+        $dateFrom      = $request->input('date_from');
+        $dateTo        = $request->input('date_to');
 
         $query = Order::with(['user', 'paymentMethod']);
 
@@ -60,6 +168,33 @@ class OrderController extends Controller
         if ($paymentFilter !== '') {
             $query->where('payment_status', $paymentFilter);
         }
+
+        if ($dateFrom) {
+            $query->whereDate('created_at', '>=', $dateFrom);
+        }
+
+        if ($dateTo) {
+            $query->whereDate('created_at', '<=', $dateTo);
+        }
+
+        return $query;
+    }
+
+    public function index(Request $request)
+    {
+        $keyword       = trim((string) $request->input('search', $request->input('keyword')));
+        $statusFilter  = $request->input('status', '');
+        $paymentFilter = $request->input('payment_status', '');
+        $dateFrom      = $request->input('date_from', '');
+        $dateTo        = $request->input('date_to', '');
+        $sort      = $request->input('sort', 'created_at');
+        $direction = in_array($request->input('direction'), ['asc', 'desc'], true)
+            ? $request->input('direction') : 'desc';
+        $perPage = in_array((int) $request->input('per_page'), [10, 25, 50], true)
+            ? (int) $request->input('per_page')
+            : 10;
+
+        $query = $this->buildFilteredQuery($request);
 
         match ($sort) {
             'total'   => $query->orderBy('total_money', $direction),
@@ -80,18 +215,237 @@ class OrderController extends Controller
             'direction'           => $direction,
         ];
 
+        $statsData = $this->buildStatsData($dateFrom, $dateTo);
+
         if ($request->ajax()) {
             return response()->json([
-                'html' => view('admin.orders.partials.table', $tableData)->render(),
+                'html'  => view('admin.orders.partials.table', $tableData)->render(),
+                'stats' => view('admin.orders.partials.stats', $statsData)->render(),
             ]);
         }
 
-        return view('admin.orders.index', array_merge($tableData, [
+        return view('admin.orders.index', array_merge($tableData, $statsData, [
             'keyword'       => $keyword,
             'statusFilter'  => $statusFilter,
             'paymentFilter' => $paymentFilter,
+            'dateFrom'      => $dateFrom,
+            'dateTo'        => $dateTo,
             'perPage'       => $perPage,
         ]));
+    }
+
+    public function export(Request $request)
+    {
+        return Excel::download(new OrdersExport($request), 'don-hang-' . now()->format('Ymd-His') . '.xlsx');
+    }
+
+    public function bulkUpdateStatus(Request $request)
+    {
+        $validated = $request->validate([
+            'ids'    => ['required', 'array', 'min:1'],
+            'ids.*'  => ['integer'],
+            'status' => ['required', Rule::in(['processing', 'cancelled'])],
+        ], [
+            'ids.required' => 'Vui lòng chọn ít nhất một đơn hàng.',
+            'status.in'    => 'Trạng thái không hợp lệ.',
+        ]);
+
+        $eligibleOrders = Order::whereIn('id', $validated['ids'])
+            ->get()
+            ->filter(fn (Order $order) => self::isValidStatusTransition($order->status, $validated['status']));
+
+        $updated = 0;
+        foreach ($eligibleOrders as $order) {
+            try {
+                DB::transaction(function () use ($order, $validated) {
+                    $order->update(['status' => $validated['status']]);
+                    if (in_array($validated['status'], ['processing', 'shipping'], true)) {
+                        $this->autoGenerateStockIssueForOrder($order);
+                    } elseif ($validated['status'] === 'cancelled') {
+                        $this->restoreStockForCancelledOrder($order);
+                    }
+                });
+                $updated++;
+            } catch (\Throwable $e) {
+                // Bỏ qua đơn xử lý lỗi (vd không đủ tồn kho) và tiếp tục các đơn còn lại;
+                // mỗi đơn nằm trong transaction riêng nên chỉ đơn lỗi bị rollback.
+                continue;
+            }
+        }
+
+        $skipped = count($validated['ids']) - $updated;
+
+        $message = $validated['status'] === 'cancelled'
+            ? "Đã hủy {$updated} đơn hàng."
+            : "Đã duyệt {$updated} đơn hàng sang trạng thái Đang xử lý.";
+
+        if ($skipped > 0) {
+            $message .= " ({$skipped} đơn hàng không hợp lệ để chuyển trạng thái này hoặc không đủ tồn kho đã bị bỏ qua.)";
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json(['success' => true, 'message' => $message]);
+        }
+
+        return back()->with('success', $message);
+    }
+
+    public function create()
+    {
+        return view('admin.orders.create', [
+            'paymentMethods' => PaymentMethod::where('status', true)->orderBy('name')->get(),
+            'statusLabels'   => self::STATUS_LABELS,
+            'paymentStatusLabels' => self::PAYMENT_STATUS_LABELS,
+        ]);
+    }
+
+    public function searchCustomers(Request $request)
+    {
+        $q = trim((string) $request->input('q'));
+
+        $customers = User::role(UserRole::CUSTOMER->value)
+            ->when($q !== '', function ($query) use ($q) {
+                $query->where(function ($w) use ($q) {
+                    $w->where('username', 'like', "%{$q}%")
+                        ->orWhere('email', 'like', "%{$q}%")
+                        ->orWhere('phone_number', 'like', "%{$q}%");
+                });
+            })
+            ->orderBy('username')
+            ->limit(15)
+            ->get(['id', 'username', 'email', 'phone_number']);
+
+        return response()->json(['customers' => $customers]);
+    }
+
+    public function customerAddresses(User $user)
+    {
+        return response()->json([
+            'addresses' => $user->addresses()->orderByDesc('is_default')->orderByDesc('id')->get(),
+        ]);
+    }
+
+    public function searchVariants(Request $request)
+    {
+        $q = trim((string) $request->input('q'));
+
+        $variants = ProductVariant::query()
+            ->with(['product:id,name,price,discount', 'color:id,name', 'size:id,name'])
+            ->whereHas('product', fn ($p) => $p->where('status', true))
+            ->where('stock', '>', 0)
+            ->when($q !== '', function ($query) use ($q) {
+                $query->where(function ($w) use ($q) {
+                    $w->where('sku', 'like', "%{$q}%")
+                        ->orWhereHas('product', fn ($p) => $p->where('name', 'like', "%{$q}%"));
+                });
+            })
+            ->orderBy('id', 'desc')
+            ->limit(20)
+            ->get()
+            ->map(fn (ProductVariant $variant) => [
+                'id'          => $variant->id,
+                'product_name' => $variant->product->name,
+                'color'       => $variant->color->name ?? '',
+                'size'        => $variant->size->name ?? '',
+                'sku'         => $variant->sku,
+                'stock'       => $variant->stock,
+                'unit_price'  => $variant->product->final_price,
+            ]);
+
+        return response()->json(['variants' => $variants]);
+    }
+
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'user_id'           => ['required', 'integer', Rule::exists('users', 'id')],
+            'address_id'        => ['nullable', 'integer', Rule::exists('addresses', 'id')],
+            'new_address.city'              => ['required_without:address_id', 'nullable', 'string', 'max:255'],
+            'new_address.district'          => ['nullable', 'string', 'max:255'],
+            'new_address.ward'              => ['required_without:address_id', 'nullable', 'string', 'max:255'],
+            'new_address.apartment_number'  => ['required_without:address_id', 'nullable', 'string', 'max:255'],
+            'phone'              => ['required', 'string', 'max:20'],
+            'payment_method_id' => ['required', 'integer', Rule::exists('payment_methods', 'id')],
+            'status'             => ['required', Rule::in(array_keys(self::STATUS_LABELS))],
+            'payment_status'     => ['required', Rule::in(array_keys(self::PAYMENT_STATUS_LABELS))],
+            'shipping_fee'       => ['required', 'numeric', 'min:0'],
+            'note'               => ['nullable', 'string', 'max:1000'],
+            'items'              => ['required', 'array', 'min:1'],
+            'items.*.product_variant_id' => ['required', 'integer', Rule::exists('product_variants', 'id')],
+            'items.*.quantity'   => ['required', 'integer', 'min:1'],
+        ], [
+            'user_id.required' => 'Vui lòng chọn khách hàng.',
+            'new_address.city.required_without' => 'Vui lòng nhập tỉnh/thành phố cho địa chỉ mới.',
+            'new_address.ward.required_without' => 'Vui lòng nhập phường/xã cho địa chỉ mới.',
+            'new_address.apartment_number.required_without' => 'Vui lòng nhập địa chỉ cụ thể cho địa chỉ mới.',
+            'phone.required' => 'Vui lòng nhập số điện thoại.',
+            'payment_method_id.required' => 'Vui lòng chọn phương thức thanh toán.',
+            'items.required' => 'Vui lòng thêm ít nhất một sản phẩm vào đơn hàng.',
+            'items.*.quantity.min' => 'Số lượng sản phẩm phải lớn hơn 0.',
+        ]);
+
+        $order = DB::transaction(function () use ($validated) {
+            $address = ($validated['address_id'] ?? null)
+                ? Address::where('id', $validated['address_id'])->where('user_id', $validated['user_id'])->firstOrFail()
+                : Address::create([
+                    'user_id'          => $validated['user_id'],
+                    'city'             => $validated['new_address']['city'],
+                    'district'         => $validated['new_address']['district'] ?? null,
+                    'ward'             => $validated['new_address']['ward'],
+                    'apartment_number' => $validated['new_address']['apartment_number'],
+                ]);
+
+            do {
+                $orderCode = 'ORD-' . now()->format('Ymd') . '-' . str_pad((string) random_int(1, 99999), 5, '0', STR_PAD_LEFT);
+            } while (Order::where('order_code', $orderCode)->exists());
+
+            $variants = ProductVariant::with('product')
+                ->whereIn('id', collect($validated['items'])->pluck('product_variant_id'))
+                ->get()
+                ->keyBy('id');
+
+            $totalMoney = 0;
+            foreach ($validated['items'] as $item) {
+                $variant = $variants[$item['product_variant_id']];
+                $totalMoney += $variant->product->final_price * $item['quantity'];
+            }
+            $totalMoney += (float) $validated['shipping_fee'];
+
+            $order = Order::create([
+                'user_id'           => $validated['user_id'],
+                'address_id'        => $address->id,
+                'payment_method_id' => $validated['payment_method_id'],
+                'order_code'        => $orderCode,
+                'phone'             => $validated['phone'],
+                'note'              => $validated['note'] ?? null,
+                'total_money'       => $totalMoney,
+                'shipping_fee'      => $validated['shipping_fee'],
+                'status'            => $validated['status'],
+                'payment_status'    => $validated['payment_status'],
+            ]);
+
+            foreach ($validated['items'] as $item) {
+                $variant = $variants[$item['product_variant_id']];
+                OrderItem::create([
+                    'order_id'           => $order->id,
+                    'product_variant_id' => $variant->id,
+                    'unit_price'         => $variant->product->final_price,
+                    'quantity'           => $item['quantity'],
+                ]);
+            }
+
+            // Nếu tạo đơn ở trạng thái đã "xuất hàng" thì trừ kho ngay (giống luồng update).
+            // autoGenerateStockIssueForOrder tự khóa + kiểm tra tồn từng biến thể và ném
+            // ValidationException nếu thiếu → nằm trong transaction nên rollback cả đơn.
+            if (in_array($order->status, ['processing', 'shipping', 'completed'], true)) {
+                $this->autoGenerateStockIssueForOrder($order);
+            }
+
+            return $order;
+        });
+
+        return redirect()->route('admin.orders.detail', $order->id)
+            ->with('success', "Đã tạo đơn hàng \"{$order->order_code}\" thành công.");
     }
 
     public function detail(string $id)
@@ -129,11 +483,33 @@ class OrderController extends Controller
             'note.max' => 'Ghi chú không được quá 1000 ký tự.',
         ]);
 
-        $order->update([
-            'status' => $request->input('status'),
-            'payment_status' => $request->input('payment_status'),
-            'note' => $request->input('note'),
-        ]);
+        if (! self::isValidStatusTransition($order->status, $request->input('status'))) {
+            $message = "Không thể chuyển đơn hàng từ \"" . (self::STATUS_LABELS[$order->status] ?? $order->status)
+                . "\" sang \"" . (self::STATUS_LABELS[$request->input('status')] ?? $request->input('status')) . "\".";
+
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => $message], 422);
+            }
+
+            return back()->withErrors(['status' => $message])->withInput();
+        }
+
+        DB::transaction(function () use ($order, $request) {
+            $oldStatus = $order->status;
+            $newStatus = $request->input('status');
+
+            $order->update([
+                'status' => $newStatus,
+                'payment_status' => $request->input('payment_status'),
+                'note' => $request->input('note'),
+            ]);
+
+            if (in_array($newStatus, ['processing', 'shipping'], true) && !in_array($oldStatus, ['processing', 'shipping'], true)) {
+                $this->autoGenerateStockIssueForOrder($order);
+            } elseif ($newStatus === 'cancelled') {
+                $this->restoreStockForCancelledOrder($order);
+            }
+        });
 
         if ($request->expectsJson()) {
             return response()->json(['success' => true]);
@@ -141,5 +517,167 @@ class OrderController extends Controller
 
         return redirect()->route('admin.orders.detail', $id)
             ->with('success', 'Cập nhật đơn hàng thành công.');
+    }
+
+    private function autoGenerateStockIssueForOrder(Order $order): void
+    {
+        $exists = \App\Models\StockIssue::where('order_id', $order->id)
+            ->where('status', \App\Models\StockIssue::STATUS_COMPLETED)
+            ->exists();
+        if ($exists) {
+            return;
+        }
+
+        $orderItems = $order->orderItems()->with('productVariant.product')->get();
+        if ($orderItems->isEmpty()) {
+            return;
+        }
+
+        $warehouse = \App\Models\Warehouse::where('is_default', true)->where('status', true)->first()
+            ?? \App\Models\Warehouse::where('status', true)->first();
+        if (!$warehouse) {
+            throw new \Exception("Không tìm thấy kho hàng hoạt động nào trong hệ thống.");
+        }
+
+        // Generate PXK code
+        $prefix = 'PXK' . now()->format('Ymd');
+        $lastToday = \App\Models\StockIssue::withTrashed()->where('code', 'like', "{$prefix}%")
+            ->orderByDesc('code')
+            ->first();
+        $sequence = $lastToday ? ((int) substr($lastToday->code, -3)) + 1 : 1;
+        $code = $prefix . str_pad((string) $sequence, 3, '0', STR_PAD_LEFT);
+
+        $totalQty = $orderItems->sum('quantity');
+        $totalCost = $orderItems->sum(fn ($item) => $item->quantity * ($item->productVariant->cost_price ?? 0));
+        $totalSale = $orderItems->sum(fn ($item) => $item->quantity * $item->unit_price);
+
+        $stockIssue = \App\Models\StockIssue::create([
+            'code' => $code,
+            'issue_type' => \App\Models\StockIssue::ISSUE_TYPE_SALE,
+            'warehouse_id' => $warehouse->id,
+            'order_id' => $order->id,
+            'reason' => "Xuất kho tự động cho đơn hàng #" . ($order->order_code ?? $order->id),
+            'note' => $order->note,
+            'status' => \App\Models\StockIssue::STATUS_DRAFT,
+            'total_quantity' => $totalQty,
+            'total_cost_amount' => $totalCost,
+            'total_sale_amount' => $totalSale,
+            'total_amount' => $totalSale,
+            'created_by' => Auth::id() ?? 1, // Fallback if CLI/system
+        ]);
+
+        foreach ($orderItems as $item) {
+            $variant = $item->productVariant;
+            if (!$variant) continue;
+
+            $lockedVariant = \App\Models\ProductVariant::lockForUpdate()->find($variant->id);
+            if ($lockedVariant->stock < $item->quantity) {
+                $variantName = ($lockedVariant->product->name ?? 'Sản phẩm') 
+                    . ' - ' . ($lockedVariant->color->name ?? 'Không màu') 
+                    . ' - Size ' . ($lockedVariant->size->name ?? 'Không size') 
+                    . ' - SKU ' . ($lockedVariant->sku ?? 'N/A');
+                throw ValidationException::withMessages([
+                    'status' => ["Không đủ tồn kho để xuất. Sản phẩm [{$variantName}] hiện chỉ còn [{$lockedVariant->stock}] sản phẩm."]
+                ]);
+            }
+
+            $stockIssue->items()->create([
+                'product_id' => $lockedVariant->product_id,
+                'product_variant_id' => $lockedVariant->id,
+                'quantity' => $item->quantity,
+                'cost_price' => $lockedVariant->cost_price,
+                'sale_price' => $item->unit_price,
+                'total_cost' => $lockedVariant->cost_price * $item->quantity,
+                'total_sale' => $item->unit_price * $item->quantity,
+            ]);
+
+            $beforeQty = $lockedVariant->stock;
+            $afterQty = max(0, $beforeQty - $item->quantity);
+            $lockedVariant->update(['stock' => $afterQty]);
+
+            \App\Models\StockMovement::create([
+                'product_variant_id' => $lockedVariant->id,
+                'reference_type' => 'stock_issue',
+                'reference_id' => $stockIssue->id,
+                'movement_type' => 'export',
+                'quantity' => $item->quantity,
+                'before_quantity' => $beforeQty,
+                'after_quantity' => $afterQty,
+                'created_by' => Auth::id() ?? 1,
+            ]);
+        }
+
+        $stockIssue->update([
+            'status' => \App\Models\StockIssue::STATUS_COMPLETED,
+            'confirmed_by' => Auth::id() ?? 1,
+            'confirmed_at' => now(),
+            'issued_at' => now(),
+        ]);
+
+        \App\Models\StockIssueLog::create([
+            'stock_issue_id' => $stockIssue->id,
+            'user_id' => Auth::id() ?? 1,
+            'action' => 'created',
+            'message' => 'Tạo phiếu xuất kho tự động từ đơn hàng #' . ($order->order_code ?? $order->id),
+        ]);
+
+        \App\Models\StockIssueLog::create([
+            'stock_issue_id' => $stockIssue->id,
+            'user_id' => Auth::id() ?? 1,
+            'action' => 'confirmed',
+            'message' => 'Hoàn tất xuất kho tự động',
+        ]);
+    }
+
+    /**
+     * Hoàn kho khi hủy đơn đã trừ kho: đảo ngược phiếu xuất kho tự động (issue_type = sale,
+     * status = completed) gắn với đơn — cộng lại tồn, ghi StockMovement 'import' và đánh dấu
+     * phiếu xuất kho là đã hủy. Nếu đơn chưa từng trừ kho (vd pending → cancelled) thì bỏ qua.
+     */
+    private function restoreStockForCancelledOrder(Order $order): void
+    {
+        $stockIssue = \App\Models\StockIssue::with('items')
+            ->where('order_id', $order->id)
+            ->where('issue_type', \App\Models\StockIssue::ISSUE_TYPE_SALE)
+            ->where('status', \App\Models\StockIssue::STATUS_COMPLETED)
+            ->first();
+        if (!$stockIssue) {
+            return;
+        }
+
+        foreach ($stockIssue->items as $item) {
+            $variant = \App\Models\ProductVariant::lockForUpdate()->find($item->product_variant_id);
+            if (!$variant) {
+                continue;
+            }
+
+            $beforeQty = $variant->stock;
+            $afterQty = $beforeQty + $item->quantity;
+            $variant->update(['stock' => $afterQty]);
+
+            \App\Models\StockMovement::create([
+                'product_variant_id' => $variant->id,
+                'reference_type' => 'stock_issue',
+                'reference_id' => $stockIssue->id,
+                'movement_type' => 'import',
+                'quantity' => $item->quantity,
+                'before_quantity' => $beforeQty,
+                'after_quantity' => $afterQty,
+                'created_by' => Auth::id() ?? 1,
+            ]);
+        }
+
+        $stockIssue->update([
+            'status' => \App\Models\StockIssue::STATUS_CANCELLED,
+            'cancelled_by' => Auth::id() ?? 1,
+            'cancelled_at' => now(),
+        ]);
+
+        \App\Models\StockIssueLog::create([
+            'stock_issue_id' => $stockIssue->id,
+            'user_id' => Auth::id() ?? 1,
+            'action' => 'cancelled',
+            'message' => 'Hoàn kho tự động do hủy đơn hàng #' . ($order->order_code ?? $order->id),
+        ]);
     }
 }

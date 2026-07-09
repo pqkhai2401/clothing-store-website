@@ -2,10 +2,14 @@
 
 namespace App\Providers;
 
+use App\Listeners\LogAuthenticationActivity;
 use App\Models\Cart;
 use App\Models\Wishlist;
+use Illuminate\Auth\Events\Login;
+use Illuminate\Auth\Events\Logout;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
@@ -27,6 +31,10 @@ class AppServiceProvider extends ServiceProvider
     {
         Paginator::useBootstrapFive();
         Passport::enablePasswordGrant();
+
+        // Ghi nhật ký đăng nhập / đăng xuất của nhân sự quản trị
+        Event::listen(Login::class, [LogAuthenticationActivity::class, 'handleLogin']);
+        Event::listen(Logout::class, [LogAuthenticationActivity::class, 'handleLogout']);
 
         // Cung cấp số lượng + danh sách id wishlist cho header và product-card
         View::composer(['partials.header', 'partials.product-card'], function ($view): void {
@@ -125,6 +133,14 @@ class AppServiceProvider extends ServiceProvider
                         'parent'         => [],
                     ],
                     [
+                        'permission'     => 'manage-collections',
+                        'title'          => 'Quản lý Bộ sưu tập',
+                        'url'            => $r('admin.collections.list', '/admin/collections'),
+                        'active_pattern' => 'admin/collections*',
+                        'icon'           => 'fa-solid fa-umbrella-beach',
+                        'parent'         => [],
+                    ],
+                    [
                         'permission'     => 'manage-brands',
                         'title'          => 'Quản lý thương hiệu',
                         'url'            => $r('admin.brands.list', '/admin/brands'),
@@ -165,11 +181,27 @@ class AppServiceProvider extends ServiceProvider
                         'parent'         => [],
                     ],
                     [
+                        'permission'     => 'manage-vouchers',
+                        'title'          => 'Quản lý voucher',
+                        'url'            => $r('admin.vouchers.list', '/admin/vouchers'),
+                        'active_pattern' => 'admin/vouchers*',
+                        'icon'           => 'fa-solid fa-ticket',
+                        'parent'         => [],
+                    ],
+                    [
                         'permission'     => 'manage-revenue',
                         'title'          => 'Thống kê doanh thu',
                         'url'            => $r('admin.revenue.index', '/admin/revenue'),
                         'active_pattern' => 'admin/revenue*',
                         'icon'           => 'fa-solid fa-chart-line',
+                        'parent'         => [],
+                    ],
+                    [
+                        'permission'     => 'manage-logs',
+                        'title'          => 'Nhật ký làm việc',
+                        'url'            => $r('admin.logs.list', '/admin/logs'),
+                        'active_pattern' => 'admin/logs*',
+                        'icon'           => 'fa-solid fa-clock-rotate-left',
                         'parent'         => [],
                     ],
                 ];

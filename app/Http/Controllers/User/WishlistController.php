@@ -36,24 +36,8 @@ class WishlistController extends Controller
             ->paginate(10)
             ->withQueryString();
 
-        // AI gợi ý: sản phẩm cùng danh mục, loại trừ đã có trong wishlist
-        $recommendedProducts = collect();
-
-        if ($wishlistProductIds->isNotEmpty()) {
-            $categoryIds = $allWishlistRows
-                ->pluck('product.category_id')
-                ->filter()
-                ->unique()
-                ->values();
-
-            $recommendedProducts = Product::whereIn('category_id', $categoryIds)
-                ->whereNotIn('id', $wishlistProductIds)
-                ->where('status', true)
-                ->with('category')
-                ->inRandomOrder()
-                ->limit(4)
-                ->get();
-        }
+        // Gọi AI Engine để lấy danh sách gợi ý cá nhân hóa dựa trên hành vi của người dùng
+        $recommendedProducts = \App\Services\RecommendationService::getPersonalizedRecommendations(Auth::user(), 4);
 
         return view('user.wishlist.index', compact(
             'wishlistItems',

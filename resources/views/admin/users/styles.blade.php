@@ -119,14 +119,18 @@
     }
 
     .hk-cat-list {
-        padding: 6px 0;
+        padding: 6px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
     }
 
     .hk-cat-item {
         display: block;
         width: 100%;
-        padding: 8px 14px;
+        padding: 8px 12px;
         border: 0;
+        border-radius: 8px;
         background: transparent;
         font-size: 13px;
         color: #374151;

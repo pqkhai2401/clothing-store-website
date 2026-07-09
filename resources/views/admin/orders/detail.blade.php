@@ -112,9 +112,13 @@
                                 <td class="info-label ps-0">Email</td>
                                 <td class="info-value">{{ $order->user?->email ?? '—' }}</td>
                             </tr>
+                            @php
+                                $displayPhone = collect([$order->phone, $order->user?->phone_number])
+                                    ->first(fn ($p) => $p && $p !== '0');
+                            @endphp
                             <tr>
                                 <td class="info-label ps-0">Số điện thoại</td>
-                                <td class="info-value">{{ $order->phone ?? $order->user?->phone_number ?? '—' }}</td>
+                                <td class="info-value">{{ $displayPhone ?? 'Chưa cập nhật' }}</td>
                             </tr>
                             @if($order->address)
                                 <tr>
@@ -208,19 +212,31 @@
                     @csrf
                     @method('PUT')
 
+                    @php
+                        $allowedStatuses = \App\Http\Controllers\Admin\OrderController::allowedStatusOptions($order->status);
+                        $canChangeStatus = count($allowedStatuses) > 1;
+                    @endphp
                     <div class="row g-3">
                         <div class="col-md-4">
                             <label for="status" class="form-label">Trạng thái đơn hàng <span class="text-danger">*</span></label>
-                            <select id="status" name="status"
-                                class="form-select @error('status') is-invalid @enderror">
-                                @foreach($statusLabels as $key => $label)
-                                    <option value="{{ $key }}"
-                                        {{ old('status', $order->status) === $key ? 'selected' : '' }}>
-                                        {{ $label }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            @error('status') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                            @if($canChangeStatus)
+                                <select id="status" name="status"
+                                    class="form-select @error('status') is-invalid @enderror">
+                                    @foreach($allowedStatuses as $key => $label)
+                                        <option value="{{ $key }}"
+                                            {{ old('status', $order->status) === $key ? 'selected' : '' }}>
+                                            {{ $label }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @error('status') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                            @else
+                                <input type="hidden" name="status" value="{{ $order->status }}">
+                                <div class="form-control-plaintext" style="font-size:13px;">
+                                    {{ $statusLabels[$order->status] ?? $order->status }}
+                                    <span class="text-muted" style="font-size:12px;">(trạng thái cuối, không thể thay đổi)</span>
+                                </div>
+                            @endif
                         </div>
 
                         <div class="col-md-4">

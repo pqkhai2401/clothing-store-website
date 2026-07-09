@@ -22,6 +22,8 @@ return new class extends Migration
             $table->foreignId('stock_issue_id')->nullable()->constrained('stock_issues')->nullOnDelete();
             $table->foreignId('goods_receipt_id')->nullable()->constrained('goods_receipts')->nullOnDelete();
             $table->timestamps();
+            $table->softDeletes();
+            $table->foreignId('deleted_by')->nullable()->constrained('users')->nullOnDelete();
         });
     }
 

@@ -525,8 +525,8 @@
                         $variant      = $item->productVariant;
                         $product      = $variant->product;
                         $image        = $variant->image ?: $product->thumbnail;
-                        $unitPrice    = $product->final_price;
-                        $unitOriginal = $product->price;
+                        $unitPrice    = $variant->sale_price > 0 ? (float) $variant->sale_price : (float) $product->final_price;
+                        $unitOriginal = $product->discount > 0 ? $unitPrice / (1 - $product->discount / 100) : $unitPrice;
                         $linePrice    = $unitPrice * $item->quantity;
                         $lineOriginal = $unitOriginal * $item->quantity;
                         $savings      = $lineOriginal - $linePrice;
@@ -688,6 +688,19 @@
             Khám phá sản phẩm
         </a>
     </div>
+    @endif
+
+    <!-- AI Recommended Products (Cross-selling) -->
+    @if(isset($recommendedProducts) && $recommendedProducts->isNotEmpty())
+        <div class="row mt-5 pt-4 border-top">
+            <div class="col-12">
+                <div class="section-header text-center mb-5">
+                    <h2 class="section-title" style="font-size: 24px; letter-spacing: 1px; text-transform: uppercase;">Có thể bạn cũng thích</h2>
+                    <div class="section-subtitle" style="font-size: 12px; color: var(--muted-text);"><i class="bi bi-cpu me-1"></i> Gợi ý cá nhân hóa từ AI của HK Store</div>
+                </div>
+                @include('partials.product-grid', ['products' => $recommendedProducts, 'cols' => 'col-6 col-md-3'])
+            </div>
+        </div>
     @endif
 
 </div>

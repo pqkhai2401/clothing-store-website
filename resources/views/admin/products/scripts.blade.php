@@ -160,6 +160,27 @@ document.addEventListener('DOMContentLoaded', function () {
         list: 'hkProductColorList',
         hidden: 'productColorFilter',
     });
+
+    wireSimpleDropdown({
+        root: 'hkProductBrandFilter',
+        trigger: 'hkProductBrandTrigger',
+        panel: 'hkProductBrandPanel',
+        label: 'hkProductBrandLabel',
+        list: 'hkProductBrandList',
+        hidden: 'productBrandFilter',
+    });
+
+    /* ── Chip lọc nhanh "Sắp hết hàng" (tổng tồn kho < 10) ── */
+    const lowStockChip = document.getElementById('productLowStockChip');
+    const stockStatusFilter = document.getElementById('productStockStatusFilter');
+    if (lowStockChip && stockStatusFilter) {
+        lowStockChip.addEventListener('click', function () {
+            const next = stockStatusFilter.value === 'low_stock' ? '' : 'low_stock';
+            stockStatusFilter.value = next;
+            lowStockChip.classList.toggle('is-active', next === 'low_stock');
+            stockStatusFilter.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+    }
 });
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -274,4 +295,274 @@ document.addEventListener('DOMContentLoaded', function () {
         if (activeTooltip) positionStockTooltip(activeTooltip);
     });
 });
+
+/* ── Xuất Excel: ưu tiên các dòng đã chọn (checkbox), nếu không có dòng nào được chọn thì xuất theo bộ lọc hiện tại ── */
+function exportProducts() {
+    const checked = Array.from(document.querySelectorAll('.product-row-check:checked'));
+    const params = new URLSearchParams();
+
+    if (checked.length > 0) {
+        params.set('ids', checked.map(cb => cb.value).join(','));
+    } else {
+        const fields = {
+            category_id: 'productCategoryFilter',
+            parent_category_id: 'productParentCategoryFilter',
+            brand_id: 'productBrandFilter',
+            size_id: 'productSizeFilter',
+            color_id: 'productColorFilter',
+            status: 'productStatusFilter',
+            stock_status: 'productStockStatusFilter',
+            search: 'productRealtimeSearch',
+        };
+
+        Object.entries(fields).forEach(([param, elementId]) => {
+            const value = document.getElementById(elementId)?.value;
+            if (value !== undefined && value !== null && value !== '') {
+                params.set(param, value);
+            }
+        });
+    }
+
+    window.location.href = '{{ route('admin.products.export') }}?' + params.toString();
+}
+
+/* ── Chạy lại các thẻ <script> bên trong một khối HTML vừa được nạp qua innerHTML ──
+   (trình duyệt không tự thực thi <script> được gán qua innerHTML, phải dựng lại thủ công) ── */
+window.runInjectedScripts = function (container) {
+    Array.from(container.querySelectorAll('script')).forEach(function (oldScript) {
+        const newScript = document.createElement('script');
+        Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
+        newScript.textContent = oldScript.textContent;
+        oldScript.replaceWith(newScript);
+    });
+};
+
+/* ── Panel "Sửa sản phẩm" trượt từ phải: nạp form qua AJAX ──
+   Dùng event delegation vì bảng được nạp lại qua AJAX. */
+document.addEventListener('click', function (e) {
+    const trigger = e.target.closest('[data-product-edit-trigger]');
+    if (!trigger) return;
+    e.preventDefault();
+
+    const url = trigger.dataset.editUrl;
+    const offcanvasEl = document.getElementById('productEditOffcanvas');
+    const bodyEl = offcanvasEl?.querySelector('[data-product-edit-body]');
+    if (!url || !offcanvasEl || !bodyEl) return;
+
+    bodyEl.innerHTML = '<div class="offcanvas-body text-center py-5"><div class="spinner-border text-secondary" role="status"></div></div>';
+    bootstrap.Offcanvas.getOrCreateInstance(offcanvasEl).show();
+
+    fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
+        .then(res => { if (!res.ok) throw new Error('request-failed'); return res.json(); })
+        .then(data => {
+            bodyEl.innerHTML = data.html;
+            window.runInjectedScripts(bodyEl);
+        })
+        .catch(() => {
+            bodyEl.innerHTML = '<div class="offcanvas-body text-danger p-4">Không thể tải form sửa sản phẩm. Vui lòng thử lại.</div>';
+        });
+});
+
+/* ── Toast thông báo (đồng bộ với component thông báo chung của trang) ── */
+function showProductToast(message, type = 'success') {
+    const container = document.getElementById('toast-container');
+    if (!container) { alert(message); return; }
+    const toast = document.createElement('div');
+    toast.className = `custom-toast server-toast ${type === 'error' ? 'toast-error' : 'toast-success'}`;
+    toast.style.pointerEvents = 'auto';
+    toast.innerHTML = `
+        <div class="toast-content">
+            <div class="toast-message">${message}</div>
+        </div>
+        <span class="toast-close" onclick="closeServerToast(this)">&times;</span>
+    `;
+    container.appendChild(toast);
+    setTimeout(() => {
+        if (document.body.contains(toast)) {
+            toast.classList.add('hiding');
+            setTimeout(() => toast.remove(), 300);
+        }
+    }, 5000);
+}
+
+/* ── Chuyển trạng thái Đang bán / Ẩn ngay trên bảng bằng nút gạt (không cần vào trang Sửa) ──
+   Dùng event delegation vì bảng được nạp lại qua AJAX. */
+document.addEventListener('change', function (e) {
+    const toggle = e.target.closest('.product-status-switch');
+    if (!toggle) return;
+
+    const url = toggle.dataset.toggleStatusUrl;
+    const label = toggle.closest('.product-status-switch-wrap')?.querySelector('.product-status-switch-label');
+    const previousChecked = !toggle.checked;
+    toggle.disabled = true;
+
+    fetch(url, {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+        },
+        body: JSON.stringify({}),
+    })
+        .then(res => { if (!res.ok) throw new Error('request-failed'); return res.json(); })
+        .then(data => {
+            if (label) label.textContent = data.status ? 'Đang bán' : 'Ẩn';
+            showProductToast(data.message);
+        })
+        .catch(() => {
+            toggle.checked = previousChecked;
+            showProductToast('Không thể cập nhật trạng thái sản phẩm. Vui lòng thử lại.', 'error');
+        })
+        .finally(() => { toggle.disabled = false; });
+});
+
+/* ── Đánh dấu / bỏ đánh dấu "Sản phẩm nổi bật" bằng icon ngôi sao ──
+   Dùng event delegation vì bảng được nạp lại qua AJAX. */
+document.addEventListener('click', function (e) {
+    const star = e.target.closest('.product-featured-star');
+    if (!star) return;
+
+    const url = star.dataset.toggleFeaturedUrl;
+    const wasActive = star.classList.contains('is-active');
+    star.disabled = true;
+    star.classList.toggle('is-active');
+
+    fetch(url, {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+        },
+        body: JSON.stringify({}),
+    })
+        .then(res => { if (!res.ok) throw new Error('request-failed'); return res.json(); })
+        .then(data => {
+            star.classList.toggle('is-active', data.is_featured);
+            star.title = data.is_featured ? 'Bỏ đánh dấu nổi bật' : 'Đánh dấu sản phẩm nổi bật';
+            showProductToast(data.message);
+        })
+        .catch(() => {
+            star.classList.toggle('is-active', wasActive);
+            showProductToast('Không thể cập nhật trạng thái nổi bật. Vui lòng thử lại.', 'error');
+        })
+        .finally(() => { star.disabled = false; });
+});
+
+/* ── Sửa nhanh Giá / Giảm giá bằng double-click ngay trên dòng bảng ──
+   Dùng event delegation vì bảng được nạp lại qua AJAX. */
+(function () {
+    function formatMoney(num) {
+        return Math.round(num || 0).toLocaleString('vi-VN') + '₫';
+    }
+
+    function closeCell(cell) {
+        cell.querySelector('.product-quickedit-view').classList.remove('d-none');
+        cell.querySelector('.product-quickedit-form').classList.add('d-none');
+    }
+
+    function closeAllCells() {
+        document.querySelectorAll('.product-quickedit-cell').forEach(closeCell);
+    }
+
+    document.addEventListener('dblclick', function (e) {
+        const cell = e.target.closest('.product-quickedit-cell');
+        if (!cell) return;
+        closeAllCells();
+        cell.querySelector('.product-quickedit-view').classList.add('d-none');
+        cell.querySelector('.product-quickedit-form').classList.remove('d-none');
+        cell.querySelector('[data-field="price"]')?.focus();
+    });
+
+    document.addEventListener('click', function (e) {
+        if (!e.target.closest('.product-quickedit-cell')) closeAllCells();
+    });
+
+    document.addEventListener('click', function (e) {
+        const cancelBtn = e.target.closest('.product-quickedit-cancel');
+        if (!cancelBtn) return;
+        const cell = cancelBtn.closest('.product-quickedit-cell');
+        const priceInput = cell.querySelector('[data-field="price"]');
+        const discountInput = cell.querySelector('[data-field="discount"]');
+        priceInput.value = priceInput.defaultValue;
+        discountInput.value = discountInput.defaultValue;
+        closeCell(cell);
+    });
+
+    function saveCell(cell) {
+        const url = cell.dataset.quickeditUrl;
+        const priceInput = cell.querySelector('[data-field="price"]');
+        const discountInput = cell.querySelector('[data-field="discount"]');
+        const saveBtn = cell.querySelector('.product-quickedit-save');
+        const viewEl = cell.querySelector('.product-quickedit-view');
+
+        saveBtn.disabled = true;
+
+        fetch(url, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+            },
+            body: JSON.stringify({ price: priceInput.value, discount: discountInput.value }),
+        })
+            .then(res => res.json().then(data => ({ ok: res.ok, data })))
+            .then(({ ok, data }) => {
+                if (!ok) {
+                    showProductToast(data.message || 'Không thể cập nhật giá.', 'error');
+                    return;
+                }
+
+                priceInput.value = data.price;
+                discountInput.value = data.discount;
+                priceInput.defaultValue = data.price;
+                discountInput.defaultValue = data.discount;
+
+                if (data.discount > 0) {
+                    viewEl.innerHTML = `
+                        <div class="price-display">
+                            <span class="price-sale">${formatMoney(data.price * (100 - data.discount) / 100)}</span>
+                            <span class="price-original">${formatMoney(data.price)}</span>
+                        </div>
+                    `;
+                } else {
+                    viewEl.innerHTML = `<span class="price-normal">${formatMoney(data.price)}</span>`;
+                }
+
+                closeCell(cell);
+                showProductToast(data.message);
+            })
+            .catch(() => {
+                showProductToast('Không thể kết nối tới máy chủ. Vui lòng thử lại.', 'error');
+            })
+            .finally(() => { saveBtn.disabled = false; });
+    }
+
+    document.addEventListener('click', function (e) {
+        const saveBtn = e.target.closest('.product-quickedit-save');
+        if (!saveBtn) return;
+        e.stopPropagation();
+        saveCell(saveBtn.closest('.product-quickedit-cell'));
+    });
+
+    document.addEventListener('click', function (e) {
+        if (e.target.closest('.product-quickedit-form')) e.stopPropagation();
+    });
+
+    document.addEventListener('keydown', function (e) {
+        const cell = e.target.closest('.product-quickedit-cell');
+        if (!cell) return;
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            saveCell(cell);
+        } else if (e.key === 'Escape') {
+            cell.querySelector('.product-quickedit-cancel')?.click();
+        }
+    });
+})();
 </script>

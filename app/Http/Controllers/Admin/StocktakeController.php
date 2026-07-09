@@ -7,7 +7,7 @@ use App\Models\GoodsReceipt;
 use App\Models\ProductVariant;
 use App\Models\Stocktake;
 use App\Models\StockIssue;
-use App\Models\Supplier;
+use App\Models\Warehouse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -106,6 +106,92 @@ class StocktakeController extends Controller
         return back()->with('success', "Đã hủy bỏ phiếu kiểm kê \"{$stocktake->code}\".");
     }
 
+    public function destroy(string $id)
+    {
+        $stocktake = Stocktake::findOrFail($id);
+
+        if (! $stocktake->isPending()) {
+            return back()->with('error', 'Chỉ có thể xóa phiếu kiểm kê đang chờ xử lý.');
+        }
+
+        $stocktake->update(['deleted_by' => Auth::id()]);
+        $stocktake->delete();
+
+        return redirect()->route('admin.goods-receipts.list', ['tab' => 'stocktake'])
+            ->with('success', 'Xóa phiếu kiểm kê thành công');
+    }
+
+    public function trash(Request $request)
+    {
+        $keyword = trim((string) $request->input('search', $request->input('keyword')));
+        $perPage = in_array((int) $request->input('per_page'), [10, 25, 50], true)
+            ? (int) $request->input('per_page') : 10;
+
+        $query = Stocktake::onlyTrashed()
+            ->with(['creator', 'deleter'])
+            ->withCount('items')
+            ->orderByDesc('deleted_at');
+
+        if ($keyword !== '') {
+            $query->where(function ($q) use ($keyword) {
+                $q->where('code', 'like', "%{$keyword}%")
+                    ->orWhere('note', 'like', "%{$keyword}%");
+            });
+        }
+
+        $stocktakes = $query->paginate($perPage)->withQueryString();
+
+        if ($request->ajax()) {
+            return response()->json([
+                'html' => view('admin.goods-receipts.partials.stocktake-trash-table', compact('stocktakes'))->render(),
+            ]);
+        }
+
+        return view('admin.goods-receipts.stocktake-trash', compact('stocktakes', 'keyword', 'perPage'));
+    }
+
+    public function restore(string $id)
+    {
+        $stocktake = Stocktake::onlyTrashed()->findOrFail($id);
+        Stocktake::onlyTrashed()->where('id', $stocktake->id)->update(['deleted_by' => null]);
+        $stocktake->restore();
+
+        return redirect()->route('admin.stocktakes.trash')->with('success', 'Khôi phục phiếu kiểm kê thành công');
+    }
+
+    public function forceDelete(string $id)
+    {
+        Stocktake::onlyTrashed()->findOrFail($id)->forceDelete();
+
+        return redirect()->route('admin.stocktakes.trash')->with('success', 'Đã xóa vĩnh viễn phiếu kiểm kê');
+    }
+
+    public function bulkRestore(Request $request)
+    {
+        $ids = array_filter((array) $request->input('ids', []), 'is_numeric');
+        if (empty($ids)) {
+            return back()->with('error', 'Vui lòng chọn ít nhất một phiếu kiểm kê.');
+        }
+
+        Stocktake::onlyTrashed()->whereIn('id', $ids)->update(['deleted_by' => null]);
+        $restored = Stocktake::onlyTrashed()->whereIn('id', $ids)->restore();
+
+        return back()->with('success', "Đã khôi phục {$restored} phiếu kiểm kê thành công.");
+    }
+
+    public function bulkForceDelete(Request $request)
+    {
+        $ids = array_filter((array) $request->input('ids', []), 'is_numeric');
+        if (empty($ids)) {
+            return back()->with('error', 'Vui lòng chọn ít nhất một phiếu kiểm kê.');
+        }
+
+        $count = Stocktake::onlyTrashed()->whereIn('id', $ids)->count();
+        Stocktake::onlyTrashed()->whereIn('id', $ids)->forceDelete();
+
+        return back()->with('success', "Đã xóa vĩnh viễn {$count} phiếu kiểm kê.");
+    }
+
     private function approveStocktake(Stocktake $stocktake): void
     {
         $negativeItems = [];
@@ -126,25 +212,47 @@ class StocktakeController extends Controller
             $variant->update(['stock' => $item->actual_stock]);
 
             if ($diff < 0) {
-                $negativeItems[] = ['product_variant_id' => $item->product_variant_id, 'quantity' => abs($diff), 'unit_price' => $item->unit_cost];
+                $quantity = abs($diff);
+                $costPrice = (float) $item->unit_cost;
+                $salePrice = (float) $variant->sale_price;
+                $negativeItems[] = [
+                    'product_id'         => $variant->product_id,
+                    'product_variant_id' => $item->product_variant_id,
+                    'quantity'           => $quantity,
+                    'cost_price'         => $costPrice,
+                    'sale_price'         => $salePrice,
+                    'total_cost'         => $quantity * $costPrice,
+                    'total_sale'         => $quantity * $salePrice,
+                ];
             } else {
-                $positiveItems[] = ['product_variant_id' => $item->product_variant_id, 'quantity' => $diff, 'cost_price' => $item->unit_cost];
+                $positiveItems[] = [
+                    'product_variant_id' => $item->product_variant_id,
+                    'quantity'           => $diff,
+                    'cost_price'         => (float) $item->unit_cost,
+                ];
             }
         }
 
         $stockIssue = null;
         $goodsReceipt = null;
+        $warehouseId = Warehouse::getDefault()?->id;
 
         if (! empty($negativeItems)) {
             $stockIssue = StockIssue::create([
-                'code' => $this->generateStockIssueCode(),
-                'reason' => StockIssue::REASON_TYPE_LABELS[StockIssue::REASON_TYPE_STOCKTAKE],
-                'reason_type' => StockIssue::REASON_TYPE_STOCKTAKE,
-                'note' => "Tự động sinh từ phiếu kiểm kê {$stocktake->code}",
-                'status' => StockIssue::STATUS_ISSUED,
-                'total_amount' => collect($negativeItems)->sum(fn ($i) => $i['quantity'] * $i['unit_price']),
-                'created_by' => Auth::id(),
-                'issued_at' => now(),
+                'code'              => $this->generateStockIssueCode(),
+                'issue_type'        => StockIssue::ISSUE_TYPE_ADJUSTMENT,
+                'warehouse_id'      => $warehouseId,
+                'reason'            => "Cân bằng giảm tồn theo phiếu kiểm kê {$stocktake->code}",
+                'note'              => "Tự động sinh từ phiếu kiểm kê {$stocktake->code}",
+                'status'            => StockIssue::STATUS_COMPLETED,
+                'total_quantity'    => collect($negativeItems)->sum('quantity'),
+                'total_cost_amount' => collect($negativeItems)->sum('total_cost'),
+                'total_sale_amount' => collect($negativeItems)->sum('total_sale'),
+                'total_amount'      => collect($negativeItems)->sum('total_sale'),
+                'created_by'        => Auth::id(),
+                'confirmed_by'      => Auth::id(),
+                'confirmed_at'      => now(),
+                'issued_at'         => now(),
             ]);
             foreach ($negativeItems as $i) {
                 $stockIssue->items()->create($i);
@@ -152,19 +260,22 @@ class StocktakeController extends Controller
         }
 
         if (! empty($positiveItems)) {
-            $supplier = Supplier::firstOrCreate(
-                ['name' => 'Điều chỉnh kiểm kê kho (nội bộ)'],
-                ['status' => true, 'note' => 'Nhà cung cấp hệ thống dùng cho các phiếu nhập kho tự động sinh từ kiểm kê.']
-            );
-
             $goodsReceipt = GoodsReceipt::create([
-                'code' => $this->generateGoodsReceiptCode(),
-                'supplier_id' => $supplier->id,
-                'note' => "Tự động sinh từ phiếu kiểm kê {$stocktake->code}",
-                'status' => GoodsReceipt::STATUS_COMPLETED,
-                'total_amount' => collect($positiveItems)->sum(fn ($i) => $i['quantity'] * $i['cost_price']),
-                'created_by' => Auth::id(),
-                'completed_at' => now(),
+                'code'           => $this->generateGoodsReceiptCode(),
+                'receipt_type'   => GoodsReceipt::RECEIPT_TYPE_ADJUSTMENT,
+                'source_type'    => GoodsReceipt::SOURCE_TYPE_INTERNAL,
+                'receipt_reason' => "Cân bằng tăng tồn theo phiếu kiểm kê {$stocktake->code}",
+                'supplier_id'    => null,
+                'warehouse_id'   => $warehouseId,
+                'note'           => "Tự động sinh từ phiếu kiểm kê {$stocktake->code}",
+                'status'         => GoodsReceipt::STATUS_COMPLETED,
+                'total_amount'   => collect($positiveItems)->sum(fn ($i) => $i['quantity'] * $i['cost_price']),
+                'total_quantity' => collect($positiveItems)->sum('quantity'),
+                'received_at'    => now(),
+                'completed_at'   => now(),
+                'created_by'     => Auth::id(),
+                'confirmed_by'   => Auth::id(),
+                'confirmed_at'   => now(),
             ]);
             foreach ($positiveItems as $i) {
                 $goodsReceipt->items()->create($i);
@@ -183,7 +294,7 @@ class StocktakeController extends Controller
     private function generateCode(): string
     {
         $prefix = 'PKK' . now()->format('Ymd');
-        $lastToday = Stocktake::where('code', 'like', "{$prefix}%")->orderByDesc('code')->first();
+        $lastToday = Stocktake::withTrashed()->where('code', 'like', "{$prefix}%")->orderByDesc('code')->first();
         $sequence = $lastToday ? ((int) substr($lastToday->code, -3)) + 1 : 1;
 
         return $prefix . str_pad((string) $sequence, 3, '0', STR_PAD_LEFT);
@@ -201,7 +312,7 @@ class StocktakeController extends Controller
     private function generateGoodsReceiptCode(): string
     {
         $prefix = 'PN' . now()->format('Ymd');
-        $lastToday = GoodsReceipt::where('code', 'like', "{$prefix}%")->orderByDesc('code')->first();
+        $lastToday = GoodsReceipt::withTrashed()->where('code', 'like', "{$prefix}%")->orderByDesc('code')->first();
         $sequence = $lastToday ? ((int) substr($lastToday->code, -3)) + 1 : 1;
 
         return $prefix . str_pad((string) $sequence, 3, '0', STR_PAD_LEFT);

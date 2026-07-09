@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Enums\Gender;
+use App\Exports\ProductsExport;
 use App\Http\Controllers\Controller;
 use App\Models\Brand;
 use App\Models\Category;
@@ -13,11 +14,15 @@ use App\Models\Size;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ProductController extends Controller
 {
+    public const LOW_STOCK_THRESHOLD = 10;
+
     public function index(Request $request)
     {
         $search           = trim((string) $request->input('search', $request->input('keyword')));
@@ -28,6 +33,7 @@ class ProductController extends Controller
         $sizeId           = $request->input('size_id');
         $colorId          = $request->input('color_id');
         $status           = $request->input('status');
+        $stockStatus      = $request->input('stock_status');
         $sort       = $request->input('sort', 'id');
         $direction  = $request->input('direction', 'desc');
         $perPage    = in_array((int) $request->input('per_page'), [10, 25, 50], true)
@@ -35,7 +41,11 @@ class ProductController extends Controller
             : 10;
 
         $query = Product::with(['category', 'brand', 'productVariants.size', 'productVariants.color'])
-            ->withSum('productVariants', 'stock');
+            ->withSum('productVariants', 'stock')
+            ->withMin('productVariants as min_price', 'sale_price')
+            ->withMax('productVariants as max_price', 'sale_price')
+            ->withMin('productVariants as min_cost_price', 'cost_price')
+            ->withMax('productVariants as max_cost_price', 'cost_price');
 
         if ($search !== '') {
             $query->where(function ($q) use ($search) {
@@ -69,12 +79,23 @@ class ProductController extends Controller
             $query->where('status', (bool) (int) $status);
         }
 
+        if ($stockStatus === 'low_stock') {
+            // Không dùng having() trên cột alias của withSum() vì Eloquent::count()/paginate()
+            // dựng lại câu COUNT(*) bỏ mất cột alias đó, khiến having() luôn lọc rỗng.
+            $query->whereRaw(
+                '(select coalesce(sum(product_variants.stock), 0) from product_variants where product_variants.product_id = products.id) < ?',
+                [self::LOW_STOCK_THRESHOLD]
+            );
+        }
+
         $direction = in_array($direction, ['asc', 'desc'], true) ? $direction : 'desc';
         match ($sort) {
             'name' => $query->orderBy('name', $direction),
             'price' => $query->orderBy('price', $direction),
+            'cost_price' => $query->orderBy('cost_price', $direction),
             'stock' => $query->orderBy('product_variants_sum_stock', $direction),
             'status' => $query->orderBy('status', $direction),
+            'is_featured' => $query->orderBy('is_featured', $direction),
             default => $query->orderBy('id', $direction),
         };
 
@@ -82,6 +103,7 @@ class ProductController extends Controller
         $categories = Category::whereNull('parent_id')->with('childrenCategories')->get();
         $sizes      = Size::where('status', 1)->orderBy('sort_weight')->orderBy('name')->get();
         $colors     = Color::orderBy('name')->get();
+        $brands     = Brand::orderBy('name')->get();
 
         if ($request->ajax()) {
             return response()->json([
@@ -89,7 +111,22 @@ class ProductController extends Controller
             ]);
         }
 
-        return view('admin.products.index', compact('products', 'categories', 'sizes', 'colors', 'keyword', 'categoryId', 'parentCategoryId', 'brandId', 'sizeId', 'colorId', 'status', 'perPage'));
+        $totalProducts      = Product::count();
+        $activeProducts     = Product::where('status', true)->count();
+        $outOfStockProducts = Product::whereRaw(
+            '(select coalesce(sum(product_variants.stock), 0) from product_variants where product_variants.product_id = products.id) <= 0'
+        )->count();
+
+        return view('admin.products.index', compact(
+            'products', 'categories', 'sizes', 'colors', 'brands', 'keyword', 'categoryId', 'parentCategoryId',
+            'brandId', 'sizeId', 'colorId', 'status', 'stockStatus', 'perPage',
+            'totalProducts', 'activeProducts', 'outOfStockProducts'
+        ));
+    }
+
+    public function export(Request $request)
+    {
+        return Excel::download(new ProductsExport($request), 'danh-sach-san-pham-' . now()->format('Ymd-His') . '.xlsx');
     }
 
     public function create()
@@ -129,6 +166,11 @@ class ProductController extends Controller
             'category_id.required' => 'Vui lòng chọn danh mục.',
             'brand_id.required'    => 'Vui lòng chọn thương hiệu.',
             'price.required'       => 'Giá sản phẩm không được để trống.',
+            'price.numeric'        => 'Giá sản phẩm phải là một số.',
+            'price.min'            => 'Giá sản phẩm không được âm.',
+            'cost_price.required'  => 'Giá vốn không được để trống.',
+            'cost_price.numeric'   => 'Giá vốn phải là một số.',
+            'cost_price.min'       => 'Giá vốn không được âm.',
             'discount.min'         => 'Giảm giá không được âm.',
             'discount.max'         => 'Giảm giá không được vượt quá 100%.',
             'gender.required'      => 'Vui lòng chọn giới tính.',
@@ -215,7 +257,20 @@ class ProductController extends Controller
             ->with('success', "Thêm sản phẩm \"{$product->name}\" thành công.");
     }
 
-    public function edit(string $id)
+    public function edit(Request $request, string $id)
+    {
+        $data = $this->editFormData($id);
+
+        if ($request->ajax()) {
+            return response()->json([
+                'html' => view('admin.products.partials.edit-content', $data)->render(),
+            ]);
+        }
+
+        return view('admin.products.edit', $data);
+    }
+
+    private function editFormData(string $id): array
     {
         $product    = Product::with(['productVariants', 'productImages'])->findOrFail($id);
         $categories = Category::with('childrenCategories')->orderBy('name')->get();
@@ -234,17 +289,14 @@ class ProductController extends Controller
             ])->toArray())
             ->toArray();
 
-        return view('admin.products.edit', compact(
-            'product', 'categories', 'brands', 'genders',
-            'colors', 'sizes', 'existingVariants'
-        ));
+        return compact('product', 'categories', 'brands', 'genders', 'colors', 'sizes', 'existingVariants');
     }
 
     public function update(Request $request, string $id)
     {
         $product = Product::with('productImages')->findOrFail($id);
 
-        $request->validate([
+        $validator = Validator::make($request->all(), [
             'name'        => ['required', 'string', 'max:255'],
             'slug'        => ['nullable', 'string', 'max:255', Rule::unique('products', 'slug')->ignore($id)],
             'category_id' => ['required', 'integer', Rule::exists('categories', 'id')],
@@ -274,6 +326,21 @@ class ProductController extends Controller
             'image_2.max'          => 'Ảnh phụ 2 không được vượt quá 2MB.',
             'image_3.max'          => 'Ảnh phụ 3 không được vượt quá 2MB.',
         ]);
+
+        if ($validator->fails()) {
+            if ($request->ajax() || $request->wantsJson()) {
+                $request->flash();
+                $data = $this->editFormData($id);
+                $errorBag = (new \Illuminate\Support\ViewErrorBag())->put('default', $validator->errors());
+                $html = view('admin.products.partials.edit-content', $data)
+                    ->with('errors', $errorBag)
+                    ->render();
+
+                return response()->json(['message' => 'Dữ liệu chưa hợp lệ.', 'html' => $html], 422);
+            }
+
+            return back()->withErrors($validator)->withInput();
+        }
 
         $slug = $request->filled('slug')
             ? Str::slug($request->input('slug'))
@@ -315,10 +382,27 @@ class ProductController extends Controller
 
                 // Cập nhật ảnh phụ: slot 1 → index 0, slot 2 → index 1
                 $extraImages = $product->productImages->values();
+                
+                // Xử lý xoá ảnh phụ nếu có tín hiệu xoá từ client
+                foreach ([0 => 'remove_image_2', 1 => 'remove_image_3'] as $idx => $removeField) {
+                    if ($request->input($removeField) == 1) {
+                        $existing = $extraImages->get($idx);
+                        if ($existing) {
+                            $filePath = str_replace('storage/', '', $existing->image);
+                            Storage::disk('public')->delete($filePath);
+                            $existing->delete();
+                        }
+                    }
+                }
+
+                // Cập nhật hoặc thêm mới ảnh phụ
                 foreach ([0 => $newImage2, 1 => $newImage3] as $idx => $newPath) {
                     if ($newPath === null) continue;
                     $existing = $extraImages->get($idx);
                     if ($existing) {
+                        // Xoá file cũ nếu thay thế bằng file mới
+                        $filePath = str_replace('storage/', '', $existing->image);
+                        Storage::disk('public')->delete($filePath);
                         $existing->update(['image' => $newPath]);
                     } else {
                         $product->productImages()->create(['image' => $newPath]);
@@ -337,12 +421,26 @@ class ProductController extends Controller
                                 'cost_price' => max(0, (float) ($data['cost_price'] ?? 0)),
                                 'sale_price' => max(0, (float) ($data['sale_price'] ?? 0)),
                                 'stock'      => max(0, (int) ($data['stock'] ?? 0)),
+                                'status'     => 'Active', // Kích hoạt lại hoạt động nếu trước đó bị ẩn
                             ]
                         );
                         $keep[] = $variant->id;
                     }
                 }
-                $product->productVariants()->whereNotIn('id', $keep)->delete();
+
+                // Xử lý các biến thể bị bỏ chọn (không nằm trong danh sách keep)
+                $variantsToRemove = $product->productVariants()->whereNotIn('id', $keep)->get();
+                foreach ($variantsToRemove as $v) {
+                    // Kiểm tra xem biến thể có nằm trong đơn hàng nào không
+                    $hasOrders = DB::table('order_items')->where('product_variant_id', $v->id)->exists();
+                    if ($hasOrders) {
+                        // Nếu có đơn hàng, chuyển trạng thái thành Inactive để bảo toàn lịch sử hóa đơn tài chính
+                        $v->update(['status' => 'Inactive']);
+                    } else {
+                        // Nếu chưa có đơn hàng nào, tiến hành xóa hoàn toàn khỏi DB
+                        $v->delete();
+                    }
+                }
             });
         } catch (\Throwable $e) {
             foreach ($uploadedPaths as $path) {
@@ -351,11 +449,16 @@ class ProductController extends Controller
             throw $e;
         }
 
-        return redirect()->route('admin.products.list')
-            ->with('success', "Cập nhật sản phẩm \"{$product->name}\" thành công.");
+        $message = "Cập nhật sản phẩm \"{$product->name}\" thành công.";
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(['message' => $message]);
+        }
+
+        return redirect()->route('admin.products.list')->with('success', $message);
     }
 
-    public function toggleStatus(string $id)
+    public function toggleStatus(Request $request, string $id)
     {
         $product = Product::findOrFail($id);
         $newStatus = !$product->status;
@@ -365,7 +468,58 @@ class ProductController extends Controller
             ? "Sản phẩm \"{$product->name}\" đã được hiển thị."
             : "Sản phẩm \"{$product->name}\" đã được ẩn khỏi website.";
 
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(['status' => $newStatus, 'message' => $msg]);
+        }
+
         return back()->with('success', $msg);
+    }
+
+    public function toggleFeatured(Request $request, string $id)
+    {
+        $product = Product::findOrFail($id);
+        $newFeatured = !$product->is_featured;
+        $product->update(['is_featured' => $newFeatured]);
+
+        $msg = $newFeatured
+            ? "Đã đánh dấu \"{$product->name}\" là sản phẩm nổi bật."
+            : "Đã bỏ đánh dấu nổi bật cho \"{$product->name}\".";
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(['is_featured' => $newFeatured, 'message' => $msg]);
+        }
+
+        return back()->with('success', $msg);
+    }
+
+    public function quickUpdate(Request $request, string $id)
+    {
+        $product = Product::findOrFail($id);
+
+        $validator = Validator::make($request->all(), [
+            'price'    => ['required', 'numeric', 'min:0'],
+            'discount' => ['required', 'integer', 'min:0', 'max:100'],
+        ], [
+            'price.required'    => 'Giá không được để trống.',
+            'price.numeric'     => 'Giá phải là một số.',
+            'price.min'         => 'Giá không được âm.',
+            'discount.required' => 'Giảm giá không được để trống.',
+            'discount.integer'  => 'Giảm giá phải là số nguyên.',
+            'discount.min'      => 'Giảm giá không được âm.',
+            'discount.max'      => 'Giảm giá không được vượt quá 100%.',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['message' => $validator->errors()->first()], 422);
+        }
+
+        $product->update($validator->validated());
+
+        return response()->json([
+            'message' => "Cập nhật giá sản phẩm \"{$product->name}\" thành công.",
+            'price' => (float) $product->price,
+            'discount' => (int) $product->discount,
+        ]);
     }
 
     public function destroy(string $id)
@@ -392,8 +546,19 @@ class ProductController extends Controller
         if (empty($ids)) {
             return back()->with('error', 'Vui lòng chọn ít nhất một sản phẩm.');
         }
-        $count = Product::onlyTrashed()->whereIn('id', $ids)->count();
-        Product::onlyTrashed()->whereIn('id', $ids)->forceDelete();
+        $products = Product::onlyTrashed()->whereIn('id', $ids)->get();
+        $blockers = $products
+            ->map(fn (Product $product) => $this->productForceDeleteBlocker($product))
+            ->filter();
+
+        if ($blockers->isNotEmpty()) {
+            return back()->with('error', $blockers->first());
+        }
+
+        $count = 0;
+        foreach ($products as $product) {
+            $count += (int) $product->forceDelete();
+        }
         return back()->with('success', "Đã xóa vĩnh viễn {$count} sản phẩm.");
     }
 
@@ -441,8 +606,26 @@ class ProductController extends Controller
 
     public function forceDelete(string $id)
     {
-        Product::onlyTrashed()->findOrFail($id)->forceDelete();
+        $product = Product::onlyTrashed()->findOrFail($id);
+
+        if ($message = $this->productForceDeleteBlocker($product)) {
+            return redirect()->route('admin.products.trash')
+                ->with('error', $message);
+        }
+
+        $product->forceDelete();
 
         return redirect()->route('admin.products.trash')->with('success', 'Xóa vĩnh viễn sản phẩm thành công');
+    }
+
+    private function productForceDeleteBlocker(Product $product): ?string
+    {
+        if ($product->productVariants()
+            ->whereHas('orderItems')
+            ->exists()) {
+            return 'Không thể xóa vĩnh viễn sản phẩm này vì đã phát sinh đơn hàng. Hãy giữ sản phẩm trong thùng rác để bảo toàn lịch sử đơn hàng.';
+        }
+
+        return null;
     }
 }

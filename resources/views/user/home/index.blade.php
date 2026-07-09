@@ -173,10 +173,23 @@
     <section class="py-5 my-5">
         <div class="container-fluid px-lg-5">
             <div class="section-header text-center">
-                <h2 class="section-title">Mua Theo Danh Mục</h2>
-                <div class="section-subtitle">Khám phá các bộ sưu tập chính của chúng tôi</div>
+                <h2 class="section-title">Mua Theo Bộ Sưu Tập</h2>
+                <div class="section-subtitle">Khám phá phong cách qua các mùa trong năm</div>
             </div>
             <div class="row">
+                @foreach($collections as $collection)
+                    <div class="col-6 col-md-3">
+                        <div class="category-container">
+                            <div class="category-img-wrapper" style="height: 420px;">
+                                <img src="{{ $collection->banner ? asset($collection->banner) : 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=600&auto=format&fit=crop' }}" alt="{{ $collection->name }}" class="category-img">
+                            </div>
+                            <div class="category-overlay">
+                                <h3 class="category-title" style="font-size: 22px;">{{ $collection->name }}</h3>
+                                <a href="{{ route('collections.show', $collection->slug) }}" class="category-link">Xem Bộ Sưu Tập</a>
+                            </div>
+                        </div>
+                    </div>
+                @endforeach
                 <!-- Men -->
                 <div class="col-md-6">
                     <div class="category-container">
@@ -213,21 +226,12 @@
                 <div class="section-subtitle">Vừa được thêm vào bộ sưu tập</div>
             </div>
             
-            @php
-                $newArrivals = [
-                    ['id' => 20, 'name' => 'Áo Khoác Trench Oversized Cao Cấp', 'category' => 'Áo khoác', 'price' => 2450000, 'discount' => 0, 'image' => 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?q=80&w=600&auto=format&fit=crop', 'slug' => 'premium-oversized-trench', 'badge' => 'MỚI'],
-                    ['id' => 21, 'name' => 'Áo Sơ Mi Cotton Dáng Suông', 'category' => 'Áo sơ mi', 'price' => 890000, 'discount' => 0, 'image' => 'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?q=80&w=600&auto=format&fit=crop', 'slug' => 'structured-cotton-shirt'],
-                    ['id' => 22, 'name' => 'Quần Jean Thẳng Cổ Điển', 'category' => 'Denim', 'price' => 1200000, 'discount' => 20, 'image' => 'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?q=80&w=600&auto=format&fit=crop', 'slug' => 'classic-straight-jeans'],
-                    ['id' => 23, 'name' => 'Áo Blazer Len May Đo', 'category' => 'Blazer', 'price' => 1950000, 'discount' => 0, 'image' => 'https://images.unsplash.com/photo-1614975058789-41316d0e2e9c?q=80&w=600&auto=format&fit=crop', 'slug' => 'tailored-wool-blazer'],
-                ];
-            @endphp
-            
             @include('partials.product-grid', ['products' => $newArrivals, 'cols' => 'col-6 col-md-3'])
         </div>
     </section>
 
     <!-- 4. Recommended Products (AI Integrated) -->
-    @include('partials.recommended-products')
+    @include('partials.recommended-products', ['products' => $recommendedProducts->all()])
 
     <!-- 5. Best Sellers -->
     <section class="py-5 my-5">
@@ -236,15 +240,6 @@
                 <h2 class="section-title">Bán Chạy Nhất</h2>
                 <div class="section-subtitle">Những thiết kế được yêu thích nhất của chúng tôi</div>
             </div>
-            
-            @php
-                $bestSellers = [
-                    ['id' => 30, 'name' => 'Áo Thun Cổ Tròn Cổ Điển', 'category' => 'Cơ bản', 'price' => 350000, 'discount' => 0, 'image' => 'https://images.unsplash.com/photo-1618354691373-d851c5c3a990?q=80&w=600&auto=format&fit=crop', 'slug' => 'classic-crewneck-tee'],
-                    ['id' => 31, 'name' => 'Áo Polo Cotton Pima', 'category' => 'Áo sơ mi', 'price' => 650000, 'discount' => 15, 'image' => 'https://images.unsplash.com/photo-1562157873-818bc0726f68?q=80&w=600&auto=format&fit=crop', 'slug' => 'pima-cotton-polo'],
-                    ['id' => 32, 'name' => 'Áo Hoodie Len Merino Oversized', 'category' => 'Áo nỉ', 'price' => 1350000, 'discount' => 0, 'image' => 'https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?q=80&w=600&auto=format&fit=crop', 'slug' => 'oversized-merino-hoodie'],
-                    ['id' => 33, 'name' => 'Quần Âu Dáng Suông', 'category' => 'Quần dài', 'price' => 1100000, 'discount' => 0, 'image' => 'https://images.unsplash.com/photo-1554568218-0f1715e72254?q=80&w=600&auto=format&fit=crop', 'slug' => 'tailored-smart-trousers'],
-                ];
-            @endphp
             
             @include('partials.product-grid', ['products' => $bestSellers, 'cols' => 'col-6 col-md-3'])
         </div>
@@ -258,17 +253,58 @@
                 <div class="section-subtitle">Khám phá những sản phẩm được xem nhiều nhất trên cửa hàng.</div>
             </div>
             
-            @php
-                $trendingNow = [
-                    ['id' => 40, 'name' => 'Áo Gile Len Croptop', 'category' => 'Áo len', 'price' => 750000, 'discount' => 0, 'image' => 'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?q=80&w=600&auto=format&fit=crop', 'slug' => 'cropped-knit-vest'],
-                    ['id' => 41, 'name' => 'Giày Chelsea Boots Da Lộn', 'category' => 'Giày', 'price' => 2100000, 'discount' => 10, 'image' => 'https://images.unsplash.com/photo-1485968579580-b6d095142e6e?q=80&w=600&auto=format&fit=crop', 'slug' => 'suede-chelsea-boots'],
-                    ['id' => 42, 'name' => 'Chân Váy Lụa Cao Cấp', 'category' => 'Chân váy', 'price' => 1250000, 'discount' => 0, 'image' => 'https://images.unsplash.com/photo-1620799139834-6b8f844fbe61?q=80&w=600&auto=format&fit=crop', 'slug' => 'premium-silk-slip-skirt'],
-                    ['id' => 43, 'name' => 'Thắt Lưng Da Tối Giản', 'category' => 'Phụ kiện', 'price' => 450000, 'discount' => 0, 'image' => 'https://images.unsplash.com/photo-1509319117193-57bab727e09d?q=80&w=600&auto=format&fit=crop', 'slug' => 'minimalist-leather-belt'],
-                ];
-            @endphp
-            
             @include('partials.product-grid', ['products' => $trendingNow, 'cols' => 'col-6 col-md-3'])
         </div>
     </section>
 
+{{--
+    <!-- 7. Promotional Banner -->
+    <section class="promo-section">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-6 col-md-8 text-start animate__animated animate__fadeInLeft px-4 px-md-0">
+                    <span class="text-uppercase tracking-wider font-semibold text-white fs-6 mb-3 d-block">Bộ Sưu Tập Thân Thiện Môi Trường</span>
+                    <h2 class="promo-title">BỘ SƯU TẬP BỀN VỮNG</h2>
+                    <p class="fs-5 mb-4 text-white opacity-75">Được làm từ 100% vải hữu cơ và tái chế. Thời trang được thiết kế để vừa thanh lịch hôm nay, vừa bảo vệ ngày mai.</p>
+                    <a href="{{ route('collections.show', 'bst-ha') }}" class="btn btn-black bg-white text-dark border-white">Khám Phá Bộ Sưu Tập</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 8. Customer Reviews -->
+    <section class="py-5 my-5">
+        <div class="container-fluid px-lg-5">
+            <div class="section-header text-center">
+                <h2 class="section-title">Khách Hàng Nói Gì</h2>
+                <div class="section-subtitle">Những trải nghiệm thực tế từ cộng đồng khách hàng của chúng tôi</div>
+            </div>
+            
+            @php
+                $mockReviews = [
+                    [
+                        'author' => 'Minh Tuấn',
+                        'rating' => 5,
+                        'comment' => 'Chất lượng áo linen thực sự xuất sắc. Thiết kế tối giản, vừa vặn hoàn hảo và vải cực kỳ thoáng mát. Ngay lập tức trở thành item không thể thiếu trong tủ đồ hè của tôi.',
+                        'date' => '12 tháng 5, 2026'
+                    ],
+                    [
+                        'author' => 'Thu Hà',
+                        'rating' => 5,
+                        'comment' => 'Lúc đầu tôi còn nghi ngờ về gợi ý từ AI, nhưng nó đề xuất chiếc blazer len may đo vừa như in với vóc dáng của tôi. Thanh toán trơn tru và giao hàng nhanh chóng.',
+                        'date' => '01 tháng 6, 2026'
+                    ],
+                    [
+                        'author' => 'Hoàng Long',
+                        'rating' => 5,
+                        'comment' => 'Dịch vụ khách hàng xuất sắc và bao bì rất đẹp. Rõ ràng thương hiệu này quan tâm đến môi trường, từ chất liệu vải cho đến hộp giao hàng có thể tái chế.',
+                        'date' => '10 tháng 6, 2026'
+                    ]
+                ];
+            @endphp
+            
+            @include('partials.review-list', ['reviews' => $mockReviews])
+        </div>
+    </section>
+--}}
 @endsection
