@@ -13,6 +13,7 @@ class ReviewController extends Controller
         $search     = trim((string) $request->input('search', $request->input('keyword')));
         $keyword    = $search;
         $ratingFilter = $request->input('rating');
+        $statusFilter = $request->input('status');
         $perPage    = in_array((int) $request->input('per_page'), [10, 25, 50], true)
             ? (int) $request->input('per_page')
             : 10;
@@ -32,6 +33,16 @@ class ReviewController extends Controller
             $query->where('rating', $ratingFilter);
         }
 
+        // Lọc theo trạng thái kiểm duyệt (pending/approved/rejected/flagged).
+        if ($statusFilter && in_array($statusFilter, [
+            Review::STATUS_PENDING,
+            Review::STATUS_APPROVED,
+            Review::STATUS_REJECTED,
+            Review::STATUS_FLAGGED,
+        ], true)) {
+            $query->where('status', $statusFilter);
+        }
+
         $reviews = $query->paginate($perPage)->withQueryString();
 
         if ($request->ajax()) {
@@ -40,7 +51,30 @@ class ReviewController extends Controller
             ]);
         }
 
-        return view('admin.reviews.index', compact('reviews', 'keyword', 'ratingFilter', 'perPage'));
+        return view('admin.reviews.index', compact('reviews', 'keyword', 'ratingFilter', 'statusFilter', 'perPage'));
+    }
+
+    /**
+     * Admin DUYỆT thủ công một đánh giá -> hiển thị công khai.
+     * Dùng cho các review đang 'flagged' (AI không chắc) hoặc bị 'rejected' oan.
+     */
+    public function approve(string $id)
+    {
+        $review = Review::findOrFail($id);
+        $review->update(['status' => Review::STATUS_APPROVED]);
+
+        return back()->with('success', 'Đã duyệt đánh giá. Đánh giá sẽ hiển thị công khai trên trang sản phẩm.');
+    }
+
+    /**
+     * Admin TỪ CHỐI thủ công một đánh giá -> ẩn khỏi website.
+     */
+    public function reject(string $id)
+    {
+        $review = Review::findOrFail($id);
+        $review->update(['status' => Review::STATUS_REJECTED]);
+
+        return back()->with('success', 'Đã từ chối đánh giá. Đánh giá sẽ bị ẩn khỏi trang sản phẩm.');
     }
 
     public function destroy(string $id)
@@ -66,7 +100,7 @@ class ReviewController extends Controller
 
     public function trash(Request $request)
     {
-        $keyword = trim((string) $request->input('keyword'));
+        $keyword = trim((string) $request->input('search', $request->input('keyword')));
         $perPage = in_array((int) $request->input('per_page'), [10, 25, 50], true)
             ? (int) $request->input('per_page') : 10;
 
@@ -78,7 +112,13 @@ class ReviewController extends Controller
             });
         }
 
-        $reviews = $query->paginate($perPage)->appends($request->except('page'));
+        $reviews = $query->paginate($perPage)->withQueryString();
+
+        if ($request->ajax()) {
+            return response()->json([
+                'html' => view('admin.reviews.partials.trash-table', compact('reviews'))->render(),
+            ]);
+        }
 
         return view('admin.reviews.trash', compact('reviews', 'keyword', 'perPage'));
     }

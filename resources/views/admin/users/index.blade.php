@@ -22,6 +22,8 @@
             'customer' => 'Khách hàng',
         ];
         $currentUserId = auth()->id();
+        $currentUser   = auth()->user();
+        $currentUserIsProtectedAdmin = $currentUser?->isAdmin() && (bool) $currentUser?->is_protected;
         $isStaffPage   = ($type ?? 'all') === 'staff';
         $isCustomerPage = ($type ?? 'all') === 'customer';
         $showBulkCheckbox = $isCustomerPage;

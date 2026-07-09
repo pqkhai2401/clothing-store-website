@@ -23,16 +23,29 @@
             <span class="product-badge badge-sale">-{{ $pDiscount }}%</span>
         @endif
         
-        <button class="product-wishlist-btn" title="Add to Wishlist" data-id="{{ $pId }}">
-            <i class="bi bi-heart"></i>
+        @php $inWishlist = in_array($pId, $userWishlistIds ?? []); @endphp
+        <button class="product-wishlist-btn wl-toggle-btn"
+                title="{{ $inWishlist ? 'Xóa khỏi yêu thích' : 'Thêm vào yêu thích' }}"
+                data-product-id="{{ $pId }}"
+                data-in-wishlist="{{ $inWishlist ? 'true' : 'false' }}">
+            <i class="bi {{ $inWishlist ? 'bi-heart-fill' : 'bi-heart' }}"
+               style="{{ $inWishlist ? 'color:#d9534f;' : '' }}"></i>
         </button>
         
         <img src="{{ $pImage }}" alt="{{ $pName }}" class="product-img">
-        
+
         <div class="product-actions">
-            <button class="btn-product-action" title="Quick View" data-id="{{ $pId }}"><i class="bi bi-eye"></i></button>
-            <button class="btn-product-action" title="Add to Cart" onclick="addToCart('{{ $pId }}')"><i class="bi bi-bag"></i></button>
+            <a class="btn-product-action" title="Xem chi tiết" href="{{ $pUrl }}"><i class="bi bi-eye"></i></a>
+            <button class="btn-product-action" type="button" title="Thêm vào giỏ" data-add-to-cart data-product-id="{{ $pId }}">
+                <i class="bi bi-bag add-cart-label"></i>
+                <span class="add-cart-spinner spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+            </button>
         </div>
+
+        <button class="product-add-cart-bar" type="button" data-add-to-cart data-product-id="{{ $pId }}">
+            <span class="add-cart-label"><i class="bi bi-bag me-2"></i>Thêm vào giỏ</span>
+            <span class="add-cart-spinner spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+        </button>
     </div>
     <div class="product-info">
         <div class="product-category">{{ $pCategory }}</div>
@@ -47,3 +60,51 @@
         </div>
     </div>
 </div>
+
+@once
+    @push('scripts')
+        <script>
+            document.addEventListener('click', async function (event) {
+                const btn = event.target.closest('[data-add-to-cart]');
+                if (!btn || btn.disabled) return;
+
+                btn.disabled = true;
+                btn.classList.add('is-loading');
+
+                try {
+                    const response = await fetch('{{ route('cart.add') }}', {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                        },
+                        body: JSON.stringify({ product_id: btn.dataset.productId }),
+                    });
+
+                    if (response.status === 401) {
+                        window.location.href = '{{ route('auth.loginpage') }}';
+                        return;
+                    }
+
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        window.showToast(data.message || 'Không thể thêm sản phẩm vào giỏ hàng.', 'error');
+                        return;
+                    }
+
+                    window.showToast(data.message || 'Đã thêm vào giỏ hàng!', 'success');
+                    if (data.cart_count !== undefined) {
+                        window.updateCartBadge(data.cart_count);
+                    }
+                } catch (error) {
+                    window.showToast('Đã có lỗi xảy ra. Vui lòng thử lại.', 'error');
+                } finally {
+                    btn.disabled = false;
+                    btn.classList.remove('is-loading');
+                }
+            });
+        </script>
+    @endpush
+@endonce

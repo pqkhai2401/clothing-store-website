@@ -105,36 +105,6 @@
             height: 350px;
         }
     }
-
-
-
-    /* Promotional Section */
-    .promo-section {
-        height: 60vh;
-        background-image: linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.3)), url("{{ asset('images/promo_banner.png') }}");
-        background-size: cover;
-        background-position: center;
-        background-attachment: fixed;
-        display: flex;
-        align-items: center;
-        color: #ffffff;
-    }
-
-    .promo-title {
-        font-size: 3rem;
-        margin-bottom: 20px;
-    }
-
-    @media (max-width: 768px) {
-        .promo-section {
-            height: 45vh;
-            background-attachment: scroll;
-        }
-        .promo-title {
-            font-size: 2rem;
-        }
-    }
-
     /* Section Title */
     .section-header {
         margin-bottom: 50px;
@@ -208,7 +178,7 @@
             </div>
             <div class="row">
                 <!-- Men -->
-                <div class="col-md-4">
+                <div class="col-md-6">
                     <div class="category-container">
                         <div class="category-img-wrapper">
                             <img src="{{ asset('images/category_men.png') }}" alt="Men's Collection" class="category-img">
@@ -220,7 +190,7 @@
                     </div>
                 </div>
                 <!-- Women -->
-                <div class="col-md-4">
+                <div class="col-md-6">
                     <div class="category-container">
                         <div class="category-img-wrapper">
                             <img src="{{ asset('images/category_women.png') }}" alt="Bộ Sưu Tập Nữ" class="category-img">
@@ -228,18 +198,6 @@
                         <div class="category-overlay">
                             <h3 class="category-title">Nữ</h3>
                             <a href="{{ url('/women') }}" class="category-link">Xem Bộ Sưu Tập</a>
-                        </div>
-                    </div>
-                </div>
-                <!-- Accessories -->
-                <div class="col-md-4">
-                    <div class="category-container">
-                        <div class="category-img-wrapper">
-                            <img src="{{ asset('images/category_acc.png') }}" alt="Bộ Sưu Tập Phụ Kiện" class="category-img">
-                        </div>
-                        <div class="category-overlay">
-                            <h3 class="category-title">Phụ Kiện</h3>
-                            <a href="{{ url('/products?category=accessories') }}" class="category-link">Xem Bộ Sưu Tập</a>
                         </div>
                     </div>
                 </div>
@@ -292,12 +250,12 @@
         </div>
     </section>
 
-    <!-- 6. Trending Products -->
+    <!-- 6. products with the most views -->
     <section class="py-5 bg-light">
         <div class="container-fluid px-lg-5">
             <div class="section-header text-center">
-                <h2 class="section-title">Đang Thịnh Hành</h2>
-                <div class="section-subtitle">Những phong cách được yêu thích nhất mùa này</div>
+                <h2 class="section-title">ĐƯỢC QUAN TÂM NHIỀU NHẤT</h2>
+                <div class="section-subtitle">Khám phá những sản phẩm được xem nhiều nhất trên cửa hàng.</div>
             </div>
             
             @php
@@ -313,52 +271,4 @@
         </div>
     </section>
 
-    <!-- 7. Promotional Banner -->
-    <section class="promo-section">
-        <div class="container">
-            <div class="row">
-                <div class="col-lg-6 col-md-8 text-start animate__animated animate__fadeInLeft px-4 px-md-0">
-                    <span class="text-uppercase tracking-wider font-semibold text-white fs-6 mb-3 d-block">Bộ Sưu Tập Thân Thiện Môi Trường</span>
-                    <h2 class="promo-title">BỘ SƯU TẬP BỀN VỮNG</h2>
-                    <p class="fs-5 mb-4 text-white opacity-75">Được làm từ 100% vải hữu cơ và tái chế. Thời trang được thiết kế để vừa thanh lịch hôm nay, vừa bảo vệ ngày mai.</p>
-                    <a href="{{ url('/products?collection=sustainable') }}" class="btn btn-black bg-white text-dark border-white">Khám Phá Bộ Sưu Tập</a>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- 8. Customer Reviews -->
-    <section class="py-5 my-5">
-        <div class="container-fluid px-lg-5">
-            <div class="section-header text-center">
-                <h2 class="section-title">Khách Hàng Nói Gì</h2>
-                <div class="section-subtitle">Những trải nghiệm thực tế từ cộng đồng khách hàng của chúng tôi</div>
-            </div>
-            
-            @php
-                $mockReviews = [
-                    [
-                        'author' => 'Minh Tuấn',
-                        'rating' => 5,
-                        'comment' => 'Chất lượng áo linen thực sự xuất sắc. Thiết kế tối giản, vừa vặn hoàn hảo và vải cực kỳ thoáng mát. Ngay lập tức trở thành item không thể thiếu trong tủ đồ hè của tôi.',
-                        'date' => '12 tháng 5, 2026'
-                    ],
-                    [
-                        'author' => 'Thu Hà',
-                        'rating' => 5,
-                        'comment' => 'Lúc đầu tôi còn nghi ngờ về gợi ý từ AI, nhưng nó đề xuất chiếc blazer len may đo vừa như in với vóc dáng của tôi. Thanh toán trơn tru và giao hàng nhanh chóng.',
-                        'date' => '01 tháng 6, 2026'
-                    ],
-                    [
-                        'author' => 'Hoàng Long',
-                        'rating' => 5,
-                        'comment' => 'Dịch vụ khách hàng xuất sắc và bao bì rất đẹp. Rõ ràng thương hiệu này quan tâm đến môi trường, từ chất liệu vải cho đến hộp giao hàng có thể tái chế.',
-                        'date' => '10 tháng 6, 2026'
-                    ]
-                ];
-            @endphp
-            
-            @include('partials.review-list', ['reviews' => $mockReviews])
-        </div>
-    </section>
 @endsection

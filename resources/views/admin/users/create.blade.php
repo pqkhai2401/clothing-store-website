@@ -88,12 +88,15 @@
                     <div class="account-form-row">
                         <label for="role_id" class="account-form-label">Vai Trò</label>
                         <div>
+                            @php
+                                $roleLabels = ['admin' => 'Quản trị viên', 'staff' => 'Nhân viên', 'customer' => 'Khách hàng'];
+                            @endphp
                             <select name="role_id" id="role_id"
                                 class="form-select account-form-control @error('role_id') is-invalid @enderror"
                                 required>
                                 @foreach ($roles as $role)
                                     <option value="{{ $role->id }}" @selected((string) old('role_id', $roles->first()?->id) === (string) $role->id)>
-                                        {{ $role->name }}
+                                        {{ $roleLabels[$role->name] ?? $role->name }}
                                     </option>
                                 @endforeach
                             </select>
@@ -102,6 +105,27 @@
                             @enderror
                         </div>
                     </div>
+
+                    @if(!empty($currentUserIsProtectedAdmin))
+                    <div class="account-form-row" id="isProtectedRow" style="display:none;">
+                        <label class="account-form-label">Quyền bảo vệ</label>
+                        <div>
+                            <div class="form-check">
+                                <input type="checkbox" name="is_protected" value="1"
+                                    id="is_protected"
+                                    class="form-check-input @error('is_protected') is-invalid @enderror"
+                                    {{ old('is_protected') ? 'checked' : '' }}>
+                                <label for="is_protected" class="form-check-label fw-semibold">
+                                    Admin hệ thống được bảo vệ
+                                </label>
+                                <small class="text-muted d-block mt-1">Chỉ admin hệ thống khác mới được thay đổi role, mật khẩu hoặc khóa tài khoản này.</small>
+                            </div>
+                            @error('is_protected')
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                            @enderror
+                        </div>
+                    </div>
+                    @endif
 
                     <div class="account-form-row">
                         <label for="city" class="account-form-label">Tỉnh, Thành Phố</label>
@@ -168,5 +192,25 @@ document.querySelectorAll('.pw-toggle').forEach(function (btn) {
         icon.className = show ? 'fa-regular fa-eye-slash' : 'fa-regular fa-eye';
     });
 });
+
+(function () {
+    var roleSelect       = document.getElementById('role_id');
+    var protectedRow     = document.getElementById('isProtectedRow');
+    var protectedCb      = document.getElementById('is_protected');
+    if (!roleSelect || !protectedRow) return;
+
+    var adminRoleIds = @json(
+        ($roles ?? collect())->filter(fn ($r) => $r->name === 'admin')->pluck('id')->values()
+    );
+
+    function syncProtectedRow() {
+        var isAdmin = adminRoleIds.includes(parseInt(roleSelect.value));
+        protectedRow.style.display = isAdmin ? '' : 'none';
+        if (!isAdmin && protectedCb) protectedCb.checked = false;
+    }
+
+    roleSelect.addEventListener('change', syncProtectedRow);
+    syncProtectedRow();
+})();
 </script>
 @endpush

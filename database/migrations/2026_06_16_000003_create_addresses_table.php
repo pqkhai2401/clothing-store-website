@@ -15,9 +15,10 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
             $table->string('city');
-       
+            $table->string('district')->nullable();
             $table->string('ward');
             $table->string('apartment_number');
+            $table->boolean('is_default')->default(false);
             $table->timestamps();
             $table->softDeletes();
         });

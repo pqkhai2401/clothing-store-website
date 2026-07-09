@@ -67,8 +67,14 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         btn.classList.add('is-active');
         if (catLabel) catLabel.textContent = btn.dataset.label;
+
+        const parentCategoryFilter = document.getElementById('productParentCategoryFilter');
+        const isParent = btn.dataset.type === 'parent';
+
+        if (categoryFilter) categoryFilter.value = isParent ? '' : (btn.dataset.value || '');
+        if (parentCategoryFilter) parentCategoryFilter.value = isParent ? (btn.dataset.value || '') : '';
+
         if (categoryFilter) {
-            categoryFilter.value = btn.dataset.value || '';
             categoryFilter.dispatchEvent(new Event('change', { bubbles: true }));
         }
         closeCatPanel();
@@ -135,6 +141,24 @@ document.addEventListener('DOMContentLoaded', function () {
         label: 'hkProductStatusLabel',
         list: 'hkProductStatusList',
         hidden: 'productStatusFilter',
+    });
+
+    wireSimpleDropdown({
+        root: 'hkProductSizeFilter',
+        trigger: 'hkProductSizeTrigger',
+        panel: 'hkProductSizePanel',
+        label: 'hkProductSizeLabel',
+        list: 'hkProductSizeList',
+        hidden: 'productSizeFilter',
+    });
+
+    wireSimpleDropdown({
+        root: 'hkProductColorFilter',
+        trigger: 'hkProductColorTrigger',
+        panel: 'hkProductColorPanel',
+        label: 'hkProductColorLabel',
+        list: 'hkProductColorList',
+        hidden: 'productColorFilter',
     });
 });
 

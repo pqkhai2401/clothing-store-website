@@ -12,7 +12,7 @@ class ColorController extends Controller
     public function index(Request $request)
     {
         $keyword = trim((string) $request->input('search', $request->input('keyword')));
-        $sort = $request->input('sort', 'name');
+        $sort = $request->input('sort', 'id');
         $direction = in_array($request->input('direction'), ['asc', 'desc'], true) ? $request->input('direction') : 'asc';
         $perPage = in_array((int) $request->input('per_page'), [10, 25, 50], true)
             ? (int) $request->input('per_page')
@@ -42,6 +42,35 @@ class ColorController extends Controller
         return view('admin.colors.index', compact('colors', 'keyword', 'perPage'));
     }
 
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'name'     => ['required', 'string', 'max:100', Rule::unique('colors', 'name')],
+            'hex_code' => ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+        ], [
+            'name.required' => 'Tên màu sắc không được để trống.',
+            'name.max'      => 'Tên màu sắc không được quá 100 ký tự.',
+            'name.unique'   => 'Tên màu sắc này đã tồn tại.',
+            'hex_code.regex' => 'Mã màu không hợp lệ. Vui lòng nhập đúng định dạng #RRGGBB (ví dụ: #FF5733).',
+        ]);
+
+        if (isset($validated['hex_code'])) {
+            $validated['hex_code'] = strtoupper($validated['hex_code']);
+        }
+
+        $color = Color::create($validated);
+
+        if ($request->ajax()) {
+            return response()->json([
+                'message' => "Thêm màu sắc \"{$color->name}\" thành công.",
+                'color'   => $color,
+            ], 201);
+        }
+
+        return redirect()->route('admin.colors.list')
+            ->with('success', "Thêm màu sắc \"{$color->name}\" thành công.");
+    }
+
     public function edit(string $id)
     {
         $color = Color::findOrFail($id);
@@ -53,15 +82,25 @@ class ColorController extends Controller
     {
         $color = Color::findOrFail($id);
 
-        $request->validate([
-            'name' => ['required', 'string', 'max:100', Rule::unique('colors', 'name')->ignore($id)],
+        $validated = $request->validate([
+            'name'     => ['required', 'string', 'max:100', Rule::unique('colors', 'name')->ignore($id)],
+            'hex_code' => ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
         ], [
-            'name.required' => 'Tên màu sắc không được để trống.',
-            'name.max'      => 'Tên màu sắc không được quá 100 ký tự.',
-            'name.unique'   => 'Tên màu sắc này đã tồn tại.',
+            'name.required'  => 'Tên màu sắc không được để trống.',
+            'name.max'       => 'Tên màu sắc không được quá 100 ký tự.',
+            'name.unique'    => 'Tên màu sắc này đã tồn tại.',
+            'hex_code.regex' => 'Mã màu không hợp lệ. Vui lòng nhập đúng định dạng #RRGGBB (ví dụ: #FF5733).',
         ]);
 
-        $color->update(['name' => $request->input('name')]);
+        if (isset($validated['hex_code'])) {
+            $validated['hex_code'] = strtoupper($validated['hex_code']);
+        }
+
+        $color->update(['name' => $validated['name'], 'hex_code' => $validated['hex_code'] ?? $color->hex_code]);
+
+        if ($request->ajax()) {
+            return response()->json(['message' => "Cập nhật màu sắc \"{$color->name}\" thành công.", 'color' => $color]);
+        }
 
         return redirect()->route('admin.colors.list')
             ->with('success', "Cập nhật màu sắc \"{$color->name}\" thành công.");

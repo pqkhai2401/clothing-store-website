@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Models\Cart;
+use App\Models\Wishlist;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -25,6 +27,29 @@ class AppServiceProvider extends ServiceProvider
     {
         Paginator::useBootstrapFive();
         Passport::enablePasswordGrant();
+
+        // Cung cấp số lượng + danh sách id wishlist cho header và product-card
+        View::composer(['partials.header', 'partials.product-card'], function ($view): void {
+            if (Auth::check()) {
+                $rows = Wishlist::where('user_id', Auth::id())
+                    ->pluck('product_id')
+                    ->all();
+                $view->with('wishlistCount', count($rows));
+                $view->with('userWishlistIds', $rows);
+            } else {
+                $view->with('wishlistCount', 0);
+                $view->with('userWishlistIds', []);
+            }
+        });
+
+        // Cung cấp số lượng sản phẩm trong giỏ hàng cho header
+        View::composer('partials.header', function ($view): void {
+            $cartCount = Auth::check()
+                ? (int) (Cart::where('user_id', Auth::id())->first()?->cartItems()->sum('quantity') ?? 0)
+                : 0;
+
+            $view->with('cartCount', $cartCount);
+        });
 
         View::composer([
             'layouts.partial.sidebar',
@@ -73,6 +98,22 @@ class AppServiceProvider extends ServiceProvider
                         'url'            => $r('admin.products.list', '/admin/products'),
                         'active_pattern' => 'admin/products*',
                         'icon'           => 'fa-solid fa-shirt',
+                        'parent'         => [],
+                    ],
+                    [
+                        'permission'     => 'manage-goods-receipts',
+                        'title'          => 'Quản lý kho hàng',
+                        'url'            => $r('admin.goods-receipts.list', '/admin/goods-receipts'),
+                        'active_pattern' => 'admin/goods-receipts*',
+                        'icon'           => 'fa-solid fa-box-open',
+                        'parent'         => [],
+                    ],
+                    [
+                        'permission'     => 'manage-suppliers',
+                        'title'          => 'Quản lý nhà cung cấp',
+                        'url'            => $r('admin.suppliers.list', '/admin/suppliers'),
+                        'active_pattern' => 'admin/suppliers*',
+                        'icon'           => 'fa-solid fa-truck',
                         'parent'         => [],
                     ],
                     [

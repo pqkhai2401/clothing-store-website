@@ -22,18 +22,13 @@
         </div>
 
         {{-- Search bar --}}
-        <div class="mb-3 d-flex align-items-center gap-2">
-            <input type="search" name="search" value="{{ $keyword }}"
+        <form method="GET" action="{{ route('admin.categories.trash') }}" class="mb-3">
+            <input type="search" name="search" data-admin-search
+                value="{{ $keyword }}"
                 class="form-control product-trash-search"
                 placeholder="Tìm kiếm theo tên danh mục..."
-                autocomplete="off"
-                data-admin-search>
-            @if($keyword)
-                <a href="{{ route('admin.categories.trash') }}" class="btn btn-outline-secondary btn-sm fw-semibold">
-                    <i class="fa-solid fa-xmark me-1"></i> Xóa lọc
-                </a>
-            @endif
-        </div>
+                autocomplete="off">
+        </form>
 
         {{-- Table area --}}
         <div data-admin-table-area>

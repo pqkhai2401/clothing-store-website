@@ -14,6 +14,14 @@
             <div>
                 <h1 class="product-header-title mb-2">Quản lý sản phẩm</h1>
                 <p class="product-header-desc mb-0">Danh sách tất cả sản phẩm trong hệ thống.</p>
+                <div class="product-header-actions">
+                    <a href="{{ route('admin.products.create') }}" class="btn btn-dark product-action-btn">
+                        <i class="fa-solid fa-plus me-1"></i> Thêm sản phẩm
+                    </a>
+                    <a href="{{ route('admin.products.trash') }}" class="btn btn-light border product-action-btn">
+                        <i class="fa-regular fa-trash-can me-1"></i> Thùng rác
+                    </a>
+                </div>
             </div>
 
             <div class="product-toolbar">
@@ -23,11 +31,126 @@
                         placeholder="Tìm kiếm theo tên sản phẩm, danh mục,..." autocomplete="off">
 
                     @php
+                        $selectedCatLabel = 'Tất cả danh mục';
+                        if (!empty($parentCategoryId)) {
+                            $parentCat = $categories->firstWhere('id', $parentCategoryId);
+                            $selectedCatLabel = $parentCat ? $parentCat->name . ' (tất cả)' : 'Tất cả danh mục';
+                        } else {
+                            foreach ($categories as $parent) {
+                                foreach ($parent->childrenCategories as $child) {
+                                    if ((string)$categoryId === (string)$child->id) {
+                                        $selectedCatLabel = $child->name;
+                                        break 2;
+                                    }
+                                }
+                            }
+                        }
+                    @endphp
+                    <input type="hidden" name="category_id" data-admin-filter id="productCategoryFilter" value="{{ $categoryId ?? '' }}">
+                    <input type="hidden" name="parent_category_id" data-admin-filter id="productParentCategoryFilter" value="{{ $parentCategoryId ?? '' }}">
+                    <div class="hk-cat-filter" id="hkCatFilter">
+                        <button type="button" class="hk-cat-trigger" id="hkCatTrigger" aria-haspopup="listbox" aria-expanded="false">
+                            <span class="hk-cat-trigger-label" id="hkCatLabel">{{ $selectedCatLabel }}</span>
+                            <i class="fa-solid fa-chevron-down hk-cat-arrow"></i>
+                        </button>
+                        <div class="hk-cat-panel" id="hkCatPanel" hidden>
+                            <div class="hk-cat-search-wrap">
+                                <i class="fa-solid fa-magnifying-glass hk-cat-search-icon"></i>
+                                <input type="text" class="hk-cat-search-input" id="hkCatSearch" placeholder="Tìm danh mục..." autocomplete="off">
+                            </div>
+                            <div class="hk-cat-list" id="hkCatList" role="listbox">
+                                <button type="button" class="hk-cat-item {{ !$categoryId && empty($parentCategoryId) ? 'is-active' : '' }}"
+                                    data-type="all" data-value="" data-label="Tất cả danh mục">Tất cả danh mục</button>
+                                @foreach($categories as $parent)
+                                    <button type="button"
+                                        class="hk-cat-item {{ (string) ($parentCategoryId ?? '') === (string) $parent->id ? 'is-active' : '' }}"
+                                        data-type="parent"
+                                        data-value="{{ $parent->id }}"
+                                        data-label="{{ $parent->name }} (tất cả)">
+                                        {{ $parent->name }}
+                                    </button>
+                                    @foreach($parent->childrenCategories as $child)
+                                        <button type="button"
+                                            class="hk-cat-item ps-4 {{ (string)$categoryId === (string)$child->id ? 'is-active' : '' }}"
+                                            data-type="child"
+                                            data-value="{{ $child->id }}"
+                                            data-label="{{ $child->name }}">
+                                            {{ $child->name }}
+                                        </button>
+                                    @endforeach
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+
+                    @php
+                        $selectedSizeLabel = 'Tất cả size';
+                        foreach ($sizes as $size) {
+                            if ((string) ($sizeId ?? '') === (string) $size->id) {
+                                $selectedSizeLabel = $size->name;
+                                break;
+                            }
+                        }
+                    @endphp
+                    <input type="hidden" name="size_id" data-admin-filter id="productSizeFilter" value="{{ $sizeId ?? '' }}">
+                    <div class="hk-cat-filter product-compact-filter" id="hkProductSizeFilter">
+                        <button type="button" class="hk-cat-trigger" id="hkProductSizeTrigger" aria-haspopup="listbox" aria-expanded="false">
+                            <span class="hk-cat-trigger-label" id="hkProductSizeLabel">{{ $selectedSizeLabel }}</span>
+                            <i class="fa-solid fa-chevron-down hk-cat-arrow"></i>
+                        </button>
+                        <div class="hk-cat-panel" id="hkProductSizePanel" hidden>
+                            <div class="hk-cat-list" id="hkProductSizeList" role="listbox">
+                                <button type="button" class="hk-cat-item {{ !($sizeId ?? '') ? 'is-active' : '' }}" data-value="" data-label="Tất cả size">Tất cả size</button>
+                                @foreach($sizes as $size)
+                                    <button type="button"
+                                        class="hk-cat-item {{ (string) ($sizeId ?? '') === (string) $size->id ? 'is-active' : '' }}"
+                                        data-value="{{ $size->id }}"
+                                        data-label="{{ $size->name }}">
+                                        {{ $size->name }}
+                                    </button>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+
+                    @php
+                        $selectedColorLabel = 'Tất cả màu';
+                        foreach ($colors as $color) {
+                            if ((string) ($colorId ?? '') === (string) $color->id) {
+                                $selectedColorLabel = $color->name;
+                                break;
+                            }
+                        }
+                    @endphp
+                    <input type="hidden" name="color_id" data-admin-filter id="productColorFilter" value="{{ $colorId ?? '' }}">
+                    <div class="hk-cat-filter product-compact-filter" id="hkProductColorFilter">
+                        <button type="button" class="hk-cat-trigger" id="hkProductColorTrigger" aria-haspopup="listbox" aria-expanded="false">
+                            <span class="hk-cat-trigger-label" id="hkProductColorLabel">{{ $selectedColorLabel }}</span>
+                            <i class="fa-solid fa-chevron-down hk-cat-arrow"></i>
+                        </button>
+                        <div class="hk-cat-panel" id="hkProductColorPanel" hidden>
+                            <div class="hk-cat-list" id="hkProductColorList" role="listbox">
+                                <button type="button" class="hk-cat-item {{ !($colorId ?? '') ? 'is-active' : '' }}" data-value="" data-label="Tất cả màu">Tất cả màu</button>
+                                @foreach($colors as $color)
+                                    <button type="button"
+                                        class="hk-cat-item {{ (string) ($colorId ?? '') === (string) $color->id ? 'is-active' : '' }}"
+                                        data-value="{{ $color->id }}"
+                                        data-label="{{ $color->name }}">
+                                        {{ $color->name }}
+                                    </button>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="product-toolbar-right">
+                    @php
                         $statusVal = request('status', $status ?? '');
                         $statusLabelMap = ['' => 'Tất cả trạng thái', '1' => 'Đang bán', '0' => 'Ẩn'];
                     @endphp
                     <input type="hidden" name="status" data-admin-filter id="productStatusFilter" value="{{ $statusVal }}">
-                    <div class="hk-cat-filter" id="hkProductStatusFilter">
+                    <div class="hk-cat-filter product-status-filter" id="hkProductStatusFilter">
                         <button type="button" class="hk-cat-trigger" id="hkProductStatusTrigger" aria-haspopup="listbox" aria-expanded="false">
                             <span class="hk-cat-trigger-label" id="hkProductStatusLabel">{{ $statusLabelMap[$statusVal] ?? 'Tất cả trạng thái' }}</span>
                             <i class="fa-solid fa-chevron-down hk-cat-arrow"></i>
@@ -40,53 +163,6 @@
                             </div>
                         </div>
                     </div>
-
-                    @php
-                        $selectedCatLabel = 'Tất cả danh mục';
-                        foreach ($categories as $parent) {
-                            foreach ($parent->childrenCategories as $child) {
-                                if ((string)$categoryId === (string)$child->id) {
-                                    $selectedCatLabel = $child->name;
-                                    break 2;
-                                }
-                            }
-                        }
-                    @endphp
-                    <input type="hidden" name="category_id" data-admin-filter id="productCategoryFilter" value="{{ $categoryId ?? '' }}">
-                    <div class="hk-cat-filter" id="hkCatFilter">
-                        <button type="button" class="hk-cat-trigger" id="hkCatTrigger" aria-haspopup="listbox" aria-expanded="false">
-                            <span class="hk-cat-trigger-label" id="hkCatLabel">{{ $selectedCatLabel }}</span>
-                            <i class="fa-solid fa-chevron-down hk-cat-arrow"></i>
-                        </button>
-                        <div class="hk-cat-panel" id="hkCatPanel" hidden>
-                            <div class="hk-cat-search-wrap">
-                                <i class="fa-solid fa-magnifying-glass hk-cat-search-icon"></i>
-                                <input type="text" class="hk-cat-search-input" id="hkCatSearch" placeholder="Tìm danh mục..." autocomplete="off">
-                            </div>
-                            <div class="hk-cat-list" id="hkCatList" role="listbox">
-                                <button type="button" class="hk-cat-item {{ !$categoryId ? 'is-active' : '' }}" data-value="" data-label="Tất cả danh mục">Tất cả danh mục</button>
-                                @foreach($categories as $parent)
-                                    @foreach($parent->childrenCategories as $child)
-                                        <button type="button"
-                                            class="hk-cat-item {{ (string)$categoryId === (string)$child->id ? 'is-active' : '' }}"
-                                            data-value="{{ $child->id }}"
-                                            data-label="{{ $child->name }}">
-                                            {{ $child->name }}
-                                        </button>
-                                    @endforeach
-                                @endforeach
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="product-tool-actions">
-                    <a href="{{ route('admin.products.trash') }}" class="btn btn-light border product-action-btn">
-                        <i class="fa-regular fa-trash-can me-1"></i> Thùng rác
-                    </a>
-                    <a href="#" class="btn btn-dark product-action-btn">
-                        <i class="fa-solid fa-plus me-1"></i> Thêm sản phẩm
-                    </a>
                 </div>
             </div>
 
