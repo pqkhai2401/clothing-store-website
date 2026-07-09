@@ -121,7 +121,7 @@ html:not([data-theme="dark"]) .category-count-total {
 }
 </style>
 
-<div class="product-table-wrap">
+<div class="product-table-wrap category-table-wrap">
                 <div class="table-responsive">
                     <table class="table table-hover product-table align-middle" id="catTable">
                         <thead>
@@ -134,25 +134,25 @@ html:not([data-theme="dark"]) .category-count-total {
                                         ID <span class="product-sort-icon">↑</span>
                                     </button>
                                 </th>
-                                <th>
+                                <th style="width:180px;">
                                     <button type="button" class="product-sort-btn" data-sort-key="name">
                                         Tên danh mục <span class="product-sort-icon">↑↓</span>
                                     </button>
                                 </th>
-                                <th style="width:190px;">Danh mục cha</th>
-                                <th style="width:200px;">Slug</th>
-                                <th style="width:130px;">
+                                <th style="width:130px;">Danh mục cha</th>
+                                <th style="width:130px;">Slug</th>
+                                <th style="width:140px;">
                                     <button type="button" class="product-sort-btn" data-sort-key="products_count" data-sort-type="number">
                                         Số sản phẩm <span class="product-sort-icon">↑↓</span>
                                     </button>
                                 </th>
-                                <th style="width:130px;">
+                                <th style="width:140px;">
                                     <button type="button" class="product-sort-btn" data-sort-key="created_at">
                                         Ngày tạo <span class="product-sort-icon">↑↓</span>
                                     </button>
                                 </th>
-                                <th style="width:120px;">Trạng thái</th>
-                                <th class="text-end pe-4" style="width:90px;">Thao tác</th>
+                                <th style="width:160px;">Trạng thái</th>
+                                <th class="text-end pe-4" style="width:110px;">Thao tác</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -163,15 +163,24 @@ html:not([data-theme="dark"]) .category-count-total {
                                     </td>
                                     <td data-sort-value="{{ $category->id }}" style="opacity:.55;">{{ $category->id }}</td>
                                     <td data-cell="name" data-sort-value="{{ $category->name }}">
-                                        <div class="fw-bold text-dark">{{ $category->name }}</div>
                                         @if(is_null($category->parent_id))
+                                            <a href="{{ route('admin.products.list', ['parent_category_id' => $category->id]) }}"
+                                               class="fw-bold attribute-name-link"
+                                               title="Xem tất cả sản phẩm thuộc danh mục {{ $category->name }} và danh mục con">
+                                                {{ $category->name }}
+                                            </a>
                                             <span class="parent-tag mt-1">Cha</span>
                                         @else
+                                            <a href="{{ route('admin.products.list', ['category_id' => $category->id]) }}"
+                                               class="fw-bold attribute-name-link"
+                                               title="Xem sản phẩm trong danh mục {{ $category->name }}">
+                                                {{ $category->name }}
+                                            </a>
                                             <span class="child-tag mt-1">Con</span>
                                         @endif
                                     </td>
                                     <td>
-                                        <span class="fw-semibold">{{ $category->parentCategory?->name ?? 'Danh mục gốc' }}</span>
+                                        <span class="fw-semibold">{{ $category->parentCategory?->name ?? '-' }}</span>
                                     </td>
                                     <td>
                                         <code class="slug-code">{{ $category->slug }}</code>
@@ -215,38 +224,33 @@ html:not([data-theme="dark"]) .category-count-total {
                                         {{ $category->created_at?->format('d/m/Y') ?? '—' }}
                                     </td>
                                     <td data-cell="status" data-sort-value="{{ $category->status ? 1 : 0 }}">
-                                        <span class="status-badge {{ $category->status ? 'status-badge--active' : 'status-badge--inactive' }}">
-                                            {{ $category->status ? 'Hoạt động' : 'Ngưng hoạt động' }}
-                                        </span>
+                                        <div class="hk-cat-filter category-status-dropdown" data-category-id="{{ $category->id }}"
+                                            data-toggle-url="{{ route('admin.categories.toggleStatus', $category->id) }}">
+                                            <button type="button" class="status-badge category-status-trigger {{ $category->status ? 'status-badge--active' : 'status-badge--inactive' }}"
+                                                data-value="{{ $category->status ? 1 : 0 }}" aria-haspopup="listbox" aria-expanded="false">
+                                                <span class="category-status-trigger-label">{{ $category->status ? 'Hoạt động' : 'Ngưng hoạt động' }}</span>
+                                                <i class="fa-solid fa-chevron-down category-status-caret"></i>
+                                            </button>
+                                            <div class="hk-cat-panel category-status-panel" hidden>
+                                                <div class="hk-cat-list" role="listbox">
+                                                    <button type="button" class="hk-cat-item {{ $category->status ? 'is-active' : '' }}" data-value="1" data-css="status-badge--active">Hoạt động</button>
+                                                    <button type="button" class="hk-cat-item {{ !$category->status ? 'is-active' : '' }}" data-value="0" data-css="status-badge--inactive">Ngưng hoạt động</button>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </td>
                                     <td class="text-end pe-4">
-                                        <div class="dropdown">
-                                            <button type="button" class="product-more-btn" data-bs-toggle="dropdown" aria-expanded="false">
-                                                <i class="fa-solid fa-ellipsis"></i>
+                                        <div class="d-flex align-items-center justify-content-end gap-1">
+                                            <a href="{{ route('admin.categories.edit', $category->id) }}" class="row-action-btn" title="Sửa">
+                                                <i class="fa-regular fa-pen-to-square"></i>
+                                            </a>
+                                            <button type="button" class="row-action-btn"
+                                                data-delete-url="{{ route('admin.categories.destroy', $category->id) }}"
+                                                data-delete-name="{{ $category->name }}"
+                                                data-delete-type="danh mục"
+                                                title="Xóa">
+                                                <i class="fa-regular fa-trash-can"></i>
                                             </button>
-                                            <div class="dropdown-menu dropdown-menu-end product-row-menu">
-                                                <a href="{{ route('admin.categories.edit', $category->id) }}" class="dropdown-item">
-                                                    <i class="fa-regular fa-pen-to-square"></i> Sửa
-                                                </a>
-                                                <form method="POST" action="{{ route('admin.categories.toggleStatus', $category->id) }}" style="margin:0">
-                                                    @csrf
-                                                    @method('PATCH')
-                                                    <button type="submit" class="dropdown-item">
-                                                        @if($category->status)
-                                                            <i class="fa-regular fa-eye-slash"></i> Ẩn danh mục
-                                                        @else
-                                                            <i class="fa-regular fa-eye"></i> Hiện lại danh mục
-                                                        @endif
-                                                    </button>
-                                                </form>
-                                                <div class="dropdown-divider my-1"></div>
-                                                <button type="button" class="dropdown-item text-danger"
-                                                    data-delete-url="{{ route('admin.categories.destroy', $category->id) }}"
-                                                    data-delete-name="{{ $category->name }}"
-                                                    data-delete-type="danh mục">
-                                                    <i class="fa-regular fa-trash-can"></i> Xóa
-                                                </button>
-                                            </div>
                                         </div>
                                     </td>
                                 </tr>
@@ -263,7 +267,7 @@ html:not([data-theme="dark"]) .category-count-total {
                 </div>
             </div>
 
-            <div class="bg-white border border-top-0 rounded-bottom px-3 py-2">
+            <div class="bg-white border border-top-0 rounded-bottom px-3 py-2 category-pagination-bar">
                 @include('layouts.components.pagination', [
                     'paginator'     => $categories,
                     'itemLabel'     => 'danh mục',

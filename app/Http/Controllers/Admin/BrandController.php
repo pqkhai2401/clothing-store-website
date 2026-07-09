@@ -13,13 +13,16 @@ class BrandController extends Controller
     {
         $keyword = trim((string) $request->input('search', $request->input('keyword')));
         $status = $request->input('status');
-        $sort = $request->input('sort', 'name');
+        $sort = $request->input('sort', 'id');
         $direction = in_array($request->input('direction'), ['asc', 'desc'], true) ? $request->input('direction') : 'asc';
         $perPage = in_array((int) $request->input('per_page'), [10, 25, 50], true)
             ? (int) $request->input('per_page')
             : 10;
 
-        $query = Brand::withCount('products');
+        $query = Brand::withCount([
+            'products',
+            'products as active_products_count' => fn ($q) => $q->where('status', true),
+        ]);
 
         if ($keyword !== '') {
             $query->where('name', 'like', "%{$keyword}%");
@@ -47,6 +50,29 @@ class BrandController extends Controller
         return view('admin.brands.index', compact('brands', 'keyword', 'perPage'));
     }
 
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255', Rule::unique('brands', 'name')],
+        ], [
+            'name.required' => 'Tên thương hiệu không được để trống.',
+            'name.max'      => 'Tên thương hiệu không được quá 255 ký tự.',
+            'name.unique'   => 'Tên thương hiệu này đã tồn tại.',
+        ]);
+
+        $brand = Brand::create($validated);
+
+        if ($request->ajax()) {
+            return response()->json([
+                'message' => "Thêm thương hiệu \"{$brand->name}\" thành công.",
+                'brand'   => $brand,
+            ], 201);
+        }
+
+        return redirect()->route('admin.brands.list')
+            ->with('success', "Thêm thương hiệu \"{$brand->name}\" thành công.");
+    }
+
     public function edit(string $id)
     {
         $brand = Brand::findOrFail($id);
@@ -68,6 +94,10 @@ class BrandController extends Controller
 
         $brand->update(['name' => $request->input('name')]);
 
+        if ($request->ajax()) {
+            return response()->json(['message' => "Cập nhật thương hiệu \"{$brand->name}\" thành công.", 'brand' => $brand]);
+        }
+
         return redirect()->route('admin.brands.list')
             ->with('success', "Cập nhật thương hiệu \"{$brand->name}\" thành công.");
     }
@@ -80,7 +110,7 @@ class BrandController extends Controller
         return redirect()->route('admin.brands.list')->with('success', 'Xóa thương hiệu thành công');
     }
 
-    public function toggleStatus(string $id)
+    public function toggleStatus(Request $request, string $id)
     {
         $brand = Brand::findOrFail($id);
         $newStatus = !$brand->status;
@@ -89,6 +119,10 @@ class BrandController extends Controller
         $msg = $newStatus
             ? "Thương hiệu \"{$brand->name}\" đã được hiển thị."
             : "Thương hiệu \"{$brand->name}\" đã được ẩn khỏi website.";
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => $msg, 'status' => $newStatus]);
+        }
 
         return back()->with('success', $msg);
     }

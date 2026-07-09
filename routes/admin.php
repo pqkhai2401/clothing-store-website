@@ -5,12 +5,19 @@ use App\Http\Controllers\Admin\BrandController;
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\ColorController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\GoodsReceiptController;
 use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\ReviewController;
 use App\Http\Controllers\Admin\SizeController;
+use App\Http\Controllers\Admin\StockIssueController;
+use App\Http\Controllers\Admin\StocktakeController;
+use App\Http\Controllers\Admin\SupplierController;
 use App\Http\Controllers\Admin\ProfileController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\VoucherController;
+use App\Http\Controllers\Admin\CollectionController;
+use App\Http\Controllers\Admin\WarehouseController;
 
 $accountRoutes = function (string $accountType): void {
     Route::get('/', [UserController::class, 'index'])->name('list')->defaults('account_type', $accountType);
@@ -57,9 +64,14 @@ Route::middleware(['auth.login', 'admin'])
 
         Route::prefix('products')->name('products.')->group(function () use ($trashRoutes) {
             Route::get('/', [ProductController::class, 'index'])->name('list');
+            Route::get('/export', [ProductController::class, 'export'])->name('export');
+            Route::get('/create', [ProductController::class, 'create'])->name('create');
+            Route::post('/', [ProductController::class, 'store'])->name('store');
             Route::get('/{id}/edit', [ProductController::class, 'edit'])->name('edit');
             Route::put('/{id}', [ProductController::class, 'update'])->name('update');
             Route::patch('/{id}/toggle-status', [ProductController::class, 'toggleStatus'])->name('toggleStatus');
+            Route::patch('/{id}/toggle-featured', [ProductController::class, 'toggleFeatured'])->name('toggleFeatured');
+            Route::patch('/{id}/quick-update', [ProductController::class, 'quickUpdate'])->name('quickUpdate');
             Route::delete('/{id}', [ProductController::class, 'destroy'])->name('destroy');
             Route::post('/bulk-delete', [ProductController::class, 'bulkDelete'])->name('bulkDelete');
             Route::post('/trash/bulk-restore', [ProductController::class, 'bulkRestore'])->name('bulkRestore');
@@ -69,6 +81,7 @@ Route::middleware(['auth.login', 'admin'])
 
         Route::prefix('categories')->name('categories.')->group(function () use ($trashRoutes) {
             Route::get('/', [CategoryController::class, 'index'])->name('list');
+            Route::post('/', [CategoryController::class, 'store'])->name('store');
             Route::get('/{id}/edit', [CategoryController::class, 'edit'])->name('edit');
             Route::put('/{id}', [CategoryController::class, 'update'])->name('update');
             Route::patch('/{id}/toggle-status', [CategoryController::class, 'toggleStatus'])->name('toggleStatus');
@@ -81,6 +94,7 @@ Route::middleware(['auth.login', 'admin'])
 
         Route::prefix('brands')->name('brands.')->group(function () use ($trashRoutes) {
             Route::get('/', [BrandController::class, 'index'])->name('list');
+            Route::post('/', [BrandController::class, 'store'])->name('store');
             Route::get('/{id}/edit', [BrandController::class, 'edit'])->name('edit');
             Route::put('/{id}', [BrandController::class, 'update'])->name('update');
             Route::patch('/{id}/toggle-status', [BrandController::class, 'toggleStatus'])->name('toggleStatus');
@@ -93,8 +107,10 @@ Route::middleware(['auth.login', 'admin'])
 
         Route::prefix('colors')->name('colors.')->group(function () use ($trashRoutes) {
             Route::get('/', [ColorController::class, 'index'])->name('list');
+            Route::post('/', [ColorController::class, 'store'])->name('store');
             Route::get('/{id}/edit', [ColorController::class, 'edit'])->name('edit');
             Route::put('/{id}', [ColorController::class, 'update'])->name('update');
+            Route::patch('/{id}/toggle-status', [ColorController::class, 'toggleStatus'])->name('toggleStatus');
             Route::delete('/{id}', [ColorController::class, 'destroy'])->name('destroy');
             Route::post('/bulk-delete', [ColorController::class, 'bulkDelete'])->name('bulkDelete');
             Route::post('/trash/bulk-restore', [ColorController::class, 'bulkRestore'])->name('bulkRestore');
@@ -104,6 +120,7 @@ Route::middleware(['auth.login', 'admin'])
 
         Route::prefix('sizes')->name('sizes.')->group(function () use ($trashRoutes) {
             Route::get('/', [SizeController::class, 'index'])->name('list');
+            Route::post('/', [SizeController::class, 'store'])->name('store');
             Route::get('/{id}/edit', [SizeController::class, 'edit'])->name('edit');
             Route::put('/{id}', [SizeController::class, 'update'])->name('update');
             Route::delete('/{id}', [SizeController::class, 'destroy'])->name('destroy');
@@ -113,9 +130,85 @@ Route::middleware(['auth.login', 'admin'])
             $trashRoutes(SizeController::class)();
         });
 
+        Route::middleware('permission:manage-suppliers')
+            ->prefix('suppliers')->name('suppliers.')->group(function () use ($trashRoutes) {
+                Route::get('/', [SupplierController::class, 'index'])->name('list');
+                Route::post('/', [SupplierController::class, 'store'])->name('store');
+                Route::get('/{id}/edit', [SupplierController::class, 'edit'])->name('edit');
+                Route::put('/{id}', [SupplierController::class, 'update'])->name('update');
+                Route::patch('/{id}/toggle-status', [SupplierController::class, 'toggleStatus'])->name('toggleStatus');
+                Route::delete('/{id}', [SupplierController::class, 'destroy'])->name('destroy');
+                Route::post('/bulk-delete', [SupplierController::class, 'bulkDelete'])->name('bulkDelete');
+                Route::post('/trash/bulk-restore', [SupplierController::class, 'bulkRestore'])->name('bulkRestore');
+                Route::post('/trash/bulk-force-delete', [SupplierController::class, 'bulkForceDelete'])->name('bulkForceDelete');
+                $trashRoutes(SupplierController::class)();
+            });
+
+        Route::middleware('permission:manage-goods-receipts')
+            ->prefix('goods-receipts')->name('goods-receipts.')->group(function () {
+                Route::get('/', [GoodsReceiptController::class, 'index'])->name('list');
+                Route::get('/create', [GoodsReceiptController::class, 'create'])->name('create');
+                Route::get('/stock-card/{variant}', [GoodsReceiptController::class, 'stockCard'])->name('stockCard');
+                Route::post('/', [GoodsReceiptController::class, 'store'])->name('store');
+                Route::post('/bulk-delete', [GoodsReceiptController::class, 'bulkDelete'])->name('bulkDelete');
+                Route::post('/trash/bulk-restore', [GoodsReceiptController::class, 'bulkRestore'])->name('bulkRestore');
+                Route::post('/trash/bulk-force-delete', [GoodsReceiptController::class, 'bulkForceDelete'])->name('bulkForceDelete');
+                Route::get('/trash', [GoodsReceiptController::class, 'trash'])->name('trash');
+                Route::get('/{id}/edit', [GoodsReceiptController::class, 'edit'])->name('edit');
+                Route::put('/{id}', [GoodsReceiptController::class, 'update'])->name('update');
+                Route::get('/{id}', [GoodsReceiptController::class, 'show'])->name('show');
+                Route::patch('/{id}/complete', [GoodsReceiptController::class, 'complete'])->name('complete');
+                Route::patch('/{id}/adjust', [GoodsReceiptController::class, 'adjust'])->name('adjust');
+                Route::patch('/{id}/restore', [GoodsReceiptController::class, 'restore'])->name('restore');
+                Route::delete('/{id}/force-delete', [GoodsReceiptController::class, 'forceDelete'])->name('forceDelete');
+                Route::delete('/{id}', [GoodsReceiptController::class, 'destroy'])->name('destroy');
+            });
+
+        Route::middleware('permission:manage-goods-receipts')
+            ->prefix('warehouses')->name('warehouses.')->group(function () {
+                Route::post('/', [WarehouseController::class, 'store'])->name('store');
+            });
+
+        Route::middleware('permission:manage-goods-receipts')
+            ->prefix('stock-issues')->name('stock-issues.')->group(function () use ($trashRoutes) {
+                Route::get('/create', [StockIssueController::class, 'create'])->name('create');
+                Route::post('/', [StockIssueController::class, 'store'])->name('store');
+                Route::post('/bulk-delete', [StockIssueController::class, 'bulkDelete'])->name('bulkDelete');
+                Route::post('/trash/bulk-restore', [StockIssueController::class, 'bulkRestore'])->name('bulkRestore');
+                Route::post('/trash/bulk-force-delete', [StockIssueController::class, 'bulkForceDelete'])->name('bulkForceDelete');
+                $trashRoutes(StockIssueController::class)();
+                Route::get('/{id}', [StockIssueController::class, 'show'])->name('show');
+                Route::get('/{id}/edit', [StockIssueController::class, 'edit'])->name('edit');
+                Route::put('/{id}', [StockIssueController::class, 'update'])->name('update');
+                Route::patch('/{id}/issue', [StockIssueController::class, 'confirm'])->name('issue');
+                Route::patch('/{id}/cancel', [StockIssueController::class, 'cancel'])->name('cancel');
+                Route::delete('/{id}', [StockIssueController::class, 'destroy'])->name('destroy');
+            });
+
+        Route::middleware('permission:manage-goods-receipts')
+            ->prefix('stocktakes')->name('stocktakes.')->group(function () {
+                Route::post('/', [StocktakeController::class, 'store'])->name('store');
+                Route::post('/trash/bulk-restore', [StocktakeController::class, 'bulkRestore'])->name('bulkRestore');
+                Route::post('/trash/bulk-force-delete', [StocktakeController::class, 'bulkForceDelete'])->name('bulkForceDelete');
+                Route::get('/trash', [StocktakeController::class, 'trash'])->name('trash');
+                Route::get('/{id}', [StocktakeController::class, 'show'])->name('show');
+                Route::patch('/{id}/approve', [StocktakeController::class, 'approve'])->name('approve');
+                Route::patch('/{id}/reject', [StocktakeController::class, 'reject'])->name('reject');
+                Route::patch('/{id}/restore', [StocktakeController::class, 'restore'])->name('restore');
+                Route::delete('/{id}/force-delete', [StocktakeController::class, 'forceDelete'])->name('forceDelete');
+                Route::delete('/{id}', [StocktakeController::class, 'destroy'])->name('destroy');
+            });
+
         Route::prefix('orders')->name('orders.')->group(function () {
             Route::get('/', [OrderController::class, 'index'])->name('list');
-            Route::get('/{id}', [OrderController::class, 'show'])->name('show');
+            Route::get('/export', [OrderController::class, 'export'])->name('export');
+            Route::post('/bulk-update-status', [OrderController::class, 'bulkUpdateStatus'])->name('bulkUpdateStatus');
+            Route::get('/create', [OrderController::class, 'create'])->name('create');
+            Route::post('/', [OrderController::class, 'store'])->name('store');
+            Route::get('/search-customers', [OrderController::class, 'searchCustomers'])->name('searchCustomers');
+            Route::get('/search-variants', [OrderController::class, 'searchVariants'])->name('searchVariants');
+            Route::get('/customers/{user}/addresses', [OrderController::class, 'customerAddresses'])->name('customerAddresses');
+            Route::get('/{id}/detail', [OrderController::class, 'detail'])->name('detail');
             Route::put('/{id}', [OrderController::class, 'update'])->name('update');
         });
 
@@ -125,4 +218,32 @@ Route::middleware(['auth.login', 'admin'])
             Route::post('/bulk-delete', [ReviewController::class, 'bulkDelete'])->name('bulkDelete');
             $trashRoutes(ReviewController::class)();
         });
+
+        Route::middleware('permission:manage-vouchers')
+            ->prefix('vouchers')->name('vouchers.')->group(function () {
+                Route::get('/', [VoucherController::class, 'index'])->name('list');
+                Route::get('/export', [VoucherController::class, 'export'])->name('export');
+                Route::get('/trash', [VoucherController::class, 'trash'])->name('trash');
+                Route::post('/trash/bulk-restore', [VoucherController::class, 'bulkRestore'])->name('bulkRestore');
+                Route::post('/trash/bulk-force-delete', [VoucherController::class, 'bulkForceDelete'])->name('bulkForceDelete');
+                Route::get('/create', [VoucherController::class, 'create'])->name('create');
+                Route::post('/', [VoucherController::class, 'store'])->name('store');
+                Route::get('/{id}/edit', [VoucherController::class, 'edit'])->name('edit');
+                Route::put('/{id}', [VoucherController::class, 'update'])->name('update');
+                Route::patch('/{id}/toggle-status', [VoucherController::class, 'toggleStatus'])->name('toggleStatus');
+                Route::patch('/{id}/restore', [VoucherController::class, 'restore'])->name('restore');
+                Route::delete('/{id}/force-delete', [VoucherController::class, 'forceDelete'])->name('forceDelete');
+                Route::delete('/{id}', [VoucherController::class, 'destroy'])->name('destroy');
+                Route::post('/bulk-delete', [VoucherController::class, 'bulkDelete'])->name('bulkDelete');
+            });
+
+        Route::middleware('permission:manage-collections')
+            ->prefix('collections')->name('collections.')->group(function () {
+                Route::get('/', [CollectionController::class, 'index'])->name('list');
+                Route::get('/create', [CollectionController::class, 'create'])->name('create');
+                Route::post('/', [CollectionController::class, 'store'])->name('store');
+                Route::get('/{id}/edit', [CollectionController::class, 'edit'])->name('edit');
+                Route::put('/{id}', [CollectionController::class, 'update'])->name('update');
+                Route::delete('/{id}', [CollectionController::class, 'destroy'])->name('destroy');
+            });
     });

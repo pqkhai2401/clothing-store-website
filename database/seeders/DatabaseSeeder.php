@@ -34,6 +34,15 @@ class DatabaseSeeder extends Seeder
             ReviewSeeder::class,
             WishlistSeeder::class,
             OrderSeeder::class,
+            CollectionSeeder::class,
+            VoucherSeeder::class,
+            InventorySeeder::class,
+
+            // ── Dữ liệu bổ sung (bộ sưu tập, hành vi, voucher) ──
+            CollectionProductSeeder::class,   // gán sản phẩm vào bộ sưu tập
+            ProductViewSeeder::class,         // lịch sử xem (cho AI gợi ý)
+            SearchHistorySeeder::class,       // lịch sử tìm kiếm (cho AI gợi ý)
+            VoucherHistorySeeder::class,      // lịch sử dùng voucher
         ]);
     }
 }

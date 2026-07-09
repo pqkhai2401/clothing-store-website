@@ -71,9 +71,9 @@
         gap: 8px;
         width: 100%;
         min-height: 38px;
-        padding: 0 12px;
+        padding: 0 16px;
         border: 1px solid #D8E0EA;
-        border-radius: 10px;
+        border-radius: 999px;
         background: #fff;
         font-size: 14px;
         color: #0F172A;
@@ -108,25 +108,29 @@
     .hk-cat-panel {
         position: absolute;
         top: calc(100% + 6px);
-        left: 0;
+        right: 0;
         z-index: 1050;
         width: 220px;
         background: #fff;
         border: 1px solid #e5e7eb;
-        border-radius: 10px;
+        border-radius: 14px;
         box-shadow: 0 8px 32px rgba(15, 23, 42, 0.14);
         overflow: hidden;
     }
 
     .hk-cat-list {
-        padding: 6px 0;
+        padding: 6px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
     }
 
     .hk-cat-item {
         display: block;
         width: 100%;
-        padding: 8px 14px;
+        padding: 8px 12px;
         border: 0;
+        border-radius: 8px;
         background: transparent;
         font-size: 13px;
         color: #374151;

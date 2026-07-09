@@ -101,6 +101,12 @@
     color: var(--stock-tip-count);
     font-weight: 800;
     text-align: left;
+    text-decoration: none;
+}
+
+.stock-tooltip-count:hover {
+    color: var(--stock-tip-link-hover);
+    text-decoration: underline;
 }
 
 .stock-tooltip-total {
@@ -123,6 +129,7 @@ html:not([data-theme="dark"]) .tooltip-box {
     --stock-tip-divider: #e5e7eb;
     --stock-tip-bullet: #64748b;
     --stock-tip-total-bg: #eef2f7;
+    --stock-tip-link-hover: #15803d;
     background: #ffffff;
     color: #111827;
     border: 1px solid #d7dde8;
@@ -147,6 +154,7 @@ html:not([data-theme="dark"]) .stock-total {
     --stock-tip-divider: #2a3b59;
     --stock-tip-bullet: #93c5fd;
     --stock-tip-total-bg: rgba(148, 163, 184, 0.18);
+    --stock-tip-link-hover: #86efac;
     background: #111827;
     color: #f8fafc;
     border: 1px solid #334155;
@@ -212,14 +220,24 @@ html:not([data-theme="dark"]) .stock-total {
                                         Giá <span class="product-sort-icon">↑↓</span>
                                     </button>
                                 </th>
+                                 <th>
+                                    <button type="button" class="product-sort-btn" data-sort-key="cost_price" data-sort-type="number">
+                                        Giá vốn<span class="product-sort-icon">↑↓</span>
+                                    </button>
+                                </th>
                                 <th>
                                     <button type="button" class="product-sort-btn" data-sort-key="stock" data-sort-type="number">
                                         Tổng tồn kho <span class="product-sort-icon">↑↓</span>
                                     </button>
                                 </th>
-                                <th>
+                                <th style="width: 130px;">
                                     <button type="button" class="product-sort-btn" data-sort-key="status" data-sort-type="number">
                                         Trạng thái <span class="product-sort-icon">↑↓</span>
+                                    </button>
+                                </th>
+                                <th class="text-center" style="width: 76px;">
+                                    <button type="button" class="product-sort-btn" data-sort-key="is_featured" data-sort-type="number">
+                                        Nổi bật <span class="product-sort-icon">↑↓</span>
                                     </button>
                                 </th>
                                 <th class="text-end pe-4" style="width: 96px;">Thao tác</th>
@@ -260,16 +278,63 @@ html:not([data-theme="dark"]) .stock-total {
                                         <span class="fw-semibold">{{ $product->brand?->name ?? '—' }}</span>
                                     </td>
 
-                                    <td data-cell="price" data-sort-value="{{ $effectivePrice }}">
+                                    <td data-cell="price" data-sort-value="{{ $product->min_price ?? $effectivePrice }}"
+                                        @if($product->min_price === null)
+                                            class="product-quickedit-cell"
+                                            data-quickedit-url="{{ route('admin.products.quickUpdate', $product->id) }}"
+                                            data-product-name="{{ $product->name }}"
+                                            title="Nhấp đúp để sửa nhanh giá/giảm giá"
+                                        @endif>
                                         @php $discounted = $product->discount > 0; @endphp
-                                        @if($discounted)
-                                            <div class="price-display">
-                                                <span class="price-sale">{{ number_format($product->price * (100 - $product->discount) / 100, 0, ',', '.') }}₫</span>
-                                                <span class="price-original">{{ number_format($product->price, 0, ',', '.') }}₫</span>
+                                        <div class="product-quickedit-view">
+                                            @if($product->min_price !== null)
+                                                @if($product->min_price == $product->max_price)
+                                                    <span class="price-normal">{{ number_format($product->min_price, 0, ',', '.') }}₫</span>
+                                                @else
+                                                    <span class="price-normal fw-bold">{{ number_format($product->min_price, 0, ',', '.') }}₫ - {{ number_format($product->max_price, 0, ',', '.') }}₫</span>
+                                                @endif
+                                            @else
+                                                @if($discounted)
+                                                    <div class="price-display">
+                                                        <span class="price-sale">{{ number_format($product->price * (100 - $product->discount) / 100, 0, ',', '.') }}₫</span>
+                                                        <span class="price-original">{{ number_format($product->price, 0, ',', '.') }}₫</span>
+                                                    </div>
+                                                @else
+                                                    <span class="price-normal">{{ number_format($product->price, 0, ',', '.') }}₫</span>
+                                                @endif
+                                            @endif
+                                        </div>
+                                        @if($product->min_price === null)
+                                            <div class="product-quickedit-form d-none">
+                                                <div class="product-quickedit-row">
+                                                    <label>Giá gốc</label>
+                                                    <input type="number" class="product-quickedit-input" data-field="price" min="0" step="1000" value="{{ (int) $product->price }}">
+                                                </div>
+                                                <div class="product-quickedit-row">
+                                                    <label>Giảm giá %</label>
+                                                    <input type="number" class="product-quickedit-input" data-field="discount" min="0" max="100" step="1" value="{{ (int) $product->discount }}">
+                                                </div>
+                                                <div class="product-quickedit-actions">
+                                                    <button type="button" class="product-quickedit-save" title="Lưu"><i class="fa-solid fa-check"></i></button>
+                                                    <button type="button" class="product-quickedit-cancel" title="Hủy"><i class="fa-solid fa-xmark"></i></button>
+                                                </div>
                                             </div>
-                                        @else
-                                            <span class="price-normal">{{ number_format($product->price, 0, ',', '.') }}₫</span>
                                         @endif
+                                    </td>
+
+                                    {{-- Giá vốn --}}
+                                    <td data-cell="cost_price" data-sort-value="{{ $product->min_cost_price ?? (float)$product->cost_price }}">
+                                        <span class="text-muted">
+                                            @if($product->min_cost_price !== null)
+                                                @if($product->min_cost_price == $product->max_cost_price)
+                                                    {{ number_format($product->min_cost_price, 0, ',', '.') }}₫
+                                                @else
+                                                    {{ number_format($product->min_cost_price, 0, ',', '.') }}₫ - {{ number_format($product->max_cost_price, 0, ',', '.') }}₫
+                                                @endif
+                                            @else
+                                                {{ number_format($product->cost_price, 0, ',', '.') }}₫
+                                            @endif
+                                        </span>
                                     </td>
 
                                     {{-- Số lượng tồn kho --}}
@@ -299,9 +364,17 @@ html:not([data-theme="dark"]) .stock-total {
                                                                 <span class="stock-tooltip-color-name">
                                                                     Màu: {{ $variant->color?->name ?? 'Không màu' }}
                                                                 </span>
-                                                                <span class="stock-tooltip-count">
-                                                                    {{ number_format($variant->stock) }}
-                                                                </span>
+                                                                @if($variant->size_id)
+                                                                    <a href="{{ route('admin.products.list', ['size_id' => $variant->size_id]) }}"
+                                                                        class="stock-tooltip-count"
+                                                                        title="Lọc sản phẩm theo size {{ $variant->size?->name ?? '' }}">
+                                                                        {{ number_format($variant->stock) }}
+                                                                    </a>
+                                                                @else
+                                                                    <span class="stock-tooltip-count">
+                                                                        {{ number_format($variant->stock) }}
+                                                                    </span>
+                                                                @endif
                                                             </div>
                                                         @endforeach
                                                     </div>
@@ -318,45 +391,49 @@ html:not([data-theme="dark"]) .stock-total {
                                     </td>
 
                                     <td data-cell="status" data-sort-value="{{ $product->status ? 1 : 0 }}">
-                                        <span class="status-badge {{ $product->status ? 'status-badge--active' : 'status-badge--inactive' }}">
-                                            {{ $product->status ? 'Đang bán' : 'Ẩn' }}
-                                        </span>
+                                        <div class="form-check form-switch product-status-switch-wrap mb-0">
+                                            <input type="checkbox" role="switch" class="form-check-input product-status-switch"
+                                                data-toggle-status-url="{{ route('admin.products.toggleStatus', $product->id) }}"
+                                                data-product-name="{{ $product->name }}"
+                                                {{ $product->status ? 'checked' : '' }}>
+                                            <label class="form-check-label product-status-switch-label">
+                                                {{ $product->status ? 'Đang bán' : 'Ẩn' }}
+                                            </label>
+                                        </div>
+                                    </td>
+
+                                    <td class="text-center" data-sort-value="{{ $product->is_featured ? 1 : 0 }}">
+                                        <button type="button"
+                                            class="product-featured-star {{ $product->is_featured ? 'is-active' : '' }}"
+                                            data-toggle-featured-url="{{ route('admin.products.toggleFeatured', $product->id) }}"
+                                            data-product-name="{{ $product->name }}"
+                                            title="{{ $product->is_featured ? 'Bỏ đánh dấu nổi bật' : 'Đánh dấu sản phẩm nổi bật' }}">
+                                            <i class="fa-solid fa-star"></i>
+                                        </button>
                                     </td>
 
                                     <td class="text-end pe-4">
-                                        <div class="dropdown">
-                                            <button type="button" class="product-more-btn" data-bs-toggle="dropdown" aria-expanded="false">
-                                                <i class="fa-solid fa-ellipsis"></i>
+                                        <div class="d-inline-flex align-items-center gap-1">
+                                            <button type="button"
+                                                class="product-more-btn d-inline-flex align-items-center justify-content-center"
+                                                data-product-edit-trigger
+                                                data-edit-url="{{ route('admin.products.edit', $product->id) }}"
+                                                title="Sửa">
+                                                <i class="fa-regular fa-pen-to-square"></i>
                                             </button>
-                                            <div class="dropdown-menu dropdown-menu-end product-row-menu">
-                                                <a href="{{ route('admin.products.edit', $product->id) }}" class="dropdown-item">
-                                                    <i class="fa-regular fa-pen-to-square"></i> Sửa
-                                                </a>
-                                                <form method="POST" action="{{ route('admin.products.toggleStatus', $product->id) }}" style="margin:0">
-                                                    @csrf
-                                                    @method('PATCH')
-                                                    <button type="submit" class="dropdown-item">
-                                                        @if($product->status)
-                                                            <i class="fa-regular fa-eye-slash"></i> Ẩn sản phẩm
-                                                        @else
-                                                            <i class="fa-regular fa-eye"></i> Hiện lại sản phẩm
-                                                        @endif
-                                                    </button>
-                                                </form>
-                                                <div class="dropdown-divider my-1"></div>
-                                                <button type="button" class="dropdown-item text-danger"
-                                                    data-delete-url="{{ route('admin.products.destroy', $product->id) }}"
-                                                    data-delete-name="{{ $product->name }}"
-                                                    data-delete-type="sản phẩm">
-                                                    <i class="fa-regular fa-trash-can"></i> Xóa
-                                                </button>
-                                            </div>
+                                            <button type="button" class="product-more-btn text-danger d-inline-flex align-items-center justify-content-center"
+                                                data-delete-url="{{ route('admin.products.destroy', $product->id) }}"
+                                                data-delete-name="{{ $product->name }}"
+                                                data-delete-type="sản phẩm"
+                                                title="Xóa">
+                                                <i class="fa-regular fa-trash-can"></i>
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>
                             @empty
                                 <tr data-empty-row>
-                                    <td colspan="10" class="text-center py-5">
+                                    <td colspan="11" class="text-center py-5">
                                         <i class="fa-solid fa-inbox text-muted mb-3" style="font-size:42px; display:block;"></i>
                                         <div class="fw-semibold text-muted">Chưa có sản phẩm nào</div>
                                     </td>

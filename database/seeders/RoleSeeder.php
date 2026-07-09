@@ -24,6 +24,7 @@ class RoleSeeder extends Seeder
             'manage-staff',       // Quản lý nhân sự (chỉ admin)
             'manage-customers',   // Quản lý khách hàng
             'manage-products',    // Quản lý sản phẩm
+            'manage-goods-receipts', // Quản lý phiếu nhập kho
             'manage-categories',  // Quản lý danh mục
             'manage-brands',      // Quản lý thương hiệu
             'manage-colors',      // Quản lý màu sắc
@@ -31,6 +32,9 @@ class RoleSeeder extends Seeder
             'manage-orders',      // Quản lý đơn hàng
             'manage-reviews',     // Quản lý đánh giá
             'manage-revenue',     // Thống kê doanh thu
+            'manage-suppliers',      // Quản lý nhà cung cấp
+            'manage-vouchers',    // Quản lý voucher
+            'manage-collections', // Quản lý bộ sưu tập
         ];
 
         foreach ($allPermissions as $permission) {
