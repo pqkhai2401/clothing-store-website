@@ -68,12 +68,12 @@ class RecommendationService
                 $score += 2.0;
             }
 
-            // 4. Trọng số giao thoa Thẻ từ khóa (Tags Similarity)
-            if (!empty($targetTagIds)) {
-                $candidateTagIds = $candidate->tags->pluck('id')->toArray();
-                $sharedTagsCount = count(array_intersect($targetTagIds, $candidateTagIds));
-                $score += $sharedTagsCount * 1.5;
-            }
+            // // 4. Trọng số giao thoa Thẻ từ khóa (Tags Similarity)
+            // if (!empty($targetTagIds)) {
+            //     $candidateTagIds = $candidate->tags->pluck('id')->toArray();
+            //     $sharedTagsCount = count(array_intersect($targetTagIds, $candidateTagIds));
+            //     $score += $sharedTagsCount * 1.5;
+            // }
 
             // 5. Trọng số khoảng cách Giá (Price Proximity)
             $candidatePrice = (float) $candidate->price;

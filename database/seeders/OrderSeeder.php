@@ -105,7 +105,7 @@ class OrderSeeder extends Seeder
             ],
             [
                 'user' => 'nguyentrungtam@gmail.com',
-                'payment_method' => 'VNPay',
+                'payment_method' => 'COD',
                 'order_code' => 'ORD-20260602-0002',
                 'phone' => '0885173946',
                 'note' => null,
@@ -160,7 +160,7 @@ class OrderSeeder extends Seeder
             ],
             [
                 'user' => 'leminhkhanh@gmail.com',
-                'payment_method' => 'ZaloPay',
+                'payment_method' => 'PayOS',
                 'order_code' => 'ORD-20260606-0006',
                 'phone' => '0358724619',
                 'note' => null,
@@ -174,7 +174,7 @@ class OrderSeeder extends Seeder
             ],
             [
                 'user' => 'hoanggiahuy@gmail.com',
-                'payment_method' => 'VNPay',
+                'payment_method' => 'Thanh toán khi nhận hàng (COD)',
                 'order_code' => 'ORD-20260607-0007',
                 'phone' => '0796245831',
                 'note' => 'Đóng gói kỹ giúp khách.',

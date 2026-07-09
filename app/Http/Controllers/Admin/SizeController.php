@@ -94,6 +94,11 @@ class SizeController extends Controller
     {
         $size = Size::findOrFail($id);
 
+        if ($message = $this->sizeDeleteBlocker($size)) {
+            return redirect()->route('admin.sizes.list')
+                ->with('error', $message);
+        }
+
         if ($size->productVariants()->exists()) {
             return redirect()->route('admin.sizes.list')
                 ->with('error', 'Kích thước này đang được sử dụng, không thể xóa!');
@@ -116,7 +121,11 @@ class SizeController extends Controller
             return back()->with('error', 'Kích thước này đang được sử dụng, không thể xóa!');
         }
 
-        $deleted = Size::whereIn('id', $ids)->delete();
+        $sizes = Size::whereIn('id', $ids)->get();
+        $deleted = 0;
+        foreach ($sizes as $size) {
+            $deleted += (int) $size->delete();
+        }
 
         return back()->with('success', "Đã xóa {$deleted} kích thước thành công.");
     }
@@ -156,7 +165,14 @@ class SizeController extends Controller
 
     public function forceDelete(string $id)
     {
-        Size::onlyTrashed()->findOrFail($id)->forceDelete();
+        $size = Size::onlyTrashed()->findOrFail($id);
+
+        if ($message = $this->sizeForceDeleteBlocker($size)) {
+            return redirect()->route('admin.sizes.trash')
+                ->with('error', $message);
+        }
+
+        $size->forceDelete();
 
         return redirect()->route('admin.sizes.trash')->with('success', 'Xóa vĩnh viễn kích thước thành công');
     }
@@ -182,8 +198,19 @@ class SizeController extends Controller
             return back()->with('error', 'Vui lòng chọn ít nhất một kích thước.');
         }
 
-        $count = Size::onlyTrashed()->whereIn('id', $ids)->count();
-        Size::onlyTrashed()->whereIn('id', $ids)->forceDelete();
+        $sizes = Size::onlyTrashed()->whereIn('id', $ids)->get();
+        $blockers = $sizes
+            ->map(fn (Size $size) => $this->sizeForceDeleteBlocker($size))
+            ->filter();
+
+        if ($blockers->isNotEmpty()) {
+            return back()->with('error', $blockers->first());
+        }
+
+        $count = 0;
+        foreach ($sizes as $size) {
+            $count += (int) $size->forceDelete();
+        }
 
         return back()->with('success', "Đã xóa vĩnh viễn {$count} kích thước.");
     }
@@ -196,6 +223,24 @@ class SizeController extends Controller
                     $query->select(DB::raw('COUNT(DISTINCT product_id)'));
                 },
             ]);
+    }
+
+    private function sizeDeleteBlocker(Size $size): ?string
+    {
+        if ($size->productVariants()->exists()) {
+            return 'Không thể xóa kích thước này vì vẫn còn biến thể sản phẩm liên kết.';
+        }
+
+        return null;
+    }
+
+    private function sizeForceDeleteBlocker(Size $size): ?string
+    {
+        if ($size->productVariants()->exists()) {
+            return 'Không thể xóa vĩnh viễn kích thước này vì vẫn còn biến thể sản phẩm liên kết.';
+        }
+
+        return null;
     }
 
     private function validationRules(?string $ignoreId = null): array

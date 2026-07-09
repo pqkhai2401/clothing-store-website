@@ -138,6 +138,11 @@ class CategoryController extends Controller
     {
         $category = Category::findOrFail($id);
 
+        if ($message = $this->categoryDeleteBlocker($category)) {
+            return redirect()->route('admin.categories.list')
+                ->with('error', $message);
+        }
+
         // Kiểm tra chính danh mục có sản phẩm đang bán không
         $selfActiveCount = $category->products()->where('status', true)->count();
         if ($selfActiveCount > 0) {
@@ -184,7 +189,19 @@ class CategoryController extends Controller
             return back()->with('error', 'Vui lòng chọn ít nhất một danh mục để xóa.');
         }
 
-        $deleted = Category::whereIn('id', $ids)->delete();
+        $categories = Category::whereIn('id', $ids)->get();
+        $blockers = $categories
+            ->map(fn (Category $category) => $this->categoryDeleteBlocker($category, $ids))
+            ->filter();
+
+        if ($blockers->isNotEmpty()) {
+            return back()->with('error', $blockers->first());
+        }
+
+        $deleted = 0;
+        foreach ($categories as $category) {
+            $deleted += (int) $category->delete();
+        }
 
         return back()->with('success', "Đã xóa {$deleted} danh mục thành công.");
     }
@@ -223,7 +240,14 @@ class CategoryController extends Controller
 
     public function forceDelete(string $id)
     {
-        Category::onlyTrashed()->findOrFail($id)->forceDelete();
+        $category = Category::onlyTrashed()->findOrFail($id);
+
+        if ($message = $this->categoryForceDeleteBlocker($category)) {
+            return redirect()->route('admin.categories.trash')
+                ->with('error', $message);
+        }
+
+        $category->forceDelete();
 
         return redirect()->route('admin.categories.trash')->with('success', 'Xóa vĩnh viễn danh mục thành công');
     }
@@ -244,8 +268,57 @@ class CategoryController extends Controller
         if (empty($ids)) {
             return back()->with('error', 'Vui lòng chọn ít nhất một danh mục.');
         }
-        $count = Category::onlyTrashed()->whereIn('id', $ids)->count();
-        Category::onlyTrashed()->whereIn('id', $ids)->forceDelete();
+        $categories = Category::onlyTrashed()->whereIn('id', $ids)->get();
+        $blockers = $categories
+            ->map(fn (Category $category) => $this->categoryForceDeleteBlocker($category))
+            ->filter();
+
+        if ($blockers->isNotEmpty()) {
+            return back()->with('error', $blockers->first());
+        }
+
+        $count = 0;
+        foreach ($categories as $category) {
+            $count += (int) $category->forceDelete();
+        }
         return back()->with('success', "Đã xóa vĩnh viễn {$count} danh mục.");
+    }
+
+    private function categoryDeleteBlocker(Category $category, array $selectedIds = []): ?string
+    {
+        if ($category->products()->where('status', true)->exists()) {
+            return 'Không thể xóa danh mục này vì vẫn còn sản phẩm đang bán.';
+        }
+
+        if ($category->childrenCategories()
+            ->whereHas('products', fn ($query) => $query->where('status', true))
+            ->exists()) {
+            return 'Không thể xóa danh mục này vì danh mục con vẫn còn sản phẩm đang bán.';
+        }
+
+        $selectedIds = array_map('intval', $selectedIds);
+        if ($category->childrenCategories()
+            ->when($selectedIds !== [], fn ($query) => $query->whereNotIn('id', $selectedIds))
+            ->exists()) {
+            return 'Không thể xóa danh mục cha khi vẫn còn danh mục con.';
+        }
+
+        return null;
+    }
+
+    private function categoryForceDeleteBlocker(Category $category): ?string
+    {
+        if ($category->products()->withTrashed()->exists()) {
+            return 'Không thể xóa vĩnh viễn danh mục này vì vẫn còn sản phẩm liên kết.';
+        }
+
+        if ($category->childrenCategories()
+            ->withTrashed()
+            ->whereHas('products', fn ($query) => $query->withTrashed())
+            ->exists()) {
+            return 'Không thể xóa vĩnh viễn danh mục này vì danh mục con vẫn còn sản phẩm liên kết.';
+        }
+
+        return null;
     }
 }

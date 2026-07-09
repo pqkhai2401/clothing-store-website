@@ -131,6 +131,12 @@ class ColorController extends Controller
     public function destroy(string $id)
     {
         $color = Color::findOrFail($id);
+
+        if ($message = $this->colorDeleteBlocker($color)) {
+            return redirect()->route('admin.colors.list')
+                ->with('error', $message);
+        }
+
         $color->delete();
 
         return redirect()->route('admin.colors.list')->with('success', 'Xóa màu sắc thành công');
@@ -144,7 +150,19 @@ class ColorController extends Controller
             return back()->with('error', 'Vui lòng chọn ít nhất một màu sắc để xóa.');
         }
 
-        $deleted = Color::whereIn('id', $ids)->delete();
+        $colors = Color::whereIn('id', $ids)->get();
+        $blockers = $colors
+            ->map(fn (Color $color) => $this->colorDeleteBlocker($color))
+            ->filter();
+
+        if ($blockers->isNotEmpty()) {
+            return back()->with('error', $blockers->first());
+        }
+
+        $deleted = 0;
+        foreach ($colors as $color) {
+            $deleted += (int) $color->delete();
+        }
 
         return back()->with('success', "Đã xóa {$deleted} màu sắc thành công.");
     }
@@ -182,7 +200,14 @@ class ColorController extends Controller
 
     public function forceDelete(string $id)
     {
-        Color::onlyTrashed()->findOrFail($id)->forceDelete();
+        $color = Color::onlyTrashed()->findOrFail($id);
+
+        if ($message = $this->colorForceDeleteBlocker($color)) {
+            return redirect()->route('admin.colors.trash')
+                ->with('error', $message);
+        }
+
+        $color->forceDelete();
 
         return redirect()->route('admin.colors.trash')->with('success', 'Xóa vĩnh viễn màu sắc thành công');
     }
@@ -203,8 +228,37 @@ class ColorController extends Controller
         if (empty($ids)) {
             return back()->with('error', 'Vui lòng chọn ít nhất một màu sắc.');
         }
-        $count = Color::onlyTrashed()->whereIn('id', $ids)->count();
-        Color::onlyTrashed()->whereIn('id', $ids)->forceDelete();
+        $colors = Color::onlyTrashed()->whereIn('id', $ids)->get();
+        $blockers = $colors
+            ->map(fn (Color $color) => $this->colorForceDeleteBlocker($color))
+            ->filter();
+
+        if ($blockers->isNotEmpty()) {
+            return back()->with('error', $blockers->first());
+        }
+
+        $count = 0;
+        foreach ($colors as $color) {
+            $count += (int) $color->forceDelete();
+        }
         return back()->with('success', "Đã xóa vĩnh viễn {$count} màu sắc.");
+    }
+
+    private function colorDeleteBlocker(Color $color): ?string
+    {
+        if ($color->productVariants()->exists()) {
+            return 'Không thể xóa màu sắc này vì vẫn còn biến thể sản phẩm liên kết.';
+        }
+
+        return null;
+    }
+
+    private function colorForceDeleteBlocker(Color $color): ?string
+    {
+        if ($color->productVariants()->exists()) {
+            return 'Không thể xóa vĩnh viễn màu sắc này vì vẫn còn biến thể sản phẩm liên kết.';
+        }
+
+        return null;
     }
 }

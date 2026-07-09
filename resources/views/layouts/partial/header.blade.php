@@ -3,7 +3,7 @@
 
     $pageGroups = [
         'admin.products'   => 'Sản phẩm',
-        'admin.goods-receipts' => 'Nhập kho',
+        'admin.goods-receipts' => 'Kho hàng',
         'admin.categories' => 'Danh mục',
         'admin.suppliers'  => 'Nhà cung cấp',
         'admin.brands'     => 'Thương hiệu',
@@ -14,6 +14,8 @@
         'admin.customers'  => 'Quản lý khách hàng',
         'admin.staff'      => 'Quản lý nhân sự',
         'admin.vouchers'    => 'Khuyến mãi',
+        'admin.logs'        => 'Nhật ký hệ thống',
+        
     ];
 
     $pageLabel = null;

@@ -37,7 +37,6 @@ class PaymentMethodSeeder extends Seeder
             );
         }
 
-        // Ẩn phương thức VNPay cũ (đã thay bằng PayOS) nếu còn tồn tại.
-        PaymentMethod::where('name', 'VNPay')->update(['status' => false]);
+       
     }
 }

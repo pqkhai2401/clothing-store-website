@@ -222,7 +222,7 @@
             <div class="dash-field"><label>Thanh toán</label>
                 <select class="form-select"><option>Tất cả</option><option selected>Đã thanh toán</option><option>Chưa thanh toán</option><option>Đã hoàn tiền</option></select></div>
             <div class="dash-field"><label>Phương thức</label>
-                <select class="form-select"><option selected>Tất cả</option><option>COD</option><option>MoMo</option><option>VNPay</option><option>PayOS</option></select></div>
+                <select class="form-select"><option selected>Tất cả</option><option>COD</option><option>PayOS</option></select></div>
         </div>
 
         <div class="dash-custom-date" id="dashCustomDate">

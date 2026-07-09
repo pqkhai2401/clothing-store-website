@@ -21,8 +21,8 @@ return new class extends Migration
             $table->decimal('cost_price', 15, 2)->default(0);
             $table->unsignedTinyInteger('discount')->default(0);
             $table->string('thumbnail');
-            $table->foreignId('category_id')->constrained('categories')->cascadeOnDelete();
-            $table->foreignId('brand_id')->constrained('brands')->cascadeOnDelete();
+            $table->foreignId('category_id')->constrained('categories')->restrictOnDelete();
+            $table->foreignId('brand_id')->constrained('brands')->restrictOnDelete();
             $table->enum('gender', Gender::values());
             $table->unsignedInteger('views_count')->default(0);
             $table->boolean('is_featured')->default(false);

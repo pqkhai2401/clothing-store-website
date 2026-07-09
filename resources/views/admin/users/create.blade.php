@@ -4,180 +4,238 @@
 
 @push('styles')
     @include('admin.users.styles')
+    <script>
+        window.tailwind = window.tailwind || {};
+        window.tailwind.config = {
+            corePlugins: {
+                preflight: false,
+            },
+        };
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
 @endpush
 
 @section('content')
     @php
         $isStaffContext = ($type ?? 'all') === 'staff';
         $pageHeading = $isStaffContext ? 'Thêm mới quản trị viên' : (($createLabel ?? 'Thêm tài khoản').' mới');
-        $cardHeading = $isStaffContext ? 'Thông tin Quản trị viên' : 'Thông tin '.($itemLabel ?? 'Tài khoản');
         $submitLabel = $isStaffContext ? 'Thêm mới quản trị viên' : 'Thêm mới '.($itemLabelLower ?? 'người dùng');
+        $routeBase = $routePrefix ?? 'admin.users';
+        $fieldClass = 'w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 shadow-sm outline-none transition-all focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20';
+        $labelClass = 'text-sm font-semibold text-slate-700';
+        $errorClass = 'mt-1 text-xs font-medium text-rose-600';
+        $roleLabels = [
+            'admin' => 'Quản trị viên',
+            'warehouse' => 'Thủ kho',
+            'stock' => 'Thủ kho',
+            'staff' => 'Nhân viên bán hàng',
+            'customer' => 'Khách hàng',
+        ];
+        $cityOptions = ['Hà Nội', 'TP. Hồ Chí Minh', 'Đà Nẵng', 'Cần Thơ', 'Hải Phòng'];
+        $wardOptions = ['Phường Bến Nghé', 'Phường Bến Thành', 'Phường Nguyễn Thái Bình', 'Phường Tân Định', 'Phường Cầu Ông Lãnh'];
     @endphp
 
-    <main class="app-main container-fluid py-4">
-        <x-notification />
+    <div class="min-h-screen bg-slate-50 pb-32">
+        <div class="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+            <x-notification />
 
-        <h1 class="h4 fw-semibold mb-4">{{ $pageHeading }}</h1>
-
-        <div class="card account-create-card">
-            <div class="card-header d-flex align-items-center justify-content-between">
-                <h2 class="h6 fw-semibold mb-0">{{ $cardHeading }}</h2>
-                <span class="text-muted">-</span>
+            <div class="mb-6">
+                <h1 class="account-header-title mb-2" style="color: black;">{{ $pageHeading }}</h1>
+                <p class="account-header-desc mb-0" style="color: #64748b;">Tạo tài khoản nội bộ với thông tin nhân sự, vai trò và địa chỉ liên hệ.</p>
             </div>
 
-            <form method="POST" action="{{ route(($routePrefix ?? 'admin.users').'.store') }}" autocomplete="off">
+            <form method="POST" action="{{ route($routeBase.'.store') }}" autocomplete="off" class="space-y-5">
                 @csrf
                 <input type="hidden" name="is_active" value="1">
 
-                <div class="card-body p-3">
-                    <div class="account-form-row">
-                        <label for="username" class="account-form-label">Họ Và Tên</label>
+                <section class="bg-white border border-slate-100 rounded-xl p-6 shadow-sm flex flex-col gap-6">
+                    <div class="flex items-start justify-between gap-4">
                         <div>
-                            <input type="text" name="username" id="username"
-                                class="form-control account-form-control @error('username') is-invalid @enderror"
-                                value="{{ old('username') }}" required>
+                            <h2 class="m-0 text-base font-semibold text-slate-950">Thông tin cá nhân</h2>
+                            <p class="m-0 mt-1 text-sm text-slate-500">Thông tin định danh dùng trong hồ sơ quản trị.</p>
+                        </div>
+                        <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+                            <i class="fa-regular fa-user"></i>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="flex flex-col gap-1.5">
+                            <label for="username" class="{{ $labelClass }}">Họ và Tên</label>
+                            <input type="text" name="username" id="username" value="{{ old('username') }}"
+                                placeholder="Ví dụ: Nguyễn Văn A" class="{{ $fieldClass }}" required>
                             @error('username')
-                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                                <p class="{{ $errorClass }}">{{ $message }}</p>
                             @enderror
                         </div>
-                    </div>
 
-                    <div class="account-form-row">
-                        <label for="email" class="account-form-label">Email</label>
-                        <div>
-                            <input type="email" name="email" id="email"
-                                class="form-control account-form-control @error('email') is-invalid @enderror"
-                                value="{{ old('email') }}" required>
+                        <div class="flex flex-col gap-1.5">
+                            <label for="phone_number" class="{{ $labelClass }}">Số Điện Thoại</label>
+                            <input type="text" name="phone_number" id="phone_number" value="{{ old('phone_number') }}"
+                                placeholder="Ví dụ: 0901234567" class="{{ $fieldClass }}">
+                            @error('phone_number')
+                                <p class="{{ $errorClass }}">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <div class="flex flex-col gap-1.5 md:col-span-2">
+                            <label for="email" class="{{ $labelClass }}">Email</label>
+                            <input type="email" name="email" id="email" value="{{ old('email') }}"
+                                placeholder="name@company.com" class="{{ $fieldClass }}" required>
                             @error('email')
-                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                                <p class="{{ $errorClass }}">{{ $message }}</p>
                             @enderror
                         </div>
                     </div>
+                </section>
 
-                    <div class="account-form-row">
-                        <label for="password" class="account-form-label">Mật Khẩu</label>
+                <section class="bg-white border border-slate-100 rounded-xl p-6 shadow-sm flex flex-col gap-6">
+                    <div class="flex items-start justify-between gap-4">
                         <div>
-                            <div class="input-group">
+                            <h2 class="m-0 text-base font-semibold text-slate-950">Bảo mật &amp; Phân quyền</h2>
+                            <p class="m-0 mt-1 text-sm text-slate-500">Thiết lập mật khẩu đăng nhập và phạm vi quyền hạn.</p>
+                        </div>
+                        <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+                            <i class="fa-solid fa-shield-halved"></i>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="flex flex-col gap-1.5">
+                            <label for="password" class="{{ $labelClass }}">Mật Khẩu</label>
+                            <div class="relative">
                                 <input type="password" name="password" id="password"
-                                    class="form-control account-form-control @error('password') is-invalid @enderror"
-                                    required>
-                                <button type="button" class="btn btn-outline-secondary pw-toggle"
-                                    data-target="password" tabindex="-1"
-                                    title="Hiện / Ẩn mật khẩu">
+                                    placeholder="Tối thiểu 6 ký tự" class="{{ $fieldClass }} pr-11" required>
+                                <button type="button"
+                                    class="pw-toggle absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-lg text-slate-400 transition-colors hover:text-slate-700"
+                                    data-target="password" title="Hiện / Ẩn mật khẩu" tabindex="-1">
                                     <i class="fa-regular fa-eye"></i>
                                 </button>
                             </div>
                             @error('password')
-                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                                <p class="{{ $errorClass }}">{{ $message }}</p>
                             @enderror
                         </div>
-                    </div>
 
-                    <div class="account-form-row">
-                        <label for="phone_number" class="account-form-label">Số Điện Thoại</label>
-                        <div>
-                            <input type="text" name="phone_number" id="phone_number"
-                                class="form-control account-form-control @error('phone_number') is-invalid @enderror"
-                                value="{{ old('phone_number') }}">
-                            @error('phone_number')
-                                <div class="invalid-feedback d-block">{{ $message }}</div>
-                            @enderror
-                        </div>
-                    </div>
-
-                    <div class="account-form-row">
-                        <label for="role_id" class="account-form-label">Vai Trò</label>
-                        <div>
-                            @php
-                                $roleLabels = ['admin' => 'Quản trị viên', 'staff' => 'Nhân viên', 'customer' => 'Khách hàng'];
-                            @endphp
-                            <select name="role_id" id="role_id"
-                                class="form-select account-form-control @error('role_id') is-invalid @enderror"
-                                required>
-                                @foreach ($roles as $role)
-                                    <option value="{{ $role->id }}" @selected((string) old('role_id', $roles->first()?->id) === (string) $role->id)>
-                                        {{ $roleLabels[$role->name] ?? $role->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            @error('role_id')
-                                <div class="invalid-feedback d-block">{{ $message }}</div>
-                            @enderror
-                        </div>
-                    </div>
-
-                    @if(!empty($currentUserIsProtectedAdmin))
-                    <div class="account-form-row" id="isProtectedRow" style="display:none;">
-                        <label class="account-form-label">Quyền bảo vệ</label>
-                        <div>
-                            <div class="form-check">
-                                <input type="checkbox" name="is_protected" value="1"
-                                    id="is_protected"
-                                    class="form-check-input @error('is_protected') is-invalid @enderror"
-                                    {{ old('is_protected') ? 'checked' : '' }}>
-                                <label for="is_protected" class="form-check-label fw-semibold">
-                                    Admin hệ thống được bảo vệ
-                                </label>
-                                <small class="text-muted d-block mt-1">Chỉ admin hệ thống khác mới được thay đổi role, mật khẩu hoặc khóa tài khoản này.</small>
+                        <div class="flex flex-col gap-1.5">
+                            <label for="role_id" class="{{ $labelClass }}">Vai Trò</label>
+                            <div class="relative">
+                                <select name="role_id" id="role_id" class="{{ $fieldClass }} appearance-none pr-10" required>
+                                    @foreach ($roles as $role)
+                                        <option value="{{ $role->id }}" @selected((string) old('role_id', $roles->first()?->id) === (string) $role->id)>
+                                            {{ $roleLabels[$role->name] ?? $role->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <i class="fa-solid fa-chevron-down pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-slate-400"></i>
                             </div>
-                            @error('is_protected')
-                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                            @error('role_id')
+                                <p class="{{ $errorClass }}">{{ $message }}</p>
                             @enderror
                         </div>
-                    </div>
-                    @endif
 
-                    <div class="account-form-row">
-                        <label for="city" class="account-form-label">Tỉnh, Thành Phố</label>
+                        @if(!empty($currentUserIsProtectedAdmin))
+                            <div class="md:col-span-2 hidden" id="isProtectedRow">
+                                <div class="rounded-xl border border-indigo-100 bg-indigo-50/70 p-4">
+                                    <div class="flex items-start justify-between gap-4">
+                                        <div class="flex min-w-0 flex-col gap-1">
+                                            <label for="is_protected" class="text-sm font-semibold text-slate-900">Admin hệ thống được bảo vệ</label>
+                                            <p class="m-0 text-sm leading-6 text-slate-600">Chỉ admin hệ thống khác mới được thay đổi role, mật khẩu hoặc khóa tài khoản này.</p>
+                                        </div>
+                                        <label class="relative inline-flex cursor-pointer items-center">
+                                            <input type="checkbox" name="is_protected" value="1" id="is_protected"
+                                                class="peer sr-only" {{ old('is_protected') ? 'checked' : '' }}>
+                                            <span class="h-6 w-11 rounded-full bg-slate-300 transition-colors peer-checked:bg-emerald-600"></span>
+                                            <span class="absolute left-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform peer-checked:translate-x-5"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                                @error('is_protected')
+                                    <p class="{{ $errorClass }}">{{ $message }}</p>
+                                @enderror
+                            </div>
+                        @endif
+                    </div>
+                </section>
+
+                <section class="bg-white border border-slate-100 rounded-xl p-6 shadow-sm flex flex-col gap-6">
+                    <div class="flex items-start justify-between gap-4">
                         <div>
-                            <input type="text" name="city" id="city"
-                                class="form-control account-form-control @error('city') is-invalid @enderror"
-                                value="{{ old('city') }}">
+                            <h2 class="m-0 text-base font-semibold text-slate-950">Địa chỉ liên hệ</h2>
+                            <p class="m-0 mt-1 text-sm text-slate-500">Thông tin hỗ trợ liên hệ nội bộ và giao nhận hồ sơ.</p>
+                        </div>
+                        <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+                            <i class="fa-solid fa-location-dot"></i>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="flex flex-col gap-1.5">
+                            <label for="city" class="{{ $labelClass }}">Tỉnh, Thành Phố</label>
+                            <div class="relative">
+                                <select name="city" id="city" class="{{ $fieldClass }} appearance-none pr-10">
+                                    <option value="">Chọn tỉnh / thành phố</option>
+                                    @if(old('city') && !in_array(old('city'), $cityOptions, true))
+                                        <option value="{{ old('city') }}" selected>{{ old('city') }}</option>
+                                    @endif
+                                    @foreach ($cityOptions as $city)
+                                        <option value="{{ $city }}" @selected(old('city') === $city)>{{ $city }}</option>
+                                    @endforeach
+                                </select>
+                                <i class="fa-solid fa-chevron-down pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-slate-400"></i>
+                            </div>
                             @error('city')
-                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                                <p class="{{ $errorClass }}">{{ $message }}</p>
                             @enderror
                         </div>
-                    </div>
 
-                    
-
-                    <div class="account-form-row">
-                        <label for="ward" class="account-form-label">Phường, Xã</label>
-                        <div>
-                            <input type="text" name="ward" id="ward"
-                                class="form-control account-form-control @error('ward') is-invalid @enderror"
-                                value="{{ old('ward') }}">
+                        <div class="flex flex-col gap-1.5">
+                            <label for="ward" class="{{ $labelClass }}">Phường, Xã</label>
+                            <div class="relative">
+                                <select name="ward" id="ward" class="{{ $fieldClass }} appearance-none pr-10">
+                                    <option value="">Chọn phường / xã</option>
+                                    @if(old('ward') && !in_array(old('ward'), $wardOptions, true))
+                                        <option value="{{ old('ward') }}" selected>{{ old('ward') }}</option>
+                                    @endif
+                                    @foreach ($wardOptions as $ward)
+                                        <option value="{{ $ward }}" @selected(old('ward') === $ward)>{{ $ward }}</option>
+                                    @endforeach
+                                </select>
+                                <i class="fa-solid fa-chevron-down pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-slate-400"></i>
+                            </div>
                             @error('ward')
-                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                                <p class="{{ $errorClass }}">{{ $message }}</p>
                             @enderror
                         </div>
-                    </div>
 
-                    <div class="account-form-row">
-                        <label for="apartment_number" class="account-form-label">Số Nhà</label>
-                        <div>
+                        <div class="flex flex-col gap-1.5">
+                            <label for="apartment_number" class="{{ $labelClass }}">Số Nhà / Tên Đường</label>
                             <input type="text" name="apartment_number" id="apartment_number"
-                                class="form-control account-form-control @error('apartment_number') is-invalid @enderror"
-                                value="{{ old('apartment_number') }}">
+                                value="{{ old('apartment_number') }}" placeholder="Ví dụ: 12 Nguyễn Huệ"
+                                class="{{ $fieldClass }}">
                             @error('apartment_number')
-                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                                <p class="{{ $errorClass }}">{{ $message }}</p>
                             @enderror
                         </div>
                     </div>
+                </section>
 
-                </div>
-
-                <div class="card-footer bg-white border-top">
-                    <div class="account-form-actions">
-                        <a href="{{ route(($routePrefix ?? 'admin.users').'.list') }}" class="btn btn-light border">Hủy</a>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fa-solid fa-floppy-disk me-1"></i> {{ $submitLabel }}
+                <div class="fixed bottom-0 left-0 right-0 z-[1030] bg-white border-t border-slate-100 shadow-[0_-4px_12px_rgba(0,0,0,0.03)] py-4 px-8 flex flex-col gap-3 md:flex-row md:justify-between md:items-center">
+                    <p class="m-0 text-sm text-slate-500">* Vui lòng điền chính xác thông tin nhân sự.</p>
+                    <div class="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-end">
+                        <a href="{{ route($routeBase.'.list') }}"
+                            class="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition-all hover:bg-slate-50 hover:text-slate-950">
+                            ← Hủy
+                        </a>
+                        <button type="submit"
+                            class="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/30">
+                            💾 {{ $submitLabel }}
                         </button>
                     </div>
                 </div>
             </form>
         </div>
-    </main>
+    </div>
 @endsection
 
 @push('scripts')
@@ -189,14 +247,14 @@ document.querySelectorAll('.pw-toggle').forEach(function (btn) {
         if (!input) return;
         var show = input.type === 'password';
         input.type = show ? 'text' : 'password';
-        icon.className = show ? 'fa-regular fa-eye-slash' : 'fa-regular fa-eye';
+        if (icon) icon.className = show ? 'fa-regular fa-eye-slash' : 'fa-regular fa-eye';
     });
 });
 
 (function () {
-    var roleSelect       = document.getElementById('role_id');
-    var protectedRow     = document.getElementById('isProtectedRow');
-    var protectedCb      = document.getElementById('is_protected');
+    var roleSelect   = document.getElementById('role_id');
+    var protectedRow = document.getElementById('isProtectedRow');
+    var protectedCb  = document.getElementById('is_protected');
     if (!roleSelect || !protectedRow) return;
 
     var adminRoleIds = @json(
@@ -205,7 +263,7 @@ document.querySelectorAll('.pw-toggle').forEach(function (btn) {
 
     function syncProtectedRow() {
         var isAdmin = adminRoleIds.includes(parseInt(roleSelect.value));
-        protectedRow.style.display = isAdmin ? '' : 'none';
+        protectedRow.classList.toggle('hidden', !isAdmin);
         if (!isAdmin && protectedCb) protectedCb.checked = false;
     }
 
