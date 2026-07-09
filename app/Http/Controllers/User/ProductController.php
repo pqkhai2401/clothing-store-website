@@ -424,41 +424,8 @@ class ProductController extends Controller
 
         return view('user.products.index', array_merge($this->filterViewData($request), [
             'products'    => $products,
-            'category'    => $category,
             'pageTitle'   => $pageTitle,
-            'currentSlug' => $slug,
             'gender'      => $gender,
         ]));
-    }
-
-    // Hiển thị sản phẩm theo bộ sưu tập mùa
-    public function getProductsByCollection(Request $request, string $slug)
-    {
-        $collection = ProductCollection::where('slug', $slug)->where('status', true)->firstOrFail();
-
-        $query = $collection->products()->where('status', true);
-
-        // Lọc theo giới tính 
-        $gender = $request->query('gender');
-        if ($gender === 'men') {
-            $query->whereIn('gender', ['men', 'unisex']);
-        } elseif ($gender === 'women') {
-            $query->whereIn('gender', ['women', 'unisex']);
-        }
-
-        // Sắp xếp theo mới nhất + phân trang 12 sản phẩm
-        $products = $query->with('category')
-            ->latest()
-            ->paginate(12)
-            ->appends($request->query());
-
-        $pageTitle = $collection->name;
-
-        return view('user.collections.show', [
-            'collection'  => $collection,
-            'products'    => $products,
-            'pageTitle'   => $pageTitle,
-            'gender'      => $gender,
-        ]);
     }
 }

@@ -177,7 +177,32 @@ class GeminiModerationService
             ];
         }
 
-        // ---- (3) Còn lại -> DUYỆT ----
+        // ---- (3) Phát hiện nội dung LẠC ĐỀ -> flagged ----
+        // Các từ khóa gợi ý bình luận có liên quan tới sản phẩm/thời trang/shop.
+        // Một câu sạch nhưng KHÔNG chứa bất kỳ từ nào trong đây (ví dụ "Hôm nay
+        // trời nắng quá") bị coi là lạc đề -> chuyển Admin duyệt tay thay vì tự duyệt.
+        $contextWords = [
+            'áo', 'quần', 'váy', 'vải', 'thun', 'mặc', 'size', 'ship', 'shop',
+            'đồ', 'mua', 'đẹp', 'chất',
+        ];
+
+        $onTopic = false;
+        foreach ($contextWords as $keyword) {
+            if (str_contains($text, $keyword)) {
+                $onTopic = true;
+                break;
+            }
+        }
+
+        if (!$onTopic) {
+            return [
+                'status'           => 'flagged',
+                'confidence_score' => 50,
+                'reason'           => '[DEMO] Nội dung có dấu hiệu lạc đề, cần Admin duyệt tay.',
+            ];
+        }
+
+        // ---- (4) Còn lại -> DUYỆT ----
         return [
             'status'           => 'approved',
             'confidence_score' => 90,
@@ -224,32 +249,32 @@ class GeminiModerationService
     protected function systemPrompt(): string
     {
         return <<<'PROMPT'
-Bạn là một KIỂM DUYỆT VIÊN nội dung chuyên nghiệp cho một website bán quần áo thời trang tại Việt Nam.
-Nhiệm vụ của bạn là phân tích ngôn ngữ tự nhiên (tiếng Việt, kể cả tiếng lóng, teencode, viết tắt, không dấu)
-của một bình luận đánh giá sản phẩm và đưa ra quyết định kiểm duyệt.
+        Bạn là một KIỂM DUYỆT VIÊN nội dung chuyên nghiệp cho một website bán quần áo thời trang tại Việt Nam.
+        Nhiệm vụ của bạn là phân tích ngôn ngữ tự nhiên (tiếng Việt, kể cả tiếng lóng, teencode, viết tắt, không dấu)
+        của một bình luận đánh giá sản phẩm và đưa ra quyết định kiểm duyệt.
 
-QUY TẮC PHÂN LOẠI:
-1. "approved" (DUYỆT): Bình luận lịch sự, mang tính đánh giá sản phẩm/dịch vụ (khen, chê, góp ý)
-   dù tích cực hay tiêu cực, MIỄN LÀ không vi phạm.
-2. "rejected" (TỪ CHỐI): Bình luận chứa BẤT KỲ yếu tố nào sau đây:
-   - Từ ngữ tục tĩu, chửi thề, thô tục.
-   - Lời lẽ công kích, xúc phạm, phân biệt, thù ghét cá nhân/tổ chức.
-   - Quảng cáo spam, chèn link, số điện thoại, rao bán, lôi kéo sang nơi khác.
-   - Nội dung hoàn toàn vô nghĩa, spam ký tự.
-3. "flagged" (GẮN CỜ NGHI VẤN): Khi bạn KHÔNG CHẮC CHẮN, nội dung mập mờ, nhạy cảm nhẹ,
-   hoặc độ tin cậy của bạn thấp -> để con người duyệt lại.
+        QUY TẮC PHÂN LOẠI:
+        1. "approved" (DUYỆT): Bình luận lịch sự, mang tính đánh giá sản phẩm/dịch vụ (khen, chê, góp ý)
+        dù tích cực hay tiêu cực, MIỄN LÀ không vi phạm.
+        2. "rejected" (TỪ CHỐI): Bình luận chứa BẤT KỲ yếu tố nào sau đây:
+        - Từ ngữ tục tĩu, chửi thề, thô tục.
+        - Lời lẽ công kích, xúc phạm, phân biệt, thù ghét cá nhân/tổ chức.
+        - Quảng cáo spam, chèn link, số điện thoại, rao bán, lôi kéo sang nơi khác.
+        - Nội dung hoàn toàn vô nghĩa, spam ký tự.
+        3. "flagged" (GẮN CỜ NGHI VẤN): Khi bạn KHÔNG CHẮC CHẮN, nội dung mập mờ, nhạy cảm nhẹ,
+        hoặc độ tin cậy của bạn thấp -> để con người duyệt lại.
 
-YÊU CẦU VỀ ĐẦU RA (BẮT BUỘC TUYỆT ĐỐI):
-- CHỈ trả về một đối tượng JSON THUẦN, KHÔNG kèm giải thích, KHÔNG markdown, KHÔNG dấu ```.
-- Cấu trúc JSON chính xác như sau:
-{
-  "status": "approved" | "rejected" | "flagged",
-  "confidence_score": 85,
-  "reason": "Giải thích ngắn gọn bằng tiếng Việt vì sao đưa ra quyết định này"
-}
-- "confidence_score" là một SỐ NGUYÊN từ 0 đến 100 thể hiện mức độ tự tin của bạn.
-- Nếu "confidence_score" dưới 60, hãy đặt "status" là "flagged".
-PROMPT;
+        YÊU CẦU VỀ ĐẦU RA (BẮT BUỘC TUYỆT ĐỐI):
+        - CHỈ trả về một đối tượng JSON THUẦN, KHÔNG kèm giải thích, KHÔNG markdown, KHÔNG dấu ```.
+        - Cấu trúc JSON chính xác như sau:
+        {
+        "status": "approved" | "rejected" | "flagged",
+        "confidence_score": 85,
+        "reason": "Giải thích ngắn gọn bằng tiếng Việt vì sao đưa ra quyết định này"
+        }
+        - "confidence_score" là một SỐ NGUYÊN từ 0 đến 100 thể hiện mức độ tự tin của bạn.
+        - Nếu "confidence_score" dưới 60, hãy đặt "status" là "flagged".
+        PROMPT;
     }
 
     /**

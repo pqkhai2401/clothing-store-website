@@ -318,6 +318,49 @@
         color: var(--muted-text);
     }
 
+    /* ===== Bảng size (partials.size-chart) ===== */
+    .size-chart-tabs {
+        border-bottom: 1px solid var(--border-color);
+        gap: 4px;
+    }
+
+    .size-chart-tabs .nav-link {
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: var(--muted-text);
+        border: none;
+        border-bottom: 2px solid transparent;
+        border-radius: 0;
+        padding: 8px 14px;
+    }
+
+    .size-chart-tabs .nav-link.active {
+        color: var(--primary-color);
+        border-bottom-color: var(--primary-color);
+        background: transparent;
+    }
+
+    .size-chart-table {
+        font-size: 12px;
+    }
+
+    .size-chart-table th {
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--primary-color);
+        border-bottom: 1px solid var(--border-color);
+        white-space: nowrap;
+    }
+
+    .size-chart-table td {
+        vertical-align: middle;
+        color: var(--secondary-color);
+    }
+
     /* ===== Sản phẩm liên quan ===== */
     .related-section-title {
         font-family: var(--font-serif);
@@ -643,7 +686,8 @@
                             </h2>
                             <div id="collapseSize" class="accordion-collapse collapse" data-bs-parent="#productAccordion">
                                 <div class="accordion-body">
-                                    <p>Vui lòng tham khảo bảng size chuẩn của HK Store để chọn size phù hợp nhất với bạn.</p>
+                                    <p class="mb-3">Vui lòng tham khảo bảng size chuẩn của HK Store để chọn size phù hợp nhất với bạn.</p>
+                                    @include('partials.size-chart', ['gender' => $product->gender])
                                 </div>
                             </div>
                         </div>
