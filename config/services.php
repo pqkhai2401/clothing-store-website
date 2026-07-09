@@ -51,5 +51,19 @@ return [
         // Chỉ đặt false ở môi trường local nếu PHP chưa có CA bundle (lỗi cURL 60).
         'verify_ssl' => env('PAYOS_VERIFY_SSL', true),
     ],
+    /*
+    |--------------------------------------------------------------------------
+    | Google Gemini API (Kiểm duyệt đánh giá bằng AI)
+    |--------------------------------------------------------------------------
+    | - key   : API key lấy từ Google AI Studio (đặt trong .env: GEMINI_API_KEY).
+    | - model : Dòng mô hình sử dụng; mặc định 'gemini-1.5-flash' vì nhanh & rẻ.
+    */
+    'gemini' => [
+        'key'   => env('GEMINI_API_KEY'),
+        'model' => env('GEMINI_MODEL', 'gemini-2.0-flash'),
+        // Chế độ Demo: true -> dùng bộ lọc từ khóa nội bộ (Fake AI) test nhanh
+        // tại local, không gọi Google. false -> gọi Gemini API thật.
+        'demo_mode' => env('GEMINI_DEMO_MODE', false),
+    ],
 
 ];

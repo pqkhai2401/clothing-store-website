@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 
 class ProfileController extends Controller
@@ -23,6 +25,8 @@ class ProfileController extends Controller
             'username' => ['required', 'string', 'min:2', 'max:255', "regex:/^[\p{L}\s.'-]+$/u"],
             'phone_number' => ['required', 'string', 'regex:/^(0|\+84)(3|5|7|8|9)[0-9]{8}$/'],
             'gender' => ['required', 'in:nam,nu,khac'],
+            // File ảnh đại diện là tùy chọn, chỉ validate khi người dùng có upload file mới
+            'avatar' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif', 'max:2048'],
         ], [
             'username.required' => 'Vui lòng nhập họ và tên.',
             'username.min' => 'Họ và tên phải có ít nhất 2 ký tự.',
@@ -32,6 +36,9 @@ class ProfileController extends Controller
             'phone_number.regex' => 'Số điện thoại không hợp lệ.',
             'gender.required' => 'Vui lòng chọn giới tính.',
             'gender.in' => 'Giới tính không hợp lệ.',
+            'avatar.image' => 'File tải lên phải là một hình ảnh.',
+            'avatar.mimes' => 'Ảnh đại diện chỉ chấp nhận định dạng: jpeg, png, jpg, gif.',
+            'avatar.max' => 'Dung lượng ảnh đại diện không được vượt quá 2MB.',
         ]);
 
         if ($validator->fails()) {
@@ -40,7 +47,7 @@ class ProfileController extends Controller
 
         $phoneNumber = $this->normalizeVietnamesePhone($request->input('phone_number'));
 
-        $existingPhone = \App\Models\User::where('phone_number', $phoneNumber)
+        $existingPhone = User::where('phone_number', $phoneNumber)
             ->where('id', '!=', $user->id)
             ->exists();
 
@@ -48,11 +55,28 @@ class ProfileController extends Controller
             return back()->withErrors(['phone_number' => 'Số điện thoại đã được sử dụng.'])->withInput();
         }
 
-        $user->update([
+        $updateData = [
             'username' => trim($request->input('username')),
             'phone_number' => $phoneNumber,
             'gender' => $request->input('gender'),
-        ]);
+        ];
+
+        // Chỉ xử lý ảnh đại diện khi người dùng thực sự có chọn file mới để upload
+        if ($request->hasFile('avatar')) {
+            // Nếu tài khoản đã có ảnh đại diện cũ, xóa hẳn file cũ khỏi ổ cứng
+            // trước khi lưu ảnh mới để tránh rác file tồn đọng trong storage
+            if ($user->avatar_url) {
+                Storage::disk('public')->delete($user->avatar_url);
+            }
+
+            // Lưu file ảnh mới vào thư mục "avatars" trong disk "public"
+            // store() sẽ tự sinh tên file duy nhất và trả về đường dẫn tương đối
+            $avatarPath = $request->file('avatar')->store('avatars', 'public');
+
+            $updateData['avatar_url'] = $avatarPath;
+        }
+
+        $user->update($updateData);
 
         return back()->with('success', 'Cập nhật thông tin thành công!');
     }
