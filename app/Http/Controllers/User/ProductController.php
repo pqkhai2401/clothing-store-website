@@ -13,6 +13,7 @@ use App\Models\ProductView;
 use App\Models\Review;
 use App\Models\Tag;
 use App\Models\Wishlist;
+use App\Models\Collection as ProductCollection;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -80,14 +81,8 @@ class ProductController extends Controller
         // Biến thể mặc định (đầu tiên) để hiển thị SKU và giá ban đầu
         $defaultVariant = $product->productVariants->first();
 
-        // Lấy 4 sản phẩm liên quan cùng danh mục
-        $relatedProducts = Product::where('category_id', $product->category_id)
-            ->where('id', '!=', $product->id)
-            ->where('status', true)
-            ->with('category')
-            ->latest()
-            ->limit(4)
-            ->get();
+        // Lấy 4 sản phẩm tương tự bằng thuật toán AI Content-based filtering
+        $relatedProducts = \App\Services\RecommendationService::getSimilarProducts($product, 4);
 
         // Kiểm tra sản phẩm có trong wishlist của user không (dùng cho nút ❤️ real-time)
         $isInWishlist = Auth::check()
@@ -170,13 +165,17 @@ class ProductController extends Controller
         // Lấy thông tin giá từ bảng products (giá chung cho sản phẩm)
         $product = Product::findOrFail($request->product_id);
 
+        $discount = $product->discount;
+        $finalPrice = $variant->sale_price > 0 ? (float) $variant->sale_price : (float) $product->final_price;
+        $price = $discount > 0 ? $finalPrice / (1 - $discount / 100) : $finalPrice;
+
         return response()->json([
             'found'       => true,
             'stock'       => $variant->stock,
             'sku'         => $variant->sku,
-            'price'       => $product->price,
-            'discount'    => $product->discount,
-            'final_price' => $product->final_price,
+            'price'       => $price,
+            'discount'    => $discount,
+            'final_price' => $finalPrice,
             'image'       => $variant->image,
         ]);
     }
@@ -227,6 +226,14 @@ class ProductController extends Controller
                 $sub->where('name', 'LIKE', "%{$q}%")
                     ->orWhereHas('category', fn ($c) => $c->where('name', 'LIKE', "%{$q}%"));
             });
+
+            // Ghi nhận lịch sử tìm kiếm cho người dùng đã đăng nhập phục vụ AI gợi ý
+            if (Auth::check()) {
+                \App\Models\SearchHistory::create([
+                    'user_id' => Auth::id(),
+                    'keyword' => $q,
+                ]);
+            }
         }
 
         $this->applyFilters($query, $request);
@@ -417,9 +424,7 @@ class ProductController extends Controller
 
         return view('user.products.index', array_merge($this->filterViewData($request), [
             'products'    => $products,
-            'category'    => $category,
             'pageTitle'   => $pageTitle,
-            'currentSlug' => $slug,
             'gender'      => $gender,
         ]));
     }

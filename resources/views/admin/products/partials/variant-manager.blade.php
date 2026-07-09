@@ -106,10 +106,6 @@
                 <label>Giá bán</label>
                 <input type="number" min="0" step="1000" class="vm-bulk-input" id="vmBulkSale" placeholder="0">
             </div>
-            <div class="vm-bulk-field">
-                <label>Tồn kho</label>
-                <input type="number" min="0" step="1" class="vm-bulk-input" id="vmBulkStock" placeholder="0">
-            </div>
             <button type="button" class="vm-bulk-apply-btn" id="vmBulkApplyBtn">
                 <i class="fa-solid fa-bolt me-1"></i> Áp dụng cho tất cả
             </button>
@@ -145,8 +141,12 @@ window.__VM_EXISTING__ = @json($existingVariants);
 {{-- ══════════════════════════════════════════ --}}
 {{-- CSS                                        --}}
 {{-- ══════════════════════════════════════════ --}}
-@once
-@push('styles')
+{{--
+    Lưu ý: KHÔNG dùng @push('styles')/@push('scripts') ở đây — vì khi partial này được
+    render riêng lẻ qua AJAX (mở panel Sửa sản phẩm dạng trượt phải), nội dung push sẽ
+    không bao giờ được xuất ra (chỉ layout chính mới gọi @stack). Style/script phải nằm
+    trực tiếp trong HTML trả về để hoạt động đúng ở cả 2 chế độ (trang đầy đủ & panel AJAX).
+--}}
 <style>
 /* ── Wrapper ── */
 .vm-wrap {
@@ -357,13 +357,13 @@ window.__VM_EXISTING__ = @json($existingVariants);
 /* ── Bulk apply bar ── */
 .vm-bulk-bar {
     display: flex;
-    align-items: flex-end;
+    align-items: center;
     flex-wrap: wrap;
-    gap: 14px;
+    gap: 10px;
     background: #f9fafb;
     border: 1.5px solid var(--vm-border);
     border-radius: 10px;
-    padding: 12px 14px;
+    padding: 10px 12px;
     margin-bottom: 14px;
 }
 
@@ -371,7 +371,7 @@ window.__VM_EXISTING__ = @json($existingVariants);
     font-size: 13px;
     font-weight: 700;
     color: #374151;
-    align-self: center;
+    white-space: nowrap;
 }
 
 .vm-bulk-field {
@@ -387,7 +387,7 @@ window.__VM_EXISTING__ = @json($existingVariants);
 }
 
 .vm-bulk-input {
-    width: 110px;
+    width: 90px;
     height: 34px;
     border: 1.5px solid #d1d5db;
     border-radius: 6px;
@@ -409,7 +409,7 @@ window.__VM_EXISTING__ = @json($existingVariants);
     color: #fff;
     font-size: 13px;
     font-weight: 700;
-    padding: 0 16px;
+    padding: 0 12px;
     cursor: pointer;
     transition: background 0.15s;
     white-space: nowrap;
@@ -499,14 +499,10 @@ window.__VM_EXISTING__ = @json($existingVariants);
 .vm-matrix-table-wrap.is-empty .vm-matrix-table { display: none; }
 .vm-matrix-table-wrap.is-empty .vm-matrix-empty { display: block; }
 </style>
-@endpush
-@endonce
 
 {{-- ══════════════════════════════════════════ --}}
 {{-- JavaScript                                 --}}
 {{-- ══════════════════════════════════════════ --}}
-@once
-@push('scripts')
 <script>
 (function () {
     const existing = window.__VM_EXISTING__ || {};
@@ -611,11 +607,20 @@ window.__VM_EXISTING__ = @json($existingVariants);
 
         matrixBody.innerHTML = '';
 
+        const pricingWrapper = document.getElementById('generalPricingWrapper');
         if (colors.length === 0 || sizes.length === 0) {
-            matrixStep.style.display = '';
+            matrixStep.style.display = 'none'; // Ẩn bước 3 khi chưa chọn màu/size
             matrixWrap.classList.add('is-empty');
+            if (pricingWrapper) {
+                pricingWrapper.style.display = 'block';
+            }
             updateSummary();
             return;
+        }
+
+        // Nếu có biến thể -> ẩn khung nhập giá chung phía trên đi cho sạch giao diện
+        if (pricingWrapper) {
+            pricingWrapper.style.display = 'none';
         }
 
         matrixWrap.classList.remove('is-empty');
@@ -736,5 +741,3 @@ window.__VM_EXISTING__ = @json($existingVariants);
     }
 })();
 </script>
-@endpush
-@endonce

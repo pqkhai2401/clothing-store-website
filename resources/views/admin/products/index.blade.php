@@ -4,6 +4,48 @@
 
 @push('styles')
     @include('admin.products.styles')
+    <link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet">
+    <style>
+        /* Màu nút hành động dịu hơn, bớt "gắt", đồng bộ với các trang khác (Đơn hàng, Kích thước...) */
+        .product-admin-page .product-action-btn { border-radius: 8px !important; }
+        .product-admin-page .product-action-btn.btn-dark {
+            background: #059669 !important;
+            border-color: #059669 !important;
+        }
+        .product-admin-page .product-action-btn.btn-dark:hover {
+            background: #047857 !important;
+            border-color: #047857 !important;
+        }
+        .product-admin-page .product-action-btn.btn-light {
+            background: #ffffff !important;
+            border: 1.5px solid #D8E0EA !important;
+            color: #64748B !important;
+        }
+        .product-admin-page .product-action-btn.btn-light:hover {
+            background: #FEF2F2 !important;
+            border-color: #F87171 !important;
+            color: #DC2626 !important;
+        }
+
+        /* Bộ lọc "Thương hiệu" cần rộng hơn Size/Màu vì nhãn mặc định "Tất cả thương hiệu" dài hơn */
+        .product-admin-page .product-brand-filter {
+            width: 210px !important;
+            flex: 0 0 210px !important;
+        }
+        .product-admin-page .product-brand-filter .hk-cat-panel {
+            width: 240px;
+        }
+
+        /* Khối "COMPACT VIEW" dùng chung ép padding:0 10px cho mọi ô tìm kiếm, đè mất
+           padding-left:46px dành riêng cho ô tìm kiếm có icon kính lúp ở đây, khiến icon
+           đè lên chữ. Khôi phục lại khoảng chừa cho icon (chỉ ở khu vực có icon này). */
+        .product-admin-page .product-search-row .product-search {
+            padding: 0 14px 0 42px !important;
+        }
+        .product-admin-page .product-search-icon {
+            left: 16px;
+        }
+    </style>
 @endpush
 
 @section('content')
@@ -11,25 +53,55 @@
         <x-notification />
 
         <section class="px-3 px-md-4">
-            <div>
-                <h1 class="product-header-title mb-2">Quản lý sản phẩm</h1>
-                <p class="product-header-desc mb-0">Danh sách tất cả sản phẩm trong hệ thống.</p>
+            <div class="d-flex align-items-start justify-content-between flex-wrap gap-3">
+                <div>
+                    <h1 class="product-header-title mb-2">Quản lý sản phẩm</h1>
+                    <p class="product-header-desc mb-0">Danh sách tất cả sản phẩm trong hệ thống.</p>
+                </div>
                 <div class="product-header-actions">
-                    <a href="{{ route('admin.products.create') }}" class="btn btn-dark product-action-btn">
-                        <i class="fa-solid fa-plus me-1"></i> Thêm sản phẩm
-                    </a>
+                    <button type="button" class="btn product-action-btn product-action-btn--neutral" onclick="exportProducts()">
+                        <i class="fa-solid fa-download me-1"></i> Xuất Excel
+                    </button>
                     <a href="{{ route('admin.products.trash') }}" class="btn btn-light border product-action-btn">
                         <i class="fa-regular fa-trash-can me-1"></i> Thùng rác
+                    </a>
+                    <a href="{{ route('admin.products.create') }}" class="btn btn-dark product-action-btn">
+                        <i class="fa-solid fa-plus me-1"></i> Thêm sản phẩm
                     </a>
                 </div>
             </div>
 
+            <div class="row g-3 product-stat-row">
+                <div class="col-md-4">
+                    <div class="product-stat-card">
+                        <div class="product-stat-label">Tổng sản phẩm</div>
+                        <div class="product-stat-value">{{ number_format($totalProducts) }}</div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="product-stat-card">
+                        <div class="product-stat-label">Đang hoạt động</div>
+                        <div class="product-stat-value product-stat-value--success">{{ number_format($activeProducts) }}</div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="product-stat-card">
+                        <div class="product-stat-label">Hết hàng</div>
+                        <div class="product-stat-value product-stat-value--danger">{{ number_format($outOfStockProducts) }}</div>
+                    </div>
+                </div>
+            </div>
+
             <div class="product-toolbar">
-                <div class="product-toolbar-left">
+                <div class="product-search-row">
+                    <i class="fa-solid fa-magnifying-glass product-search-icon"></i>
                     <input type="search" name="search" data-admin-search id="productRealtimeSearch" class="form-control product-search"
                         value="{{ $keyword }}"
                         placeholder="Tìm kiếm theo tên sản phẩm, danh mục,..." autocomplete="off">
+                </div>
 
+                <div class="product-toolbar-filters-row">
+                <div class="product-toolbar-left">
                     @php
                         $selectedCatLabel = 'Tất cả danh mục';
                         if (!empty($parentCategoryId)) {
@@ -142,9 +214,48 @@
                             </div>
                         </div>
                     </div>
+
+                    @php
+                        $selectedBrandLabel = 'Tất cả thương hiệu';
+                        foreach ($brands as $brand) {
+                            if ((string) ($brandId ?? '') === (string) $brand->id) {
+                                $selectedBrandLabel = $brand->name;
+                                break;
+                            }
+                        }
+                    @endphp
+                    <input type="hidden" name="brand_id" data-admin-filter id="productBrandFilter" value="{{ $brandId ?? '' }}">
+                    <div class="hk-cat-filter product-brand-filter" id="hkProductBrandFilter">
+                        <button type="button" class="hk-cat-trigger" id="hkProductBrandTrigger" aria-haspopup="listbox" aria-expanded="false">
+                            <span class="hk-cat-trigger-label" id="hkProductBrandLabel">{{ $selectedBrandLabel }}</span>
+                            <i class="fa-solid fa-chevron-down hk-cat-arrow"></i>
+                        </button>
+                        <div class="hk-cat-panel" id="hkProductBrandPanel" hidden>
+                            <div class="hk-cat-list" id="hkProductBrandList" role="listbox">
+                                <button type="button" class="hk-cat-item {{ !($brandId ?? '') ? 'is-active' : '' }}" data-value="" data-label="Tất cả thương hiệu">Tất cả thương hiệu</button>
+                                @foreach($brands as $brand)
+                                    <button type="button"
+                                        class="hk-cat-item {{ (string) ($brandId ?? '') === (string) $brand->id ? 'is-active' : '' }}"
+                                        data-value="{{ $brand->id }}"
+                                        data-label="{{ $brand->name }}">
+                                        {{ $brand->name }}
+                                    </button>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="product-toolbar-right">
+                    @php
+                        $stockStatusVal = request('stock_status', $stockStatus ?? '');
+                    @endphp
+                    <input type="hidden" name="stock_status" data-admin-filter id="productStockStatusFilter" value="{{ $stockStatusVal }}">
+                    <button type="button" class="product-low-stock-chip {{ $stockStatusVal === 'low_stock' ? 'is-active' : '' }}" id="productLowStockChip"
+                        title="Lọc sản phẩm có tổng tồn kho dưới 10">
+                        <i class="fa-solid fa-triangle-exclamation me-1"></i> Sắp hết hàng
+                    </button>
+
                     @php
                         $statusVal = request('status', $status ?? '');
                         $statusLabelMap = ['' => 'Tất cả trạng thái', '1' => 'Đang bán', '0' => 'Ẩn'];
@@ -164,16 +275,26 @@
                         </div>
                     </div>
                 </div>
+                </div>
             </div>
 
             <div data-admin-table-area>
                 @include('admin.products.partials.table')
+            </div>
+
+            <div class="offcanvas offcanvas-end product-edit-offcanvas" tabindex="-1" id="productEditOffcanvas">
+                <div data-product-edit-body class="h-100">
+                    <div class="offcanvas-body text-center py-5">
+                        <div class="spinner-border text-secondary" role="status"></div>
+                    </div>
+                </div>
             </div>
         </section>
     </div>
 @endsection
 
 @push('scripts')
+    <script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
     @include('layouts.components.confirm.delete')
     @include('admin.products.scripts')
     @include('admin.partials.realtime-table')

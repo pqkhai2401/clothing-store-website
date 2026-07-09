@@ -85,6 +85,12 @@
         height: auto;
     }
 
+    textarea.form-control {
+        height: auto !important;
+        min-height: 80px !important;
+        resize: vertical !important;
+    }
+
     .form-control:focus, .form-select:focus {
         border-color: var(--primary-color);
         box-shadow: 0 0 0 2px rgba(0,0,0,0.08);
@@ -1030,10 +1036,9 @@
                         <!-- Note -->
                         <div class="col-12">
                             <label for="note" class="form-label">Ghi chú</label>
-                            <input type="text" name="note" id="note"
+                            <textarea name="note" id="note" rows="3"
                                 class="form-control @error('note') is-invalid @enderror"
-                                value="{{ old('note') }}"
-                                placeholder="Nhập ghi chú">
+                                placeholder="Nhập ghi chú giao hàng (ví dụ: giao giờ hành chính, gọi trước khi giao...)">{{ old('note') }}</textarea>
                             @error('note')
                                 <div class="invalid-feedback d-block">{{ $message }}</div>
                             @enderror

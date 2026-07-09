@@ -6,17 +6,17 @@ use App\Http\Controllers\User\AuthController;
 use App\Http\Controllers\User\ForgotPasswordController;
 use App\Http\Controllers\User\CartController;
 use App\Http\Controllers\User\CheckoutController;
+use App\Http\Controllers\User\PayosController;
 use App\Http\Controllers\User\LocationController;
 use App\Http\Controllers\User\OrderController;
 use App\Http\Controllers\User\ProfileController;
 use App\Http\Controllers\User\ReviewController;
 
+use App\Http\Controllers\User\HomeController;
 use Illuminate\Support\Facades\Route;
 
 
-Route::get('/', function () {
-    return view('user.home.index');
-})->name('home');
+Route::get('/', [HomeController::class, 'index'])->name('home');
 
 Route::name('404-not-found')->get('404-not-found', function () {
     return view('404');
@@ -42,6 +42,10 @@ Route::get('/san-pham/{slug}', [ProductController::class, 'show'])->name('produc
 Route::get('/danh-muc/{slug}', [ProductController::class, 'getProductsByCategory'])
     ->name('category.products');
 
+// Route bộ sưu tập mùa: /bo-suu-tap/{slug}
+Route::get('/bo-suu-tap/{slug}', [ProductController::class, 'getProductsByCollection'])
+    ->name('collections.show');
+
 Route::middleware('auth')->group(function () {
     Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
     Route::post('/cart/add', [CartController::class, 'store'])->name('cart.add');
@@ -51,6 +55,12 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout.index');
     Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');
+
+    // PayOS: trang QR nhúng + poll trạng thái + return/cancel (fallback từ trang hosted)
+    Route::get('/checkout/payos/return', [PayosController::class, 'return'])->name('checkout.payos.return');
+    Route::get('/checkout/payos/cancel', [PayosController::class, 'cancel'])->name('checkout.payos.cancel');
+    Route::get('/checkout/payos/{order}', [PayosController::class, 'show'])->name('checkout.payos.show');
+    Route::get('/checkout/payos/{order}/status', [PayosController::class, 'status'])->name('checkout.payos.status');
 
     Route::get('/user/addresses', [AddressController::class, 'index'])->name('addresses.index');
     Route::post('/user/addresses', [AddressController::class, 'store'])->name('addresses.store');

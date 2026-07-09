@@ -100,7 +100,7 @@
     <div class="d-flex align-items-center justify-content-between gap-3 mb-4 flex-wrap">
         <div>
             <h1 class="gr-header-title">Tạo phiếu nhập kho</h1>
-            <p class="gr-header-desc">Chọn nhà cung cấp và thêm sản phẩm cần nhập kho.</p>
+            <p class="gr-header-desc">Điền đầy đủ thông tin và thêm sản phẩm cần nhập kho.</p>
         </div>
     </div>
 
@@ -122,10 +122,70 @@
                             <div class="form-text">Phiếu sẽ ở trạng thái Nháp cho đến khi bạn bấm "Hoàn tất nhập kho".</div>
                         </div>
 
+                        {{-- Nguồn nhập --}}
                         <div class="edit-field">
-                            <label for="supplier_id">Nhà cung cấp <span class="text-danger">*</span></label>
+                            <label for="source_type">Nguồn nhập <span class="text-danger">*</span></label>
+                            <select id="source_type" name="source_type"
+                                class="form-select @error('source_type') is-invalid @enderror">
+                                <option value="supplier" {{ old('source_type', 'supplier') === 'supplier' ? 'selected' : '' }}>
+                                    🏭 Nhập từ nhà cung cấp
+                                </option>
+                                <option value="internal" {{ old('source_type') === 'internal' ? 'selected' : '' }}>
+                                    🏠 Nhập nội bộ (kiểm kê / điều chỉnh)
+                                </option>
+                            </select>
+                            @error('source_type') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        </div>
+
+                        {{-- Loại nhập --}}
+                        <div class="edit-field">
+                            <label for="receipt_type">Loại nhập <span class="text-danger">*</span></label>
+                            <select id="receipt_type" name="receipt_type"
+                                class="form-select @error('receipt_type') is-invalid @enderror">
+                                <option value="purchase" {{ old('receipt_type', 'purchase') === 'purchase' ? 'selected' : '' }}>
+                                    📦 Nhập hàng nhà cung cấp
+                                </option>
+                                <option value="return" {{ old('receipt_type') === 'return' ? 'selected' : '' }}>
+                                    🔄 Nhập trả hàng
+                                </option>
+                                <option value="adjustment" {{ old('receipt_type') === 'adjustment' ? 'selected' : '' }}>
+                                    ⚖️ Điều chỉnh kiểm kê
+                                </option>
+                                <option value="initial" {{ old('receipt_type') === 'initial' ? 'selected' : '' }}>
+                                    🗂️ Nhập tồn đầu kỳ
+                                </option>
+                            </select>
+                            @error('receipt_type') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        </div>
+
+                        {{-- Kho nhận hàng --}}
+                        <div class="edit-field">
+                            <label for="warehouse_id">Kho nhận <span class="text-danger">*</span></label>
+                            <select id="warehouse_id" name="warehouse_id"
+                                class="form-select @error('warehouse_id') is-invalid @enderror" required>
+                                @foreach($warehouses as $warehouse)
+                                    <option value="{{ $warehouse->id }}" {{ old('warehouse_id', $warehouse->is_default ? $warehouse->id : '') == $warehouse->id ? 'selected' : '' }}>
+                                        {{ $warehouse->full_name }} {{ $warehouse->is_default ? '(Mặc định)' : '' }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('warehouse_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        </div>
+
+                        {{-- Ngày nhập kho --}}
+                        <div class="edit-field">
+                            <label for="received_at">Ngày nhập kho <span class="text-danger">*</span></label>
+                            <input type="datetime-local" id="received_at" name="received_at"
+                                class="form-control @error('received_at') is-invalid @enderror"
+                                value="{{ old('received_at', now()->format('Y-m-d\TH:i')) }}" required>
+                            @error('received_at') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        </div>
+
+                        {{-- Nhà cung cấp (ẩn khi nội bộ) --}}
+                        <div class="edit-field" id="supplierField">
+                            <label for="supplier_id">Nhà cung cấp <span class="text-danger" id="supplierRequired">*</span></label>
                             <select id="supplier_id" name="supplier_id"
-                                class="form-select @error('supplier_id') is-invalid @enderror" required>
+                                class="form-select @error('supplier_id') is-invalid @enderror">
                                 <option value="">— Chọn nhà cung cấp —</option>
                                 @foreach($suppliers as $supplier)
                                     <option value="{{ $supplier->id }}" {{ old('supplier_id') == $supplier->id ? 'selected' : '' }}>
@@ -141,11 +201,21 @@
                             @endif
                         </div>
 
+                        {{-- Lý do nhập (hiện khi nội bộ hoặc điều chỉnh) --}}
+                        <div class="edit-field" id="reasonField" style="display:none;">
+                            <label for="receipt_reason">Lý do nhập</label>
+                            <input type="text" id="receipt_reason" name="receipt_reason"
+                                class="form-control"
+                                placeholder="Ví dụ: Cân bằng tồn kho sau kiểm kê..."
+                                value="{{ old('receipt_reason') }}">
+                            <div class="form-text">Nhập lý do để theo dõi lịch sử kho.</div>
+                        </div>
+
                         <div class="edit-field mb-0">
                             <label for="note">Ghi chú</label>
-                            <textarea id="note" name="note" rows="4"
+                            <textarea id="note" name="note" rows="3"
                                 class="form-control @error('note') is-invalid @enderror"
-                                placeholder="Ghi chú cho phiếu nhập kho...">{{ old('note') }}</textarea>
+                                placeholder="Ghi chú nội bộ cho phiếu nhập kho...">{{ old('note') }}</textarea>
                             @error('note') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
                     </div>
@@ -184,9 +254,15 @@
                             <div class="gr-table-empty">Chưa có sản phẩm nào. Tìm và chọn sản phẩm ở ô phía trên để thêm vào phiếu.</div>
                         </div>
 
-                        <div class="gr-summary-bar">
-                            <span class="gr-summary-label">Tổng giá trị phiếu nhập:</span>
-                            <span class="gr-summary-value" id="grTotalAmount">0đ</span>
+                        <div class="gr-summary-bar d-flex justify-content-between align-items-center flex-wrap">
+                            <div class="gr-summary-item me-4">
+                                <span class="gr-summary-label">Tổng số lượng:</span>
+                                <span class="gr-summary-value fw-bold text-dark" id="grTotalQuantity" style="font-size:16px;">0</span>
+                            </div>
+                            <div class="gr-summary-item">
+                                <span class="gr-summary-label">Tổng giá trị phiếu nhập:</span>
+                                <span class="gr-summary-value" id="grTotalAmount">0đ</span>
+                            </div>
                         </div>
 
                     </div>
@@ -199,7 +275,7 @@
                     <button type="submit" class="btn btn-outline-dark fw-bold" data-gr-action="draft">
                         <i class="fa-regular fa-floppy-disk me-1"></i> Lưu nháp
                     </button>
-                    <button type="submit" class="btn btn-primary fw-bold" data-gr-action="complete">
+                    <button type="submit" class="btn btn-primary fw-bold" data-gr-action="complete" id="grBtnComplete">
                         <i class="fa-solid fa-check me-1"></i> Hoàn tất nhập kho
                     </button>
                 </div>
@@ -214,13 +290,62 @@
 (function () {
     const variants = @json($variants);
 
-    const pickerInput = document.getElementById('grPickerInput');
-    const pickerPanel = document.getElementById('grPickerPanel');
-    const tableWrap    = document.getElementById('grTableWrap');
-    const tableBody    = document.getElementById('grTableBody');
-    const totalEl      = document.getElementById('grTotalAmount');
-    const form         = document.getElementById('goodsReceiptForm');
-    const actionInput  = document.getElementById('grActionInput');
+    const pickerInput   = document.getElementById('grPickerInput');
+    const pickerPanel   = document.getElementById('grPickerPanel');
+    const tableWrap     = document.getElementById('grTableWrap');
+    const tableBody     = document.getElementById('grTableBody');
+    const totalEl       = document.getElementById('grTotalAmount');
+    const form          = document.getElementById('goodsReceiptForm');
+    const actionInput   = document.getElementById('grActionInput');
+
+    // ── Source/Receipt type dynamic logic ──
+    const sourceTypeEl    = document.getElementById('source_type');
+    const receiptTypeEl   = document.getElementById('receipt_type');
+    const supplierField   = document.getElementById('supplierField');
+    const supplierSelect  = document.getElementById('supplier_id');
+    const supplierRequired = document.getElementById('supplierRequired');
+    const reasonField     = document.getElementById('reasonField');
+
+    function syncReceiptTypeOptions() {
+        const isInternal = sourceTypeEl.value === 'internal';
+        // Khi nội bộ, ẩn option "purchase" và chuyển sang adjustment nếu đang ở purchase
+        const purchaseOpt = receiptTypeEl.querySelector('option[value="purchase"]');
+        if (isInternal) {
+            purchaseOpt.disabled = true;
+            if (receiptTypeEl.value === 'purchase') receiptTypeEl.value = 'adjustment';
+        } else {
+            purchaseOpt.disabled = false;
+        }
+    }
+
+    function updateFieldVisibility() {
+        const isInternal = sourceTypeEl.value === 'internal';
+        const isAdjustmentOrReturn = ['adjustment', 'return', 'initial'].includes(receiptTypeEl.value);
+
+        // Nhà cung cấp: ẩn khi nội bộ
+        supplierField.style.display = isInternal ? 'none' : '';
+        if (isInternal) {
+            supplierSelect.value = '';
+            supplierSelect.removeAttribute('required');
+            if (supplierRequired) supplierRequired.style.display = 'none';
+        } else {
+            supplierSelect.setAttribute('required', '');
+            if (supplierRequired) supplierRequired.style.display = '';
+        }
+
+        // Lý do nhập: hiện khi nội bộ HOẶC loại là điều chỉnh/trả hàng/đầu kỳ
+        reasonField.style.display = (isInternal || isAdjustmentOrReturn) ? '' : 'none';
+    }
+
+    sourceTypeEl.addEventListener('change', function () {
+        syncReceiptTypeOptions();
+        updateFieldVisibility();
+    });
+    receiptTypeEl.addEventListener('change', updateFieldVisibility);
+
+    // Khởi tạo trạng thái ban đầu
+    syncReceiptTypeOptions();
+    updateFieldVisibility();
 
     let selected = {}; // variant_id -> { variant, quantity, cost_price }
     let rowIndex = 0;
@@ -259,10 +384,8 @@
             <div class="gr-picker-item" data-variant-id="${v.id}">
                 <img class="gr-picker-thumb" src="${resolveImageUrl(v.thumbnail)}" alt="">
                 <div class="gr-picker-info">
-                    <div class="gr-picker-name">${esc(v.product_name)}</div>
-                    <div class="gr-picker-meta">
-                        <span class="gr-picker-dot" style="background:${esc(v.color_hex || '#ccc')};"></span>
-                        ${esc(v.color_name)} · ${esc(v.size_name)} · SKU: ${esc(v.sku)}
+                    <div class="gr-picker-name" style="font-size: 13px;">
+                        ${esc(v.product_name)} - ${esc(v.color_name)} - Size ${esc(v.size_name)} - SKU ${esc(v.sku)}
                     </div>
                 </div>
                 <span class="gr-picker-stock">Tồn: ${v.stock}</span>
@@ -298,8 +421,7 @@
         if (!variant) return;
 
         if (selected[variantId]) {
-            const row = tableBody.querySelector(`tr[data-variant-id="${variantId}"]`);
-            row?.querySelector('[data-field="quantity"]')?.focus();
+            alert('Sản phẩm này đã có trong phiếu nhập.');
             return;
         }
 
@@ -383,10 +505,59 @@
         removeVariant(btn.dataset.removeVariant);
     });
 
+    const totalQtyEl = document.getElementById('grTotalQuantity');
+    const btnComplete = document.getElementById('grBtnComplete');
+    const receivedAtEl = document.getElementById('received_at');
+    const warehouseIdEl = document.getElementById('warehouse_id');
+
+    function checkFormValidity() {
+        if (!btnComplete) return;
+
+        let hasError = false;
+
+        // 1. Chưa chọn kho nhận
+        if (!warehouseIdEl || !warehouseIdEl.value) hasError = true;
+
+        // 2. Chưa chọn ngày nhập kho
+        if (!receivedAtEl || !receivedAtEl.value) hasError = true;
+
+        // 3. Nếu nguồn nhập là nhà cung cấp mà chưa chọn nhà cung cấp
+        const isInternal = sourceTypeEl.value === 'internal';
+        if (!isInternal && (!supplierSelect || !supplierSelect.value)) hasError = true;
+
+        // 4. Chưa có sản phẩm nào
+        const items = Object.values(selected);
+        if (items.length === 0) {
+            hasError = true;
+        } else {
+            // 5. Có sản phẩm số lượng <= 0 hoặc đơn giá nhập < 0
+            const invalidItem = items.find(item => item.quantity <= 0 || item.cost_price < 0);
+            if (invalidItem) hasError = true;
+        }
+
+        if (hasError) {
+            btnComplete.setAttribute('disabled', 'disabled');
+        } else {
+            btnComplete.removeAttribute('disabled');
+        }
+    }
+
     function updateTotal() {
         const total = Object.values(selected).reduce((sum, item) => sum + item.quantity * item.cost_price, 0);
+        const qty = Object.values(selected).reduce((sum, item) => sum + item.quantity, 0);
         totalEl.textContent = money(total);
+        if (totalQtyEl) totalQtyEl.textContent = qty.toLocaleString('vi-VN');
+        checkFormValidity();
     }
+
+    // Gắn sự kiện thay đổi để checkFormValidity
+    sourceTypeEl.addEventListener('change', checkFormValidity);
+    if (supplierSelect) supplierSelect.addEventListener('change', checkFormValidity);
+    if (warehouseIdEl) warehouseIdEl.addEventListener('change', checkFormValidity);
+    if (receivedAtEl) receivedAtEl.addEventListener('input', checkFormValidity);
+
+    // Chạy kiểm tra ban đầu
+    checkFormValidity();
 
     /* ── Submit action (draft vs complete) ── */
     document.querySelectorAll('[data-gr-action]').forEach(function (btn) {
@@ -396,9 +567,28 @@
     });
 
     form.addEventListener('submit', function (e) {
-        if (Object.keys(selected).length === 0) {
+        const action = actionInput.value;
+        const isInternal = sourceTypeEl.value === 'internal';
+
+        // Validate nhà cung cấp khi source_type = supplier
+        if (!isInternal && !supplierSelect.value) {
             e.preventDefault();
-            alert('Vui lòng thêm ít nhất một sản phẩm vào phiếu nhập kho.');
+            alert('Vui lòng chọn nhà cung cấp.');
+            supplierSelect.focus();
+            return;
+        }
+
+        if (action === 'complete') {
+            if (Object.keys(selected).length === 0) {
+                e.preventDefault();
+                alert('Vui lòng thêm ít nhất một sản phẩm vào phiếu nhập kho.');
+                return;
+            }
+
+            const isConfirmed = confirm('Bạn có chắc chắn muốn hoàn tất nhập kho? Sau khi hoàn tất, phiếu sẽ được cộng tồn kho và không thể chỉnh sửa trực tiếp.');
+            if (!isConfirmed) {
+                e.preventDefault();
+            }
         }
     });
 })();

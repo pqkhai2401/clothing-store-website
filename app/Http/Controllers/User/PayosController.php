@@ -1,0 +1,190 @@
+<?php
+
+namespace App\Http\Controllers\User;
+
+use App\Enums\PaymentStatus;
+use App\Http\Controllers\Controller;
+use App\Models\Order;
+use App\Services\PayosService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\View\View;
+
+class PayosController extends Controller
+{
+    public function __construct(private readonly PayosService $payos)
+    {
+    }
+
+    /**
+     * Trang hiển thị QR PayOS + tự động poll trạng thái thanh toán.
+     */
+    public function show(Request $request, Order $order): View|RedirectResponse
+    {
+        $this->authorizeOrder($request, $order);
+
+        if ($order->payment_status === PaymentStatus::PAID->value) {
+            return redirect()->route('orders.show', $order->id)
+                ->with('success', 'Đơn hàng đã được thanh toán.');
+        }
+
+        // Sinh mã giao dịch PayOS mới cho lần hiển thị này (cho phép tạo lại QR nhiều lần).
+        $payosOrderCode = $this->generatePayosOrderCode($order);
+
+        try {
+            $data = $this->payos->createPaymentLink($order, $payosOrderCode);
+        } catch (\Throwable $e) {
+            Log::error('PayOS create link failed', ['order_id' => $order->id, 'error' => $e->getMessage()]);
+
+            return redirect()->route('orders.show', $order->id)
+                ->with('error', 'Không tạo được mã thanh toán PayOS. Vui lòng thử lại hoặc chọn phương thức khác.');
+        }
+
+        $order->update(['payos_order_code' => $payosOrderCode]);
+
+        return view('user.checkout.payos', [
+            'order'         => $order,
+            'qrCode'        => (string) ($data['qrCode'] ?? ''),
+            'checkoutUrl'   => (string) ($data['checkoutUrl'] ?? ''),
+            'amount'        => (int) round((float) $order->total_money),
+            'accountName'   => $data['accountName'] ?? null,
+            'accountNumber' => $data['accountNumber'] ?? null,
+        ]);
+    }
+
+    /**
+     * Endpoint poll (AJAX): trả về trạng thái thanh toán hiện tại của đơn.
+     */
+    public function status(Request $request, Order $order): JsonResponse
+    {
+        $this->authorizeOrder($request, $order);
+
+        if ($order->payment_status === PaymentStatus::PAID->value) {
+            return response()->json(['status' => 'paid', 'redirect' => route('orders.show', $order->id)]);
+        }
+
+        // Chủ động hỏi PayOS — không phụ thuộc webhook nên chạy được trên localhost.
+        if ($order->payos_order_code) {
+            $info      = $this->payos->getPaymentInfo((int) $order->payos_order_code);
+            $payStatus = $info['status'] ?? null;
+
+            if ($payStatus === 'PAID') {
+                $this->markPaid($order);
+
+                return response()->json(['status' => 'paid', 'redirect' => route('orders.show', $order->id)]);
+            }
+
+            if (in_array($payStatus, ['CANCELLED', 'EXPIRED'], true)) {
+                return response()->json(['status' => 'cancelled']);
+            }
+        }
+
+        return response()->json(['status' => 'pending']);
+    }
+
+    /**
+     * Người dùng được PayOS redirect về sau khi thanh toán trên trang hosted (fallback).
+     */
+    public function return(Request $request): RedirectResponse
+    {
+        $order = $this->findOrderByPayosCode($request);
+
+        if (! $order) {
+            return redirect()->route('orders.index');
+        }
+
+        if ($order->payment_status !== PaymentStatus::PAID->value) {
+            $info = $this->payos->getPaymentInfo((int) $order->payos_order_code);
+            if (($info['status'] ?? null) === 'PAID') {
+                $this->markPaid($order);
+            }
+        }
+
+        if ($order->payment_status === PaymentStatus::PAID->value) {
+            return redirect()->route('orders.show', $order->id)
+                ->with('success', 'Thanh toán thành công! Cảm ơn bạn đã đặt hàng.');
+        }
+
+        return redirect()->route('checkout.payos.show', $order->id)
+            ->with('warning', 'Chưa nhận được thanh toán. Vui lòng thử lại.');
+    }
+
+    /**
+     * Người dùng hủy thanh toán trên trang hosted (fallback).
+     */
+    public function cancel(Request $request): RedirectResponse
+    {
+        $order = $this->findOrderByPayosCode($request);
+
+        if ($order) {
+            return redirect()->route('checkout.payos.show', $order->id)
+                ->with('warning', 'Bạn đã hủy thanh toán. Có thể quét lại mã để thanh toán.');
+        }
+
+        return redirect()->route('orders.index');
+    }
+
+    /**
+     * Webhook server-to-server từ PayOS (không auth, không CSRF — nằm ở routes/api.php).
+     */
+    public function webhook(Request $request): JsonResponse
+    {
+        $payload = $request->all();
+
+        if (! $this->payos->verifyWebhook($payload)) {
+            return response()->json(['success' => false, 'message' => 'Invalid signature'], 400);
+        }
+
+        $data           = $payload['data'] ?? [];
+        $payosOrderCode = $data['orderCode'] ?? null;
+
+        if ($payosOrderCode) {
+            $order = Order::where('payos_order_code', $payosOrderCode)->first();
+
+            $isSuccess = ($payload['success'] ?? false) === true || ($data['code'] ?? null) === '00';
+
+            if ($order && $isSuccess && $order->payment_status !== PaymentStatus::PAID->value) {
+                $this->markPaid($order);
+            }
+        }
+
+        return response()->json(['success' => true]);
+    }
+
+    private function markPaid(Order $order): void
+    {
+        // Chỉ cập nhật trạng thái thanh toán; việc xử lý đơn/tồn kho do admin thực hiện.
+        $order->update(['payment_status' => PaymentStatus::PAID->value]);
+    }
+
+    private function authorizeOrder(Request $request, Order $order): void
+    {
+        abort_if($order->user_id !== $request->user()->id, 403);
+    }
+
+    private function findOrderByPayosCode(Request $request): ?Order
+    {
+        $code = (int) $request->query('orderCode');
+
+        if (! $code) {
+            return null;
+        }
+
+        $order = Order::where('payos_order_code', $code)->first();
+
+        if (! $order || $order->user_id !== $request->user()->id) {
+            return null;
+        }
+
+        return $order;
+    }
+
+    private function generatePayosOrderCode(Order $order): int
+    {
+        // Duy nhất và <= giới hạn PayOS (9_007_199_254_740_991).
+        // id đơn làm tiền tố + hậu tố ngẫu nhiên để tạo lại QR nhiều lần không bị trùng.
+        return (int) ($order->id * 1_000_000 + random_int(0, 999_999));
+    }
+}

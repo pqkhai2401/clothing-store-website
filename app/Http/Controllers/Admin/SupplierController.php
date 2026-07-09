@@ -110,7 +110,7 @@ class SupplierController extends Controller
             ->with('success', "Cập nhật nhà cung cấp \"{$supplier->name}\" thành công.");
     }
 
-    public function toggleStatus(string $id)
+    public function toggleStatus(Request $request, string $id)
     {
         $supplier = Supplier::findOrFail($id);
         $newStatus = !$supplier->status;
@@ -119,6 +119,10 @@ class SupplierController extends Controller
         $msg = $newStatus
             ? "Nhà cung cấp \"{$supplier->name}\" đã được kích hoạt."
             : "Nhà cung cấp \"{$supplier->name}\" đã bị vô hiệu hóa.";
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => $msg, 'status' => $newStatus]);
+        }
 
         return back()->with('success', $msg);
     }

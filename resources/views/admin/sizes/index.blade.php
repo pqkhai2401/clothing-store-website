@@ -16,24 +16,26 @@
                 <p class="product-header-desc mb-0">
                     Danh sách kích thước cho các nhóm sản phẩm Nam/Nữ đang kinh doanh.
                 </p>
-                <div class="product-header-actions">
-                    <button type="button" class="btn btn-dark product-action-btn" data-bs-toggle="modal" data-bs-target="#addSizeModal">
-                        <i class="fa-solid fa-plus me-1"></i> Thêm kích thước
-                    </button>
-                    <a href="{{ route('admin.sizes.trash') }}" class="btn btn-light border product-action-btn">
-                        <i class="fa-regular fa-trash-can me-1"></i> Thùng rác
-                    </a>
-                </div>
             </div>
 
             <form method="GET" action="{{ route('admin.sizes.list') }}" id="sizeSearchForm"
                   class="product-toolbar">
                 <input type="hidden" name="per_page" value="{{ $perPage }}">
-                <div class="product-toolbar-left">
-                    <input type="search" name="search" data-admin-search id="sizeRealtimeSearch"
-                        class="form-control product-search"
-                        value="{{ $keyword }}"
-                        placeholder="Tìm kiếm theo tên kích thước hoặc nhóm danh mục..." autocomplete="off">
+                <div class="product-toolbar-filters-row">
+                    <div class="product-toolbar-left">
+                        <input type="search" name="search" data-admin-search id="sizeRealtimeSearch"
+                            class="form-control product-search"
+                            value="{{ $keyword }}"
+                            placeholder="Tìm kiếm theo tên kích thước hoặc nhóm danh mục..." autocomplete="off">
+                    </div>
+                    <div class="product-toolbar-right product-header-actions">
+                        <a href="{{ route('admin.sizes.trash') }}" class="btn btn-light border product-action-btn">
+                            <i class="fa-regular fa-trash-can me-1"></i> Thùng rác
+                        </a>
+                        <button type="button" class="btn btn-dark product-action-btn" data-bs-toggle="modal" data-bs-target="#addSizeModal">
+                            <i class="fa-solid fa-plus me-1"></i> Thêm kích thước
+                        </button>
+                    </div>
                 </div>
             </form>
 
@@ -272,6 +274,84 @@
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = submitLabelHtml;
+            }
+        });
+    })();
+
+    /* ── Sổ xuống chọn nhanh trạng thái ngay trong bảng ── */
+    (function () {
+        const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+        function closeAllPanels(except) {
+            document.querySelectorAll('.size-status-panel').forEach(function (p) {
+                if (p === except) return;
+                p.hidden = true;
+                p.closest('.size-status-dropdown')?.querySelector('.size-status-trigger')?.classList.remove('is-open');
+            });
+        }
+
+        document.addEventListener('click', async function (e) {
+            const trigger = e.target.closest('.size-status-trigger');
+            if (trigger) {
+                const dropdown = trigger.closest('.size-status-dropdown');
+                const panel = dropdown.querySelector('.size-status-panel');
+                const willOpen = panel.hidden;
+                closeAllPanels();
+                panel.hidden = !willOpen;
+                trigger.classList.toggle('is-open', willOpen);
+                return;
+            }
+
+            const item = e.target.closest('.size-status-panel .hk-cat-item');
+            if (item) {
+                const dropdown = item.closest('.size-status-dropdown');
+                const btn      = dropdown.querySelector('.size-status-trigger');
+                const newValue = item.dataset.value;
+                const newCss   = item.dataset.css;
+                const previousValue = btn.dataset.value;
+                const previousCss   = Array.from(btn.classList).find(c => c.startsWith('status-badge--'));
+
+                closeAllPanels();
+                btn.disabled = true;
+
+                try {
+                    const formData = new FormData();
+                    formData.append('_method',     'PUT');
+                    formData.append('name',        dropdown.dataset.name);
+                    formData.append('sort_weight', dropdown.dataset.sortWeight);
+                    formData.append('status',      newValue);
+
+                    const res = await fetch(dropdown.dataset.updateUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Accept':           'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'X-CSRF-TOKEN':     csrf,
+                        },
+                        body: formData,
+                    });
+
+                    if (!res.ok) throw new Error('update failed');
+
+                    btn.className = 'status-badge size-status-trigger ' + newCss;
+                    btn.dataset.value = newValue;
+                    btn.querySelector('.size-status-trigger-label').textContent = item.textContent;
+                    dropdown.querySelectorAll('.hk-cat-item').forEach(function (b) {
+                        b.classList.toggle('is-active', b === item);
+                    });
+                    dropdown.closest('tr')?.querySelector('[data-edit-status]')?.setAttribute('data-edit-status', newValue);
+                } catch {
+                    alert('Không thể cập nhật trạng thái. Vui lòng thử lại.');
+                    btn.className = 'status-badge size-status-trigger ' + (previousCss ?? '');
+                    btn.dataset.value = previousValue;
+                } finally {
+                    btn.disabled = false;
+                }
+                return;
+            }
+
+            if (!e.target.closest('.size-status-dropdown')) {
+                closeAllPanels();
             }
         });
     })();

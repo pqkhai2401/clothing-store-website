@@ -14,25 +14,27 @@
             <div>
                 <h1 class="product-header-title mb-2">Quản lý nhà cung cấp</h1>
                 <p class="product-header-desc mb-0">Danh sách nhà cung cấp dùng cho phiếu nhập kho.</p>
-                <div class="product-header-actions">
-                    <button type="button" class="btn btn-dark product-action-btn"
-                        data-bs-toggle="modal" data-bs-target="#addSupplierModal">
-                        <i class="fa-solid fa-plus me-1"></i> Thêm nhà cung cấp
-                    </button>
-                    <a href="{{ route('admin.suppliers.trash') }}" class="btn btn-light border product-action-btn">
-                        <i class="fa-regular fa-trash-can me-1"></i> Thùng rác
-                    </a>
-                </div>
             </div>
 
             <form method="GET" action="{{ route('admin.suppliers.list') }}" id="supplierSearchForm"
                   class="product-toolbar">
                 <input type="hidden" name="per_page" value="{{ $perPage }}">
-                <div class="product-toolbar-left">
-                    <input type="search" name="search" data-admin-search id="supplierRealtimeSearch"
-                        class="form-control product-search"
-                        value="{{ $keyword }}"
-                        placeholder="Tìm kiếm theo tên, SĐT, email..." autocomplete="off">
+                <div class="product-toolbar-filters-row">
+                    <div class="product-toolbar-left">
+                        <input type="search" name="search" data-admin-search id="supplierRealtimeSearch"
+                            class="form-control product-search"
+                            value="{{ $keyword }}"
+                            placeholder="Tìm kiếm theo tên, SĐT, email..." autocomplete="off">
+                    </div>
+                    <div class="product-toolbar-right product-header-actions">
+                        <a href="{{ route('admin.suppliers.trash') }}" class="btn btn-light border product-action-btn">
+                            <i class="fa-regular fa-trash-can me-1"></i> Thùng rác
+                        </a>
+                        <button type="button" class="btn btn-dark product-action-btn"
+                            data-bs-toggle="modal" data-bs-target="#addSupplierModal">
+                            <i class="fa-solid fa-plus me-1"></i> Thêm nhà cung cấp
+                        </button>
+                    </div>
                 </div>
             </form>
 
@@ -294,6 +296,79 @@
                 }
             });
         }
+    })();
+    </script>
+    <script>
+    (function () {
+        const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+        function closeAllPanels(except) {
+            document.querySelectorAll('.supplier-status-panel').forEach(function (p) {
+                if (p === except) return;
+                p.hidden = true;
+                p.closest('.supplier-status-dropdown')?.querySelector('.supplier-status-trigger')?.classList.remove('is-open');
+            });
+        }
+
+        document.addEventListener('click', async function (e) {
+            const trigger = e.target.closest('.supplier-status-trigger');
+            if (trigger) {
+                const dropdown = trigger.closest('.supplier-status-dropdown');
+                const panel = dropdown.querySelector('.supplier-status-panel');
+                const willOpen = panel.hidden;
+                closeAllPanels();
+                panel.hidden = !willOpen;
+                trigger.classList.toggle('is-open', willOpen);
+                return;
+            }
+
+            const item = e.target.closest('.supplier-status-panel .hk-cat-item');
+            if (item) {
+                const dropdown = item.closest('.supplier-status-dropdown');
+                const btn = dropdown.querySelector('.supplier-status-trigger');
+                const newValue = item.dataset.value;
+                const newCss = item.dataset.css;
+                closeAllPanels();
+
+                if (newValue === btn.dataset.value) return;
+
+                const previousValue = btn.dataset.value;
+                const previousCss = Array.from(btn.classList).find(c => c.startsWith('status-badge--'));
+                btn.disabled = true;
+
+                try {
+                    const res = await fetch(dropdown.dataset.toggleUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Accept':           'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'X-CSRF-TOKEN':     csrf,
+                        },
+                        body: new URLSearchParams({ _method: 'PATCH' }),
+                    });
+
+                    if (!res.ok) throw new Error('toggle failed');
+
+                    btn.className = 'status-badge supplier-status-trigger ' + newCss;
+                    btn.dataset.value = newValue;
+                    btn.querySelector('.supplier-status-trigger-label').textContent = item.textContent;
+                    dropdown.querySelectorAll('.hk-cat-item').forEach(function (b) {
+                        b.classList.toggle('is-active', b === item);
+                    });
+                } catch {
+                    alert('Không thể cập nhật trạng thái. Vui lòng thử lại.');
+                    btn.className = 'status-badge supplier-status-trigger ' + (previousCss ?? '');
+                    btn.dataset.value = previousValue;
+                } finally {
+                    btn.disabled = false;
+                }
+                return;
+            }
+
+            if (!e.target.closest('.supplier-status-dropdown')) {
+                closeAllPanels();
+            }
+        });
     })();
     </script>
 @endpush

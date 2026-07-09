@@ -12,9 +12,21 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Passport\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 
-class User extends Authenticatable
+class User extends Authenticatable implements \OwenIt\Auditing\Contracts\Auditable
 {
     use HasApiTokens, HasFactory, HasRoles, Notifiable, SoftDeletes;
+    use \OwenIt\Auditing\Auditable;
+
+    /**
+     * Không ghi các trường nhạy cảm vào nhật ký hoạt động.
+     *
+     * @var array<int, string>
+     */
+    protected $auditExclude = [
+        'password',
+        'remember_token',
+        'google_id',
+    ];
 
     protected $fillable = [
         'username',

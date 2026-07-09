@@ -17,7 +17,7 @@
 
         <div class="d-flex align-items-start justify-content-between gap-3 mb-3 flex-wrap">
             <div>
-                <h1 class="h3 fw-bold mb-1" style="color:#174761;">Thùng rác phiếu xuất kho</h1>
+                <h1 class="h3 fw-bold mb-1" style="color:#020617;">Thùng rác phiếu xuất kho</h1>
                 <p class="mb-0 text-muted" style="font-size:13px;">Danh sách các phiếu xuất kho đã xóa mềm và có thể khôi phục.</p>
             </div>
             <a href="{{ route('admin.goods-receipts.list', ['tab' => 'outbound']) }}" class="btn btn-outline-secondary fw-semibold">

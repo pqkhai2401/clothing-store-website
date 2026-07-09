@@ -16,6 +16,15 @@
 {{-- Styles extracted from index.blade.php --}}
 @include('admin.products.styles')
 <style>
+    /* Bảng ít cột hơn bảng sản phẩm — đè min-width:1420px kế thừa từ .product-table dùng chung
+       bằng đúng tổng độ rộng cột của trang này. KHÔNG dùng table-layout:fixed (sẽ "đóng cứng"
+       độ rộng, không co giãn khi thu nhỏ/phóng to trang) — để .table giữ width:100% mặc định
+       của Bootstrap, trình duyệt tự giãn đều tất cả các cột theo tỉ lệ khi có thêm khoảng trống,
+       giống hệt cách trang Đơn hàng đang hoạt động. */
+    #sizeTable {
+        min-width: 1119px;
+    }
+
     .attribute-name-link {
         color: #0f172a;
         text-decoration: none;
@@ -48,8 +57,7 @@
         color: #0f172a;
     }
 
-    .size-group-badge,
-    .size-weight-chip {
+    .size-group-badge {
         display: inline-flex;
         align-items: center;
         min-height: 28px;
@@ -57,9 +65,6 @@
         padding: 5px 12px;
         font-size: 13px;
         font-weight: 700;
-    }
-
-    .size-group-badge {
         background: #f1f5f9;
         color: #334155;
         border: 1px solid #e2e8f0;
@@ -69,12 +74,13 @@
         white-space: nowrap;
     }
 
+    /* Số thứ tự hiển thị thuần túy — bỏ khung bầu dục để không bị nhầm là nút bấm/nhãn */
     .size-weight-chip {
-        min-width: 42px;
-        justify-content: center;
-        background: #eef6ff;
-        color: #075985;
-        border: 1px solid #bfdbfe;
+        display: inline-flex;
+        align-items: center;
+        font-size: 13px;
+        font-weight: 400;
+        color: #334155;
     }
 
     .size-count-link {
@@ -124,13 +130,120 @@
     }
 
     [data-theme="dark"] .size-weight-chip {
-        background: rgba(14, 165, 233, .14);
-        color: #7dd3fc;
-        border-color: rgba(125, 211, 252, .28);
+        color: #cbd5e1;
     }
 
     [data-theme="dark"] .size-count-link {
         color: #f8fafc;
+    }
+
+    /* ── Sổ xuống chọn nhanh trạng thái ngay trong bảng ── */
+    .size-status-dropdown { position: relative; display: inline-block; width: auto; }
+    .size-status-trigger {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border-width: 1.5px;
+        border-style: solid;
+        cursor: pointer;
+    }
+    .size-status-trigger:hover { filter: brightness(0.97); }
+    .size-status-trigger:focus { outline: none; box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.15); }
+    .size-status-caret { font-size: 9px; opacity: .65; transition: transform .15s; }
+    .size-status-trigger.is-open .size-status-caret { transform: rotate(180deg); }
+    .size-status-dropdown .hk-cat-panel {
+        left: 0;
+        right: auto;
+        width: 150px;
+    }
+
+    /* ── Nút Sửa/Xóa: icon thuần túy, không khung/nền, chỉ đổi màu rõ khi hover ── */
+    .row-action-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border: none;
+        background: transparent;
+        color: #94A3B8;
+        font-size: 14px;
+        transition: color .15s;
+    }
+    .row-action-btn[data-edit-id]:hover { color: #0F172A; }
+    .row-action-btn[data-delete-url]:hover { color: #DC2626; }
+
+    [data-theme="dark"] .row-action-btn { color: #64748B; }
+    [data-theme="dark"] .row-action-btn[data-edit-id]:hover { color: #F8FAFC; }
+    [data-theme="dark"] .row-action-btn[data-delete-url]:hover { color: #F87171; }
+
+    /* ── COMPACT VIEW (Tương đương hiệu ứng Zoom 90%) ── */
+    .product-admin-page .product-header-title { font-size: 1.4rem !important; margin-bottom: 2px !important; margin-top: 12px !important; }
+    .product-admin-page .product-header-desc { font-size: 0.8rem !important; }
+    .product-admin-page .product-header-actions { margin-top: 0 !important; gap: 8px !important; }
+    .product-admin-page .product-toolbar { margin: 12px 0 !important; gap: 8px !important; }
+    .product-admin-page .size-table th,
+    .product-admin-page .size-table td {
+        padding: 6px 8px !important; /* Thu hẹp khoảng cách các dòng, giống trang Đơn hàng */
+        font-size: 12.5px !important;
+    }
+    .product-admin-page .status-badge,
+    .product-admin-page .size-group-badge { font-size: 11px !important; padding: 3px 10px !important; min-height: 22px !important; }
+    .product-admin-page .size-weight-chip { font-size: 12px !important; }
+    .product-admin-page .row-action-btn { width: 26px !important; height: 26px !important; font-size: 12px !important; }
+
+    /* ── A. Thanh tìm kiếm gọn lại, không kéo dài hết chiều ngang ── */
+    .product-admin-page .product-search {
+        min-height: 36px !important;
+        max-width: 440px;
+        font-size: 13px !important;
+        border-radius: 8px !important;
+    }
+
+    /* ── A. Màu nút hành động dịu hơn, bớt "gắt" ── */
+    .product-admin-page .product-action-btn {
+        border-radius: 8px !important;
+    }
+    .product-admin-page .product-action-btn.btn-dark {
+        background: #059669 !important;
+        border-color: #059669 !important;
+    }
+    .product-admin-page .product-action-btn.btn-dark:hover {
+        background: #047857 !important;
+        border-color: #047857 !important;
+    }
+    /* "Thùng rác" là nút phụ: viền/chữ xám mặc định, chỉ chuyển đỏ khi hover */
+    .product-admin-page .product-action-btn.btn-light {
+        background: #ffffff !important;
+        border: 1.5px solid #D8E0EA !important;
+        color: #64748B !important;
+    }
+    .product-admin-page .product-action-btn.btn-light:hover {
+        background: #FEF2F2 !important;
+        border-color: #F87171 !important;
+        color: #DC2626 !important;
+    }
+
+    /* ── C. Gộp bảng + thanh phân trang thành 1 khối liền, đồng nhất với các trang khác:
+           bo góc trên ở khung bảng, bo góc dưới ở thanh phân trang, không có khoảng cách giữa 2 phần ── */
+    .product-admin-page .size-table-wrap,
+    .product-admin-page .size-pagination-bar {
+        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+    }
+    .product-admin-page .size-table-wrap {
+        border-radius: 12px 12px 0 0 !important;
+    }
+    .product-admin-page .size-pagination-bar {
+        border-radius: 0 0 12px 12px !important;
+        border-color: #E2E8F0 !important;
+    }
+
+    /* ── B. Đồng bộ độ đậm chữ cột "Số SP dùng" với các cột số khác ── */
+    .product-admin-page .size-count-link { font-weight: 400 !important; }
+
+    [data-theme="dark"] .product-admin-page .size-pagination-bar {
+        background: #0F1B31 !important;
+        border-color: #22324D !important;
     }
 </style>
 

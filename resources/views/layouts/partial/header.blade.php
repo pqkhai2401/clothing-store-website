@@ -13,6 +13,7 @@
         'admin.reviews'    => 'Đánh giá',
         'admin.customers'  => 'Quản lý khách hàng',
         'admin.staff'      => 'Quản lý nhân sự',
+        'admin.vouchers'    => 'Khuyến mãi',
     ];
 
     $pageLabel = null;
@@ -27,6 +28,9 @@
         'admin.staff.create'      => 'Thêm mới quản trị viên',
         'admin.customers.create'  => 'Thêm mới khách hàng',
         'admin.users.create'      => 'Thêm mới tài khoản',
+        'admin.products.create'   => 'Thêm mới sản phẩm',
+        'admin.vouchers.create'   => 'Thêm mới voucher',
+        'admin.orders.create'     => 'Thêm mới đơn hàng',
         'admin.products.trash'    => 'Thùng rác sản phẩm',
         'admin.categories.trash'  => 'Thùng rác danh mục',
         'admin.brands.trash'      => 'Thùng rác thương hiệu',
@@ -34,6 +38,7 @@
         'admin.sizes.trash'       => 'Thùng rác kích thước',
         'admin.reviews.trash'     => 'Thùng rác đánh giá',
         'admin.goods-receipts.trash' => 'Thùng rác nhập kho',
+        'admin.vouchers.trash'    => 'Thùng rác voucher',
         default => null,
     };
 
@@ -41,12 +46,16 @@
         'admin.staff.create'     => route('admin.staff.list'),
         'admin.customers.create' => route('admin.customers.list'),
         'admin.users.create'     => route('admin.users.list'),
+        'admin.products.create'  => route('admin.products.list'),
         'admin.products.trash'   => route('admin.products.list'),
         'admin.categories.trash' => route('admin.categories.list'),
         'admin.brands.trash'     => route('admin.brands.list'),
         'admin.colors.trash'     => route('admin.colors.list'),
         'admin.sizes.trash'      => route('admin.sizes.list'),
         'admin.reviews.trash'    => route('admin.reviews.list'),
+        'admin.orders.create'    => route('admin.orders.list'),
+        'admin.vouchers.create'  => route('admin.vouchers.list'),
+        'admin.vouchers.trash'   => route('admin.vouchers.list'),
         default => null,
     };
 @endphp

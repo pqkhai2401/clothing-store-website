@@ -26,8 +26,10 @@
                         <td class="fw-bold">{{ $issue->code }}</td>
                         <td>{{ $issue->reason }}</td>
                         <td>
-                            @if($issue->isIssued())
+                            @if($issue->isCompleted())
                                 <span class="gr-badge gr-badge--completed">Đã xuất kho</span>
+                            @elseif($issue->isCancelled())
+                                <span class="gr-badge gr-badge--cancelled">Đã hủy</span>
                             @else
                                 <span class="gr-badge gr-badge--draft">Nháp</span>
                             @endif
