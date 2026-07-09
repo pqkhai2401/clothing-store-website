@@ -177,7 +177,32 @@ class GeminiModerationService
             ];
         }
 
-        // ---- (3) Còn lại -> DUYỆT ----
+        // ---- (3) Phát hiện nội dung LẠC ĐỀ -> flagged ----
+        // Các từ khóa gợi ý bình luận có liên quan tới sản phẩm/thời trang/shop.
+        // Một câu sạch nhưng KHÔNG chứa bất kỳ từ nào trong đây (ví dụ "Hôm nay
+        // trời nắng quá") bị coi là lạc đề -> chuyển Admin duyệt tay thay vì tự duyệt.
+        $contextWords = [
+            'áo', 'quần', 'váy', 'vải', 'thun', 'mặc', 'size', 'ship', 'shop',
+            'đồ', 'mua', 'đẹp', 'chất',
+        ];
+
+        $onTopic = false;
+        foreach ($contextWords as $keyword) {
+            if (str_contains($text, $keyword)) {
+                $onTopic = true;
+                break;
+            }
+        }
+
+        if (!$onTopic) {
+            return [
+                'status'           => 'flagged',
+                'confidence_score' => 50,
+                'reason'           => '[DEMO] Nội dung có dấu hiệu lạc đề, cần Admin duyệt tay.',
+            ];
+        }
+
+        // ---- (4) Còn lại -> DUYỆT ----
         return [
             'status'           => 'approved',
             'confidence_score' => 90,
