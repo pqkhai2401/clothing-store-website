@@ -25,7 +25,7 @@ services:
         value: "false"
         scope: RUN_AND_BUILD_TIME
       - key: APP_KEY
-        value: "base64:1vQtHWJ0VS408flDKRvrMGGnd0K/K/pYLbNOu4oYYf0="
+        value: ""  # Điền trực tiếp trên DO App Platform dashboard, không commit vào git
         scope: RUN_AND_BUILD_TIME
         type: SECRET
       - key: APP_URL
@@ -57,7 +57,7 @@ services:
         scope: RUN_AND_BUILD_TIME
         type: SECRET
       - key: MYSQL_ATTR_SSL_CA
-        value: /etc/ssl/certs/ca-certificates.crt
+        value: /workspace/certs/do-mysql-ca.crt
         scope: RUN_AND_BUILD_TIME
       - key: SESSION_DRIVER
         value: database
