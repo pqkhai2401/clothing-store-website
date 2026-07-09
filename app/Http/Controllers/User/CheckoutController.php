@@ -135,8 +135,18 @@ class CheckoutController extends Controller
             return $order;
         });
 
+        // PayOS: chuyển sang trang QR để thanh toán ngay thay vì kết thúc.
+        if ($this->isPayos($paymentMethod)) {
+            return redirect()->route('checkout.payos.show', $order->id);
+        }
+
         return redirect()->route('home')
             ->with('success', 'Đặt hàng thành công! Mã đơn hàng của bạn là '.$order->order_code.'.');
+    }
+
+    private function isPayos(PaymentMethod $method): bool
+    {
+        return str_contains(strtolower($method->name), 'payos');
     }
 
     private function cartItems($user)

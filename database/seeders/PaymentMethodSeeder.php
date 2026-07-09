@@ -21,9 +21,9 @@ class PaymentMethodSeeder extends Seeder
                 'image' => 'https://cdn-icons-png.flaticon.com/512/2168/2168252.png',
             ],
             [
-                'name' => 'VNPay',
+                'name' => 'PayOS - Quét mã QR',
                 'status' => true,
-                'image' => 'https://cdn.haitrieu.com/wp-content/uploads/2022/10/Logo-VNPAY-QR.png',
+                'image' => 'https://payos.vn/docs/img/logo.svg',
             ],
         ];
 
@@ -36,5 +36,8 @@ class PaymentMethodSeeder extends Seeder
                 ]
             );
         }
+
+        // Ẩn phương thức VNPay cũ (đã thay bằng PayOS) nếu còn tồn tại.
+        PaymentMethod::where('name', 'VNPay')->update(['status' => false]);
     }
 }

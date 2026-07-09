@@ -18,7 +18,8 @@ return new class extends Migration
             $table->string('slug')->unique();
             $table->longText('description');
             $table->decimal('price', 15, 2);
-           $table->unsignedTinyInteger('discount')->default(0);
+            $table->decimal('cost_price', 15, 2)->default(0);
+            $table->unsignedTinyInteger('discount')->default(0);
             $table->string('thumbnail');
             $table->foreignId('category_id')->constrained('categories')->cascadeOnDelete();
             $table->foreignId('brand_id')->constrained('brands')->cascadeOnDelete();

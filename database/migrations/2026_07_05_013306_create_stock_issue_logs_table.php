@@ -11,13 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('colors', function (Blueprint $table) {
+        Schema::create('stock_issue_logs', function (Blueprint $table) {
             $table->id();
-            $table->string('name');
-            $table->string('hex_code', 7)->nullable();
-            $table->boolean('status')->default(true);
+            $table->foreignId('stock_issue_id')->constrained('stock_issues')->cascadeOnDelete();
+            $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
+            $table->string('action', 30);
+            $table->text('message')->nullable();
             $table->timestamps();
-            $table->softDeletes();
         });
     }
 
@@ -26,6 +26,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('colors');
+        Schema::dropIfExists('stock_issue_logs');
     }
 };

@@ -5,6 +5,7 @@ use App\Http\Controllers\User\AddressController;
 use App\Http\Controllers\User\AuthController;
 use App\Http\Controllers\User\CartController;
 use App\Http\Controllers\User\CheckoutController;
+use App\Http\Controllers\User\PayosController;
 use App\Http\Controllers\User\OrderController;
 use App\Http\Controllers\User\ProfileController;
 
@@ -46,6 +47,12 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout.index');
     Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');
+
+    // PayOS: trang QR nhúng + poll trạng thái + return/cancel (fallback từ trang hosted)
+    Route::get('/checkout/payos/return', [PayosController::class, 'return'])->name('checkout.payos.return');
+    Route::get('/checkout/payos/cancel', [PayosController::class, 'cancel'])->name('checkout.payos.cancel');
+    Route::get('/checkout/payos/{order}', [PayosController::class, 'show'])->name('checkout.payos.show');
+    Route::get('/checkout/payos/{order}/status', [PayosController::class, 'status'])->name('checkout.payos.status');
 
     Route::get('/user/addresses', [AddressController::class, 'index'])->name('addresses.index');
     Route::post('/user/addresses', [AddressController::class, 'store'])->name('addresses.store');

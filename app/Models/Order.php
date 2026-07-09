@@ -18,6 +18,7 @@ class Order extends Model
         'payment_method_id',
         'voucher_id',
         'order_code',
+        'payos_order_code',
         'phone',
         'note',
         'total_money',
