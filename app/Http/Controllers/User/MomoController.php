@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\User;
 
+use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
@@ -163,6 +164,21 @@ class MomoController extends Controller
 
     private function markPaid(Order $order): void
     {
+        // Không đánh dấu đã thanh toán cho đơn đã hủy/hết hạn (tránh trạng thái mâu thuẫn
+        // cancelled + paid khi IPN/poll đến sau lệnh expire). Cũng bỏ qua nếu đã paid (idempotent).
+        if ($order->status === OrderStatus::CANCELLED->value) {
+            Log::warning('MoMo: bỏ qua markPaid cho đơn đã hủy/hết hạn.', [
+                'order_id'      => $order->id,
+                'momo_order_id' => $order->momo_order_id,
+            ]);
+
+            return;
+        }
+
+        if ($order->payment_status === PaymentStatus::PAID->value) {
+            return;
+        }
+
         // Chỉ cập nhật trạng thái thanh toán; việc xử lý đơn/tồn kho do admin thực hiện.
         $order->update(['payment_status' => PaymentStatus::PAID->value]);
     }

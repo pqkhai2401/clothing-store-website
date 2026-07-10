@@ -127,7 +127,11 @@
                             @endif
                             <li><hr class="dropdown-divider"></li>
                             <li>
-                                <a class="dropdown-item" href="{{ route('auth.logout') }}">Đăng xuất</a>
+                                <form method="POST" action="{{ route('auth.logout') }}">
+                                    @csrf
+                                    <a class="dropdown-item" href="{{ route('auth.logout') }}"
+                                       onclick="event.preventDefault(); this.closest('form').submit();">Đăng xuất</a>
+                                </form>
                             </li>
                         @else
                             <li><a class="dropdown-item" href="{{ route('auth.loginpage') }}">Đăng nhập</a></li>

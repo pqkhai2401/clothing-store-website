@@ -9,6 +9,7 @@ use App\Models\SearchHistory;
 use App\Models\Wishlist;
 use App\Models\Cart;
 use App\Models\Order;
+use App\Enums\OrderStatus;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -116,7 +117,7 @@ class RecommendationService
         $purchasedGenders = collect();
 
         $orders = Order::where('user_id', $userId)
-            ->where('status', 'Completed') // chỉ tính đơn hoàn thành
+            ->where('status', OrderStatus::COMPLETED->value) // chỉ tính đơn hoàn thành (enum lowercase 'completed')
             ->with('orderItems.productVariant.product')
             ->get();
 

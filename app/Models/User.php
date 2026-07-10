@@ -39,6 +39,8 @@ class User extends Authenticatable implements \OwenIt\Auditing\Contracts\Auditab
         'is_active',
         'is_protected',
         'lock_reason',
+        'locked_by',
+        'locked_at',
         'email_verified_at',
     ];
 
@@ -52,6 +54,7 @@ class User extends Authenticatable implements \OwenIt\Auditing\Contracts\Auditab
         'password' => 'hashed',
         'is_active' => 'boolean',
         'is_protected' => 'boolean',
+        'locked_at' => 'datetime',
     ];
 
     /**

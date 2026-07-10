@@ -143,14 +143,31 @@ class CheckoutController extends Controller
             ]);
 
             if ($voucher) {
+                // Khóa dòng voucher + recheck trong transaction để chống race-condition:
+                // 2 checkout đồng thời có thể cùng vượt qua validateVoucher() (chạy ngoài transaction,
+                // không lock) rồi cùng increment -> dùng quá số lượng / cùng user dùng lại 1 mã.
+                $lockedVoucher = Voucher::whereKey($voucher->id)->lockForUpdate()->first();
+
+                if (! $lockedVoucher || $lockedVoucher->used_count >= $lockedVoucher->quantity) {
+                    throw new \RuntimeException('Mã giảm giá đã hết lượt sử dụng.');
+                }
+
+                $alreadyUsed = VoucherHistory::where('user_id', $user->id)
+                    ->where('voucher_id', $lockedVoucher->id)
+                    ->exists();
+
+                if ($alreadyUsed) {
+                    throw new \RuntimeException('Bạn đã sử dụng mã giảm giá này rồi.');
+                }
+
                 VoucherHistory::create([
                     'user_id'   => $user->id,
-                    'voucher_id' => $voucher->id,
+                    'voucher_id' => $lockedVoucher->id,
                     'order_id'  => $order->id,
                     'used_at'   => now(),
                 ]);
 
-                $voucher->increment('used_count');
+                $lockedVoucher->increment('used_count');
             }
 
             foreach ($cartItems as $item) {

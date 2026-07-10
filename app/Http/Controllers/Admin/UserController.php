@@ -6,8 +6,11 @@ use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 use OwenIt\Auditing\Events\AuditCustom;
 use Spatie\Permission\Models\Role;
@@ -306,13 +309,21 @@ class UserController extends Controller
         }
 
         // --- Build update data ---
+        $willBeActive = (bool) $validated['is_active'];
+
         $updateData = [
             'username'     => $validated['username'],
             'email'        => $validated['email'],
             'phone_number' => $validated['phone_number'] ?? null,
-            'is_active'    => (bool) $validated['is_active'],
-            'lock_reason'  => (bool) $validated['is_active'] ? null : ($validated['lock_reason'] ?? null),
+            'is_active'    => $willBeActive,
+            'lock_reason'  => $willBeActive ? null : ($validated['lock_reason'] ?? null),
         ];
+
+        // Audit khóa tài khoản: chỉ ghi ai/lúc nào khi chuyển sang khóa; xóa dấu vết khi mở lại.
+        if ($statusChanged) {
+            $updateData['locked_by'] = $willBeActive ? null : Auth::id();
+            $updateData['locked_at'] = $willBeActive ? null : now();
+        }
 
         if ($passwordChanged) {
             $updateData['password'] = Hash::make($validated['password']);
@@ -323,6 +334,10 @@ class UserController extends Controller
         }
 
         $user->update($updateData);
+
+        if ($statusChanged && ! (bool) $validated['is_active']) {
+            $this->revokeUserAccess($user);
+        }
 
         $canChangeRole = ! $targetIsProtectedAdmin && ! $isSelf;
         if ($canChangeRole) {
@@ -548,6 +563,18 @@ class UserController extends Controller
         $user->auditCustomNew = ['role' => $labels[$newRole] ?? $newRole];
 
         Event::dispatch(new AuditCustom($user));
+    }
+
+    /**
+     * Thu hồi quyền truy cập của user vừa bị khóa: xóa mọi session đang sống (driver=database)
+     * để user bị đăng xuất ngay ở request kế tiếp, không phải đợi hết hạn session.
+     * Kết hợp với middleware EnsureActiveAccount (chặn is_active=false ở mọi route cần auth).
+     */
+    private function revokeUserAccess(User $user): void
+    {
+        if (Schema::hasTable('sessions')) {
+            DB::table('sessions')->where('user_id', $user->id)->delete();
+        }
     }
 
     private function validationErrorResponse(Request $request, string $field, string $message)

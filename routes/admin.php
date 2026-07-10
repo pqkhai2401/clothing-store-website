@@ -47,13 +47,16 @@ $trashRoutes = function (string $controller): Closure {
     };
 };
 
-Route::middleware(['auth.login', 'admin'])
+Route::middleware(['auth.login', 'active.account', 'admin'])
     ->prefix('admin')
     ->name('admin.')
     ->group(function () use ($accountRoutes, $trashRoutes) {
-        Route::prefix('customers')->name('customers.')->group(fn () => $accountRoutes('customer'));
+        Route::middleware('permission:manage-customers')
+            ->prefix('customers')->name('customers.')->group(fn () => $accountRoutes('customer'));
 
-        Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+        Route::get('/', [DashboardController::class, 'index'])
+            ->middleware('permission:view-dashboard')
+            ->name('dashboard');
 
         Route::get('/profile', [ProfileController::class, 'show'])->name('profile');
         Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -200,7 +203,8 @@ Route::middleware(['auth.login', 'admin'])
                 Route::delete('/{id}', [StocktakeController::class, 'destroy'])->name('destroy');
             });
 
-        Route::prefix('orders')->name('orders.')->group(function () {
+        Route::middleware('permission:manage-orders')
+            ->prefix('orders')->name('orders.')->group(function () {
             Route::get('/', [OrderController::class, 'index'])->name('list');
             Route::get('/export', [OrderController::class, 'export'])->name('export');
             Route::post('/bulk-update-status', [OrderController::class, 'bulkUpdateStatus'])->name('bulkUpdateStatus');
@@ -211,9 +215,10 @@ Route::middleware(['auth.login', 'admin'])
             Route::get('/customers/{user}/addresses', [OrderController::class, 'customerAddresses'])->name('customerAddresses');
             Route::get('/{id}/detail', [OrderController::class, 'detail'])->name('detail');
             Route::put('/{id}', [OrderController::class, 'update'])->name('update');
-        });
+            });
 
-        Route::prefix('reviews')->name('reviews.')->group(function () use ($trashRoutes) {
+        Route::middleware('permission:manage-reviews')
+            ->prefix('reviews')->name('reviews.')->group(function () use ($trashRoutes) {
             Route::get('/', [ReviewController::class, 'index'])->name('list');
             // Duyệt / Từ chối thủ công (Admin kiểm duyệt tay các review flagged).
             Route::patch('/{id}/approve', [ReviewController::class, 'approve'])->name('approve');
@@ -221,7 +226,7 @@ Route::middleware(['auth.login', 'admin'])
             Route::delete('/{id}', [ReviewController::class, 'destroy'])->name('destroy');
             Route::post('/bulk-delete', [ReviewController::class, 'bulkDelete'])->name('bulkDelete');
             $trashRoutes(ReviewController::class)();
-        });
+            });
 
         Route::middleware('permission:manage-vouchers')
             ->prefix('vouchers')->name('vouchers.')->group(function () {

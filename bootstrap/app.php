@@ -37,6 +37,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'spatie.role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
             'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
             'auth.login' => \App\Http\Middleware\AuthenticateLogin::class,
+            'active.account' => \App\Http\Middleware\EnsureActiveAccount::class,
             'redirect.authenticated' => \App\Http\Middleware\RedirectAuthenticatedMiddleware::class,
             'admin' => \App\Http\Middleware\AdminVerify::class,
         ]);

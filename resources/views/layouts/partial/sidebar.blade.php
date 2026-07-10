@@ -123,10 +123,14 @@
             </div>
 
             <div class="account-menu-section account-menu-section-last">
-                <a class="account-menu-item account-menu-logout" href="{{ route('auth.logout') }}">
-                    <i class="fa-solid fa-right-from-bracket"></i>
-                    <span>Đăng xuất</span>
-                </a>
+                <form method="POST" action="{{ route('auth.logout') }}">
+                    @csrf
+                    <a class="account-menu-item account-menu-logout" href="{{ route('auth.logout') }}"
+                       onclick="event.preventDefault(); this.closest('form').submit();">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                        <span>Đăng xuất</span>
+                    </a>
+                </form>
             </div>
         </div>
     </div>
