@@ -322,7 +322,7 @@
                 input.classList.add('is-locked');
                 const variantId = input.dataset.variantId;
                 if (selectedItems[variantId]) {
-                    input.value = selectedItems[variantId].variant.sale_price;
+                    input.value = selectedItems[variantId].variant.price;
                 }
             }
         });
@@ -390,8 +390,8 @@
                         alert(`Không thể vượt quá số lượng tồn kho (${v.stock}) của biến thể này.`);
                     }
                 } else {
-                    selectedItems[v.id] = { variant: v, quantity: 1, cost_price: v.cost_price, sale_price: v.sale_price };
-                    renderItemRow(v, 1, v.cost_price, v.sale_price);
+                    selectedItems[v.id] = { variant: v, quantity: 1, cost_price: v.cost_price, sale_price: v.price };
+                    renderItemRow(v, 1, v.cost_price, v.price);
                 }
                 pickerPanel.hidden = true;
                 pickerInput.value = '';
@@ -601,3 +601,4 @@
     });
 })();
 </script>
+

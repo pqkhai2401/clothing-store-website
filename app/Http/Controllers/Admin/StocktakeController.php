@@ -214,7 +214,7 @@ class StocktakeController extends Controller
             if ($diff < 0) {
                 $quantity = abs($diff);
                 $costPrice = (float) $item->unit_cost;
-                $salePrice = (float) $variant->sale_price;
+                $salePrice = (float) $variant->price;
                 $negativeItems[] = [
                     'product_id'         => $variant->product_id,
                     'product_variant_id' => $item->product_variant_id,
@@ -318,3 +318,4 @@ class StocktakeController extends Controller
         return $prefix . str_pad((string) $sequence, 3, '0', STR_PAD_LEFT);
     }
 }
+

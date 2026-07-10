@@ -95,11 +95,7 @@ class ColorDeletionGuardTest extends TestCase
         $product = Product::create([
             'name' => 'Test Product ' . $slug,
             'slug' => 'product-' . $slug,
-            'description' => 'Test description',
-            'price' => 100000,
-            'cost_price' => 50000,
-            'discount' => 0,
-            'thumbnail' => 'test.jpg',
+            'description' => 'Test description',            'thumbnail' => 'test.jpg',
             'category_id' => $category->id,
             'brand_id' => $brand->id,
             'gender' => Gender::UNISEX->value,
@@ -113,7 +109,7 @@ class ColorDeletionGuardTest extends TestCase
             'size_id' => $size->id,
             'sku' => 'SKU-' . $slug,
             'cost_price' => 50000,
-            'sale_price' => 100000,
+            'price' => 100000,
             'stock' => 10,
             'status' => 'Active',
         ]);
@@ -121,3 +117,4 @@ class ColorDeletionGuardTest extends TestCase
         return $color;
     }
 }
+

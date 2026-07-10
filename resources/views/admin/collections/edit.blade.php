@@ -114,7 +114,7 @@
                                     <div class="flex-grow-1 min-width-0">
                                         <div class="text-truncate fw-semibold product-name" style="font-size: 13px;">{{ $product->name }}</div>
                                         <div class="text-muted" style="font-size: 11px;">
-                                            Danh mục: {{ $product->category->name ?? 'N/A' }} | Giá: {{ number_format($product->price, 0, ',', '.') }}đ
+                                            Danh mục: {{ $product->category->name ?? 'N/A' }} | Giá: {{ $product->min_variant_price ? 'Từ '.number_format($product->min_variant_price, 0, ',', '.').'đ' : 'Liên hệ' }}
                                         </div>
                                     </div>
                                 </label>

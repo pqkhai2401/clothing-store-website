@@ -3,7 +3,7 @@
     Variables expected:
       $colors  — Collection<Color>  (id, name, display_hex_code)
       $sizes   — Collection<Size>   (id, name) — mixed letter sizes (S,M,L..) and number sizes (38,39..)
-      $existingVariants — optional, nested [color_id][size_id] = ['sku'=>, 'cost_price'=>, 'sale_price'=>, 'stock'=>] (edit mode)
+      $existingVariants — optional, nested [color_id][size_id] = ['sku'=>, 'cost_price'=>, 'price'=>, 'stock'=>] (edit mode)
 --}}
 @php
     $existingVariants = $existingVariants ?? [];
@@ -94,14 +94,13 @@
             <span class="vm-step-num">3.</span>
             Bảng biến thể (SKU / Giá vốn / Giá bán / Tồn kho)
         </div>
+        <p class="vm-step-hint">
+            Giá bán của từng biến thể được nhập tại đây. Dùng ô áp dụng nhanh để gán cùng một giá bán cho tất cả biến thể, sau đó chỉnh riêng từng dòng nếu cần.
+        </p>
 
         {{-- Bulk apply bar --}}
         <div class="vm-bulk-bar">
             <span class="vm-bulk-label">Áp dụng nhanh:</span>
-            <div class="vm-bulk-field">
-                <label>Giá vốn</label>
-                <input type="number" min="0" step="1000" class="vm-bulk-input" id="vmBulkCost" placeholder="0">
-            </div>
             <div class="vm-bulk-field">
                 <label>Giá bán</label>
                 <input type="number" min="0" step="1000" class="vm-bulk-input" id="vmBulkSale" placeholder="0">
@@ -488,6 +487,8 @@ window.__VM_EXISTING__ = @json($existingVariants);
     box-shadow: 0 0 0 3px rgba(17,24,39,0.07);
 }
 
+.vm-matrix-input.is-locked { background: #f3f4f6; color: #9ca3af; cursor: not-allowed; }
+
 .vm-matrix-empty {
     display: none;
     padding: 28px 16px;
@@ -589,7 +590,7 @@ window.__VM_EXISTING__ = @json($existingVariants);
             map[key] = {
                 sku:        row.querySelector('[data-field="sku"]')?.value || '',
                 cost_price: row.querySelector('[data-field="cost_price"]')?.value || '',
-                sale_price: row.querySelector('[data-field="sale_price"]')?.value || '',
+                price: row.querySelector('[data-field="price"]')?.value || '',
                 stock:      row.querySelector('[data-field="stock"]')?.value || '',
             };
         });
@@ -602,25 +603,14 @@ window.__VM_EXISTING__ = @json($existingVariants);
         const previous = readCurrentValues();
         const productName = document.getElementById('name')?.value || '';
         const namePrefix   = slugify(productName);
-        const baseCost = document.getElementById('cost_price')?.value || '';
-        const baseSale = computeBaseSalePrice();
 
         matrixBody.innerHTML = '';
 
-        const pricingWrapper = document.getElementById('generalPricingWrapper');
         if (colors.length === 0 || sizes.length === 0) {
             matrixStep.style.display = 'none'; // Ẩn bước 3 khi chưa chọn màu/size
             matrixWrap.classList.add('is-empty');
-            if (pricingWrapper) {
-                pricingWrapper.style.display = 'block';
-            }
             updateSummary();
             return;
-        }
-
-        // Nếu có biến thể -> ẩn khung nhập giá chung phía trên đi cho sạch giao diện
-        if (pricingWrapper) {
-            pricingWrapper.style.display = 'none';
         }
 
         matrixWrap.classList.remove('is-empty');
@@ -633,8 +623,8 @@ window.__VM_EXISTING__ = @json($existingVariants);
                 const data = prev || fromExisting || {};
 
                 const sku        = data.sku        ?? `${namePrefix}-${slugify(color.name)}-${size.name}`;
-                const costPrice  = data.cost_price ?? baseCost ?? '';
-                const salePrice  = data.sale_price ?? baseSale ?? '';
+                const costPrice  = data.cost_price ?? '';
+                const price      = data.price ?? data.sale_price ?? '';
                 const stock      = data.stock      ?? '';
 
                 const tr = document.createElement('tr');
@@ -652,12 +642,12 @@ window.__VM_EXISTING__ = @json($existingVariants);
                                name="variants[${color.id}][${size.id}][sku]" value="${esc(sku)}">
                     </td>
                     <td>
-                        <input type="number" min="0" step="1000" class="vm-matrix-input" data-field="cost_price"
-                               name="variants[${color.id}][${size.id}][cost_price]" value="${esc(costPrice)}" placeholder="0">
+                        <input type="number" min="0" step="1000" class="vm-matrix-input is-locked" data-field="cost_price"
+                               name="variants[${color.id}][${size.id}][cost_price]" value="${esc(costPrice)}" placeholder="0" readonly>
                     </td>
                     <td>
-                        <input type="number" min="0" step="1000" class="vm-matrix-input" data-field="sale_price"
-                               name="variants[${color.id}][${size.id}][sale_price]" value="${esc(salePrice)}" placeholder="0">
+                        <input type="number" min="0" step="1000" class="vm-matrix-input" data-field="price"
+                               name="variants[${color.id}][${size.id}][price]" value="${esc(price)}" placeholder="0">
                     </td>
                     <td>
                         <input type="number" min="0" step="1" class="vm-matrix-input" data-field="stock"
@@ -670,14 +660,6 @@ window.__VM_EXISTING__ = @json($existingVariants);
 
         matrixStep.style.display = '';
         updateSummary();
-    }
-
-    function computeBaseSalePrice() {
-        const price    = parseFloat(document.getElementById('price')?.value || '0');
-        const discount = parseFloat(document.getElementById('discount')?.value || '0');
-        if (!price) return '';
-        const finalPrice = price * (100 - discount) / 100;
-        return Math.round(finalPrice);
     }
 
     function updateSummary() {
@@ -702,14 +684,11 @@ window.__VM_EXISTING__ = @json($existingVariants);
        BULK APPLY BAR
     ═══════════════════════════════════════════ */
     document.getElementById('vmBulkApplyBtn')?.addEventListener('click', function () {
-        const cost  = document.getElementById('vmBulkCost').value;
-        const sale  = document.getElementById('vmBulkSale').value;
-        const stock = document.getElementById('vmBulkStock').value;
+        const sale = document.getElementById('vmBulkSale').value;
+        if (sale === '') return;
 
         matrixBody.querySelectorAll('tr[data-color-id]').forEach(function (row) {
-            if (cost  !== '') row.querySelector('[data-field="cost_price"]').value = cost;
-            if (sale  !== '') row.querySelector('[data-field="sale_price"]').value = sale;
-            if (stock !== '') row.querySelector('[data-field="stock"]').value = stock;
+            row.querySelector('[data-field="price"]').value = sale;
         });
         updateSummary();
     });

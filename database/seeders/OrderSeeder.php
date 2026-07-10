@@ -202,7 +202,7 @@ class OrderSeeder extends Seeder
             ],
             [
                 'user' => 'dangthuylinh@gmail.com',
-                'payment_method' => 'Momo',
+                'payment_method' => 'PayOS',
                 'order_code' => 'ORD-20260609-0009',
                 'phone' => '0378165924',
                 'note' => 'Tặng sinh nhật, giao sau 18h.',

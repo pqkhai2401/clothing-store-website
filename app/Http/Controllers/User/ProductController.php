@@ -165,16 +165,17 @@ class ProductController extends Controller
         // Lấy thông tin giá từ bảng products (giá chung cho sản phẩm)
         $product = Product::findOrFail($request->product_id);
 
-        $discount = $product->discount;
-        $finalPrice = $variant->sale_price > 0 ? (float) $variant->sale_price : (float) $product->final_price;
-        $price = $discount > 0 ? $finalPrice / (1 - $discount / 100) : $finalPrice;
+        $price = (float) $variant->price;
+        $finalPrice = $product->discountedPrice($price);
 
         return response()->json([
             'found'       => true,
             'stock'       => $variant->stock,
             'sku'         => $variant->sku,
             'price'       => $price,
-            'discount'    => $discount,
+            'discount_type' => $product->discount_type,
+            'discount_value' => (float) $product->discount_value,
+            'has_discount' => $product->hasActiveDiscount(),
             'final_price' => $finalPrice,
             'image'       => $variant->image,
         ]);
@@ -204,7 +205,7 @@ class ProductController extends Controller
         $this->applyFilters($query, $request);
         $this->applySort($query, $sort);
 
-        $products = $query->with('category')
+        $products = $query->with(['category', 'productVariants'])
             ->paginate(12)
             ->appends($request->query());
 
@@ -239,7 +240,7 @@ class ProductController extends Controller
         $this->applyFilters($query, $request);
         $this->applySort($query, $request->query('sort', 'popularity'));
 
-        $products = $query->with('category')
+        $products = $query->with(['category', 'productVariants'])
             ->paginate(12)
             ->appends($request->query());
 
@@ -298,10 +299,10 @@ class ProductController extends Controller
         $minPrice = $request->query('min_price');
         $maxPrice = $request->query('max_price');
         if (is_numeric($minPrice)) {
-            $query->where('price', '>=', (float) $minPrice);
+            $query->whereHas('productVariants', fn ($variantQuery) => $variantQuery->where('price', '>=', (float) $minPrice));
         }
         if (is_numeric($maxPrice)) {
-            $query->where('price', '<=', (float) $maxPrice);
+            $query->whereHas('productVariants', fn ($variantQuery) => $variantQuery->where('price', '<=', (float) $maxPrice));
         }
     }
 
@@ -313,10 +314,10 @@ class ProductController extends Controller
                 $query->latest();
                 break;
             case 'price-low':
-                $query->orderBy('price', 'asc');
+                $query->orderByRaw('(select coalesce(min(product_variants.price), 0) from product_variants where product_variants.product_id = products.id) asc');
                 break;
             case 'price-high':
-                $query->orderBy('price', 'desc');
+                $query->orderByRaw('(select coalesce(max(product_variants.price), 0) from product_variants where product_variants.product_id = products.id) desc');
                 break;
             case 'best-selling':
             case 'popularity':
@@ -368,21 +369,21 @@ class ProductController extends Controller
 
         $items = Product::where('status', true)
             ->where('name', 'LIKE', "%{$q}%")
-            ->with('category')
+            ->with(['category', 'productVariants'])
             ->latest()
             ->limit(6)
-            ->get(['id', 'name', 'slug', 'price', 'discount', 'thumbnail', 'category_id']);
+            ->get(['id', 'name', 'slug', 'discount_type', 'discount_value', 'discount_start_at', 'discount_end_at', 'thumbnail', 'category_id']);
 
         return response()->json($items->map(fn ($p) => [
             'name'     => $p->name,
             'url'      => url('/san-pham/' . $p->slug),
-            'price'    => number_format($p->price, 0, ',', '.') . 'đ',
-            'final'    => $p->discount > 0
-                            ? number_format($p->price * (100 - $p->discount) / 100, 0, ',', '.') . 'đ'
+            'price'    => $p->min_variant_price !== null ? 'Từ ' . number_format($p->min_variant_price, 0, ',', '.') . 'đ' : 'Liên hệ',
+            'final'    => $p->hasActiveDiscount() && $p->min_final_price !== null
+                            ? 'Từ ' . number_format($p->min_final_price, 0, ',', '.') . 'đ'
                             : null,
             'category' => $p->category->name ?? '',
             'image'    => $p->thumbnail,
-            'discount' => $p->discount,
+            'discount' => $p->hasActiveDiscount() ? (float) $p->discount_value : 0,
         ]));
     }
 
@@ -409,7 +410,7 @@ class ProductController extends Controller
         $this->applySort($query, $request->query('sort', 'popularity'));
 
         // Phân trang 12 sản phẩm/trang
-        $products = $query->with('category')
+        $products = $query->with(['category', 'productVariants'])
             ->paginate(12)
             ->appends($request->query());
 

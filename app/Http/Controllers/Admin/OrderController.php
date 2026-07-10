@@ -330,7 +330,7 @@ class OrderController extends Controller
         $q = trim((string) $request->input('q'));
 
         $variants = ProductVariant::query()
-            ->with(['product:id,name,price,discount', 'color:id,name', 'size:id,name'])
+            ->with(['product:id,name', 'color:id,name', 'size:id,name'])
             ->whereHas('product', fn ($p) => $p->where('status', true))
             ->where('stock', '>', 0)
             ->when($q !== '', function ($query) use ($q) {

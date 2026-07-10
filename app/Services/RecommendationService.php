@@ -29,13 +29,14 @@ class RecommendationService
         $targetParentId = $product->category->parent_id ?? null;
         $targetBrandId = $product->brand_id;
         $targetGender = $product->gender;
-        $targetPrice = (float) $product->price;
+        $product->loadMissing('productVariants');
+        $targetPrice = (float) ($product->min_variant_price ?? 0);
         $targetTagIds = $product->tags->pluck('id')->toArray();
 
         // Lấy tất cả các sản phẩm đang bán (trừ sản phẩm hiện tại)
         $candidates = Product::where('status', true)
             ->where('id', '!=', $targetProductId)
-            ->with(['category', 'brand', 'tags'])
+            ->with(['category', 'brand', 'tags', 'productVariants'])
             ->get();
 
         return $candidates->map(function ($candidate) use (
@@ -76,7 +77,7 @@ class RecommendationService
             // }
 
             // 5. Trọng số khoảng cách Giá (Price Proximity)
-            $candidatePrice = (float) $candidate->price;
+            $candidatePrice = (float) ($candidate->min_variant_price ?? 0);
             $priceDiff = abs($targetPrice - $candidatePrice);
             $priceSum = $targetPrice + $candidatePrice + 1; // +1 để tránh chia cho 0
             $priceProximity = 1.0 - ($priceDiff / $priceSum);

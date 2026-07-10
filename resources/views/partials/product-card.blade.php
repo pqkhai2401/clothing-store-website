@@ -2,14 +2,17 @@
     $pId = is_object($product) ? $product->id : ($product['id'] ?? null);
     $pName = is_object($product) ? $product->name : ($product['name'] ?? 'Product');
     $pSlug = is_object($product) ? $product->slug : ($product['slug'] ?? '#');
-    $pPrice = is_object($product) ? $product->price : ($product['price'] ?? 0);
-    $pDiscount = is_object($product) ? ($product->discount ?? 0) : ($product['discount'] ?? 0);
+    $pPrice = is_object($product) ? ($product->min_variant_price ?? 0) : ($product['price'] ?? 0);
+    $pMaxPrice = is_object($product) ? ($product->max_variant_price ?? $pPrice) : ($product['max_price'] ?? $pPrice);
+    $pHasDiscount = is_object($product) ? $product->hasActiveDiscount() : (($product['discount'] ?? 0) > 0);
+    $pDiscount = is_object($product) ? ($product->discount_value ?? 0) : ($product['discount'] ?? 0);
     $pCategory = is_object($product) ? ($product->category->name ?? 'Collection') : ($product['category'] ?? 'Collection');
     $pImage = is_object($product) ? ($product->thumbnail ?? ($product->productImages->first()->image ?? 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?q=80&w=600&auto=format&fit=crop')) : ($product['image'] ?? 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?q=80&w=600&auto=format&fit=crop');
     $pBadge = is_object($product) ? ($product->badge ?? null) : ($product['badge'] ?? null);
 
-    // Tính giá sau khi áp dụng discount (%)
-    $pFinalPrice = $pDiscount > 0 ? $pPrice * (100 - $pDiscount) / 100 : null;
+    $pFinalPrice = is_object($product) && $pHasDiscount && $pPrice
+        ? $product->discountedPrice((float) $pPrice)
+        : null;
 
     // Resolve URL
     $pUrl = $pSlug !== '#' ? url('/san-pham/' . $pSlug) : '#';
@@ -19,7 +22,7 @@
     <div class="product-img-wrapper">
         @if($pBadge)
             <span class="product-badge {{ strtolower($pBadge) === 'sale' ? 'badge-sale' : '' }}">{{ strtoupper($pBadge) }}</span>
-        @elseif($pDiscount > 0)
+        @elseif($pHasDiscount && $pDiscount > 0)
             <span class="product-badge badge-sale">-{{ $pDiscount }}%</span>
         @endif
         
@@ -52,10 +55,16 @@
         <h3 class="product-name"><a href="{{ $pUrl }}">{{ $pName }}</a></h3>
         <div class="product-price">
             @if($pFinalPrice)
-                <span class="original-price">{{ number_format($pPrice, 0, ',', '.') }}đ</span>
-                <span class="sale-price">{{ number_format($pFinalPrice, 0, ',', '.') }}đ</span>
+                <span class="original-price">Từ {{ number_format($pPrice, 0, ',', '.') }}đ</span>
+                <span class="sale-price">Từ {{ number_format($pFinalPrice, 0, ',', '.') }}đ</span>
+            @elseif($pPrice)
+                @if($pMaxPrice && $pMaxPrice != $pPrice)
+                    <span>Từ {{ number_format($pPrice, 0, ',', '.') }}đ</span>
+                @else
+                    <span>{{ number_format($pPrice, 0, ',', '.') }}đ</span>
+                @endif
             @else
-                <span>{{ number_format($pPrice, 0, ',', '.') }}đ</span>
+                <span>Liên hệ</span>
             @endif
         </div>
     </div>

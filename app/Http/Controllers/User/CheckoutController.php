@@ -121,7 +121,7 @@ class CheckoutController extends Controller
 
             foreach ($cartItems as $item) {
                 $variant = $item->productVariant;
-                $unitPrice = $variant->sale_price > 0 ? (float) $variant->sale_price : (float) $variant->product->final_price;
+                $unitPrice = (float) $variant->final_price;
 
                 // Giá vốn được snapshot qua StockIssueItem lúc admin xuất kho, không lưu ở order_items
                 // (cột này không tồn tại + không fillable nên trước đây bị Eloquent bỏ im lặng).
@@ -134,6 +134,18 @@ class CheckoutController extends Controller
             }
 
             $cartItems->each(fn ($item) => $item->delete());
+
+            // Đơn PayOS mới thay thế các đơn PayOS chưa thanh toán cũ của user:
+            // hủy chúng để tránh đơn treo tích tụ (chỉ đổi status, KHÔNG hoàn kho vì
+            // đơn pending/unpaid chưa từng bị trừ kho — xem OrderController::cancelOrder).
+            if ($this->isPayos($paymentMethod)) {
+                Order::where('user_id', $user->id)
+                    ->where('id', '!=', $order->id)
+                    ->where('status', OrderStatus::PENDING->value)
+                    ->where('payment_status', PaymentStatus::UNPAID->value)
+                    ->whereIn('payment_method_id', $this->payosPaymentMethodIds())
+                    ->update(['status' => OrderStatus::CANCELLED->value]);
+            }
 
             return $order;
         });
@@ -149,7 +161,18 @@ class CheckoutController extends Controller
 
     private function isPayos(PaymentMethod $method): bool
     {
-        return str_contains(strtolower($method->name), 'payos');
+        return $method->isPayos();
+    }
+
+    /**
+     * ID các phương thức thanh toán PayOS (thường chỉ 1) — dùng để lọc đơn PayOS.
+     */
+    private function payosPaymentMethodIds(): array
+    {
+        return PaymentMethod::all()
+            ->filter(fn (PaymentMethod $method) => $method->isPayos())
+            ->pluck('id')
+            ->all();
     }
 
     private function cartItems($user)

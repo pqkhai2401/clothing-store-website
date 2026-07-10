@@ -1141,8 +1141,8 @@
                             $variant  = $item->productVariant;
                             $product  = $variant->product;
                             $image    = $variant->image ?: $product->thumbnail;
-                            $original = $product->price * $item->quantity;
-                            $final    = $product->final_price * $item->quantity;
+                            $original = $variant->price * $item->quantity;
+                            $final    = $variant->final_price * $item->quantity;
                             $savings  = $original - $final;
                         @endphp
                         <div class="checkout-cart-item">
@@ -1171,7 +1171,7 @@
 
             <!-- Payment Summary Block -->
             @php
-                $totalOriginal = $cartItems->sum(fn($i) => $i->productVariant->product->price * $i->quantity);
+                $totalOriginal = $cartItems->sum(fn($i) => $i->productVariant->price * $i->quantity);
                 $totalSavings  = $totalOriginal - $subtotal;
             @endphp
             <div class="checkout-block">

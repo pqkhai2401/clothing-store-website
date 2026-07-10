@@ -28,4 +28,12 @@ class PaymentMethod extends Model
     {
         return $this->hasMany(Order::class);
     }
+
+    /**
+     * Phương thức này có phải PayOS (thanh toán online qua QR) hay không.
+     */
+    public function isPayos(): bool
+    {
+        return str_contains(strtolower($this->name ?? ''), 'payos');
+    }
 }

@@ -27,6 +27,7 @@ class OrderController extends Controller
 
         $query = Order::where('user_id', $request->user()->id)
             ->with([
+                'paymentMethod',
                 'orderItems.productVariant.product',
                 'orderItems.productVariant.color',
                 'orderItems.productVariant.size',
@@ -147,10 +148,14 @@ class OrderController extends Controller
 
         // Khách chỉ được hủy khi pending + unpaid
         $canCancel = $order->status === 'pending' && $order->payment_status === 'unpaid';
+        // Cho phép tiếp tục thanh toán khi đơn PayOS còn pending + chưa thanh toán
+        $canPay = $canCancel && (bool) $order->paymentMethod?->isPayos();
 
         return response()->json([
             'id'             => $order->id,
             'can_cancel'     => $canCancel,
+            'can_pay'        => $canPay,
+            'pay_url'        => route('checkout.payos.show', $order->id),
             'order_code'     => $order->order_code,
             'status'         => $order->status,
             'status_label'   => $statusLabels[$order->status] ?? $order->status,

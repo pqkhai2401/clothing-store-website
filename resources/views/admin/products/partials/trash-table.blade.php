@@ -39,20 +39,25 @@
                         </td>
                         <td class="product-trash-cat">{{ $product->category?->name ?? '—' }}</td>
                         <td>
-                            @if($product->discount > 0)
+                            @php
+                                $minPrice = $product->productVariants->min('price');
+                                $maxPrice = $product->productVariants->max('price');
+                            @endphp
+                            @if($minPrice === null)
+                                <span class="trash-price-normal">Chưa có biến thể</span>
+                            @elseif($product->hasActiveDiscount())
                                 <div class="trash-price-sale">
-                                    {{ number_format($product->price * (100 - $product->discount) / 100, 0, ',', '.') }}₫
+                                    {{ number_format($product->discountedPrice((float) $minPrice), 0, ',', '.') }}₫@if($maxPrice != $minPrice) - {{ number_format($product->discountedPrice((float) $maxPrice), 0, ',', '.') }}₫@endif
                                 </div>
                                 <div class="trash-price-original">
-                                    {{ number_format($product->price, 0, ',', '.') }}₫
+                                    {{ number_format($minPrice, 0, ',', '.') }}₫@if($maxPrice != $minPrice) - {{ number_format($maxPrice, 0, ',', '.') }}₫@endif
                                 </div>
                             @else
                                 <span class="trash-price-normal">
-                                    {{ number_format($product->price, 0, ',', '.') }}₫
+                                    {{ number_format($minPrice, 0, ',', '.') }}₫@if($maxPrice != $minPrice) - {{ number_format($maxPrice, 0, ',', '.') }}₫@endif
                                 </span>
                             @endif
-                        </td>
-                        <td class="product-trash-date">
+                        </td>                        <td class="product-trash-date">
                             {{ $product->deleted_at?->format('d/m/Y H:i') }}
                         </td>
                         <td class="text-end pe-4">
@@ -94,3 +99,4 @@
         ])
     </div>
 </div>
+

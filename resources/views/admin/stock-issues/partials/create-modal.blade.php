@@ -458,7 +458,7 @@
                 input.classList.add('is-locked');
                 const variantId = input.dataset.variantId;
                 if (selectedItems[variantId]) {
-                    input.value = selectedItems[variantId].variant.sale_price;
+                    input.value = selectedItems[variantId].variant.price;
                 }
             }
         });
@@ -534,7 +534,7 @@
             return;
         }
 
-        selectedItems[v.id] = { variant: v, quantity: 1, cost_price: v.cost_price, sale_price: v.sale_price };
+        selectedItems[v.id] = { variant: v, quantity: 1, cost_price: v.cost_price, sale_price: v.price };
 
         const isReturn = (issueTypeInput.value === 'return_supplier');
         const priceReadonly = isReturn ? '' : 'readonly';
@@ -570,10 +570,10 @@
                 <input type="hidden" name="items[${v.id}][cost_price]" value="${v.cost_price}">
             </td>
             <td>
-                <input type="number" name="items[${v.id}][sale_price]" class="gr-num-input price-input ${priceLockedClass}" value="${v.sale_price}" min="0" step="1000" ${priceReadonly} data-variant-id="${v.id}">
+                <input type="number" name="items[${v.id}][sale_price]" class="gr-num-input price-input ${priceLockedClass}" value="${v.price}" min="0" step="1000" ${priceReadonly} data-variant-id="${v.id}">
             </td>
             <td><span class="gr-row-total total-cost">${formatMoney(v.cost_price)}đ</span></td>
-            <td><span class="gr-row-total total-sale">${formatMoney(v.sale_price)}đ</span></td>
+            <td><span class="gr-row-total total-sale">${formatMoney(v.price)}đ</span></td>
             <td>
                 <button type="button" class="gr-row-remove"><i class="fa-solid fa-xmark"></i></button>
             </td>
@@ -756,3 +756,4 @@
 </script>
 @endpush
 @endonce
+

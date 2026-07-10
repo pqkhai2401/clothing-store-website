@@ -68,8 +68,8 @@ class ProductSeeder extends Seeder
                 [
                     'name'        => $data['name'],
                     'description' => $data['description'],
-                    'price'       => $data['price'],
-                    'discount'    => $data['discount'] ?? 0,
+                    'discount_type' => ! empty($data['discount']) ? 'percent' : null,
+                    'discount_value' => $data['discount'] ?? 0,
                     'thumbnail'   => $data['thumbnail'],
                     'category_id' => $categories[$data['category']] ?? null,
                     'brand_id'    => $brands[$data['brand']] ?? null,
@@ -124,8 +124,8 @@ class ProductSeeder extends Seeder
                                 'size_id'    => $sizeId,
                                 'stock'      => rand(5, 80),
                                 'image'      => $data['thumbnail'],
-                                'cost_price' => round($product->price * 0.6, 2),
-                                'sale_price' => round($product->final_price, 2),
+                                'cost_price' => round($data['price'] * 0.6, 2),
+                                'price'      => round($data['price'], 2),
                                 'status'     => 'Active',
                             ]
                         );

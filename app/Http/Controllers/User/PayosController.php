@@ -51,6 +51,10 @@ class PayosController extends Controller
             'amount'        => (int) round((float) $order->total_money),
             'accountName'   => $data['accountName'] ?? null,
             'accountNumber' => $data['accountNumber'] ?? null,
+            'bin'           => $data['bin'] ?? null,
+            'bankName'      => $this->bankNameFromBin($data['bin'] ?? null),
+            // Mã vừa được sinh mới nên còn nguyên thời hạn — đếm theo thời lượng để tránh lệch giờ client.
+            'expiresIn'     => PayosService::EXPIRE_MINUTES * 60,
         ]);
     }
 
@@ -186,5 +190,46 @@ class PayosController extends Controller
         // Duy nhất và <= giới hạn PayOS (9_007_199_254_740_991).
         // id đơn làm tiền tố + hậu tố ngẫu nhiên để tạo lại QR nhiều lần không bị trùng.
         return (int) ($order->id * 1_000_000 + random_int(0, 999_999));
+    }
+
+    /**
+     * Suy ra tên ngân hàng từ mã BIN (napas) mà PayOS trả về.
+     */
+    private function bankNameFromBin(?string $bin): ?string
+    {
+        if (! $bin) {
+            return null;
+        }
+
+        // Danh sách BIN → tên ngân hàng của các ngân hàng phổ biến tại VN.
+        $banks = [
+            '970422' => 'Ngân hàng TMCP Quân đội (MB)',
+            '970436' => 'Vietcombank',
+            '970415' => 'VietinBank',
+            '970418' => 'BIDV',
+            '970405' => 'Agribank',
+            '970407' => 'Techcombank',
+            '970416' => 'ACB',
+            '970432' => 'VPBank',
+            '970423' => 'TPBank',
+            '970403' => 'Sacombank',
+            '970443' => 'SHB',
+            '970437' => 'HDBank',
+            '970431' => 'Eximbank',
+            '970441' => 'VIB',
+            '970426' => 'MSB',
+            '970448' => 'OCB',
+            '970440' => 'SeABank',
+            '970419' => 'NCB',
+            '970412' => 'PVcomBank',
+            '970438' => 'BaoVietBank',
+            '970425' => 'ABBANK',
+            '970427' => 'VietABank',
+            '970429' => 'SCB',
+            '970424' => 'Shinhan Bank',
+            '970433' => 'VietBank',
+        ];
+
+        return $banks[$bin] ?? ('Ngân hàng (BIN '.$bin.')');
     }
 }

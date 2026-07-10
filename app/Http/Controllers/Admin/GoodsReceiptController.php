@@ -413,7 +413,7 @@ class GoodsReceiptController extends Controller
                 'size_name'    => $v->size?->name,
                 'stock'        => $v->stock,
                 'cost_price'   => (float) $v->cost_price,
-                'sale_price'   => (float) $v->sale_price,
+                'sale_price'   => (float) $v->price,
             ])
             ->values();
     }
@@ -1018,3 +1018,4 @@ class GoodsReceiptController extends Controller
         return $prefix . str_pad((string) $sequence, 3, '0', STR_PAD_LEFT);
     }
 }
+

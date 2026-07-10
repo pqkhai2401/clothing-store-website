@@ -18,9 +18,10 @@ class Product extends Model implements \OwenIt\Auditing\Contracts\Auditable
         'name',
         'slug',
         'description',
-        'price',
-        'cost_price',
-        'discount',
+        'discount_type',
+        'discount_value',
+        'discount_start_at',
+        'discount_end_at',
         'thumbnail',
         'category_id',
         'brand_id',
@@ -31,12 +32,12 @@ class Product extends Model implements \OwenIt\Auditing\Contracts\Auditable
     ];
 
     protected $casts = [
-        'price'       => 'decimal:2',
-        'cost_price'  => 'decimal:2',
-        'discount'    => 'integer',
-        'is_featured' => 'boolean',
-        'status'      => 'boolean',
-        'views_count' => 'integer',
+        'discount_value'    => 'decimal:2',
+        'discount_start_at' => 'datetime',
+        'discount_end_at'   => 'datetime',
+        'is_featured'       => 'boolean',
+        'status'            => 'boolean',
+        'views_count'       => 'integer',
     ];
 
     /**
@@ -103,9 +104,72 @@ class Product extends Model implements \OwenIt\Auditing\Contracts\Auditable
         return $this->belongsToMany(Collection::class, 'collection_product');
     }
 
-    public function getFinalPriceAttribute()
+    public function hasActiveDiscount(): bool
     {
-        return $this->price *
-            (100 - $this->discount) / 100;
+        if (! in_array($this->discount_type, ['percent', 'fixed'], true)) {
+            return false;
+        }
+
+        if ((float) $this->discount_value <= 0) {
+            return false;
+        }
+
+        $now = now();
+
+        if ($this->discount_start_at && $this->discount_start_at->gt($now)) {
+            return false;
+        }
+
+        if ($this->discount_end_at && $this->discount_end_at->lt($now)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    public function discountedPrice(float $price): float
+    {
+        if (! $this->hasActiveDiscount()) {
+            return max(0, $price);
+        }
+
+        $discount = $this->discount_type === 'percent'
+            ? $price * ((float) $this->discount_value / 100)
+            : (float) $this->discount_value;
+
+        return max(0, $price - $discount);
+    }
+
+    public function getMinVariantPriceAttribute(): ?float
+    {
+        $value = $this->productVariants->min('price');
+
+        return $value === null ? null : (float) $value;
+    }
+
+    public function getMaxVariantPriceAttribute(): ?float
+    {
+        $value = $this->productVariants->max('price');
+
+        return $value === null ? null : (float) $value;
+    }
+
+    public function getMinFinalPriceAttribute(): ?float
+    {
+        $min = $this->min_variant_price;
+
+        return $min === null ? null : $this->discountedPrice($min);
+    }
+
+    public function getMaxFinalPriceAttribute(): ?float
+    {
+        $max = $this->max_variant_price;
+
+        return $max === null ? null : $this->discountedPrice($max);
+    }
+
+    public function getTotalStockAttribute(): int
+    {
+        return (int) ($this->product_variants_sum_stock ?? $this->productVariants->sum('stock'));
     }
 }

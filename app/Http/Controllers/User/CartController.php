@@ -154,7 +154,7 @@ class CartController extends Controller
         return response()->json([
             'item_id'          => $cartItem->id,
             'item_quantity'    => $cartItem->quantity,
-            'item_subtotal'    => $variant->product->final_price * $cartItem->quantity,
+            'item_subtotal'    => $variant->final_price * $cartItem->quantity,
             'variant_id'       => $variant->id,
             'color_id'         => $variant->color_id,
             'color_name'       => $variant->color?->name,
@@ -191,7 +191,7 @@ class CartController extends Controller
         return response()->json([
             'item_quantity' => $cartItem?->quantity,
             'item_subtotal' => $cartItem
-                ? $cartItem->productVariant->product->final_price * $cartItem->quantity
+                ? $cartItem->productVariant->final_price * $cartItem->quantity
                 : null,
             'subtotal'      => $subtotal,
             'shipping_fee'  => $shippingFee,
