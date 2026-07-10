@@ -596,20 +596,14 @@ class OrderController extends Controller
                 'total_sale' => $item->unit_price * $item->quantity,
             ]);
 
-            $beforeQty = $lockedVariant->stock;
-            $afterQty = max(0, $beforeQty - $item->quantity);
-            $lockedVariant->update(['stock' => $afterQty]);
-
-            \App\Models\StockMovement::create([
-                'product_variant_id' => $lockedVariant->id,
-                'reference_type' => 'stock_issue',
-                'reference_id' => $stockIssue->id,
-                'movement_type' => 'export',
-                'quantity' => $item->quantity,
-                'before_quantity' => $beforeQty,
-                'after_quantity' => $afterQty,
-                'created_by' => Auth::id() ?? 1,
-            ]);
+            // Trừ tồn theo FIFO qua các lô — service ghi sổ cái + đồng bộ cache tồn.
+            app(\App\Services\InventoryBatchService::class)->consumeFifo(
+                $lockedVariant,
+                (int) $item->quantity,
+                'stock_issue',
+                $stockIssue->id,
+                Auth::id()
+            );
         }
 
         $stockIssue->update([
@@ -650,27 +644,14 @@ class OrderController extends Controller
             return;
         }
 
-        foreach ($stockIssue->items as $item) {
-            $variant = \App\Models\ProductVariant::lockForUpdate()->find($item->product_variant_id);
-            if (!$variant) {
-                continue;
-            }
-
-            $beforeQty = $variant->stock;
-            $afterQty = $beforeQty + $item->quantity;
-            $variant->update(['stock' => $afterQty]);
-
-            \App\Models\StockMovement::create([
-                'product_variant_id' => $variant->id,
-                'reference_type' => 'stock_issue',
-                'reference_id' => $stockIssue->id,
-                'movement_type' => 'import',
-                'quantity' => $item->quantity,
-                'before_quantity' => $beforeQty,
-                'after_quantity' => $afterQty,
-                'created_by' => Auth::id() ?? 1,
-            ]);
-        }
+        // Hoàn trả về ĐÚNG lô đã trừ (đọc ngược các bút toán export của phiếu xuất) — giá vốn không méo.
+        app(\App\Services\InventoryBatchService::class)->restoreByReference(
+            'stock_issue',
+            $stockIssue->id,
+            'stock_issue',
+            $stockIssue->id,
+            Auth::id()
+        );
 
         $stockIssue->update([
             'status' => \App\Models\StockIssue::STATUS_CANCELLED,

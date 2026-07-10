@@ -893,28 +893,22 @@ class GoodsReceiptController extends Controller
 
         $this->assertValidReceiptItems($goodsReceipt);
 
+        // Mỗi dòng phiếu nhập => tạo 1 LÔ mới (giữ giá vốn riêng), ghi sổ cái + đồng bộ cache tồn.
+        $batchService = app(\App\Services\InventoryBatchService::class);
         foreach ($goodsReceipt->items as $item) {
             $variant = ProductVariant::lockForUpdate()->find($item->product_variant_id);
             if (!$variant) continue;
 
-            $beforeQuantity = (int) $variant->stock;
-            $afterQuantity = $beforeQuantity + (int) $item->quantity;
-
-            $variant->update([
-                'stock'      => $afterQuantity,
-                'cost_price' => $item->cost_price,
-            ]);
-
-            StockMovement::create([
-                'product_variant_id' => $variant->id,
-                'reference_type' => 'goods_receipt',
-                'reference_id' => $goodsReceipt->id,
-                'movement_type' => 'import',
-                'quantity' => (int) $item->quantity,
-                'before_quantity' => $beforeQuantity,
-                'after_quantity' => $afterQuantity,
-                'created_by' => Auth::id(),
-            ]);
+            $batchService->receive(
+                $variant,
+                (int) $item->quantity,
+                (float) $item->cost_price,
+                'goods_receipt',
+                $goodsReceipt->id,
+                $item->id,
+                Auth::id(),
+                $goodsReceipt->received_at ?? now()
+            );
         }
 
         $now = now();

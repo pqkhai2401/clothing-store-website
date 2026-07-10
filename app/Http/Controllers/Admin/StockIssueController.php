@@ -534,21 +534,14 @@ class StockIssueController extends Controller
                 ]);
             }
 
-            $beforeQty = $variant->stock;
-            $afterQty = max(0, $beforeQty - $item->quantity);
-
-            $variant->update(['stock' => $afterQty]);
-
-            StockMovement::create([
-                'product_variant_id' => $variant->id,
-                'reference_type' => 'stock_issue',
-                'reference_id' => $stockIssue->id,
-                'movement_type' => 'export',
-                'quantity' => $item->quantity,
-                'before_quantity' => $beforeQty,
-                'after_quantity' => $afterQty,
-                'created_by' => Auth::id(),
-            ]);
+            // Trừ tồn theo FIFO qua các lô — service ghi sổ cái + đồng bộ cache tồn.
+            app(\App\Services\InventoryBatchService::class)->consumeFifo(
+                $variant,
+                (int) $item->quantity,
+                'stock_issue',
+                $stockIssue->id,
+                Auth::id()
+            );
         }
 
         $stockIssue->update([

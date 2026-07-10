@@ -69,6 +69,14 @@ class ProductVariant extends Model
         return $this->hasMany(OrderItem::class);
     }
 
+    /**
+     * Các lô hàng (batch/lot) của biến thể này — nguồn sự thật về tồn & giá vốn.
+     */
+    public function batches(): HasMany
+    {
+        return $this->hasMany(ProductBatch::class);
+    }
+
     public function getFinalPriceAttribute(): float
     {
         return $this->product

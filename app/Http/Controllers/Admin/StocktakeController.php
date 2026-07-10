@@ -209,12 +209,16 @@ class StocktakeController extends Controller
                 continue;
             }
 
-            $variant->update(['stock' => $item->actual_stock]);
+            $batchService = app(\App\Services\InventoryBatchService::class);
 
             if ($diff < 0) {
                 $quantity = abs($diff);
                 $costPrice = (float) $item->unit_cost;
                 $salePrice = (float) $variant->price;
+
+                // Cân bằng GIẢM: trừ tồn theo FIFO qua các lô.
+                $batchService->consumeFifo($variant, $quantity, 'stocktake', $stocktake->id, Auth::id());
+
                 $negativeItems[] = [
                     'product_id'         => $variant->product_id,
                     'product_variant_id' => $item->product_variant_id,
@@ -225,6 +229,9 @@ class StocktakeController extends Controller
                     'total_sale'         => $quantity * $salePrice,
                 ];
             } else {
+                // Cân bằng TĂNG: tạo lô điều chỉnh mới với giá vốn kiểm kê.
+                $batchService->receive($variant, $diff, (float) $item->unit_cost, 'stocktake', $stocktake->id, null, Auth::id());
+
                 $positiveItems[] = [
                     'product_variant_id' => $item->product_variant_id,
                     'quantity'           => $diff,
