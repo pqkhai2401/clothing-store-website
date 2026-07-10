@@ -301,7 +301,7 @@
 #goodsReceiptOffcanvas .form-select-sm:focus,
 #goodsReceiptOffcanvas .form-control:focus,
 #goodsReceiptOffcanvas .form-control-sm:focus {
-    border-color: #174761;
+    border-color: #000;
     box-shadow: 0 0 0 3px rgba(23,71,97,.08);
     outline: none;
 }
@@ -314,7 +314,7 @@
     transition: border-color .15s, box-shadow .15s;
 }
 #grAddWarehouseModal .form-control:focus {
-    border-color: #174761;
+    border-color: #000;
     box-shadow: 0 0 0 3px rgba(23,71,97,.08);
     outline: none;
 }
@@ -343,7 +343,7 @@
 .gr-warehouse-filter .hk-cat-trigger.is-open,
 .gr-supplier-filter .hk-cat-trigger:hover,
 .gr-supplier-filter .hk-cat-trigger.is-open {
-    border-color: #174761;
+    border-color: #000;
     box-shadow: 0 0 0 3px rgba(23,71,97,.08);
 }
 .gr-source-type-filter .hk-cat-panel,
@@ -416,7 +416,7 @@
 }
 .gr-add-wh-btn:hover {
     background: #174761;
-    border-color: #174761;
+    border-color: #000;
     color: #fff;
     box-shadow: 0 4px 12px rgba(23,71,97,.2);
 }
@@ -426,7 +426,7 @@
     width: 100%; height: 42px; border: 1.5px solid #d1d5db; border-radius: 8px;
     padding: 0 14px; font-size: 14px; outline: none;
 }
-.gr-picker-input:focus { border-color: #174761; box-shadow: 0 0 0 3px rgba(23,71,97,.08); }
+.gr-picker-input:focus { border-color: #000; box-shadow: 0 0 0 3px rgba(23,71,97,.08); }
 .gr-picker-panel {
     position: absolute; top: calc(100% + 6px); left: 0; right: 0;
     background: #fff; border: 1.5px solid #e5e7eb; border-radius: 10px;
@@ -465,7 +465,7 @@
     width: 100%; min-width: 85px; height: 34px; border: 1.5px solid #d1d5db; border-radius: 6px;
     padding: 0 8px; font-size: 13px; outline: none; box-sizing: border-box;
 }
-.gr-num-input:focus { border-color: #174761; box-shadow: 0 0 0 3px rgba(23,71,97,.08); }
+.gr-num-input:focus { border-color: #000; box-shadow: 0 0 0 3px rgba(23,71,97,.08); }
 .gr-row-total { font-weight: 700; color: #111827; white-space: nowrap; }
 .gr-row-remove {
     width: 28px; height: 28px; border-radius: 50%; border: 0; background: #f3f4f6; color: #6b7280;
@@ -481,7 +481,7 @@
     margin-top: 14px; padding: 14px 16px; background: #f9fafb; border: 1.5px solid #e5e7eb; border-radius: 10px;
 }
 .gr-summary-label { font-size: 14px; color: #374151; font-weight: 600; }
-.gr-summary-value { font-size: 20px; font-weight: 800; color: #174761; }
+.gr-summary-value { font-size: 20px; font-weight: 800; color: #000; }
 </style>
 @endpush
 @endonce

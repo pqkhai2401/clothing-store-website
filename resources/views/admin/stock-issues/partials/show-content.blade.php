@@ -63,7 +63,7 @@
                 <tr>
                     <td class="text-muted">Đơn hàng liên quan:</td>
                     <td>
-                        <a href="{{ route('admin.orders.detail', $stockIssue->order_id) }}" class="fw-bold" style="color: #174761;">
+                        <a href="{{ route('admin.orders.detail', $stockIssue->order_id) }}" class="fw-bold" style="color: #000;">
                             {{ $stockIssue->order->order_code ?? 'Đơn hàng #'.$stockIssue->order_id }}
                         </a>
                     </td>
@@ -142,7 +142,7 @@
                             <td class="text-muted">{{ number_format($item->cost_price, 0, ',', '.') }}đ</td>
                             <td>{{ number_format($item->sale_price, 0, ',', '.') }}đ</td>
                             <td class="text-mutedfw-semibold">{{ number_format($item->total_cost, 0, ',', '.') }}đ</td>
-                            <td class="fw-bold" style="color: #174761;">{{ number_format($item->total_sale, 0, ',', '.') }}đ</td>
+                            <td class="fw-bold" style="color: #000;">{{ number_format($item->total_sale, 0, ',', '.') }}đ</td>
                         </tr>
                     @endforeach
                 </tbody>

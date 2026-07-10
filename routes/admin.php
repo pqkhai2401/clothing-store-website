@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\ColorController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\GoodsReceiptController;
+use App\Http\Controllers\Admin\InventoryReportController;
 use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\ReviewController;
@@ -152,6 +153,7 @@ Route::middleware(['auth.login', 'active.account', 'admin'])
             ->prefix('goods-receipts')->name('goods-receipts.')->group(function () {
                 Route::get('/', [GoodsReceiptController::class, 'index'])->name('list');
                 Route::get('/create', [GoodsReceiptController::class, 'create'])->name('create');
+                Route::get('/reports/profit', [InventoryReportController::class, 'profit'])->name('reports.profit');
                 Route::get('/stock-card/{variant}', [GoodsReceiptController::class, 'stockCard'])->name('stockCard');
                 Route::post('/', [GoodsReceiptController::class, 'store'])->name('store');
                 Route::post('/bulk-delete', [GoodsReceiptController::class, 'bulkDelete'])->name('bulkDelete');

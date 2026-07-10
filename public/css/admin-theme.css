@@ -610,7 +610,7 @@ html:not([data-theme="dark"]) .btn-outline-danger {
 [data-theme="dark"] .app-main h5 { color: var(--hk-text-1) !important; }
 
 html:not([data-theme="dark"]) .app-main h1,
-html:not([data-theme="dark"]) .app-main h4 { color: #174761; }
+html:not([data-theme="dark"]) .app-main h4 { color: #000; }
 
 [data-theme="dark"] .text-muted  { color: var(--hk-text-2) !important; }
 [data-theme="dark"] .text-dark   { color: var(--hk-text-1) !important; }

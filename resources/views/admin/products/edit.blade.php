@@ -38,7 +38,7 @@
         position: relative;
         background: #fafafa;
     }
-    .img-slot:hover, .img-slot.drag-over { border-color: #174761; background: #f0f9ff; }
+    .img-slot:hover, .img-slot.drag-over { border-color: #000; background: #f0f9ff; }
     .img-slot .slot-placeholder { text-align: center; padding: 8px; pointer-events: none; }
     .img-slot .slot-placeholder i { font-size: 22px; color: #9ca3af; }
     .img-slot .slot-placeholder p { font-size: 11px; color: #9ca3af; margin: 4px 0 0; }
@@ -74,7 +74,7 @@
         border-color: #ced4da;
     }
     .hk-cat-form .hk-cat-trigger:hover,
-    .hk-cat-form .hk-cat-trigger.is-open { border-color: #174761; }
+    .hk-cat-form .hk-cat-trigger.is-open { border-color: #000; }
     .hk-cat-form .hk-cat-panel { width: 100%; }
     .hk-cat-form.is-invalid .hk-cat-trigger { border-color: #dc3545; }
     </style>

@@ -117,6 +117,14 @@ class AppServiceProvider extends ServiceProvider
                         'parent'         => [],
                     ],
                     [
+                        'permission'     => 'manage-goods-receipts',
+                        'title'          => 'Báo cáo lãi gộp (FIFO)',
+                        'url'            => $r('admin.goods-receipts.reports.profit', '/admin/goods-receipts/reports/profit'),
+                        'active_pattern' => 'admin/goods-receipts/reports*',
+                        'icon'           => 'fa-solid fa-chart-line',
+                        'parent'         => [],
+                    ],
+                    [
                         'permission'     => 'manage-suppliers',
                         'title'          => 'Quản lý nhà cung cấp',
                         'url'            => $r('admin.suppliers.list', '/admin/suppliers'),

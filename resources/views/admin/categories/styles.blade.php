@@ -7,7 +7,7 @@
     .edit-field .form-control,
     .edit-field .form-select { font-size: 13px; border-color: var(--hk-border, #ced4da); background: var(--hk-bg-input, #fff); color: var(--hk-text-1, #111); }
     .edit-field .form-control:focus,
-    .edit-field .form-select:focus { border-color: #174761; box-shadow: 0 0 0 2px rgba(23,71,97,.12); }
+    .edit-field .form-select:focus { border-color: #000; box-shadow: 0 0 0 2px rgba(23,71,97,.12); }
     .edit-field .form-text { font-size: 12px; color: var(--hk-text-3, #6b7280); margin-top: 4px; }
     .edit-actions { display: flex; gap: 10px; padding-top: 6px; }
     .edit-actions .btn { min-height: 36px; font-size: 13px; font-weight: 700; border-radius: 4px; padding: 6px 18px; }

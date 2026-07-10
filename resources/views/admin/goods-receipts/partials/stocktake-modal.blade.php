@@ -164,7 +164,7 @@
     width: 100%; height: 42px; border: 1.5px solid #d1d5db; border-radius: 8px;
     padding: 0 14px; font-size: 14px; outline: none;
 }
-.gr-picker-input:focus { border-color: #174761; box-shadow: 0 0 0 3px rgba(23,71,97,.08); }
+.gr-picker-input:focus { border-color: #000; box-shadow: 0 0 0 3px rgba(23,71,97,.08); }
 .gr-picker-panel {
     position: absolute; top: calc(100% + 6px); left: 0; right: 0;
     background: #fff; border: 1.5px solid #e5e7eb; border-radius: 10px;
@@ -240,7 +240,7 @@
 .stkd-summary-item-label { font-size: 12px; font-weight: 600; color: #6b7280; }
 .stkd-summary-item-value { font-size: 14px; font-weight: 700; }
 .stkd-summary-item--net { margin-left: auto; text-align: right; }
-.stkd-summary-net-value { font-size: 24px; font-weight: 800; color: #174761; }
+.stkd-summary-net-value { font-size: 24px; font-weight: 800; color: #000; }
 </style>
 @endpush
 @endonce

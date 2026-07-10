@@ -314,7 +314,7 @@
 <style>
         .info-label { font-weight: 700; font-size: 13px; color: #6b7280; min-width: 150px; }
         .info-value { font-size: 13px; color: #111827; font-weight: 600; }
-        .section-title { font-size: 13px; font-weight: 800; color: #174761; text-transform: uppercase; letter-spacing: .04em; }
+        .section-title { font-size: 13px; font-weight: 800; color: #000; text-transform: uppercase; letter-spacing: .04em; }
         .item-table thead th { font-size: 12px; font-weight: 800; background: #f9fafb; }
         .update-card .form-select,
         .update-card .form-control { font-size: 13px; }

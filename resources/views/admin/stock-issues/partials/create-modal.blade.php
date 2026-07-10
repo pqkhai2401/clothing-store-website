@@ -191,7 +191,7 @@
 .si-inline-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #6b7280; white-space: nowrap; }
 .si-filter-width { width: 100%; }
 .border-grey { border: 1.5px solid #d1d5db; }
-.border-grey:focus { border-color: #174761; box-shadow: 0 0 0 3px rgba(23,71,97,.08); }
+.border-grey:focus { border-color: #000; box-shadow: 0 0 0 3px rgba(23,71,97,.08); }
 .price-input.is-locked { background: #f3f4f6 !important; color: #9ca3af !important; cursor: not-allowed; }
 .gr-num-input.border-danger { border-color: #dc2626 !important; }
 .si-stock-warning { font-size: 11px; font-weight: 600; color: #dc2626; margin-top: 4px; }
@@ -212,7 +212,7 @@
     transition: border-color .15s, box-shadow .15s;
 }
 .si-offcanvas .hk-cat-trigger:focus {
-    border-color: #174761;
+    border-color: #000;
     box-shadow: 0 0 0 3px rgba(23,71,97,.08);
 }
 .si-offcanvas .hk-cat-panel {
@@ -244,7 +244,7 @@
     width: 100%; height: 40px; border: 1.5px solid #d1d5db; border-radius: 8px;
     padding: 0 14px; font-size: 14px; outline: none;
 }
-.gr-picker-input:focus { border-color: #174761; box-shadow: 0 0 0 3px rgba(23,71,97,.08); }
+.gr-picker-input:focus { border-color: #000; box-shadow: 0 0 0 3px rgba(23,71,97,.08); }
 .gr-picker-panel {
     position: absolute; top: calc(100% + 6px); left: 0; right: 0;
     background: #fff; border: 1.5px solid #e5e7eb; border-radius: 10px;
@@ -284,7 +284,7 @@
     width: 100%; min-width: 75px; height: 34px; border: 1.5px solid #d1d5db; border-radius: 6px;
     padding: 0 8px; font-size: 13px; outline: none; box-sizing: border-box;
 }
-.gr-num-input:focus { border-color: #174761; box-shadow: 0 0 0 3px rgba(23,71,97,.08); }
+.gr-num-input:focus { border-color: #000; box-shadow: 0 0 0 3px rgba(23,71,97,.08); }
 .gr-row-total { font-weight: 700; color: #111827; white-space: nowrap; }
 .gr-row-remove {
     width: 28px; height: 28px; border-radius: 50%; border: 0; background: #f3f4f6; color: #6b7280;
@@ -302,7 +302,7 @@
 }
 .gr-summary-label { font-size: 13px; color: #475569; font-weight: 600; }
 .gr-summary-value { font-size: 17px; font-weight: 800; color: #1e293b; }
-.gr-summary-value#siModalTotalSale { color: #174761; font-size: 19px; }
+.gr-summary-value#siModalTotalSale { color: #000; font-size: 19px; }
 </style>
 @endpush
 @endonce
@@ -458,7 +458,7 @@
                 input.classList.add('is-locked');
                 const variantId = input.dataset.variantId;
                 if (selectedItems[variantId]) {
-                    input.value = selectedItems[variantId].variant.price;
+                    input.value = selectedItems[variantId].variant.sale_price;
                 }
             }
         });
@@ -472,6 +472,12 @@
     pickerInput.addEventListener('input', function() {
         renderSuggestions(pickerInput.value);
     });
+
+    function resolveImageUrl(path) {
+        if (!path) return 'https://placehold.co/80x80?text=No+Image';
+        if (path.startsWith('http://') || path.startsWith('https://')) return path;
+        return '/' + path.replace(/^\/+/, '');
+    }
 
     function renderSuggestions(query) {
         const q = query.trim().toLowerCase();
@@ -495,16 +501,14 @@
         filtered.forEach(v => {
             const item = document.createElement('div');
             item.className = 'gr-picker-item';
-            const img = v.thumbnail ? `<img src="/${v.thumbnail}" class="gr-picker-thumb">` : `<div class="gr-picker-thumb d-flex align-items-center justify-content-center text-muted"><i class="fa-regular fa-image"></i></div>`;
+            const img = `<img src="${resolveImageUrl(v.thumbnail)}" class="gr-picker-thumb" alt="">`;
             item.innerHTML = `
                 ${img}
                 <div class="gr-picker-info">
                     <div class="gr-picker-name">${v.product_name}</div>
                     <div class="gr-picker-meta">
-                        <span class="fw-bold">${v.sku}</span>
-                        <span class="gr-picker-dot" style="background:${v.color_hex}"></span>
-                        <span>Màu: ${v.color_name}</span>
-                        <span>Size: ${v.size_name}</span>
+                        <span class="gr-picker-dot" style="background:${v.color_hex || '#ccc'}"></span>
+                        <span>${v.color_name} · ${v.size_name} · ${v.sku}</span>
                     </div>
                 </div>
                 <div class="gr-picker-stock">Tồn: <b>${v.stock}</b></div>
@@ -534,7 +538,7 @@
             return;
         }
 
-        selectedItems[v.id] = { variant: v, quantity: 1, cost_price: v.cost_price, sale_price: v.price };
+        selectedItems[v.id] = { variant: v, quantity: 1, cost_price: v.cost_price, sale_price: v.sale_price };
 
         const isReturn = (issueTypeInput.value === 'return_supplier');
         const priceReadonly = isReturn ? '' : 'readonly';
@@ -542,7 +546,7 @@
 
         const tr = document.createElement('tr');
         tr.id = `siRow-${v.id}`;
-        const img = v.thumbnail ? `<img src="/${v.thumbnail}" class="gr-row-thumb">` : `<div class="gr-row-thumb d-flex align-items-center justify-content-center text-muted"><i class="fa-regular fa-image"></i></div>`;
+        const img = `<img src="${resolveImageUrl(v.thumbnail)}" class="gr-row-thumb" alt="">`;
 
         tr.innerHTML = `
             <td>
@@ -551,10 +555,8 @@
                     <div>
                         <div class="gr-row-name">${v.product_name}</div>
                         <div class="gr-row-sub">
-                            <span class="fw-bold">${v.sku}</span>
-                            <span class="gr-row-dot" style="background:${v.color_hex}"></span>
-                            <span>${v.color_name}</span>
-                            <span>Size ${v.size_name}</span>
+                            <span class="gr-row-dot" style="background:${v.color_hex || '#ccc'}"></span>
+                            ${v.color_name} · ${v.size_name} · ${v.sku}
                         </div>
                     </div>
                 </div>
@@ -570,10 +572,10 @@
                 <input type="hidden" name="items[${v.id}][cost_price]" value="${v.cost_price}">
             </td>
             <td>
-                <input type="number" name="items[${v.id}][sale_price]" class="gr-num-input price-input ${priceLockedClass}" value="${v.price}" min="0" step="1000" ${priceReadonly} data-variant-id="${v.id}">
+                <input type="number" name="items[${v.id}][sale_price]" class="gr-num-input price-input ${priceLockedClass}" value="${v.sale_price}" min="0" step="1000" ${priceReadonly} data-variant-id="${v.id}">
             </td>
             <td><span class="gr-row-total total-cost">${formatMoney(v.cost_price)}đ</span></td>
-            <td><span class="gr-row-total total-sale">${formatMoney(v.price)}đ</span></td>
+            <td><span class="gr-row-total total-sale">${formatMoney(v.sale_price)}đ</span></td>
             <td>
                 <button type="button" class="gr-row-remove"><i class="fa-solid fa-xmark"></i></button>
             </td>

@@ -366,8 +366,15 @@ class GoodsReceiptController extends Controller
                 return $transaction;
             });
 
+        // Tồn theo LÔ (batch) — nguồn sự thật: lô còn hàng lên trước (FIFO), lô đã hết xuống dưới.
+        $batches = \App\Models\ProductBatch::where('product_variant_id', $variant->id)
+            ->orderByRaw("CASE WHEN status = 'active' AND quantity_remaining > 0 THEN 0 ELSE 1 END")
+            ->orderBy('received_at')
+            ->orderBy('id')
+            ->get();
+
         return response()->json([
-            'html' => view('admin.goods-receipts.partials.stock-card', compact('variant', 'transactions'))->render(),
+            'html' => view('admin.goods-receipts.partials.stock-card', compact('variant', 'transactions', 'batches'))->render(),
         ]);
     }
 

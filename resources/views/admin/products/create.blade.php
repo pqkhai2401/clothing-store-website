@@ -48,12 +48,12 @@
         background: #fafafa;
     }
     .media-dropzone:hover, .media-dropzone.drag-over {
-        border-color: #174761;
+        border-color: #000;
         background: #f0f9ff;
     }
     .media-dropzone i { font-size: 26px; color: #9ca3af; }
     .media-dropzone p { margin: 8px 0 0; font-size: 13px; color: #6b7280; }
-    .media-dropzone p strong { color: #174761; }
+    .media-dropzone p strong { color: #000; }
 
     .media-grid {
         display: grid;
@@ -90,7 +90,7 @@
         border: 0;
     }
     .media-item.is-primary .media-primary-badge { background: #174761; }
-    .media-item.is-primary { border-color: #174761; box-shadow: 0 0 0 2px rgba(23,71,97,0.15); }
+    .media-item.is-primary { border-color: #000; box-shadow: 0 0 0 2px rgba(23,71,97,0.15); }
 
     /* ── hk-cat trigger inside form (form-select height) ── */
     .hk-cat-form .hk-cat-trigger {
@@ -101,7 +101,7 @@
     }
     .hk-cat-form .hk-cat-trigger:hover,
     .hk-cat-form .hk-cat-trigger.is-open {
-        border-color: #174761;
+        border-color: #000;
     }
     .hk-cat-form .hk-cat-panel {
         width: 100%;
