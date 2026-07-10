@@ -349,7 +349,7 @@ class OrderController extends Controller
                 'size'        => $variant->size->name ?? '',
                 'sku'         => $variant->sku,
                 'stock'       => $variant->stock,
-                'unit_price'  => $variant->product->final_price,
+                'unit_price'  => $variant->final_price,
             ]);
 
         return response()->json(['variants' => $variants]);
@@ -407,7 +407,7 @@ class OrderController extends Controller
             $totalMoney = 0;
             foreach ($validated['items'] as $item) {
                 $variant = $variants[$item['product_variant_id']];
-                $totalMoney += $variant->product->final_price * $item['quantity'];
+                $totalMoney += $variant->final_price * $item['quantity'];
             }
             $totalMoney += (float) $validated['shipping_fee'];
 
@@ -430,7 +430,7 @@ class OrderController extends Controller
                 OrderItem::create([
                     'order_id'           => $order->id,
                     'product_variant_id' => $variant->id,
-                    'unit_price'         => $variant->product->final_price,
+                    'unit_price'         => $variant->final_price,
                     'quantity'           => $item['quantity'],
                 ]);
             }

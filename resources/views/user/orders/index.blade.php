@@ -762,8 +762,8 @@
                     </div>
                     <div style="display:flex; gap:8px; align-items:center;">
                         @if($order->status === 'pending' && $order->payment_status === 'unpaid')
-                            @if($order->paymentMethod?->isPayos())
-                                <a href="{{ route('checkout.payos.show', $order->id) }}" class="btn-pay-order">
+                            @if($order->paymentMethod?->isOnlineGateway())
+                                <a href="{{ $order->paymentResumeUrl() }}" class="btn-pay-order">
                                     <i class="bi bi-qr-code"></i> Tiếp tục thanh toán
                                 </a>
                             @endif

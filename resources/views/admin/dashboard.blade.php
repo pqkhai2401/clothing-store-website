@@ -198,46 +198,78 @@
 
     {{-- FILTER --}}
     <div class="card dash-filter">
+        <form method="GET" action="{{ route('admin.dashboard') }}">
         <div class="dash-filter-head">
             <div>
                 <h2 class="dash-sec-title">Xin chào, <span class="fw-bold">{{ auth()->user()->username }}</span></h2>
-                <p class="dash-subtitle" style="margin-top:2px;">Tùy chỉnh khoảng thời gian và dữ liệu hiển thị trên biểu đồ</p>
+                <p class="dash-subtitle" style="margin-top:2px;">Đang xem: {{ $periodLabel }}</p>
             </div>
             <a href="#" class="dash-btn dash-btn-ghost"><i class="fa-solid fa-download"></i> Xuất báo cáo</a>
         </div>
         <div class="dash-fgrid">
             <div class="dash-field"><label>Chỉ số</label>
-                <select class="form-select"><option>Doanh thu thực thu</option><option>Số đơn hàng</option><option>Số sản phẩm bán ra</option><option>Khách hàng mới</option><option>Đơn bị hủy</option></select></div>
+                <select class="form-select" name="metric">
+                    @foreach($metricLabels as $value => $label)
+                        <option value="{{ $value }}" @selected($metric === $value)>{{ $label }}</option>
+                    @endforeach
+                </select></div>
             <div class="dash-field"><label>Thời gian</label>
-                <select class="form-select" id="dashTimeSel"><option>Hôm nay</option><option>7 ngày gần nhất</option><option selected>30 ngày gần nhất</option><option>Tháng này</option><option>Tháng trước</option><option>Năm nay</option><option>Năm trước</option><option value="custom">Tùy chỉnh…</option></select></div>
+                <select class="form-select" id="dashTimeSel" name="range">
+                    @foreach($rangeLabels as $value => $label)
+                        <option value="{{ $value }}" @selected($range === $value)>{{ $label }}</option>
+                    @endforeach
+                </select></div>
             <div class="dash-field"><label>Hiển thị theo</label>
-                <select class="form-select"><option selected>Ngày</option><option>Tháng</option><option>Năm</option></select></div>
+                <select class="form-select" name="group_by">
+                    @foreach($groupByLabels as $value => $label)
+                        <option value="{{ $value }}" @selected($groupBy === $value)>{{ $label }}</option>
+                    @endforeach
+                </select></div>
             <div class="dash-field"><label>Loại biểu đồ</label>
-                <select class="form-select"><option selected>Biểu đồ đường</option><option>Biểu đồ cột</option><option>Biểu đồ vùng</option></select></div>
+                <select class="form-select" name="chart_type">
+                    @foreach($chartTypeLabels as $value => $label)
+                        <option value="{{ $value }}" @selected($chartType === $value)>{{ $label }}</option>
+                    @endforeach
+                </select></div>
         </div>
 
-        <div class="dash-advanced" id="dashAdvanced">
+        <div class="dash-advanced @if($statusFilter || $paymentFilter || $methodFilter) show @endif" id="dashAdvanced">
             <div class="dash-field"><label>Trạng thái đơn</label>
-                <select class="form-select"><option selected>Tất cả</option><option>Chờ xử lý</option><option>Đang xử lý</option><option>Đang giao</option><option>Hoàn thành</option><option>Đã hủy</option></select></div>
+                <select class="form-select" name="status">
+                    <option value="" @selected($statusFilter === '')>Tất cả</option>
+                    @foreach($statusLabels as $value => $label)
+                        <option value="{{ $value }}" @selected($statusFilter === $value)>{{ $label }}</option>
+                    @endforeach
+                </select></div>
             <div class="dash-field"><label>Thanh toán</label>
-                <select class="form-select"><option>Tất cả</option><option selected>Đã thanh toán</option><option>Chưa thanh toán</option><option>Đã hoàn tiền</option></select></div>
+                <select class="form-select" name="payment_status">
+                    <option value="" @selected($paymentFilter === '')>Tất cả</option>
+                    @foreach($paymentStatusLabels as $value => $label)
+                        <option value="{{ $value }}" @selected($paymentFilter === $value)>{{ $label }}</option>
+                    @endforeach
+                </select></div>
             <div class="dash-field"><label>Phương thức</label>
-                <select class="form-select"><option selected>Tất cả</option><option>COD</option><option>PayOS</option></select></div>
+                <select class="form-select" name="payment_method_id">
+                    <option value="" @selected($methodFilter === '')>Tất cả</option>
+                    @foreach($paymentMethods as $method)
+                        <option value="{{ $method->id }}" @selected($methodFilter === (string) $method->id)>{{ $method->name }}</option>
+                    @endforeach
+                </select></div>
         </div>
 
-        <div class="dash-custom-date" id="dashCustomDate">
-            <div class="dash-field"><label>Từ ngày</label><input type="date" class="form-control" value="2026-06-09"></div>
-            <div class="dash-field"><label>Đến ngày</label><input type="date" class="form-control" value="2026-07-09"></div>
-            <button type="button" class="dash-btn dash-btn-primary">Áp dụng</button>
+        <div class="dash-custom-date @if($range === 'custom') show @endif" id="dashCustomDate">
+            <div class="dash-field"><label>Từ ngày</label><input type="date" name="date_from" class="form-control" value="{{ $dateFrom }}"></div>
+            <div class="dash-field"><label>Đến ngày</label><input type="date" name="date_to" class="form-control" value="{{ $dateTo }}"></div>
         </div>
 
         <div class="dash-filter-actions">
-            <button type="button" class="dash-btn dash-btn-primary"><i class="fa-solid fa-rotate"></i> Làm mới</button>
-            <button type="button" class="dash-btn">Đặt lại</button>
-            <button type="button" class="dash-btn dash-adv-toggle" id="dashAdvToggle" aria-expanded="false">
+            <button type="submit" class="dash-btn dash-btn-primary"><i class="fa-solid fa-rotate"></i> Áp dụng</button>
+            <a href="{{ route('admin.dashboard') }}" class="dash-btn">Đặt lại</a>
+            <button type="button" class="dash-btn dash-adv-toggle @if($statusFilter || $paymentFilter || $methodFilter) open @endif" id="dashAdvToggle" aria-expanded="{{ ($statusFilter || $paymentFilter || $methodFilter) ? 'true' : 'false' }}">
                 <i class="fa-solid fa-sliders"></i> Bộ lọc nâng cao <i class="fa-solid fa-chevron-down"></i>
             </button>
         </div>
+        </form>
     </div>
 
     {{-- PRIMARY KPI — 6 thẻ quan trọng nhất --}}
@@ -249,7 +281,7 @@
                     <p class="dash-kpi-label">Doanh thu thực thu</p>
                     <p class="dash-kpi-value">{{ number_format($stats['revenue'], 0, ',', '.') }} ₫</p>
                 </div>
-                <div class="dash-delta"><span class="dash-pct up">+{{ $stats['revenueDelta'] }}%</span><small>vs kỳ trước</small></div>
+                <div class="dash-delta"><span class="dash-pct {{ $stats['revenueDelta'] >= 0 ? 'up' : 'down' }}">{{ $stats['revenueDelta'] >= 0 ? '+' : '' }}{{ $stats['revenueDelta'] }}%</span><small>vs kỳ trước</small></div>
             </div>
             <p class="dash-kpi-sub">Chỉ tính đơn đã thanh toán, không gồm đơn đã hủy.</p>
         </div>
@@ -260,7 +292,7 @@
                     <p class="dash-kpi-label">Tổng đơn hàng</p>
                     <p class="dash-kpi-value">{{ number_format($stats['orders'], 0, ',', '.') }}</p>
                 </div>
-                <div class="dash-delta"><span class="dash-pct info">+{{ $stats['ordersDelta'] }}%</span><small>vs kỳ trước</small></div>
+                <div class="dash-delta"><span class="dash-pct {{ $stats['ordersDelta'] >= 0 ? 'info' : 'down' }}">{{ $stats['ordersDelta'] >= 0 ? '+' : '' }}{{ $stats['ordersDelta'] }}%</span><small>vs kỳ trước</small></div>
             </div>
             <p class="dash-kpi-sub">Tất cả đơn hàng trong kỳ đang chọn</p>
         </div>
@@ -271,7 +303,7 @@
                     <p class="dash-kpi-label">Đơn chờ xử lý</p>
                     <p class="dash-kpi-value warnv">{{ number_format($stats['pending'], 0, ',', '.') }}</p>
                 </div>
-                <div class="dash-delta"><span class="dash-pct down">{{ $stats['pendingDelta'] }}%</span><small>vs kỳ trước</small></div>
+                <div class="dash-delta"><span class="dash-pct {{ $stats['pendingDelta'] >= 0 ? 'up' : 'down' }}">{{ $stats['pendingDelta'] >= 0 ? '+' : '' }}{{ $stats['pendingDelta'] }}%</span><small>vs kỳ trước</small></div>
             </div>
             <p class="dash-kpi-sub warns">Cần xử lý ngay</p>
         </div>
@@ -327,7 +359,7 @@
     <div class="dash-charts">
         <div class="card dash-panel">
             <div class="dash-panel-head">
-                <h2 class="dash-sec-title">Doanh thu theo ngày</h2>
+                <h2 class="dash-sec-title">{{ $revenueChart['title'] }}</h2>
                 <div class="dash-legend"><span><i class="dash-sw cur"></i> Kỳ này</span><span><i class="dash-sw prev"></i> Kỳ trước</span></div>
             </div>
             <div id="dashRevenueChart"></div>
@@ -440,6 +472,18 @@
         });
     }
 
+    // ── Tự động áp dụng bộ lọc ngay khi đổi lựa chọn (không cần bấm "Áp dụng"),
+    //    trừ khi chọn "Tùy chỉnh…" — lúc đó chờ người dùng nhập ngày rồi tự bấm Áp dụng ──
+    var filterForm = document.querySelector('.dash-filter form');
+    if (filterForm) {
+        filterForm.querySelectorAll('select').forEach(function (sel) {
+            sel.addEventListener('change', function () {
+                if (sel === timeSel && sel.value === 'custom') return;
+                filterForm.submit();
+            });
+        });
+    }
+
     // ── Toggle bộ lọc nâng cao ──
     var advToggle = document.getElementById('dashAdvToggle');
     var advPanel = document.getElementById('dashAdvanced');
@@ -471,16 +515,24 @@
     var axisColor = isDark ? '#94A3B8' : '#64748B';
     var gridColor = isDark ? '#22324D' : '#EEF3F1';
 
-    // ── Biểu đồ doanh thu (đường, kỳ này vs kỳ trước) ──
+    // ── Biểu đồ chỉ số đã chọn (đường/cột/vùng, kỳ này vs kỳ trước) ──
+    var isMoney   = @json($revenueChart['isMoney']);
+    var chartType = @json($chartType); // 'line' | 'bar' | 'area'
+    var isArea    = chartType === 'area';
+    var isBar     = chartType === 'bar';
+
     var revenueChart = new ApexCharts(document.getElementById('dashRevenueChart'), {
-        chart: { type: 'area', height: 300, toolbar: { show: false }, fontFamily: 'inherit', zoom: { enabled: false } },
+        chart: { type: isBar ? 'bar' : (isArea ? 'area' : 'line'), height: 300, toolbar: { show: false }, fontFamily: 'inherit', zoom: { enabled: false } },
         series: [
             { name: 'Kỳ này',  data: @json($revenueChart['current']) },
             { name: 'Kỳ trước', data: @json($revenueChart['previous']) }
         ],
         colors: ['#16A34A', '#94A3B8'],
-        stroke: { curve: 'smooth', width: [3, 2], dashArray: [0, 5] },
-        fill: { type: ['gradient', 'solid'], opacity: [0.18, 0], gradient: { opacityFrom: 0.28, opacityTo: 0.02 } },
+        stroke: isBar ? { width: 0 } : { curve: 'smooth', width: [3, 2], dashArray: [0, 5] },
+        fill: (isBar || !isArea)
+            ? { type: 'solid', opacity: 1 }
+            : { type: ['gradient', 'solid'], opacity: [0.18, 0], gradient: { opacityFrom: 0.28, opacityTo: 0.02 } },
+        plotOptions: { bar: { borderRadius: 4, columnWidth: '55%' } },
         dataLabels: { enabled: false },
         legend: { show: false },
         xaxis: {
@@ -488,9 +540,9 @@
             labels: { style: { colors: axisColor, fontSize: '12px' } },
             axisBorder: { show: false }, axisTicks: { show: false }
         },
-        yaxis: { labels: { style: { colors: axisColor, fontSize: '12px' }, formatter: function (v) { return v + ' tr'; } } },
+        yaxis: { labels: { style: { colors: axisColor, fontSize: '12px' }, formatter: function (v) { return isMoney ? (Math.round(v * 10) / 10) + ' tr' : Math.round(v); } } },
         grid: { borderColor: gridColor, strokeDashArray: 4, padding: { left: 8, right: 8 } },
-        tooltip: { theme: isDark ? 'dark' : 'light', y: { formatter: function (v) { return v + ' triệu ₫'; } } },
+        tooltip: { theme: isDark ? 'dark' : 'light', y: { formatter: function (v) { return isMoney ? (Math.round(v * 10) / 10) + ' triệu ₫' : (Math.round(v) + ''); } } },
         markers: { size: 0, hover: { size: 5 } }
     });
     revenueChart.render();

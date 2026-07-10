@@ -364,8 +364,8 @@
                 </div>
             </div>
 
-            @if($order->status === 'pending' && $order->payment_status === 'unpaid' && $order->paymentMethod?->isPayos())
-                <a href="{{ route('checkout.payos.show', $order->id) }}"
+            @if($order->status === 'pending' && $order->payment_status === 'unpaid' && $order->paymentMethod?->isOnlineGateway())
+                <a href="{{ $order->paymentResumeUrl() }}"
                    style="display:flex; align-items:center; justify-content:center; gap:8px;
                           width:100%; height:46px; margin-bottom:20px; border-radius:8px;
                           background:#0d6efd; color:#fff; font-size:14px; font-weight:700;
@@ -386,7 +386,6 @@
                             {{ collect([
                                 $order->address->apartment_number,
                                 $order->address->ward,
-                                $order->address->district,
                                 $order->address->city,
                             ])->filter()->join(', ') }}
                         </div>

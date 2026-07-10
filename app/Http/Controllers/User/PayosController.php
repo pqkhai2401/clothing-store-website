@@ -30,31 +30,67 @@ class PayosController extends Controller
                 ->with('success', 'Đơn hàng đã được thanh toán.');
         }
 
-        // Sinh mã giao dịch PayOS mới cho lần hiển thị này (cho phép tạo lại QR nhiều lần).
-        $payosOrderCode = $this->generatePayosOrderCode($order);
+        // Tái sử dụng mã + QR PayOS đã sinh trước đó nếu link còn hiệu lực (PENDING/PROCESSING),
+        // thay vì sinh code mới mỗi lần mở trang (F5, mở lại tab...). Trước đây làm vậy khiến:
+        // (1) webhook/return tra theo code mới trong DB không thấy đơn nếu user thanh toán đúng QR cũ,
+        // (2) đồng hồ đếm ngược luôn bị reset về 30 phút dù link cũ chưa hết hạn.
+        // getPaymentInfo() (GET /v2/payment-requests/{id}) của PayOS không trả lại `qrCode`
+        // (trường này chỉ có ở response lúc tạo mới) nên phải tự cache lại vào payos_payload.
+        $payosOrderCode = $order->payos_order_code ? (int) $order->payos_order_code : null;
+        $payload = null;
 
-        try {
-            $data = $this->payos->createPaymentLink($order, $payosOrderCode);
-        } catch (\Throwable $e) {
-            Log::error('PayOS create link failed', ['order_id' => $order->id, 'error' => $e->getMessage()]);
+        if ($payosOrderCode && $order->payos_payload) {
+            $info   = $this->payos->getPaymentInfo($payosOrderCode);
+            $status = $info['status'] ?? null;
 
-            return redirect()->route('orders.show', $order->id)
-                ->with('error', 'Không tạo được mã thanh toán PayOS. Vui lòng thử lại hoặc chọn phương thức khác.');
+            if ($status === 'PAID') {
+                $this->markPaid($order);
+
+                return redirect()->route('orders.show', $order->id)
+                    ->with('success', 'Đơn hàng đã được thanh toán.');
+            }
+
+            if ($info && in_array($status, ['PENDING', 'PROCESSING'], true)) {
+                $payload = $order->payos_payload;
+            }
         }
 
-        $order->update(['payos_order_code' => $payosOrderCode]);
+        $isNewCode = $payload === null;
+
+        if ($isNewCode) {
+            $payosOrderCode = $this->generatePayosOrderCode($order);
+
+            try {
+                $data = $this->payos->createPaymentLink($order, $payosOrderCode);
+            } catch (\Throwable $e) {
+                Log::error('PayOS create link failed', ['order_id' => $order->id, 'error' => $e->getMessage()]);
+
+                return redirect()->route('orders.show', $order->id)
+                    ->with('error', 'Không tạo được mã thanh toán PayOS. Vui lòng thử lại hoặc chọn phương thức khác.');
+            }
+
+            $payload = $data;
+            $payload['_created_at'] = now()->timestamp;
+
+            $order->update([
+                'payos_order_code' => $payosOrderCode,
+                'payos_payload'    => $payload,
+            ]);
+        }
+
+        $createdAt = $payload['_created_at'] ?? now()->timestamp;
+        $expiresIn = max(0, PayosService::EXPIRE_MINUTES * 60 - (now()->timestamp - $createdAt));
 
         return view('user.checkout.payos', [
             'order'         => $order,
-            'qrCode'        => (string) ($data['qrCode'] ?? ''),
-            'checkoutUrl'   => (string) ($data['checkoutUrl'] ?? ''),
+            'qrCode'        => (string) ($payload['qrCode'] ?? ''),
+            'checkoutUrl'   => (string) ($payload['checkoutUrl'] ?? ''),
             'amount'        => (int) round((float) $order->total_money),
-            'accountName'   => $data['accountName'] ?? null,
-            'accountNumber' => $data['accountNumber'] ?? null,
-            'bin'           => $data['bin'] ?? null,
-            'bankName'      => $this->bankNameFromBin($data['bin'] ?? null),
-            // Mã vừa được sinh mới nên còn nguyên thời hạn — đếm theo thời lượng để tránh lệch giờ client.
-            'expiresIn'     => PayosService::EXPIRE_MINUTES * 60,
+            'accountName'   => $payload['accountName'] ?? null,
+            'accountNumber' => $payload['accountNumber'] ?? null,
+            'bin'           => $payload['bin'] ?? null,
+            'bankName'      => $this->bankNameFromBin($payload['bin'] ?? null),
+            'expiresIn'     => $expiresIn,
         ]);
     }
 

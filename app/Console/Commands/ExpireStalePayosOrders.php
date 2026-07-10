@@ -12,23 +12,23 @@ use Illuminate\Console\Command;
 class ExpireStalePayosOrders extends Command
 {
     /**
-     * Link thanh toán PayOS hết hạn sau 30 phút (xem PayosService::createPaymentLink).
+     * Link/QR thanh toán online hết hạn sau 30 phút (PayOS & MoMo cùng ngưỡng).
      */
     private const EXPIRE_MINUTES = PayosService::EXPIRE_MINUTES;
 
     protected $signature = 'orders:expire-stale-payos';
 
-    protected $description = 'Tự hủy các đơn PayOS pending/unpaid đã quá hạn thanh toán (30 phút).';
+    protected $description = 'Tự hủy các đơn thanh toán online (PayOS/MoMo) pending/unpaid đã quá hạn (30 phút).';
 
     public function handle(): int
     {
-        $payosIds = PaymentMethod::all()
-            ->filter(fn (PaymentMethod $method) => $method->isPayos())
+        $onlineIds = PaymentMethod::all()
+            ->filter(fn (PaymentMethod $method) => $method->isOnlineGateway())
             ->pluck('id')
             ->all();
 
-        if (empty($payosIds)) {
-            $this->info('Không có phương thức PayOS nào — bỏ qua.');
+        if (empty($onlineIds)) {
+            $this->info('Không có phương thức thanh toán online nào — bỏ qua.');
 
             return self::SUCCESS;
         }
@@ -38,11 +38,11 @@ class ExpireStalePayosOrders extends Command
         $count = Order::query()
             ->where('status', OrderStatus::PENDING->value)
             ->where('payment_status', PaymentStatus::UNPAID->value)
-            ->whereIn('payment_method_id', $payosIds)
+            ->whereIn('payment_method_id', $onlineIds)
             ->where('created_at', '<', now()->subMinutes(self::EXPIRE_MINUTES))
             ->update(['status' => OrderStatus::CANCELLED->value]);
 
-        $this->info("Đã hủy {$count} đơn PayOS quá hạn.");
+        $this->info("Đã hủy {$count} đơn thanh toán online quá hạn.");
 
         return self::SUCCESS;
     }

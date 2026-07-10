@@ -20,6 +20,9 @@ class Order extends Model implements \OwenIt\Auditing\Contracts\Auditable
         'voucher_id',
         'order_code',
         'payos_order_code',
+        'payos_payload',
+        'momo_order_id',
+        'momo_payload',
         'phone',
         'note',
         'total_money',
@@ -33,6 +36,8 @@ class Order extends Model implements \OwenIt\Auditing\Contracts\Auditable
         'total_money' => 'decimal:2',
         'shipping_fee' => 'decimal:2',
         'discount_amount' => 'decimal:2',
+        'payos_payload' => 'array',
+        'momo_payload' => 'array',
     ];
 
     /**
@@ -73,5 +78,28 @@ class Order extends Model implements \OwenIt\Auditing\Contracts\Auditable
     public function voucher(): BelongsTo
     {
         return $this->belongsTo(Voucher::class);
+    }
+
+    /**
+     * URL để tiếp tục thanh toán (quay lại trang QR) theo đúng cổng của đơn.
+     * Trả null nếu không phải cổng online (COD/chuyển khoản).
+     */
+    public function paymentResumeUrl(): ?string
+    {
+        $method = $this->paymentMethod;
+
+        if (! $method) {
+            return null;
+        }
+
+        if ($method->isPayos()) {
+            return route('checkout.payos.show', $this->id);
+        }
+
+        if ($method->isMomo()) {
+            return route('checkout.momo.show', $this->id);
+        }
+
+        return null;
     }
 }

@@ -77,17 +77,6 @@
             color: #0f172a;
             font-size: 13px;
         }
-        .grd-breadcrumb {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex-wrap: wrap;
-            color: #64748b;
-            font-size: 12px;
-            font-weight: 700;
-            margin-bottom: 14px;
-        }
-        .grd-breadcrumb span:last-child { color: #0f172a; }
         .grd-header {
             background: #fff;
             border: 1px solid #e2e8f0;
@@ -148,18 +137,6 @@
             margin-top: 10px;
         }
         .grd-meta strong { color: #334155; }
-        .grd-close-btn {
-            width: 36px;
-            height: 36px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            border: 1px solid #e2e8f0;
-            border-radius: 10px;
-            background: #fff;
-            color: #64748b;
-        }
-        .grd-close-btn:hover { background: #f8fafc; color: #0f172a; }
         .grd-layout {
             display: grid;
             grid-template-columns: minmax(0, 1fr) 320px;
@@ -235,10 +212,11 @@
         .grd-table {
             width: 100%;
             border-collapse: collapse;
-            min-width: 760px;
+            min-width: 0;
+            table-layout: fixed;
         }
         .grd-table th {
-            padding: 13px 16px;
+            padding: 13px 12px;
             background: #f8fafc;
             border-bottom: 1px solid #e5e7eb;
             color: #475569;
@@ -249,7 +227,7 @@
             white-space: nowrap;
         }
         .grd-table td {
-            padding: 15px 16px;
+            padding: 15px 12px;
             border-bottom: 1px solid #eef2f7;
             vertical-align: middle;
         }
@@ -257,7 +235,7 @@
             display: flex;
             align-items: center;
             gap: 12px;
-            min-width: 280px;
+            min-width: 0;
         }
         .grd-thumb {
             width: 52px;
@@ -268,11 +246,13 @@
             border: 1px solid #e2e8f0;
             flex: 0 0 auto;
         }
+        .grd-product > div { min-width: 0; }
         .grd-product-name {
             color: #111827;
             font-size: 14.5px;
             font-weight: 850;
             line-height: 1.25;
+            overflow-wrap: anywhere;
         }
         .grd-variant {
             display: flex;
@@ -417,18 +397,9 @@
 @endonce
 
 <div class="grd-detail">
-    <div class="grd-breadcrumb">
-        <span>Quản lý kho</span>
-        <i class="fa-solid fa-chevron-right" style="font-size:9px;"></i>
-        <span>Phiếu nhập kho</span>
-        <i class="fa-solid fa-chevron-right" style="font-size:9px;"></i>
-        <span>Chi tiết phiếu nhập</span>
-    </div>
-
     <header class="grd-header">
         <div class="grd-header-main">
             <div>
-                <h2 class="grd-title">Chi tiết phiếu nhập kho</h2>
                 <div class="grd-code-line">
                     <span class="grd-code">{{ $goodsReceipt->code }}</span>
                     <span class="grd-status {{ $statusClass }}">{{ $statusLabel }}</span>
@@ -441,9 +412,6 @@
                     @endif
                 </div>
             </div>
-            <button type="button" class="grd-close-btn" data-bs-dismiss="modal" aria-label="Đóng">
-                <i class="fa-solid fa-xmark"></i>
-            </button>
         </div>
     </header>
 

@@ -25,6 +25,11 @@ class PaymentMethodSeeder extends Seeder
                 'status' => true,
                 'image' => 'https://payos.vn/docs/img/logo.svg',
             ],
+            [
+                'name' => 'MoMo - Ví điện tử',
+                'status' => true,
+                'image' => 'https://developers.momo.vn/v3/assets/images/square-logo.svg',
+            ],
         ];
 
         foreach ($methods as $method) {

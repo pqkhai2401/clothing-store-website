@@ -36,4 +36,21 @@ class PaymentMethod extends Model
     {
         return str_contains(strtolower($this->name ?? ''), 'payos');
     }
+
+    /**
+     * Phương thức này có phải MoMo (thanh toán online qua QR) hay không.
+     */
+    public function isMomo(): bool
+    {
+        return str_contains(strtolower($this->name ?? ''), 'momo');
+    }
+
+    /**
+     * Có phải cổng thanh toán online (QR, thanh toán ngay) — PayOS hoặc MoMo.
+     * Dùng cho: nút "Tiếp tục thanh toán", supersede đơn treo, tự hủy đơn quá hạn.
+     */
+    public function isOnlineGateway(): bool
+    {
+        return $this->isPayos() || $this->isMomo();
+    }
 }

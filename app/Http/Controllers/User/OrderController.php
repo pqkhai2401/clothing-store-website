@@ -148,14 +148,14 @@ class OrderController extends Controller
 
         // Khách chỉ được hủy khi pending + unpaid
         $canCancel = $order->status === 'pending' && $order->payment_status === 'unpaid';
-        // Cho phép tiếp tục thanh toán khi đơn PayOS còn pending + chưa thanh toán
-        $canPay = $canCancel && (bool) $order->paymentMethod?->isPayos();
+        // Cho phép tiếp tục thanh toán khi đơn cổng online (PayOS/MoMo) còn pending + chưa thanh toán
+        $canPay = $canCancel && (bool) $order->paymentMethod?->isOnlineGateway();
 
         return response()->json([
             'id'             => $order->id,
             'can_cancel'     => $canCancel,
             'can_pay'        => $canPay,
-            'pay_url'        => route('checkout.payos.show', $order->id),
+            'pay_url'        => $order->paymentResumeUrl(),
             'order_code'     => $order->order_code,
             'status'         => $order->status,
             'status_label'   => $statusLabels[$order->status] ?? $order->status,
@@ -167,7 +167,6 @@ class OrderController extends Controller
             'address'        => $order->address ? collect([
                 $order->address->apartment_number,
                 $order->address->ward,
-                $order->address->district,
                 $order->address->city,
             ])->filter()->join(', ') : null,
             'shipping_fee'   => $order->shipping_fee,

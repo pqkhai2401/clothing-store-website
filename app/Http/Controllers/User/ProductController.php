@@ -28,7 +28,14 @@ class ProductController extends Controller
         // Tìm sản phẩm theo slug, kèm theo ảnh và biến thể (với color, size)
         $product = Product::where('slug', $slug)
             ->where('status', true)
-            ->with(['category', 'brand', 'productImages', 'productVariants.color', 'productVariants.size'])
+            ->with([
+                'category',
+                'brand',
+                'productImages',
+                'productVariants' => fn ($q) => $q->where('status', 'Active'),
+                'productVariants.color',
+                'productVariants.size',
+            ])
             ->firstOrFail();
 
         // Tăng lượt xem cho mọi lượt truy cập
@@ -153,6 +160,7 @@ class ProductController extends Controller
         $variant = ProductVariant::where('product_id', $request->product_id)
             ->where('color_id', $request->color_id)
             ->where('size_id', $request->size_id)
+            ->where('status', 'Active')
             ->first();
 
         if (!$variant) {

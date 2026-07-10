@@ -36,31 +36,6 @@ class LocationController extends Controller
         return response()->json($data);
     }
 
-    /**
-     * Lấy danh sách Quận/Huyện thuộc một Tỉnh/Thành phố.
-     * GET /api/location/districts/{province_code}
-     */
-    public function districts(string $provinceCode): JsonResponse
-    {
-        $data = $this->rememberIfNotEmpty("location.districts.$provinceCode", function () use ($provinceCode) {
-            return $this->fetch("https://provinces.open-api.vn/api/p/{$provinceCode}", ['depth' => 2], 'districts');
-        });
-
-        return response()->json($data);
-    }
-
-    /**
-     * Lấy danh sách Phường/Xã thuộc một Quận/Huyện.
-     * GET /api/location/wards/{district_code}
-     */
-    public function wards(string $districtCode): JsonResponse
-    {
-        $data = $this->rememberIfNotEmpty("location.wards.$districtCode", function () use ($districtCode) {
-            return $this->fetch("https://provinces.open-api.vn/api/d/{$districtCode}", ['depth' => 2], 'wards');
-        });
-
-        return response()->json($data);
-    }
 
     /**
      * Giống Cache::remember, nhưng KHÔNG lưu vào cache nếu kết quả rỗng.
@@ -97,7 +72,14 @@ class LocationController extends Controller
     private function fetch(string $url, array $query = [], ?string $key = null): array
     {
         try {
-            $response = Http::timeout(10)->retry(3, 200)->get($url, $query);
+            $http = Http::timeout(10)->retry(3, 200);
+
+            $caBundle = storage_path('certs/cacert.pem');
+            if (is_file($caBundle)) {
+                $http = $http->withOptions(['verify' => $caBundle]);
+            }
+
+            $response = $http->get($url, $query);
 
             if (! $response->successful()) {
                 return [];

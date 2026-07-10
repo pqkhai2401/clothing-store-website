@@ -7,6 +7,7 @@ use App\Http\Controllers\User\ForgotPasswordController;
 use App\Http\Controllers\User\CartController;
 use App\Http\Controllers\User\CheckoutController;
 use App\Http\Controllers\User\PayosController;
+use App\Http\Controllers\User\MomoController;
 use App\Http\Controllers\User\LocationController;
 use App\Http\Controllers\User\OrderController;
 use App\Http\Controllers\User\ProfileController;
@@ -30,10 +31,8 @@ Route::get('/collections', [ProductController::class, 'index'])->name('collectio
 Route::get('/search', [ProductController::class, 'search'])->name('search');
 Route::get('/api/search/suggestions', [ProductController::class, 'suggestions'])->name('search.suggestions');
 
-// Route proxy lấy dữ liệu Tỉnh/Thành - Quận/Huyện - Phường/Xã (tránh lỗi CORS khi gọi trực tiếp API bên thứ ba)
+// Route proxy lấy dữ liệu Tỉnh/Thành (tránh lỗi CORS khi gọi trực tiếp API bên thứ ba)
 Route::get('/api/location/provinces', [LocationController::class, 'provinces'])->name('location.provinces');
-Route::get('/api/location/districts/{province_code}', [LocationController::class, 'districts'])->name('location.districts');
-Route::get('/api/location/wards/{district_code}', [LocationController::class, 'wards'])->name('location.wards');
 
 // Route chi tiết sản phẩm: /san-pham/{slug}
 Route::get('/san-pham/{slug}', [ProductController::class, 'show'])->name('products.show');
@@ -61,6 +60,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/checkout/payos/cancel', [PayosController::class, 'cancel'])->name('checkout.payos.cancel');
     Route::get('/checkout/payos/{order}', [PayosController::class, 'show'])->name('checkout.payos.show');
     Route::get('/checkout/payos/{order}/status', [PayosController::class, 'status'])->name('checkout.payos.status');
+
+    // MoMo: trang QR nhúng + poll trạng thái + return (fallback từ app/trang hosted)
+    Route::get('/checkout/momo-return', [MomoController::class, 'return'])->name('checkout.momo.return');
+    Route::get('/checkout/momo/{order}', [MomoController::class, 'show'])->name('checkout.momo.show');
+    Route::get('/checkout/momo/{order}/status', [MomoController::class, 'status'])->name('checkout.momo.status');
 
     Route::get('/user/addresses', [AddressController::class, 'index'])->name('addresses.index');
     Route::post('/user/addresses', [AddressController::class, 'store'])->name('addresses.store');

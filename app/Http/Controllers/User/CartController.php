@@ -45,6 +45,7 @@ class CartController extends Controller
 
         $variantQuery = ProductVariant::query()
             ->where('product_id', $product->id)
+            ->where('status', 'Active')
             ->where('stock', '>', 0);
 
         if (! empty($validated['color_id']) || ! empty($validated['size_id'])) {
@@ -129,6 +130,7 @@ class CartController extends Controller
         $newVariant = ProductVariant::with(['color', 'size'])->findOrFail($validated['product_variant_id']);
 
         abort_unless($newVariant->product_id === $cartItem->productVariant->product_id, 422, 'Variant không thuộc sản phẩm này.');
+        abort_unless($newVariant->status === 'Active', 422, 'Biến thể này đã ngừng bán.');
         abort_unless($newVariant->stock > 0, 422, 'Variant này đã hết hàng.');
 
         $existing = $cartItem->cart->cartItems()
