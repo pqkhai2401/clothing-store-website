@@ -247,7 +247,6 @@
     const receiptTypePanel = document.getElementById('grEditModalReceiptTypePanel');
     const receiptTypeLabel = document.getElementById('grEditModalReceiptTypeLabel');
     const receiptTypeList = document.getElementById('grEditModalReceiptTypeList');
-    const warehouseIdEl = document.getElementById('grEditModalWarehouseId');
     const supplierField = document.getElementById('grEditModalSupplierField');
     const supplierSelect = document.getElementById('grEditModalSupplierSelect');
     const supplierRequired = document.getElementById('grEditModalSupplierRequired');
@@ -633,7 +632,6 @@
     const totalQtyEl = document.getElementById('grEditModalTotalQuantity');
     const btnComplete = document.getElementById('grEditModalBtnComplete');
     const receivedAtEl = document.getElementById('grEditModalReceivedAt');
-    const warehouseIdEl = document.getElementById('grEditModalWarehouseId');
 
     function checkFormValidity() {
         if (!btnComplete) return;

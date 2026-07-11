@@ -15,7 +15,7 @@
                 {{ $userInitial }}
             </span>
             <span class="brand-text admin-brand-text">
-                <strong>HK Store</strong>
+                <strong>{{ $siteSettings->site_name }}</strong>
                 <small>{{ $roleLabel }}</small>
             </span>
         </a>

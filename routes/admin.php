@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\InventoryReportController;
 use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\ReviewController;
+use App\Http\Controllers\Admin\Settings\SettingController;
 use App\Http\Controllers\Admin\SizeController;
 use App\Http\Controllers\Admin\StockIssueController;
 use App\Http\Controllers\Admin\StocktakeController;
@@ -265,5 +266,11 @@ Route::middleware(['auth.login', 'active.account', 'admin'])
                 Route::get('/{id}/edit', [CollectionController::class, 'edit'])->name('edit');
                 Route::put('/{id}', [CollectionController::class, 'update'])->name('update');
                 Route::delete('/{id}', [CollectionController::class, 'destroy'])->name('destroy');
+            });
+
+        Route::middleware('permission:manage-settings')
+            ->prefix('settings')->name('settings.')->group(function () {
+                Route::get('/', [SettingController::class, 'edit'])->name('edit');
+                Route::put('/', [SettingController::class, 'update'])->name('update');
             });
     });

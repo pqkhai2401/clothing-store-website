@@ -10,8 +10,11 @@
             </button>
 
             <!-- Brand Logo -->
-            <a class="navbar-brand me-lg-5" href="{{ url('/') }}">
-                HK Store
+            <a class="navbar-brand me-lg-5 d-flex align-items-center gap-2" href="{{ url('/') }}">
+                @if($siteSettings->logo_url)
+                    <img src="{{ $siteSettings->logo_url }}" alt="{{ $siteSettings->site_name }}" style="height:32px;width:auto;object-fit:contain;">
+                @endif
+                {{ $siteSettings->site_name }}
             </a>
 
             <!-- Navigation Links -->

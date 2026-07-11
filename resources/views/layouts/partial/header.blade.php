@@ -15,7 +15,7 @@
         'admin.staff'      => 'Quản lý nhân sự',
         'admin.vouchers'    => 'Khuyến mãi',
         'admin.logs'        => 'Nhật ký hệ thống',
-        
+        'admin.settings'    => 'Cài đặt hệ thống',
     ];
 
     $pageLabel = null;
@@ -41,6 +41,7 @@
         'admin.reviews.trash'     => 'Thùng rác đánh giá',
         'admin.goods-receipts.trash' => 'Thùng rác nhập kho',
         'admin.vouchers.trash'    => 'Thùng rác voucher',
+        'admin.settings'          => 'Cài đặt hệ thống',
         default => null,
     };
 
@@ -58,6 +59,7 @@
         'admin.orders.create'    => route('admin.orders.list'),
         'admin.vouchers.create'  => route('admin.vouchers.list'),
         'admin.vouchers.trash'   => route('admin.vouchers.list'),
+        'admin.settings'         => route('admin.settings'),
         default => null,
     };
 @endphp

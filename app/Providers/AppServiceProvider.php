@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Listeners\LogAuthenticationActivity;
 use App\Models\Cart;
+use App\Models\Setting;
 use App\Models\Wishlist;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
@@ -57,6 +58,17 @@ class AppServiceProvider extends ServiceProvider
                 : 0;
 
             $view->with('cartCount', $cartCount);
+        });
+
+        // Cung cấp thông tin thương hiệu (logo, tên shop, địa chỉ, liên hệ) cho header/footer website
+        // và cho sidebar + phiếu in bên khu quản trị
+        View::composer([
+            'partials.header',
+            'partials.footer',
+            'layouts.partial.sidebar',
+            'admin.stock-issues.partials.show-content',
+        ], function ($view): void {
+            $view->with('siteSettings', Setting::current());
         });
 
         View::composer([
@@ -210,6 +222,14 @@ class AppServiceProvider extends ServiceProvider
                         'url'            => $r('admin.logs.list', '/admin/logs'),
                         'active_pattern' => 'admin/logs*',
                         'icon'           => 'fa-solid fa-clock-rotate-left',
+                        'parent'         => [],
+                    ],
+                    [
+                        'permission'     => 'manage-settings',
+                        'title'          => 'Cài đặt website',
+                        'url'            => $r('admin.settings.edit', '/admin/settings'),
+                        'active_pattern' => 'admin/settings*',
+                        'icon'           => 'fa-solid fa-gear',
                         'parent'         => [],
                     ],
                 ];
