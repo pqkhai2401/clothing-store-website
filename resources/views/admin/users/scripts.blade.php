@@ -8,10 +8,13 @@
         const currentUserIsProtectedAdmin = @json($currentUserIsProtectedAdmin ?? false);
         const detailModalEl = document.getElementById('userDetailModal');
         const editModalEl = document.getElementById('userEditModal');
+        const resetPasswordModalEl = document.getElementById('userResetPasswordModal');
         const detailModal = bootstrap.Modal.getOrCreateInstance(detailModalEl);
         const editModal = bootstrap.Modal.getOrCreateInstance(editModalEl);
+        const resetPasswordModal = resetPasswordModalEl ? bootstrap.Modal.getOrCreateInstance(resetPasswordModalEl) : null;
         const detailBody = document.getElementById('userDetailModalBody');
         const editForm = document.getElementById('userEditForm');
+        const resetPasswordForm = document.getElementById('userResetPasswordForm');
         const statusSelect = document.getElementById('modal_is_active');
         const lockReasonRow = document.querySelector('[data-modal-lock-reason-row]');
         const lockReasonInput = document.getElementById('modal_lock_reason');
@@ -243,20 +246,6 @@
                 errors.role_id = 'Vui lòng chọn vai trò';
             }
 
-            // Mật khẩu mới: không bắt buộc, nếu nhập thì tối thiểu 6 ký tự và phải khớp xác nhận
-            const passwordField = editForm.elements['password'];
-            if (passwordField && !passwordField.disabled) {
-                const password = passwordField.value ?? '';
-                const confirmation = (editForm.elements['password_confirmation']?.value) ?? '';
-                if (password !== '') {
-                    if (password.length < 6) {
-                        errors.password = 'Mật khẩu phải có ít nhất 6 ký tự';
-                    } else if (password !== confirmation) {
-                        errors.password = 'Mật khẩu xác nhận không khớp';
-                    }
-                }
-            }
-
             // Lý do ngưng hoạt động: không bắt buộc, tối đa 255 ký tự
             if (get('lock_reason').length > 255) {
                 errors.lock_reason = 'Lý do ngưng hoạt động không được vượt quá 255 ký tự';
@@ -330,8 +319,6 @@
             setField('city', user.city);
             setField('ward', user.ward);
             setField('apartment_number', user.apartment_number);
-            setField('password', '');
-            setField('password_confirmation', '');
             fillRoleOptions(data.roles, user.role_id);
             syncLockReason();
 
@@ -381,16 +368,6 @@
                     roleField?.classList.add('role-field--locked');
                 }
             }
-
-            // --- Password fields ---
-            const pwLocked = blockAll || blockSensitive;
-            ['password', 'password_confirmation'].forEach(function (fieldName) {
-                const field = editForm.elements[fieldName];
-                if (field) {
-                    field.disabled = pwLocked;
-                    if (pwLocked) field.value = '';
-                }
-            });
 
             // --- is_protected checkbox (only rendered for protected admin) ---
             const protectedRow      = editForm.querySelector('[data-protected-row]');
@@ -584,5 +561,110 @@
                 submitButton.innerHTML = originalText;
             }
         });
+
+        if (resetPasswordForm && resetPasswordModal) {
+            function resetPasswordErrors() {
+                resetPasswordForm.querySelectorAll('.is-invalid').forEach(input => input.classList.remove('is-invalid'));
+                resetPasswordForm.querySelectorAll('[data-error-for]').forEach(error => { error.textContent = ''; });
+                resetPasswordForm.querySelector('[data-reset-permission-error-row]')?.classList.add('d-none');
+            }
+
+            function showResetPasswordErrors(errors) {
+                resetPasswordErrors();
+                let firstInvalidField = null;
+
+                Object.entries(errors || {}).forEach(([name, messages]) => {
+                    const field = resetPasswordForm.elements[name];
+                    const error = resetPasswordForm.querySelector(`[data-error-for="${name}"]`);
+
+                    if (field) {
+                        field.classList.add('is-invalid');
+                        firstInvalidField = firstInvalidField || field;
+                    }
+
+                    if (error) {
+                        const msg = Array.isArray(messages) ? messages[0] : messages;
+                        error.textContent = msg;
+                        const permRow = error.closest('[data-reset-permission-error-row]');
+                        if (permRow) permRow.classList.remove('d-none');
+                    }
+                });
+
+                firstInvalidField?.focus();
+            }
+
+            document.addEventListener('click', function (event) {
+                const resetButton = event.target.closest('.js-reset-password');
+                if (!resetButton) return;
+
+                event.preventDefault();
+                resetPasswordErrors();
+                resetPasswordForm.reset();
+                resetPasswordForm.action = resetButton.dataset.resetUrl;
+                const usernameEl = resetPasswordForm.querySelector('[data-reset-username]');
+                if (usernameEl) usernameEl.textContent = resetButton.dataset.username || '';
+                resetPasswordModal.show();
+            });
+
+            resetPasswordModalEl.addEventListener('hidden.bs.modal', function () {
+                resetPasswordErrors();
+                resetPasswordForm.reset();
+            });
+
+            resetPasswordForm.addEventListener('submit', async function (event) {
+                event.preventDefault();
+                resetPasswordErrors();
+
+                const password = resetPasswordForm.elements['password']?.value ?? '';
+                const confirmation = resetPasswordForm.elements['password_confirmation']?.value ?? '';
+                const clientErrors = {};
+                if (password.length < 8) {
+                    clientErrors.password = 'Mật khẩu phải có ít nhất 8 ký tự';
+                } else if (password !== confirmation) {
+                    clientErrors.password = 'Mật khẩu xác nhận không khớp';
+                }
+
+                if (Object.keys(clientErrors).length > 0) {
+                    showResetPasswordErrors(clientErrors);
+                    return;
+                }
+
+                const submitButton = resetPasswordForm.querySelector('button[type="submit"]');
+                const originalText = submitButton.innerHTML;
+                submitButton.disabled = true;
+                submitButton.innerHTML = 'Đang lưu...';
+
+                try {
+                    const response = await fetch(resetPasswordForm.action, {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'X-CSRF-TOKEN': csrfToken,
+                        },
+                        body: new FormData(resetPasswordForm),
+                    });
+
+                    const data = await parseJsonResponse(response, 'Không thể đặt lại mật khẩu.');
+
+                    if (response.status === 422) {
+                        showResetPasswordErrors(data.errors || {});
+                        return;
+                    }
+
+                    if (!response.ok) {
+                        throw new Error(data.message || 'Không thể đặt lại mật khẩu.');
+                    }
+
+                    resetPasswordModal.hide();
+                    showAlert(data.message || 'Đặt lại mật khẩu thành công');
+                } catch (error) {
+                    showAlert(error.message, 'danger');
+                } finally {
+                    submitButton.disabled = false;
+                    submitButton.innerHTML = originalText;
+                }
+            });
+        }
     });
 </script>

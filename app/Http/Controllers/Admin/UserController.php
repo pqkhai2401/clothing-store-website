@@ -18,6 +18,13 @@ use Spatie\Permission\Models\Role;
 class UserController extends Controller
 {
     /**
+     * Số lượng admin được bảo vệ (is_protected) tối thiểu phải luôn còn lại
+     * trong hệ thống — tránh deadlock khi admin bảo vệ duy nhất nghỉ việc/gặp
+     * sự cố mà không còn ai đủ quyền thao tác trên tài khoản đó.
+     */
+    private const MIN_PROTECTED_ADMINS = 2;
+
+    /**
      * Display a listing of users.
      */
     public function index(Request $request)
@@ -113,7 +120,7 @@ class UserController extends Controller
             'phone_number' => ['nullable', 'string', 'max:20'],
             'role_id' => [$context['type'] === 'customer' ? 'nullable' : 'required', 'integer', 'exists:roles,id'],
             'is_active' => ['required', 'boolean'],
-            'password' => ['required', 'string', 'min:6', 'max:255'],
+            'password' => ['required', 'string', 'min:8', 'max:255'],
             'city' => ['nullable', 'string', 'max:255'],
             'ward' => ['nullable', 'string', 'max:255'],
             'apartment_number' => ['nullable', 'string', 'max:255'],
@@ -201,8 +208,6 @@ class UserController extends Controller
         $context = $this->resolveContext($request, $user);
         $this->authorizeContext($request, $context['type'], $user);
 
-        $passwordRules = ['nullable', 'string', 'min:6', 'max:255', 'confirmed'];
-
         $validated = $request->validate([
             'username' => [
                 'required',
@@ -219,7 +224,6 @@ class UserController extends Controller
             'phone_number' => ['nullable', 'string', 'max:20'],
             'role_id' => [$context['type'] === 'all' ? 'required' : 'nullable', 'integer', 'exists:roles,id'],
             'is_active' => ['required', 'boolean'],
-            'password' => $passwordRules,
             'city' => ['nullable', 'string', 'max:255'],
             'ward' => ['nullable', 'string', 'max:255'],
             'apartment_number' => ['nullable', 'string', 'max:255'],
@@ -240,9 +244,19 @@ class UserController extends Controller
         $currentRoleId   = $targetUser->roles()->first()?->id;
         $statusChanged   = (bool) $validated['is_active'] !== (bool) $targetUser->is_active;
         $roleChanged     = ! empty($validated['role_id']) && (int) $validated['role_id'] !== (int) $currentRoleId;
-        $passwordChanged = filled($validated['password'] ?? null);
         $protectedChanged = $request->has('is_protected')
             && (bool) $request->boolean('is_protected') !== (bool) $targetUser->is_protected;
+
+        $infoChanged = $validated['username'] !== $targetUser->username
+            || $validated['email'] !== $targetUser->email
+            || ($validated['phone_number'] ?? null) !== $targetUser->phone_number;
+
+        $currentAddress = $targetUser->addresses()->latest('id')->first();
+        $addressChanged = $this->hasAddressInput($validated) && (
+            ($validated['city'] ?? '') !== ($currentAddress->city ?? '')
+            || ($validated['ward'] ?? '') !== ($currentAddress->ward ?? '')
+            || ($validated['apartment_number'] ?? '') !== ($currentAddress->apartment_number ?? '')
+        );
 
         // 1. Block self-lock
         if ($isSelf && $statusChanged && ! (bool) $validated['is_active']) {
@@ -264,13 +278,13 @@ class UserController extends Controller
             return $this->validationErrorResponse($request, 'is_protected', 'Bạn không thể tự tắt quyền bảo vệ của chính mình.');
         }
 
-        // 5. Cannot remove last protected admin
+        // 5. Cannot reduce protected admins below the minimum threshold
         if ($protectedChanged && ! $request->boolean('is_protected') && (bool) $targetUser->is_protected) {
-            $remainingCount = User::role(UserRole::ADMIN->value)
+            $remainingAfterChange = User::role(UserRole::ADMIN->value)
                 ->where('is_protected', true)
-                ->count();
-            if ($remainingCount <= 1) {
-                return $this->validationErrorResponse($request, 'is_protected', 'Không thể tắt quyền bảo vệ vì đây là admin hệ thống cuối cùng.');
+                ->count() - 1;
+            if ($remainingAfterChange < self::MIN_PROTECTED_ADMINS) {
+                return $this->validationErrorResponse($request, 'is_protected', 'Không thể tắt quyền bảo vệ vì hệ thống cần tối thiểu '.self::MIN_PROTECTED_ADMINS.' admin hệ thống được bảo vệ.');
             }
         }
 
@@ -294,10 +308,10 @@ class UserController extends Controller
             return $this->validationErrorResponse($request, 'permission', 'Quản trị viên thường không có quyền chỉnh sửa admin hệ thống.');
         }
 
-        // 9. Normal admin cannot change sensitive data of another normal admin
+        // 9. Normal admin cannot change any data of another normal admin
         if ($currentIsNormalAdmin && $targetIsNormalAdmin && ! $isSelf
-            && ($statusChanged || $roleChanged || $passwordChanged || $protectedChanged)) {
-            return $this->validationErrorResponse($request, 'permission', 'Quản trị viên thường không có quyền thay đổi vai trò, trạng thái hoặc mật khẩu của quản trị viên khác.');
+            && ($statusChanged || $roleChanged || $protectedChanged || $infoChanged || $addressChanged)) {
+            return $this->validationErrorResponse($request, 'permission', 'Quản trị viên thường không có quyền chỉnh sửa thông tin của quản trị viên khác.');
         }
 
         // 10. Normal admin cannot promote anyone to admin role
@@ -323,10 +337,6 @@ class UserController extends Controller
         if ($statusChanged) {
             $updateData['locked_by'] = $willBeActive ? null : Auth::id();
             $updateData['locked_at'] = $willBeActive ? null : now();
-        }
-
-        if ($passwordChanged) {
-            $updateData['password'] = Hash::make($validated['password']);
         }
 
         if ($currentIsProtectedAdmin && $request->has('is_protected') && $targetUser->isAdmin()) {
@@ -384,6 +394,61 @@ class UserController extends Controller
         }
 
         return redirect()->route($context['routePrefix'].'.list')->with('success', 'Cập nhật '.$context['itemLabelLower'].' thành công');
+    }
+
+    /**
+     * Admin đặt lại mật khẩu cho người dùng khác — tách riêng khỏi update()
+     * để không cần biết mật khẩu cũ nhưng vẫn ràng buộc: không tự reset cho
+     * chính mình (dùng trang Hồ sơ cá nhân), và giữ nguyên các rule chống
+     * leo thang đặc quyền giữa admin thường/protected. Sau khi reset, tài
+     * khoản bị buộc đổi mật khẩu ở lần đăng nhập kế tiếp và được báo qua email.
+     */
+    public function resetPassword(Request $request, string $id)
+    {
+        $user = User::findOrFail($id);
+        $context = $this->resolveContext($request, $user);
+        $this->authorizeContext($request, $context['type'], $user);
+
+        $validated = $request->validate([
+            'password' => ['required', 'string', 'min:8', 'max:255', 'confirmed'],
+        ], $this->validationMessages());
+
+        $currentUser = $request->user();
+        $targetUser  = $user;
+        $isSelf = (int) $currentUser->id === (int) $targetUser->id;
+
+        if ($isSelf) {
+            return $this->validationErrorResponse($request, 'password', 'Vui lòng dùng trang Hồ sơ cá nhân để tự đổi mật khẩu.');
+        }
+
+        $currentIsNormalAdmin   = $currentUser->isAdmin() && ! (bool) $currentUser->is_protected;
+        $targetIsProtectedAdmin = $targetUser->isAdmin() && (bool) $targetUser->is_protected;
+        $targetIsNormalAdmin    = $targetUser->isAdmin() && ! (bool) $targetUser->is_protected;
+
+        if ($currentIsNormalAdmin && $targetIsProtectedAdmin) {
+            return $this->validationErrorResponse($request, 'permission', 'Quản trị viên thường không có quyền chỉnh sửa admin hệ thống.');
+        }
+
+        if ($currentIsNormalAdmin && $targetIsNormalAdmin) {
+            return $this->validationErrorResponse($request, 'permission', 'Quản trị viên thường không có quyền reset mật khẩu của quản trị viên khác.');
+        }
+
+        $targetUser->update([
+            'password' => Hash::make($validated['password']),
+            'must_change_password' => true,
+        ]);
+
+        $this->recordPasswordResetAudit($targetUser);
+        $targetUser->notify(new \App\Notifications\PasswordResetByAdmin($currentUser->username));
+        $this->revokeUserAccess($targetUser);
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'message' => 'Đặt lại mật khẩu thành công. Tài khoản sẽ phải đổi mật khẩu ở lần đăng nhập kế tiếp.',
+            ]);
+        }
+
+        return redirect()->route($context['routePrefix'].'.list')->with('success', 'Đặt lại mật khẩu thành công.');
     }
 
     /**
@@ -561,6 +626,21 @@ class UserController extends Controller
         $user->isCustomEvent = true;
         $user->auditCustomOld = ['role' => $oldRole ? ($labels[$oldRole] ?? $oldRole) : 'Chưa có vai trò'];
         $user->auditCustomNew = ['role' => $labels[$newRole] ?? $newRole];
+
+        Event::dispatch(new AuditCustom($user));
+    }
+
+    /**
+     * Ghi một bản ghi nhật ký "Reset mật khẩu" riêng biệt khỏi event "updated"
+     * mặc định — giúp phân biệt rõ trong audit trail và luôn được bảo vệ
+     * khỏi bulk-delete/prune (xem ActivityLogController::isProtectedAudit()).
+     */
+    private function recordPasswordResetAudit(User $user): void
+    {
+        $user->auditEvent = 'password_reset';
+        $user->isCustomEvent = true;
+        $user->auditCustomOld = [];
+        $user->auditCustomNew = ['password' => 'Đã được quản trị viên đặt lại'];
 
         Event::dispatch(new AuditCustom($user));
     }

@@ -335,10 +335,13 @@
     <span id="pmToastMsg"></span>
 </div>
 
+@php $mustChangePassword = (bool) (auth()->user()->must_change_password ?? false); @endphp
+
 {{-- ═══════════════════════════════════════════════════════════════
      Profile Modal HTML
      ═══════════════════════════════════════════════════════════════ --}}
-<div class="modal fade" id="profileModal" tabindex="-1" aria-labelledby="profileModalLabel" aria-hidden="true">
+<div class="modal fade" id="profileModal" tabindex="-1" aria-labelledby="profileModalLabel" aria-hidden="true"
+    @if($mustChangePassword) data-bs-backdrop="static" data-bs-keyboard="false" @endif>
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
 
@@ -346,9 +349,15 @@
             <div class="modal-header">
                 <div class="flex-grow-1">
                     <p class="pm-title" id="profileModalLabel">Hồ sơ của tôi</p>
-                    <p class="pm-subtitle">Quản lý thông tin tài khoản và địa chỉ liên hệ của bạn.</p>
+                    @if($mustChangePassword)
+                        <p class="pm-subtitle text-danger fw-semibold">Quản trị viên vừa đặt lại mật khẩu của bạn — vui lòng đổi mật khẩu mới để tiếp tục sử dụng hệ thống.</p>
+                    @else
+                        <p class="pm-subtitle">Quản lý thông tin tài khoản và địa chỉ liên hệ của bạn.</p>
+                    @endif
                 </div>
-                <button type="button" class="btn-close ms-3" data-bs-dismiss="modal" aria-label="Close"></button>
+                @unless($mustChangePassword)
+                    <button type="button" class="btn-close ms-3" data-bs-dismiss="modal" aria-label="Close"></button>
+                @endunless
             </div>
 
             {{-- Body --}}
@@ -492,7 +501,9 @@
 
             {{-- Footer --}}
             <div class="modal-footer justify-content-end">
-                <button type="button" class="pm-btn-cancel" data-bs-dismiss="modal">Hủy</button>
+                @unless($mustChangePassword)
+                    <button type="button" class="pm-btn-cancel" data-bs-dismiss="modal">Hủy</button>
+                @endunless
                 <button type="button" class="pm-btn-save" id="profileSaveBtn">
                     <i class="fa-solid fa-floppy-disk"></i>
                     <span id="profileSaveTxt">Lưu thay đổi</span>
@@ -513,6 +524,7 @@
     const PROFILE_URL = '{{ route("admin.profile") }}';
     const UPDATE_URL  = '{{ route("admin.profile.update") }}';
     const CSRF_TOKEN  = '{{ csrf_token() }}';
+    const MUST_CHANGE_PASSWORD = @json($mustChangePassword);
 
     const modal        = document.getElementById('profileModal');
     const form         = document.getElementById('profileForm');
@@ -627,6 +639,12 @@
     // ── Submit ────────────────────────────────────────────────────
     async function handleSubmit() {
         clearErrors();
+
+        if (MUST_CHANGE_PASSWORD && !document.getElementById('profile_password').value) {
+            showErrors({ password: ['Bạn phải đặt mật khẩu mới để tiếp tục.'] });
+            return;
+        }
+
         setSaving(true);
 
         const formData = new FormData(form);
@@ -660,6 +678,12 @@
             }
 
             // Success
+            if (MUST_CHANGE_PASSWORD) {
+                showToast(data.message ?? 'Đổi mật khẩu thành công.');
+                setTimeout(() => window.location.reload(), 800);
+                return;
+            }
+
             bsModal?.hide();
             showToast(data.message ?? 'Cập nhật hồ sơ thành công.');
 
@@ -697,6 +721,11 @@
     document.querySelectorAll('[data-profile-open]').forEach(el => {
         el.addEventListener('click', openProfile);
     });
+
+    // Admin vừa bị reset mật khẩu — bắt buộc mở modal đổi mật khẩu ngay khi vào trang.
+    if (MUST_CHANGE_PASSWORD) {
+        openProfile();
+    }
 
     if (saveBtn) saveBtn.addEventListener('click', handleSubmit);
 

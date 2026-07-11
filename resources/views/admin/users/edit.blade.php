@@ -82,17 +82,6 @@
                             </div>
                         @endif
 
-                        <div class="col-md-6">
-                            <label for="modal_password" class="form-label">Mật khẩu mới</label>
-                            <input type="password" name="password" id="modal_password" class="form-control" autocomplete="new-password">
-                            <div class="invalid-feedback d-block" data-error-for="password"></div>
-                        </div>
-
-                        <div class="col-md-6">
-                            <label for="modal_password_confirmation" class="form-label">Xác nhận mật khẩu mới</label>
-                            <input type="password" name="password_confirmation" id="modal_password_confirmation" class="form-control" autocomplete="new-password">
-                        </div>
-
                         @if(auth()->user()?->isAdmin() && (bool) auth()->user()?->is_protected)
                         <div class="col-12 d-none" data-protected-row>
                             <div class="d-flex align-items-start gap-3 p-3 rounded border" style="background:var(--bs-warning-bg-subtle,#fff3cd);">

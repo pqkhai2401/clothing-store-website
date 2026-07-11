@@ -32,12 +32,12 @@ return Application::configure(basePath: dirname(__DIR__))
             'signed' => \App\Http\Middleware\ValidateSignature::class,
             'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
             'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
-            'role' => \App\Http\Middleware\CheckRole::class,
             'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
             'spatie.role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
             'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
             'auth.login' => \App\Http\Middleware\AuthenticateLogin::class,
             'active.account' => \App\Http\Middleware\EnsureActiveAccount::class,
+            'force.password.change' => \App\Http\Middleware\ForceChangePassword::class,
             'redirect.authenticated' => \App\Http\Middleware\RedirectAuthenticatedMiddleware::class,
             'admin' => \App\Http\Middleware\AdminVerify::class,
         ]);

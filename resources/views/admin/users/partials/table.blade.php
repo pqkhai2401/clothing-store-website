@@ -110,6 +110,13 @@
                                                     data-update-url="{{ route(($routePrefix ?? 'admin.users') . '.update', $user->id) }}">
                                                     <i class="fa-regular fa-pen-to-square"></i> Sửa
                                                 </button>
+                                                @if ($showRoleColumn && $user->id !== $currentUserId)
+                                                    <button type="button" class="dropdown-item js-reset-password"
+                                                        data-reset-url="{{ route(($routePrefix ?? 'admin.users') . '.resetPassword', $user->id) }}"
+                                                        data-username="{{ $user->username }}">
+                                                        <i class="fa-solid fa-key"></i> Đặt lại mật khẩu
+                                                    </button>
+                                                @endif
                                                 @if (!$isStaffPage && $user->id !== $currentUserId && ! $user->is_protected)
                                                     <button type="button" class="dropdown-item text-danger"
                                                         data-delete-url="{{ route(($routePrefix ?? 'admin.users') . '.destroy', $user->id) }}"

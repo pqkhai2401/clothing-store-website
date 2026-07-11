@@ -36,6 +36,7 @@ $accountRoutes = function (string $accountType): void {
     }
     Route::get('/{id}', [UserController::class, 'show'])->name('show')->defaults('account_type', $accountType);
     Route::put('/{id}', [UserController::class, 'update'])->name('update')->defaults('account_type', $accountType);
+    Route::patch('/{id}/reset-password', [UserController::class, 'resetPassword'])->name('resetPassword')->defaults('account_type', $accountType);
     if ($accountType !== 'staff') {
         Route::delete('/{id}', [UserController::class, 'destroy'])->name('destroy')->defaults('account_type', $accountType);
     }
@@ -49,7 +50,7 @@ $trashRoutes = function (string $controller): Closure {
     };
 };
 
-Route::middleware(['auth.login', 'active.account', 'admin'])
+Route::middleware(['auth.login', 'active.account', 'admin', 'force.password.change'])
     ->prefix('admin')
     ->name('admin.')
     ->group(function () use ($accountRoutes, $trashRoutes) {

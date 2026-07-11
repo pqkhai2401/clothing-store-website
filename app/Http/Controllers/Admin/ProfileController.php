@@ -67,15 +67,16 @@ class ProfileController extends Controller
 
         if (!empty($validated['password'])) {
             $user->password = Hash::make($validated['password']);
+            $user->must_change_password = false;
         }
 
         $user->save();
 
         $address          = $user->addresses()->first() ?? new Address();
         $address->user_id = $user->id;
-        $address->city             = $validated['city'] ?? null;
-        $address->ward             = $validated['ward'] ?? null;
-        $address->apartment_number = $validated['apartment_number'] ?? null;
+        $address->city             = $validated['city'] ?? '';
+        $address->ward             = $validated['ward'] ?? '';
+        $address->apartment_number = $validated['apartment_number'] ?? '';
         $address->save();
 
         return response()->json([
