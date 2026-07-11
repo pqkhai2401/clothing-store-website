@@ -639,7 +639,7 @@
         let hasError = false;
 
         // 1. Chưa chọn kho nhận
-        if (!warehouseIdEl || !warehouseIdEl.value) hasError = true;
+        if (!warehouseHiddenEl || !warehouseHiddenEl.value) hasError = true;
 
         // 2. Chưa chọn ngày nhập kho
         if (!receivedAtEl || !receivedAtEl.value) hasError = true;
@@ -744,7 +744,7 @@
 
             bootstrap.Offcanvas.getOrCreateInstance(offcanvas).hide();
             await refreshInboundTable(data.table_url);
-            showToast(data.message || `Cập nhật phiếu nhập kho "${data.code}" thành công.`);
+            showToast(data.message || `Cập nhật phiếu nhập kho "${data.code}" thành công.`, 'success');
         } catch (err) {
             showToast('Không thể kết nối tới máy chủ. Vui lòng kiểm tra kết nối mạng và thử lại.', 'error');
         } finally {

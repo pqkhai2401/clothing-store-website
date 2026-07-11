@@ -67,6 +67,7 @@ class AppServiceProvider extends ServiceProvider
             'partials.footer',
             'layouts.partial.sidebar',
             'admin.stock-issues.partials.show-content',
+            'admin.goods-receipts.partials.show-content',
         ], function ($view): void {
             $view->with('siteSettings', Setting::current());
         });

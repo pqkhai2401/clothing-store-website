@@ -322,7 +322,7 @@
                 input.classList.add('is-locked');
                 const variantId = input.dataset.variantId;
                 if (selectedItems[variantId]) {
-                    input.value = selectedItems[variantId].variant.price;
+                    input.value = selectedItems[variantId].variant.sale_price;
                 }
             }
         });
@@ -364,16 +364,14 @@
         filtered.forEach(v => {
             const item = document.createElement('div');
             item.className = 'gr-picker-item';
-            const img = v.thumbnail ? `<img src="/${v.thumbnail}" class="gr-picker-thumb">` : `<div class="gr-picker-thumb d-flex align-items-center justify-content-center text-muted"><i class="fa-regular fa-image"></i></div>`;
+            const img = `<img src="${resolveImageUrl(v.thumbnail)}" class="gr-picker-thumb" alt="">`;
             item.innerHTML = `
                 ${img}
                 <div class="gr-picker-info">
                     <div class="gr-picker-name">${v.product_name}</div>
                     <div class="gr-picker-meta">
-                        <span class="fw-bold">${v.sku}</span>
-                        <span class="gr-picker-dot" style="background:${v.color_hex}"></span>
-                        <span>Màu: ${v.color_name}</span>
-                        <span>Size: ${v.size_name}</span>
+                        <span class="gr-picker-dot" style="background:${v.color_hex || '#ccc'}"></span>
+                        <span>${v.color_name} · ${v.size_name} · ${v.sku}</span>
                     </div>
                 </div>
                 <div class="gr-picker-stock">Tồn: <b>${v.stock}</b></div>
@@ -390,8 +388,8 @@
                         alert(`Không thể vượt quá số lượng tồn kho (${v.stock}) của biến thể này.`);
                     }
                 } else {
-                    selectedItems[v.id] = { variant: v, quantity: 1, cost_price: v.cost_price, sale_price: v.price };
-                    renderItemRow(v, 1, v.cost_price, v.price);
+                    selectedItems[v.id] = { variant: v, quantity: 1, cost_price: v.cost_price, sale_price: v.sale_price };
+                    renderItemRow(v, 1, v.cost_price, v.sale_price);
                 }
                 pickerPanel.hidden = true;
                 pickerInput.value = '';
@@ -402,6 +400,12 @@
         pickerPanel.hidden = false;
     }
 
+    function resolveImageUrl(path) {
+        if (!path) return 'https://placehold.co/80x80?text=No+Image';
+        if (path.startsWith('http://') || path.startsWith('https://')) return path;
+        return '/' + path.replace(/^\/+/, '');
+    }
+
     function renderItemRow(v, qty, costPrice, salePrice) {
         const isReturn = (issueTypeInput.value === 'return_supplier');
         const priceReadonly = isReturn ? '' : 'readonly';
@@ -409,7 +413,7 @@
 
         const tr = document.createElement('tr');
         tr.id = `siEditRow-${v.id}`;
-        const img = v.thumbnail ? `<img src="/${v.thumbnail}" class="gr-row-thumb">` : `<div class="gr-row-thumb d-flex align-items-center justify-content-center text-muted"><i class="fa-regular fa-image"></i></div>`;
+        const img = `<img src="${resolveImageUrl(v.thumbnail)}" class="gr-row-thumb" alt="">`;
 
         tr.innerHTML = `
             <td>
@@ -418,10 +422,8 @@
                     <div>
                         <div class="gr-row-name">${v.product_name}</div>
                         <div class="gr-row-sub">
-                            <span class="fw-bold">${v.sku}</span>
-                            <span class="gr-row-dot" style="background:${v.color_hex}"></span>
-                            <span>${v.color_name}</span>
-                            <span>Size ${v.size_name}</span>
+                            <span class="gr-row-dot" style="background:${v.color_hex || '#ccc'}"></span>
+                            ${v.color_name} · ${v.size_name} · ${v.sku}
                         </div>
                     </div>
                 </div>

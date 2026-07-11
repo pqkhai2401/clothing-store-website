@@ -13,6 +13,9 @@
     .gr-badge--out-of-stock { background: #fee2e2; color: #991b1b; }
     .gr-badge--cancelled { background: #e2e8f0; color: #475569; }
 
+    /* Offcanvas chỉnh sửa (nhập & xuất) luôn đủ rộng trên mọi tab — tránh bị hẹp/dồn khi CSS của create-modal không có mặt */
+    .gr-offcanvas { width: min(900px, 92vw) !important; border-top-left-radius: 18px; border-bottom-left-radius: 18px; }
+
     /* ── Chi tiết phiếu xuất kho / nhập kho ── */
     .si-show-table { width: 100%; border-collapse: collapse; font-size: 13px; }
     .si-show-table thead th {
