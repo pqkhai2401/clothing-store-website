@@ -88,7 +88,7 @@ class StockIssueController extends Controller
             $totalSale = collect($normalizedItems)->sum('total_sale');
 
             $stockIssue = StockIssue::create([
-                'code' => $this->generateCode(),
+                'code' => app(\App\Services\DocumentSequenceService::class)->generateStockIssueCode(),
                 'issue_type' => $validated['issue_type'],
                 'warehouse_id' => $validated['warehouse_id'],
                 'order_id' => $validated['order_id'] ?? null,
@@ -559,16 +559,5 @@ class StockIssueController extends Controller
         ]);
     }
 
-    private function generateCode(): string
-    {
-        $prefix = 'PXK' . now()->format('Ymd');
-        $lastToday = StockIssue::withTrashed()->where('code', 'like', "{$prefix}%")
-            ->orderByDesc('code')
-            ->first();
-
-        $sequence = $lastToday ? ((int) substr($lastToday->code, -3)) + 1 : 1;
-
-        return $prefix . str_pad((string) $sequence, 3, '0', STR_PAD_LEFT);
-    }
 }
 

@@ -119,48 +119,47 @@
             return labels[value] || value;
         }
 
-        function readonlyRow(label, value, muted = false) {
-            const style = muted ? ' style="opacity:0.45"' : '';
+        function detailField(label, value, opts = {}) {
+            const colClass = opts.full ? 'col-12' : 'col-md-6';
             return `
-                <div class="account-modal-readonly"${style}>
-                    <div class="account-modal-readonly-label">${escapeHtml(label)}</div>
-                    <div class="account-modal-readonly-value">${escapeHtml(text(value))}</div>
+                <div class="${colClass}">
+                    <label class="form-label">${escapeHtml(label)}</label>
+                    <div class="account-detail-value">${escapeHtml(text(value))}</div>
                 </div>
             `;
         }
 
         function renderDetail(user) {
-            const rows = [
-                readonlyRow('ID', user.id, true),
-                readonlyRow('Họ và tên', user.username),
-                readonlyRow('Email', user.email),
-                readonlyRow('Số điện thoại', user.phone_number),
+            const fields = [
+                detailField('Họ và tên', user.username),
+                detailField('Email', user.email),
+                detailField('Số điện thoại', user.phone_number),
             ];
 
             if (showRoleColumn) {
-                rows.push(readonlyRow('Vai trò', roleLabel(user.role_name)));
+                fields.push(detailField('Vai trò', roleLabel(user.role_name)));
             }
 
             if (user.is_protected) {
-                rows.push(readonlyRow('Bảo vệ', 'Admin hệ thống'));
+                fields.push(detailField('Bảo vệ', 'Admin hệ thống'));
             }
 
-            rows.push(readonlyRow('Trạng thái', user.status_label));
+            fields.push(detailField('Trạng thái', user.status_label));
 
             if (!user.is_active) {
-                rows.push(readonlyRow('Lý do ngưng hoạt động', user.lock_reason || 'Chưa nhập lý do'));
+                fields.push(detailField('Lý do ngưng hoạt động', user.lock_reason || 'Chưa nhập lý do'));
             }
 
             if (showAddressFields) {
-                rows.push(readonlyRow('Tỉnh, Thành phố', user.city));
-                rows.push(readonlyRow('Phường, Xã', user.ward));
-                rows.push(readonlyRow('Số nhà', user.apartment_number));
+                fields.push(detailField('Tỉnh, Thành phố', user.city));
+                fields.push(detailField('Phường, Xã', user.ward));
+                fields.push(detailField('Số nhà', user.apartment_number));
             }
 
-            rows.push(readonlyRow('Ngày tạo', user.created_at));
-            rows.push(readonlyRow('Cập nhật lần cuối', user.updated_at));
+            fields.push(detailField('Ngày tạo', user.created_at));
+            fields.push(detailField('Cập nhật lần cuối', user.updated_at));
 
-            detailBody.innerHTML = rows.join('');
+            detailBody.innerHTML = `<div class="row g-3">${fields.join('')}</div>`;
         }
 
         function setField(name, value) {
@@ -201,6 +200,80 @@
             });
 
             firstInvalidField?.focus();
+        }
+
+        function validateEditForm() {
+            const errors = {};
+            const get = (name) => {
+                const field = editForm.elements[name];
+                return field ? String(field.value ?? '').trim() : '';
+            };
+
+            // Họ và tên: bắt buộc, tối đa 255 ký tự
+            const username = get('username');
+            if (username === '') {
+                errors.username = 'Vui lòng nhập họ và tên';
+            } else if (username.length > 255) {
+                errors.username = 'Họ và tên không được vượt quá 255 ký tự';
+            }
+
+            // Email: bắt buộc, đúng định dạng, tối đa 255 ký tự
+            const email = get('email');
+            if (email === '') {
+                errors.email = 'Vui lòng nhập email';
+            } else if (email.length > 255) {
+                errors.email = 'Email không được vượt quá 255 ký tự';
+            } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                errors.email = 'Email không đúng định dạng';
+            }
+
+            // Số điện thoại: không bắt buộc, tối đa 10 ký tự
+            const phone = get('phone_number');
+            if (phone !== '') {
+                if (phone.length > 10) {
+                    errors.phone_number = 'Số điện thoại không được vượt quá 10 ký tự';
+                } else if (!/^[0-9+\-\s().]+$/.test(phone)) {
+                    errors.phone_number = 'Số điện thoại không hợp lệ';
+                }
+            }
+
+            // Vai trò: bắt buộc khi trang có cột vai trò và select đang mở
+            const roleSelect = editForm.elements['role_id'];
+            if (showRoleColumn && roleSelect && !roleSelect.disabled && String(roleSelect.value ?? '').trim() === '') {
+                errors.role_id = 'Vui lòng chọn vai trò';
+            }
+
+            // Mật khẩu mới: không bắt buộc, nếu nhập thì tối thiểu 6 ký tự và phải khớp xác nhận
+            const passwordField = editForm.elements['password'];
+            if (passwordField && !passwordField.disabled) {
+                const password = passwordField.value ?? '';
+                const confirmation = (editForm.elements['password_confirmation']?.value) ?? '';
+                if (password !== '') {
+                    if (password.length < 6) {
+                        errors.password = 'Mật khẩu phải có ít nhất 6 ký tự';
+                    } else if (password !== confirmation) {
+                        errors.password = 'Mật khẩu xác nhận không khớp';
+                    }
+                }
+            }
+
+            // Lý do ngưng hoạt động: không bắt buộc, tối đa 255 ký tự
+            if (get('lock_reason').length > 255) {
+                errors.lock_reason = 'Lý do ngưng hoạt động không được vượt quá 255 ký tự';
+            }
+
+            // Địa chỉ: không bắt buộc, tối đa 255 ký tự
+            [
+                ['city', 'Tỉnh, thành phố không được vượt quá 255 ký tự'],
+                ['ward', 'Phường, xã không được vượt quá 255 ký tự'],
+                ['apartment_number', 'Số nhà không được vượt quá 255 ký tự'],
+            ].forEach(function ([name, message]) {
+                if (editForm.elements[name] && get(name).length > 255) {
+                    errors[name] = message;
+                }
+            });
+
+            return errors;
         }
 
         function syncLockReason() {
@@ -457,6 +530,14 @@
         editForm.addEventListener('submit', async function (event) {
             event.preventDefault();
             resetErrors();
+
+            // Kiểm tra hợp lệ phía client trước khi gửi để lưu vào DB
+            const clientErrors = validateEditForm();
+            if (Object.keys(clientErrors).length > 0) {
+                showErrors(clientErrors);
+                showAlert('Vui lòng kiểm tra lại thông tin đã nhập', 'warning');
+                return;
+            }
 
             const submitButton = editForm.querySelector('button[type="submit"]');
             const originalText = submitButton.innerHTML;

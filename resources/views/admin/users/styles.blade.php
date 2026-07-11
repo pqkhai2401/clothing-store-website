@@ -407,30 +407,19 @@
         border-color: #dc3545;
     }
 
-    .account-modal-readonly {
-        display: grid;
-        grid-template-columns: 180px minmax(0, 1fr);
-        border: 1px solid #d8dee6;
-        border-bottom: 0;
-    }
-
-    .account-modal-readonly:last-child {
-        border-bottom: 1px solid #d8dee6;
-    }
-
-    .account-modal-readonly-label {
-        padding: 9px 12px;
-        background: #e9ecef;
-        border-right: 1px solid #d8dee6;
-        font-size: 13px;
-        font-weight: 700;
-    }
-
-    .account-modal-readonly-value {
-        padding: 9px 12px;
-        font-size: 13px;
-        font-weight: 600;
+    /* Read-only "field" that mirrors the edit form's .form-control look */
+    .account-modal .account-detail-value {
+        min-height: 38px;
+        padding: 7px 12px;
+        border: 1px solid #ced4da;
+        border-radius: 3px;
+        background: #f8f9fa;
+        color: #0F172A;
+        font-size: 14px;
+        font-weight: 500;
         word-break: break-word;
+        display: flex;
+        align-items: center;
     }
 
     .role-field--locked {
@@ -607,6 +596,12 @@
 
     [data-theme="dark"] .account-modal .modal-title {
         color: #F8FAFC !important;
+    }
+
+    [data-theme="dark"] .account-modal .account-detail-value {
+        background: #101C33 !important;
+        border-color: #2A3B59 !important;
+        color: #E2E8F0 !important;
     }
 </style>
 

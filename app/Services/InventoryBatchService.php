@@ -6,7 +6,6 @@ use App\Models\ProductBatch;
 use App\Models\ProductVariant;
 use App\Models\StockMovement;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -37,7 +36,7 @@ class InventoryBatchService
         $receivedAt ??= now();
 
         $batch = ProductBatch::create([
-            'batch_code'            => $this->generateBatchCode($variant->id, $receivedAt),
+            'batch_code'            => app(DocumentSequenceService::class)->generateBatchCode(),
             'product_variant_id'    => $variant->id,
             'goods_receipt_item_id' => $goodsReceiptItemId,
             'quantity_import'       => $quantity,
@@ -239,8 +238,4 @@ class InventoryBatchService
         ]);
     }
 
-    private function generateBatchCode(int $variantId, Carbon $receivedAt): string
-    {
-        return 'LO' . $receivedAt->format('Ymd') . '-' . $variantId . '-' . Str::upper(Str::random(4));
-    }
 }

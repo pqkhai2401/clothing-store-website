@@ -123,9 +123,7 @@ class CheckoutController extends Controller
                 'apartment_number' => $validated['apartment_number'],
             ]);
 
-            do {
-                $orderCode = 'ORD-'.now()->format('Ymd').'-'.str_pad((string) random_int(1, 99999), 5, '0', STR_PAD_LEFT);
-            } while (Order::where('order_code', $orderCode)->exists());
+            $orderCode = app(\App\Services\DocumentSequenceService::class)->generateOrderCode();
 
             $order = Order::create([
                 'user_id'           => $user->id,

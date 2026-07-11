@@ -505,7 +505,7 @@ class GoodsReceiptController extends Controller
             $totalQuantity = collect($groupedItems)->sum(fn ($item) => $item['quantity']);
 
             $goodsReceipt = GoodsReceipt::create([
-                'code'           => $this->generateCode(),
+                'code'           => app(\App\Services\DocumentSequenceService::class)->generateGoodsReceiptCode(),
                 'receipt_type'   => $validated['receipt_type'],
                 'source_type'    => $validated['source_type'],
                 'receipt_reason' => $validated['receipt_reason'] ?? null,
@@ -995,28 +995,5 @@ class GoodsReceiptController extends Controller
         }
     }
 
-    private function generateStockIssueCode(): string
-    {
-        $prefix = 'PXK' . now()->format('Ymd');
-        $lastToday = StockIssue::withTrashed()->where('code', 'like', "{$prefix}%")
-            ->orderByDesc('code')
-            ->first();
-
-        $sequence = $lastToday ? ((int) substr($lastToday->code, -3)) + 1 : 1;
-
-        return $prefix . str_pad((string) $sequence, 3, '0', STR_PAD_LEFT);
-    }
-
-    private function generateCode(): string
-    {
-        $prefix = 'PN' . now()->format('Ymd');
-        $lastToday = GoodsReceipt::withTrashed()->where('code', 'like', "{$prefix}%")
-            ->orderByDesc('code')
-            ->first();
-
-        $sequence = $lastToday ? ((int) substr($lastToday->code, -3)) + 1 : 1;
-
-        return $prefix . str_pad((string) $sequence, 3, '0', STR_PAD_LEFT);
-    }
 }
 
