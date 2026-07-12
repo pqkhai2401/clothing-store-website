@@ -263,6 +263,11 @@ html:not([data-theme="dark"]) .stock-total {
 
                                     <td data-cell="name" data-sort-value="{{ $product->name }}">
                                         <div class="fw-bold text-dark">{{ $product->name }}</div>
+                                        @if($product->isIncomplete())
+                                            <span class="status-badge status-badge--draft mt-1" style="font-size:10px; padding:2px 8px; min-height:auto;" title="Sản phẩm tạo nhanh từ nhập kho, còn thiếu ảnh/thương hiệu/mô tả">
+                                                Cần bổ sung
+                                            </span>
+                                        @endif
                                     </td>
 
                                     <td data-cell="category" data-sort-value="{{ $product->category?->name ?? '' }}">

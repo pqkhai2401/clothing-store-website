@@ -4,15 +4,19 @@ namespace App\Http\Controllers\User;
 
 use App\Enums\UserRole;
 use App\Http\Controllers\AppBaseController;
+use App\Mail\RegistrationSuccessMail;
 use App\Models\Audit;
 use Spatie\Permission\Models\Role;
 use App\Models\User;
 use GuzzleHttp\Client;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Laravel\Passport\Client as OClient;
 use Laravel\Socialite\Facades\Socialite;
 use Illuminate\Support\Facades\Validator;
@@ -43,10 +47,15 @@ class AuthController extends AppBaseController
 
     public function webRegister(Request $request)
     {
+        $request->merge([
+            'email' => mb_strtolower(trim((string) $request->input('email'))),
+            'phone_number' => $this->normalizeVietnamesePhone((string) $request->input('phone_number')),
+        ]);
+
         $validator = Validator::make($request->all(), [
             'username' => ['bail', 'required', 'string', 'min:2', 'max:255', "regex:/^[\p{L}\s.'-]+$/u"],
-            'phone_number' => ['bail', 'required', 'string', 'regex:/^(0|\+84)(3|5|7|8|9)[0-9]{8}$/'],
-            'email' => ['bail', 'required', 'email', 'max:255', 'unique:users,email'],
+            'phone_number' => ['bail', 'required', 'string', 'regex:/^0(3|5|7|8|9)[0-9]{8}$/'],
+            'email' => ['bail', 'required', 'email', 'max:255', Rule::unique('users', 'email')->whereNull('deleted_at')],
             'password' => ['bail', 'required', 'string', 'min:8', 'max:64'],
         ], [
             'username.required' => 'Vui lòng nhập họ và tên.',
@@ -80,20 +89,63 @@ class AuthController extends AppBaseController
             return back()->withErrors($validator)->withInput($request->except('password'));
         }
 
-        $user = User::create([
-            'username' => trim((string) $request->input('username')),
-            'phone_number' => $this->normalizeVietnamesePhone((string) $request->input('phone_number')),
-            'email' => trim((string) $request->input('email')),
-            'password' => Hash::make($request->input('password')),
-            'is_active' => true,
-        ]);
+        $username = trim((string) $request->input('username'));
+        $email = trim((string) $request->input('email'));
+        $phoneNumber = $this->normalizeVietnamesePhone((string) $request->input('phone_number'));
+
+        // Validation above only rejects emails still used by an active account, so any
+        // record found here is guaranteed to be soft-deleted: restore it instead of
+        // inserting a new row, since the DB-level unique index on `email` doesn't know
+        // about soft deletes and would otherwise reject the insert.
+        $existingUser = User::withTrashed()->where('email', $email)->first();
+
+        try {
+            if ($existingUser) {
+                $existingUser->restore();
+                $existingUser->forceFill([
+                    'username' => $username,
+                    'phone_number' => $phoneNumber,
+                    'password' => Hash::make($request->input('password')),
+                    'is_active' => true,
+                ])->save();
+                $user = $existingUser;
+            } else {
+                $user = User::create([
+                    'username' => $username,
+                    'phone_number' => $phoneNumber,
+                    'email' => $email,
+                    'password' => Hash::make($request->input('password')),
+                    'is_active' => true,
+                ]);
+            }
+        } catch (QueryException $e) {
+            // Safety net for a race condition: two concurrent submissions could both pass
+            // the phone_number uniqueness check above (a plain SELECT, not locked) before
+            // either INSERT runs. The DB-level unique index (added in the
+            // add_unique_to_users_phone_number migration) is the real guard here.
+            Log::error('Đăng ký thất bại do vi phạm ràng buộc dữ liệu duy nhất: ' . $e->getMessage());
+
+            $field = str_contains($e->getMessage(), 'phone_number') ? 'phone_number' : 'email';
+            $message = $field === 'phone_number' ? 'Số điện thoại đã được sử dụng.' : 'Email đã được sử dụng.';
+
+            return back()->withErrors([$field => $message])->withInput($request->except('password'));
+        }
 
         $user->syncRoles([UserRole::CUSTOMER->value]);
 
-        Auth::login($user);
-        $request->session()->regenerate();
+        try {
+            Mail::to($user->email)->send(new RegistrationSuccessMail($user));
+        } catch (Throwable $e) {
+            Log::error('Gửi mail xác nhận đăng ký thất bại: ' . $e->getMessage());
 
-        return redirect()->intended(url('/'))->with('success', 'Đăng ký tài khoản thành công!');
+            return redirect()
+                ->route('auth.loginpage')
+                ->with('warning', 'Đăng ký tài khoản thành công nhưng không thể gửi email xác nhận. Vui lòng đăng nhập, bạn có thể thử lại việc xác nhận sau.');
+        }
+
+        return redirect()
+            ->route('auth.loginpage')
+            ->with('success', 'Đăng ký tài khoản thành công! Email xác nhận đã được gửi tới ' . $user->email . '. Vui lòng đăng nhập.');
     }
 
     public function webLogin(Request $request)
@@ -131,8 +183,9 @@ class AuthController extends AppBaseController
         }
 
         $login = trim((string) $request->input('login'));
+        $loginEmail = mb_strtolower($login);
         $loginPhone = $this->normalizeVietnamesePhone($login);
-        $user = User::where('email', $login)
+        $user = User::where('email', $loginEmail)
             ->orWhere('phone_number', $loginPhone)
             ->first();
 
@@ -208,6 +261,8 @@ class AuthController extends AppBaseController
                 ->route('auth.loginpage')
                 ->with('error', 'Tài khoản Google chưa cung cấp email.');
         }
+
+        $email = mb_strtolower(trim($email));
 
         $rawGoogleUser = $googleUser->user ?? [];
 

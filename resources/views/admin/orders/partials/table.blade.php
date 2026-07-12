@@ -97,12 +97,14 @@
                             @endif
                         </td>
                         @php
-                            $allowedStatuses = \App\Http\Controllers\Admin\OrderController::allowedStatusOptions($order->status);
+                            $isOnlineGateway = $order->paymentMethod?->isOnlineGateway() ?? false;
+                            $blockedByPayment = $isOnlineGateway && $order->payment_status !== 'paid';
+                            $allowedStatuses = \App\Http\Controllers\Admin\OrderController::allowedStatusOptions($order->status, $blockedByPayment);
                             $canChangeStatus = count($allowedStatuses) > 1;
                         @endphp
                         <td data-sort-value="{{ $order->status }}">
                             @if($canChangeStatus)
-                                <div class="hk-cat-filter oc-row-dropdown" data-order-id="{{ $order->id }}" data-field="status">
+                                <div class="hk-cat-filter oc-row-dropdown" data-order-id="{{ $order->id }}" data-field="status" data-value="{{ $order->status }}">
                                     <button type="button" class="order-badge oc-row-trigger {{ $orderBadgeCss[$order->status] ?? '' }}"
                                         data-value="{{ $order->status }}" aria-haspopup="listbox" aria-expanded="false">
                                         <span class="oc-row-trigger-label">{{ $statusLabels[$order->status] ?? $order->status }}</span>
@@ -118,27 +120,36 @@
                                     </div>
                                 </div>
                             @else
-                                <span class="order-badge {{ $orderBadgeCss[$order->status] ?? '' }}" title="Trạng thái cuối, không thể thay đổi">
+                                <span class="order-badge {{ $orderBadgeCss[$order->status] ?? '' }}" data-field="status" data-value="{{ $order->status }}"
+                                    title="Trạng thái cuối, không thể thay đổi">
                                     {{ $statusLabels[$order->status] ?? $order->status }}
                                 </span>
                             @endif
                         </td>
                         <td data-sort-value="{{ $order->payment_status }}">
-                            <div class="hk-cat-filter oc-row-dropdown" data-order-id="{{ $order->id }}" data-field="payment_status">
-                                <button type="button" class="payment-badge oc-row-trigger {{ $order->payment_status === 'paid' ? 'payment-badge--paid' : 'payment-badge--unpaid' }}"
-                                    data-value="{{ $order->payment_status }}" aria-haspopup="listbox" aria-expanded="false">
-                                    <span class="oc-row-trigger-label">{{ $paymentStatusLabels[$order->payment_status] ?? $order->payment_status }}</span>
-                                    <i class="fa-solid fa-chevron-down oc-row-caret"></i>
-                                </button>
-                                <div class="hk-cat-panel oc-row-panel" hidden>
-                                    <div class="hk-cat-list" role="listbox">
-                                        @foreach($paymentStatusLabels as $val => $label)
-                                            <button type="button" class="hk-cat-item {{ $order->payment_status === $val ? 'is-active' : '' }}"
-                                                data-value="{{ $val }}" data-css="{{ $val === 'paid' ? 'payment-badge--paid' : 'payment-badge--unpaid' }}">{{ $label }}</button>
-                                        @endforeach
+                            @if($isOnlineGateway)
+                                <span class="payment-badge {{ $order->payment_status === 'paid' ? 'payment-badge--paid' : 'payment-badge--unpaid' }}"
+                                    data-field="payment_status" data-value="{{ $order->payment_status }}"
+                                    title="Đồng bộ tự động từ cổng thanh toán online, không thể sửa tay">
+                                    {{ $paymentStatusLabels[$order->payment_status] ?? $order->payment_status }}
+                                </span>
+                            @else
+                                <div class="hk-cat-filter oc-row-dropdown" data-order-id="{{ $order->id }}" data-field="payment_status" data-value="{{ $order->payment_status }}">
+                                    <button type="button" class="payment-badge oc-row-trigger {{ $order->payment_status === 'paid' ? 'payment-badge--paid' : 'payment-badge--unpaid' }}"
+                                        data-value="{{ $order->payment_status }}" aria-haspopup="listbox" aria-expanded="false">
+                                        <span class="oc-row-trigger-label">{{ $paymentStatusLabels[$order->payment_status] ?? $order->payment_status }}</span>
+                                        <i class="fa-solid fa-chevron-down oc-row-caret"></i>
+                                    </button>
+                                    <div class="hk-cat-panel oc-row-panel" hidden>
+                                        <div class="hk-cat-list" role="listbox">
+                                            @foreach($paymentStatusLabels as $val => $label)
+                                                <button type="button" class="hk-cat-item {{ $order->payment_status === $val ? 'is-active' : '' }}"
+                                                    data-value="{{ $val }}" data-css="{{ $val === 'paid' ? 'payment-badge--paid' : 'payment-badge--unpaid' }}">{{ $label }}</button>
+                                            @endforeach
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
+                            @endif
                         </td>
                         <td style="color:#64748B;font-size:13px;" data-sort-value="{{ $order->created_at?->timestamp }}">
                             {{ $order->created_at?->format('d/m/Y') ?? '—' }}
@@ -152,10 +163,20 @@
                                     data-update-order="{{ $order->id }}"
                                     data-status="{{ $order->status }}"
                                     data-payment="{{ $order->payment_status }}"
+                                    data-online-gateway="{{ $isOnlineGateway ? '1' : '0' }}"
                                     data-code="{{ $order->order_code ?? '#'.$order->id }}"
                                     title="Cập nhật">
                                     <i class="fa-regular fa-pen-to-square"></i>
                                 </button>
+                                @if($order->status === 'pending')
+                                    <button type="button" class="order-row-action-btn text-danger"
+                                        data-delete-url="{{ route('admin.orders.destroy', $order->id) }}"
+                                        data-delete-name="{{ $order->order_code ?? '#'.$order->id }}"
+                                        data-delete-type="đơn hàng"
+                                        title="Xóa">
+                                        <i class="fa-regular fa-trash-can"></i>
+                                    </button>
+                                @endif
                             </div>
                         </td>
                     </tr>

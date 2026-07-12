@@ -74,6 +74,8 @@ Route::middleware(['auth.login', 'active.account', 'admin', 'force.password.chan
             Route::get('/export', [ProductController::class, 'export'])->name('export');
             Route::get('/create', [ProductController::class, 'create'])->name('create');
             Route::post('/', [ProductController::class, 'store'])->name('store');
+            Route::post('/quick-create', [ProductController::class, 'quickCreate'])->name('quickCreate');
+            Route::get('/search-similar', [ProductController::class, 'searchSimilar'])->name('searchSimilar');
             Route::get('/{id}/edit', [ProductController::class, 'edit'])->name('edit');
             Route::put('/{id}', [ProductController::class, 'update'])->name('update');
             Route::patch('/{id}/toggle-status', [ProductController::class, 'toggleStatus'])->name('toggleStatus');
@@ -219,6 +221,7 @@ Route::middleware(['auth.login', 'active.account', 'admin', 'force.password.chan
             Route::get('/customers/{user}/addresses', [OrderController::class, 'customerAddresses'])->name('customerAddresses');
             Route::get('/{id}/detail', [OrderController::class, 'detail'])->name('detail');
             Route::put('/{id}', [OrderController::class, 'update'])->name('update');
+            Route::delete('/{id}', [OrderController::class, 'destroy'])->name('destroy');
             });
 
         Route::middleware('permission:manage-reviews')

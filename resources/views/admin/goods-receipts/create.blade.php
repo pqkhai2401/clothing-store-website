@@ -230,10 +230,16 @@
                     </div>
                     <div class="card-body p-4">
 
-                        <div class="gr-picker-wrap">
-                            <input type="text" class="gr-picker-input" id="grPickerInput"
-                                placeholder="Tìm theo tên sản phẩm, SKU, màu hoặc size để thêm vào phiếu..." autocomplete="off">
-                            <div class="gr-picker-panel" id="grPickerPanel" hidden></div>
+                        <div class="d-flex gap-2 align-items-start">
+                            <div class="gr-picker-wrap flex-grow-1">
+                                <input type="text" class="gr-picker-input" id="grPickerInput"
+                                    placeholder="Tìm theo tên sản phẩm, SKU, màu hoặc size để thêm vào phiếu..." autocomplete="off">
+                                <div class="gr-picker-panel" id="grPickerPanel" hidden></div>
+                            </div>
+                            <button type="button" class="btn btn-outline-dark fw-bold flex-shrink-0" style="height:42px;"
+                                data-bs-toggle="modal" data-bs-target="#qcpModal">
+                                <i class="fa-solid fa-plus me-1"></i> Sản phẩm mới
+                            </button>
                         </div>
                         @error('items') <div class="invalid-feedback d-block mt-2">{{ $message }}</div> @enderror
 
@@ -282,6 +288,8 @@
             </div>
         </div>
     </form>
+
+    @include('admin.goods-receipts.partials.quick-create-product-modal')
 </main>
 @endsection
 
@@ -558,6 +566,113 @@
 
     // Chạy kiểm tra ban đầu
     checkFormValidity();
+
+    /* ── Quick Create Product modal ── */
+    const csrfToken       = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    const qcpModalEl      = document.getElementById('qcpModal');
+    const qcpModal        = qcpModalEl ? new bootstrap.Modal(qcpModalEl) : null;
+    const qcpName         = document.getElementById('qcpName');
+    const qcpCategory     = document.getElementById('qcpCategory');
+    const qcpColor        = document.getElementById('qcpColor');
+    const qcpSize         = document.getElementById('qcpSize');
+    const qcpCostPrice    = document.getElementById('qcpCostPrice');
+    const qcpSimilarBox   = document.getElementById('qcpSimilarBox');
+    const qcpError        = document.getElementById('qcpError');
+    const qcpSubmitBtn    = document.getElementById('qcpSubmitBtn');
+
+    let qcpSearchTimer = null;
+
+    function qcpResetForm() {
+        qcpName.value = '';
+        qcpCategory.value = '';
+        qcpColor.value = '';
+        qcpSize.value = '';
+        qcpCostPrice.value = '';
+        qcpSimilarBox.style.display = 'none';
+        qcpSimilarBox.innerHTML = '';
+        qcpError.style.display = 'none';
+        qcpError.textContent = '';
+    }
+
+    if (qcpModalEl) {
+        qcpModalEl.addEventListener('show.bs.modal', qcpResetForm);
+    }
+
+    if (qcpName) {
+        qcpName.addEventListener('input', function () {
+            const value = this.value.trim();
+            clearTimeout(qcpSearchTimer);
+            if (!value) {
+                qcpSimilarBox.style.display = 'none';
+                return;
+            }
+            qcpSearchTimer = setTimeout(function () {
+                fetch(`{{ route('admin.products.searchSimilar') }}?name=${encodeURIComponent(value)}`, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                })
+                    .then(res => res.json())
+                    .then(data => {
+                        const products = data.products || [];
+                        if (products.length === 0) {
+                            qcpSimilarBox.style.display = 'none';
+                            return;
+                        }
+                        qcpSimilarBox.innerHTML = '<div class="gr-picker-empty" style="text-align:left; padding:8px 12px; color:#92400e; background:#fef3c7; font-size:12px;">'
+                            + 'Có thể đã tồn tại sản phẩm tương tự:</div>'
+                            + products.map(p => `<div class="gr-picker-item" style="cursor:default;">${esc(p.name)}</div>`).join('');
+                        qcpSimilarBox.style.display = 'block';
+                    })
+                    .catch(() => { qcpSimilarBox.style.display = 'none'; });
+            }, 350);
+        });
+    }
+
+    if (qcpSubmitBtn) {
+        qcpSubmitBtn.addEventListener('click', function () {
+            const payload = {
+                name: qcpName.value.trim(),
+                category_id: qcpCategory.value,
+                color_id: qcpColor.value,
+                size_id: qcpSize.value,
+                cost_price: qcpCostPrice.value,
+            };
+
+            if (!payload.name || !payload.category_id || !payload.color_id || !payload.size_id || payload.cost_price === '') {
+                qcpError.textContent = 'Vui lòng điền đầy đủ các trường bắt buộc.';
+                qcpError.style.display = 'block';
+                return;
+            }
+
+            qcpSubmitBtn.setAttribute('disabled', 'disabled');
+
+            fetch('{{ route('admin.products.quickCreate') }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: JSON.stringify(payload),
+            })
+                .then(async res => {
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.message || 'Có lỗi xảy ra.');
+                    return data;
+                })
+                .then(data => {
+                    variants.push(data.variant);
+                    addVariant(data.variant.id);
+                    qcpModal?.hide();
+                })
+                .catch(err => {
+                    qcpError.textContent = err.message;
+                    qcpError.style.display = 'block';
+                })
+                .finally(() => {
+                    qcpSubmitBtn.removeAttribute('disabled');
+                });
+        });
+    }
 
     /* ── Submit action (draft vs complete) ── */
     document.querySelectorAll('[data-gr-action]').forEach(function (btn) {

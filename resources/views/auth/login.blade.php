@@ -219,6 +219,26 @@
         flex: 0 0 auto;
     }
 
+    .auth-form-success {
+        margin: 0 0 14px;
+        padding: 10px 14px;
+        color: #155724;
+        background: #e6f4ea;
+        border: 1px solid #c3e6cb;
+        font-size: 13px;
+        font-weight: 700;
+    }
+
+    .auth-form-warning {
+        margin: 0 0 14px;
+        padding: 10px 14px;
+        color: #7a5b00;
+        background: #fff6e0;
+        border: 1px solid #ffe08a;
+        font-size: 13px;
+        font-weight: 700;
+    }
+
     .invalid-feedback,
     .auth-form-error {
         margin: 6px 0 0 0;
@@ -274,6 +294,14 @@
         <div class="auth-brand">HK STORE</div>
         <h1 class="auth-form-title">Đăng nhập</h1>
         <p class="auth-form-subtitle">Nhập Email/SĐT và mật khẩu để truy cập tài khoản của bạn.</p>
+
+        @if (session('success'))
+            <div class="auth-form-success">{{ session('success') }}</div>
+        @endif
+
+        @if (session('warning'))
+            <div class="auth-form-warning">{{ session('warning') }}</div>
+        @endif
 
         <form action="{{ route('auth.login') }}" method="POST">
             @csrf

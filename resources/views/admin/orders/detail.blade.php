@@ -33,6 +33,14 @@
                 <a href="{{ route('admin.orders.list') }}" class="btn btn-outline-secondary btn-sm fw-semibold">
                     <i class="fa-solid fa-arrow-left me-1"></i> Quay lại
                 </a>
+                @if($order->status === 'pending')
+                    <button type="button" class="btn btn-outline-danger btn-sm fw-semibold"
+                        data-delete-url="{{ route('admin.orders.destroy', $order->id) }}"
+                        data-delete-name="{{ $order->order_code ?? '#'.$order->id }}"
+                        data-delete-type="đơn hàng">
+                        <i class="fa-regular fa-trash-can me-1"></i> Xóa đơn hàng
+                    </button>
+                @endif
             </div>
         </div>
 
@@ -213,7 +221,9 @@
                     @method('PUT')
 
                     @php
-                        $allowedStatuses = \App\Http\Controllers\Admin\OrderController::allowedStatusOptions($order->status);
+                        $isOnlineGateway = $order->paymentMethod?->isOnlineGateway() ?? false;
+                        $blockedByPayment = $isOnlineGateway && $order->payment_status !== 'paid';
+                        $allowedStatuses = \App\Http\Controllers\Admin\OrderController::allowedStatusOptions($order->status, $blockedByPayment);
                         $canChangeStatus = count($allowedStatuses) > 1;
                     @endphp
                     <div class="row g-3">
@@ -230,6 +240,11 @@
                                     @endforeach
                                 </select>
                                 @error('status') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                @if($blockedByPayment)
+                                    <div class="form-text text-warning" style="font-size:12px;">
+                                        Đơn thanh toán online chưa được xác nhận thanh toán — chỉ có thể hủy, không thể xử lý tiếp.
+                                    </div>
+                                @endif
                             @else
                                 <input type="hidden" name="status" value="{{ $order->status }}">
                                 <div class="form-control-plaintext" style="font-size:13px;">
@@ -241,16 +256,24 @@
 
                         <div class="col-md-4">
                             <label for="payment_status" class="form-label">Trạng thái thanh toán <span class="text-danger">*</span></label>
-                            <select id="payment_status" name="payment_status"
-                                class="form-select @error('payment_status') is-invalid @enderror">
-                                @foreach($paymentStatusLabels as $key => $label)
-                                    <option value="{{ $key }}"
-                                        {{ old('payment_status', $order->payment_status) === $key ? 'selected' : '' }}>
-                                        {{ $label }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            @error('payment_status') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                            @if($isOnlineGateway)
+                                <input type="hidden" name="payment_status" value="{{ $order->payment_status }}">
+                                <div class="form-control-plaintext" style="font-size:13px;">
+                                    {{ $paymentStatusLabels[$order->payment_status] ?? $order->payment_status }}
+                                    <span class="text-muted" style="font-size:12px;">(đồng bộ tự động từ cổng thanh toán online, không thể sửa tay)</span>
+                                </div>
+                            @else
+                                <select id="payment_status" name="payment_status"
+                                    class="form-select @error('payment_status') is-invalid @enderror">
+                                    @foreach($paymentStatusLabels as $key => $label)
+                                        <option value="{{ $key }}"
+                                            {{ old('payment_status', $order->payment_status) === $key ? 'selected' : '' }}>
+                                            {{ $label }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @error('payment_status') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                            @endif
                         </div>
 
                         <div class="col-md-4">
@@ -275,4 +298,6 @@
             </div>
         </div>
     </main>
+
+    @include('layouts.components.confirm.delete')
 @endsection

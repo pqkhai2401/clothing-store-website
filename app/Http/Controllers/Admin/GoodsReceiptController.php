@@ -4,12 +4,14 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Category;
+use App\Models\Color;
 use App\Models\GoodsReceipt;
 use App\Models\GoodsReceiptItem;
 use App\Models\GoodsReceiptLog;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\ProductVariant;
+use App\Models\Size;
 use App\Models\StockIssue;
 use App\Models\StockIssueItem;
 use App\Models\StockMovement;
@@ -257,7 +259,15 @@ class GoodsReceiptController extends Controller
         $variants   = $this->goodsReceiptVariants();
         $warehouses = Warehouse::where('status', true)->orderBy('is_default', 'desc')->orderBy('name')->get();
 
-        return view('admin.goods-receipts.create', compact('suppliers', 'variants', 'warehouses'));
+        // Dùng cho modal "Tạo nhanh sản phẩm" (Quick Create) ngay trong màn hình nhập kho.
+        $quickCreateCategories = Category::whereNull('parent_id')->with('childrenCategories')->orderBy('name')->get();
+        $quickCreateColors     = Color::orderBy('name')->get();
+        $quickCreateSizes      = Size::where('status', 1)->orderBy('sort_weight')->orderBy('name')->get();
+
+        return view('admin.goods-receipts.create', compact(
+            'suppliers', 'variants', 'warehouses',
+            'quickCreateCategories', 'quickCreateColors', 'quickCreateSizes'
+        ));
     }
 
     public function stockCard(ProductVariant $variant)

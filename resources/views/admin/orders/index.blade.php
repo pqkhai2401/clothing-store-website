@@ -215,6 +215,9 @@
                         <option value="unpaid">Chưa thanh toán</option>
                         <option value="paid">Đã thanh toán</option>
                     </select>
+                    <div id="ouPaymentHint" class="form-text text-muted" style="font-size:12px; display:none;">
+                        Đồng bộ tự động từ cổng thanh toán online, không thể sửa tay.
+                    </div>
                 </div>
                 <div class="mb-1">
                     <label class="form-label" style="font-size:13px; font-weight:700;">
@@ -239,6 +242,8 @@
         </div>
     </div>
 </div>
+
+@include('layouts.components.confirm.delete')
 @endsection
 
 @push('scripts')
@@ -246,12 +251,13 @@
     (function () {
         /* ── Order Update Modal ── */
         (function () {
-            const modal       = new bootstrap.Modal(document.getElementById('orderUpdateModal'));
-            const statusSel   = document.getElementById('ouOrderStatus');
-            const paymentSel  = document.getElementById('ouPaymentStatus');
-            const saveBtn     = document.getElementById('ouSaveBtn');
-            const errBox      = document.getElementById('ouError');
-            const csrf        = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+            const modal        = new bootstrap.Modal(document.getElementById('orderUpdateModal'));
+            const statusSel    = document.getElementById('ouOrderStatus');
+            const paymentSel   = document.getElementById('ouPaymentStatus');
+            const paymentHint  = document.getElementById('ouPaymentHint');
+            const saveBtn      = document.getElementById('ouSaveBtn');
+            const errBox       = document.getElementById('ouError');
+            const csrf         = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
             let currentOrderId = null;
             let currentRow     = null;
 
@@ -264,14 +270,26 @@
                 currentOrderId = btn.dataset.updateOrder;
                 currentRow     = btn.closest('tr');
 
-                const currentStatus = btn.dataset.status;
-                const allowed = [currentStatus, ...(statusTransitions[currentStatus] ?? [])];
+                const currentStatus   = btn.dataset.status;
+                const paymentStatus   = btn.dataset.payment;
+                const isOnlineGateway = btn.dataset.onlineGateway === '1';
+                // Đơn online-gateway (PayOS/MoMo) chưa "paid" thì chỉ được hủy, không xử lý tiếp —
+                // khớp với gate canAdvanceOnlineOrder() ở backend.
+                const blockedByPayment = isOnlineGateway && paymentStatus !== 'paid';
+                let transitions = statusTransitions[currentStatus] ?? [];
+                if (blockedByPayment) {
+                    transitions = transitions.filter(function (s) { return s === 'cancelled'; });
+                }
+                const allowed = [currentStatus, ...transitions];
                 statusSel.innerHTML = allowed.map(function (val) {
                     return `<option value="${val}">${statusLabels[val] ?? val}</option>`;
                 }).join('');
 
                 statusSel.value  = currentStatus;
-                paymentSel.value = btn.dataset.payment;
+                paymentSel.value = paymentStatus;
+                // Đơn online-gateway: payment_status chỉ do webhook đồng bộ, khoá không cho sửa tay.
+                paymentSel.disabled = isOnlineGateway;
+                paymentHint.style.display = isOnlineGateway ? 'block' : 'none';
                 errBox.style.display = 'none';
                 errBox.textContent   = '';
                 saveBtn.disabled = false;
@@ -355,14 +373,14 @@
                     const newValue  = item.dataset.value;
                     const newCss    = item.dataset.css;
 
-                    const statusDrop  = row.querySelector('.oc-row-dropdown[data-field="status"]');
-                    const paymentDrop = row.querySelector('.oc-row-dropdown[data-field="payment_status"]');
-                    const statusTrigger  = statusDrop.querySelector('.oc-row-trigger');
-                    const paymentTrigger = paymentDrop.querySelector('.oc-row-trigger');
+                    // Dùng data-value ở phần tử [data-field] (dropdown tương tác hoặc badge tĩnh
+                    // khi trạng thái/thanh toán bị khoá) để lấy giá trị hiện tại của field còn lại.
+                    const statusDrop  = row.querySelector('[data-field="status"]');
+                    const paymentDrop = row.querySelector('[data-field="payment_status"]');
 
                     const payload = {
-                        status:         field === 'status' ? newValue : statusTrigger.dataset.value,
-                        payment_status: field === 'payment_status' ? newValue : paymentTrigger.dataset.value,
+                        status:         field === 'status' ? newValue : (statusDrop?.dataset.value ?? ''),
+                        payment_status: field === 'payment_status' ? newValue : (paymentDrop?.dataset.value ?? ''),
                         note: '',
                     };
 

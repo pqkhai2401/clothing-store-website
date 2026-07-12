@@ -57,10 +57,18 @@ class OrderController extends Controller
     /**
      * Danh sách trạng thái được phép chọn cho một đơn đang ở trạng thái hiện tại
      * (luôn gồm chính trạng thái hiện tại — coi như lựa chọn "không đổi").
+     * $blockedByPayment=true khi đơn dùng cổng thanh toán online (PayOS/MoMo) và chưa được
+     * xác nhận thanh toán — lúc đó chỉ được giữ nguyên hoặc hủy, không được xử lý tiếp.
      */
-    public static function allowedStatusOptions(string $currentStatus): array
+    public static function allowedStatusOptions(string $currentStatus, bool $blockedByPayment = false): array
     {
-        $allowedKeys = array_merge([$currentStatus], self::STATUS_TRANSITIONS[$currentStatus] ?? []);
+        $allowedTransitions = self::STATUS_TRANSITIONS[$currentStatus] ?? [];
+
+        if ($blockedByPayment) {
+            $allowedTransitions = array_intersect($allowedTransitions, ['cancelled']);
+        }
+
+        $allowedKeys = array_merge([$currentStatus], $allowedTransitions);
 
         return array_intersect_key(self::STATUS_LABELS, array_flip($allowedKeys));
     }
@@ -68,6 +76,23 @@ class OrderController extends Controller
     private static function isValidStatusTransition(string $from, string $to): bool
     {
         return $to === $from || in_array($to, self::STATUS_TRANSITIONS[$from] ?? [], true);
+    }
+
+    /**
+     * Mô hình "thanh toán trước" cho đơn dùng cổng online (PayOS/MoMo): payment_status chỉ do
+     * webhook/IPN xác nhận, nên phải paid rồi mới cho admin xử lý tiếp (processing trở đi).
+     * Đơn COD/thủ công không bị ràng buộc (thu tiền khi giao). Giữ nguyên trạng thái hoặc hủy
+     * thì luôn được phép, không phụ thuộc thanh toán.
+     */
+    private static function canAdvanceOnlineOrder(Order $order, string $to): bool
+    {
+        if ($to === $order->status || $to === 'cancelled') {
+            return true;
+        }
+
+        $isOnlineGateway = $order->paymentMethod?->isOnlineGateway() ?? false;
+
+        return !$isOnlineGateway || $order->payment_status === 'paid';
     }
 
     /**
@@ -250,9 +275,11 @@ class OrderController extends Controller
             'status.in'    => 'Trạng thái không hợp lệ.',
         ]);
 
-        $eligibleOrders = Order::whereIn('id', $validated['ids'])
+        $eligibleOrders = Order::with('paymentMethod')
+            ->whereIn('id', $validated['ids'])
             ->get()
-            ->filter(fn (Order $order) => self::isValidStatusTransition($order->status, $validated['status']));
+            ->filter(fn (Order $order) => self::isValidStatusTransition($order->status, $validated['status'])
+                && self::canAdvanceOnlineOrder($order, $validated['status']));
 
         $updated = 0;
         foreach ($eligibleOrders as $order) {
@@ -468,7 +495,7 @@ class OrderController extends Controller
 
     public function update(Request $request, string $id)
     {
-        $order = Order::findOrFail($id);
+        $order = Order::with('paymentMethod')->findOrFail($id);
 
         $request->validate([
             'status' => ['required', Rule::in(array_keys(self::STATUS_LABELS))],
@@ -482,9 +509,22 @@ class OrderController extends Controller
             'note.max' => 'Ghi chú không được quá 1000 ký tự.',
         ]);
 
-        if (! self::isValidStatusTransition($order->status, $request->input('status'))) {
+        $newStatus = $request->input('status');
+
+        if (! self::isValidStatusTransition($order->status, $newStatus)) {
             $message = "Không thể chuyển đơn hàng từ \"" . (self::STATUS_LABELS[$order->status] ?? $order->status)
-                . "\" sang \"" . (self::STATUS_LABELS[$request->input('status')] ?? $request->input('status')) . "\".";
+                . "\" sang \"" . (self::STATUS_LABELS[$newStatus] ?? $newStatus) . "\".";
+
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => $message], 422);
+            }
+
+            return back()->withErrors(['status' => $message])->withInput();
+        }
+
+        if (! self::canAdvanceOnlineOrder($order, $newStatus)) {
+            $message = "Đơn hàng thanh toán online (PayOS/MoMo) chưa được xác nhận thanh toán, "
+                . "không thể chuyển sang \"" . (self::STATUS_LABELS[$newStatus] ?? $newStatus) . "\".";
 
             if ($request->expectsJson()) {
                 return response()->json(['success' => false, 'message' => $message], 422);
@@ -497,9 +537,16 @@ class OrderController extends Controller
             $oldStatus = $order->status;
             $newStatus = $request->input('status');
 
-            // Đơn "Hoàn thành" coi như đã thu tiền (COD thu khi giao xong) → tự đánh dấu đã thanh toán,
-            // tránh tình trạng đơn hoàn thành nhưng payment_status vẫn "Chưa thanh toán".
-            $paymentStatus = $newStatus === 'completed' ? 'paid' : $request->input('payment_status');
+            // Đơn online-gateway (PayOS/MoMo): payment_status chỉ do webhook/IPN đồng bộ, admin
+            // không sửa tay được — bỏ qua giá trị form gửi lên, giữ nguyên giá trị hiện tại.
+            // Đơn COD/thủ công: admin toàn quyền, và "Hoàn thành" coi như đã thu tiền (COD thu
+            // khi giao xong) → tự đánh dấu đã thanh toán.
+            $isOnlineGateway = $order->paymentMethod?->isOnlineGateway() ?? false;
+            $paymentStatus = match (true) {
+                $isOnlineGateway => $order->payment_status,
+                $newStatus === 'completed' => 'paid',
+                default => $request->input('payment_status'),
+            };
 
             $order->update([
                 'status' => $newStatus,
@@ -520,6 +567,38 @@ class OrderController extends Controller
 
         return redirect()->route('admin.orders.detail', $id)
             ->with('success', 'Cập nhật đơn hàng thành công.');
+    }
+
+    /**
+     * Chỉ cho xóa đơn hàng còn ở trạng thái "Chờ xác nhận" (chưa từng trừ kho/xuất kho).
+     * Đơn đã được xử lý (processing trở đi) phải hủy (cancelled) để hoàn kho đúng quy trình,
+     * không xóa thẳng vì sẽ làm lệch sổ kho/báo cáo doanh thu.
+     */
+    public function destroy(Request $request, string $id)
+    {
+        $order = Order::findOrFail($id);
+
+        if ($order->status !== 'pending') {
+            $message = 'Chỉ có thể xóa đơn hàng đang ở trạng thái "Chờ xác nhận". '
+                . 'Vui lòng hủy đơn hàng nếu đơn đã được xử lý.';
+
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => $message], 422);
+            }
+
+            return back()->withErrors(['status' => $message]);
+        }
+
+        $orderLabel = $order->order_code ?? '#' . $order->id;
+        $order->delete();
+
+        $message = "Đã xóa đơn hàng \"{$orderLabel}\" thành công.";
+
+        if ($request->expectsJson()) {
+            return response()->json(['success' => true, 'message' => $message]);
+        }
+
+        return redirect()->route('admin.orders.list')->with('success', $message);
     }
 
     private function autoGenerateStockIssueForOrder(Order $order): void

@@ -172,4 +172,13 @@ class Product extends Model implements \OwenIt\Auditing\Contracts\Auditable
     {
         return (int) ($this->product_variants_sum_stock ?? $this->productVariants->sum('stock'));
     }
+
+    /**
+     * A product created via Quick Create (from goods-receipts) is missing
+     * catalog fields required to be safely published on the storefront.
+     */
+    public function isIncomplete(): bool
+    {
+        return blank($this->thumbnail) || blank($this->brand_id) || blank($this->description);
+    }
 }

@@ -24,6 +24,7 @@ class RoleSeeder extends Seeder
             'manage-staff',       // Quản lý nhân sự (chỉ admin)
             'manage-customers',   // Quản lý khách hàng
             'manage-products',    // Quản lý sản phẩm
+            'publish-products',   // Công bố sản phẩm nháp lên website (chỉ admin)
             'manage-goods-receipts', // Quản lý phiếu nhập kho
             'manage-categories',  // Quản lý danh mục
             'manage-brands',      // Quản lý thương hiệu
@@ -51,7 +52,7 @@ class RoleSeeder extends Seeder
         $staff = Role::firstOrCreate(['name' => UserRole::STAFF->value, 'guard_name' => 'web']);
         $staffPermissions = array_values(array_filter(
             $allPermissions,
-            fn ($p) => ! in_array($p, ['manage-staff', 'manage-logs', 'manage-settings'], true)
+            fn ($p) => ! in_array($p, ['manage-staff', 'manage-logs', 'manage-settings', 'publish-products'], true)
         ));
         $staff->syncPermissions($staffPermissions);
 

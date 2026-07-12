@@ -520,6 +520,12 @@
         color: #64748B;
     }
 
+    .status-badge--draft {
+        background: #FEF3C7;
+        border: 1.5px solid #FCD34D;
+        color: #92400E;
+    }
+
     .product-status-switch-wrap {
         display: flex;
         align-items: center;
@@ -808,6 +814,12 @@
         background: rgba(100,116,139,0.14) !important;
         border-color: rgba(148,163,184,0.30) !important;
         color: #CBD5E1 !important;
+    }
+
+    [data-theme="dark"] .status-badge--draft {
+        background: rgba(217,119,6,0.16) !important;
+        border-color: rgba(252,211,77,0.35) !important;
+        color: #FCD34D !important;
     }
 
     [data-theme="dark"] .product-thumb {

@@ -129,6 +129,93 @@ class ProductController extends Controller
         return Excel::download(new ProductsExport($request), 'danh-sach-san-pham-' . now()->format('Ymd-His') . '.xlsx');
     }
 
+    /**
+     * Tạo nhanh Product + 1 ProductVariant từ màn hình lập phiếu nhập kho.
+     * Sản phẩm tạo ra ở trạng thái ẩn (status=false) và thiếu ảnh/thương hiệu/mô tả,
+     * chờ bộ phận quản lý catalog hoàn thiện và công bố (xem update()/toggleStatus()).
+     */
+    public function quickCreate(Request $request)
+    {
+        $request->validate([
+            'name'        => ['required', 'string', 'max:255'],
+            'category_id' => ['required', 'integer', Rule::exists('categories', 'id')],
+            'color_id'    => ['required', 'integer', Rule::exists('colors', 'id')],
+            'size_id'     => ['required', 'integer', Rule::exists('sizes', 'id')],
+            'cost_price'  => ['required', 'numeric', 'min:0'],
+        ], [
+            'name.required'        => 'Tên sản phẩm không được để trống.',
+            'category_id.required' => 'Vui lòng chọn danh mục.',
+            'color_id.required'    => 'Vui lòng chọn màu sắc.',
+            'size_id.required'     => 'Vui lòng chọn kích thước.',
+            'cost_price.required'  => 'Vui lòng nhập giá vốn.',
+            'cost_price.min'       => 'Giá vốn không được âm.',
+        ]);
+
+        $slug = Str::slug($request->input('name'));
+        if (Product::where('slug', $slug)->exists()) {
+            $slug = $slug . '-' . time();
+        }
+
+        $costPrice = max(0, (float) $request->input('cost_price'));
+
+        $variant = DB::transaction(function () use ($request, $slug, $costPrice) {
+            $product = Product::create([
+                'name'        => $request->input('name'),
+                'slug'        => $slug,
+                'category_id' => $request->input('category_id'),
+                'brand_id'    => null,
+                'gender'      => Gender::UNISEX->value,
+                'description' => null,
+                'thumbnail'   => null,
+                'is_featured' => false,
+                'status'      => false,
+            ]);
+
+            return $product->productVariants()->create([
+                'color_id'   => $request->input('color_id'),
+                'size_id'    => $request->input('size_id'),
+                'sku'        => Str::upper(Str::random(10)),
+                'cost_price' => $costPrice,
+                'price'      => $costPrice,
+                'stock'      => 0,
+            ])->load(['product:id,name,thumbnail', 'color:id,name,hex_code', 'size:id,name']);
+        });
+
+        return response()->json([
+            'message' => "Đã tạo nhanh sản phẩm \"{$variant->product->name}\" (chưa công bố).",
+            'variant' => [
+                'id'           => $variant->id,
+                'sku'          => $variant->sku,
+                'product_name' => $variant->product?->name,
+                'thumbnail'    => $variant->product?->thumbnail,
+                'color_name'   => $variant->color?->name,
+                'color_hex'    => $variant->color?->display_hex_code,
+                'size_name'    => $variant->size?->name,
+                'stock'        => $variant->stock,
+                'cost_price'   => (float) $variant->cost_price,
+            ],
+        ], 201);
+    }
+
+    /**
+     * Gợi ý sản phẩm có tên tương tự, dùng để cảnh báo trùng lặp trước khi Quick Create.
+     */
+    public function searchSimilar(Request $request)
+    {
+        $name = trim((string) $request->input('name'));
+
+        if ($name === '') {
+            return response()->json(['products' => []]);
+        }
+
+        $products = Product::where('name', 'like', "%{$name}%")
+            ->orderBy('name')
+            ->limit(5)
+            ->get(['id', 'name', 'thumbnail']);
+
+        return response()->json(['products' => $products]);
+    }
+
     public function create()
     {
         $categories     = Category::with('childrenCategories')->orderBy('name')->get();
@@ -233,9 +320,11 @@ class ProductController extends Controller
                             'color_id'   => $colorId,
                             'size_id'    => $sizeId,
                             'sku'        => $sku !== '' ? $sku : Str::upper(Str::random(10)),
-                            'cost_price' => max(0, (float) ($data['cost_price'] ?? 0)),
+                            // Tồn & giá vốn do KHO quản lý theo lô (product_batches) — khởi tạo 0,
+                            // nhập hàng thực tế qua Phiếu nhập kho để sinh lô + giá vốn.
+                            'cost_price' => 0,
                             'price'      => max(0, (float) ($data['price'] ?? $data['sale_price'] ?? 0)),
-                            'stock'      => max(0, (int) ($data['stock'] ?? 0)),
+                            'stock'      => 0,
                         ]);
                     }
                 }
@@ -361,6 +450,26 @@ class ProductController extends Controller
         $newImage2    = $storeImage('image_2');
         $newImage3    = $storeImage('image_3');
 
+        // Sản phẩm tạo nhanh (Quick Create) từ nhập kho có thể vẫn thiếu ảnh chính.
+        // Chỉ Admin (quyền publish-products) được phép công bố khi thông tin còn thiếu.
+        $willBeIncomplete = blank($newThumbnail ?? $product->thumbnail)
+            || blank($request->input('brand_id'))
+            || blank($request->input('description'));
+
+        if ($request->boolean('status') && $willBeIncomplete && !$request->user()->can('publish-products')) {
+            foreach ($uploadedPaths as $path) {
+                Storage::disk('public')->delete($path);
+            }
+
+            $message = 'Sản phẩm chưa đủ thông tin (ảnh/thương hiệu/mô tả). Chỉ Admin mới có thể công bố sản phẩm chưa hoàn thiện.';
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['message' => $message], 403);
+            }
+
+            return back()->withErrors(['status' => $message])->withInput();
+        }
+
         try {
             DB::transaction(function () use ($request, $product, $id, $slug, $newThumbnail, $newImage2, $newImage3) {
                 $product->update([
@@ -413,16 +522,20 @@ class ProductController extends Controller
                 foreach ($request->input('variants', []) as $colorId => $sizes) {
                     foreach ($sizes as $sizeId => $data) {
                         $sku = trim((string) ($data['sku'] ?? ''));
-                        $variant = ProductVariant::updateOrCreate(
-                            ['product_id' => $product->id, 'color_id' => $colorId, 'size_id' => $sizeId],
-                            [
-                                'sku'        => $sku !== '' ? $sku : Str::upper(Str::random(10)),
-                                'cost_price' => max(0, (float) ($data['cost_price'] ?? 0)),
-                                'price'      => max(0, (float) ($data['price'] ?? $data['sale_price'] ?? 0)),
-                                'stock'      => max(0, (int) ($data['stock'] ?? 0)),
-                                'status'     => 'Active', // Kích hoạt lại hoạt động nếu trước đó bị ẩn
-                            ]
+                        $variant = ProductVariant::firstOrNew(
+                            ['product_id' => $product->id, 'color_id' => $colorId, 'size_id' => $sizeId]
                         );
+                        $variant->sku    = $sku !== '' ? $sku : ($variant->sku ?: Str::upper(Str::random(10)));
+                        $variant->price  = max(0, (float) ($data['price'] ?? $data['sale_price'] ?? 0));
+                        $variant->status = 'Active'; // Kích hoạt lại hoạt động nếu trước đó bị ẩn
+
+                        // Tồn & giá vốn do KHO quản lý theo lô (product_batches) — KHÔNG ghi đè từ form.
+                        // Chỉ khởi tạo 0 cho biến thể mới; thêm hàng thực tế qua Phiếu nhập kho.
+                        if (! $variant->exists) {
+                            $variant->stock = 0;
+                            $variant->cost_price = 0;
+                        }
+                        $variant->save();
                         $keep[] = $variant->id;
                     }
                 }
@@ -461,6 +574,17 @@ class ProductController extends Controller
     {
         $product = Product::findOrFail($id);
         $newStatus = !$product->status;
+
+        if ($newStatus && $product->isIncomplete() && !$request->user()->can('publish-products')) {
+            $message = 'Sản phẩm chưa đủ thông tin (ảnh/thương hiệu/mô tả). Chỉ Admin mới có thể công bố sản phẩm chưa hoàn thiện.';
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['message' => $message], 403);
+            }
+
+            return back()->with('error', $message);
+        }
+
         $product->update(['status' => $newStatus]);
 
         $msg = $newStatus

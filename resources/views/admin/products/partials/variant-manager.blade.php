@@ -650,8 +650,9 @@ window.__VM_EXISTING__ = @json($existingVariants);
                                name="variants[${color.id}][${size.id}][price]" value="${esc(price)}" placeholder="0">
                     </td>
                     <td>
-                        <input type="number" min="0" step="1" class="vm-matrix-input" data-field="stock"
-                               name="variants[${color.id}][${size.id}][stock]" value="${esc(stock)}" placeholder="0">
+                        <input type="number" min="0" step="1" class="vm-matrix-input is-locked" data-field="stock"
+                               name="variants[${color.id}][${size.id}][stock]" value="${esc(stock)}" placeholder="0"
+                               title="Tồn kho được quản lý qua Phiếu nhập kho (theo lô), không sửa tay tại đây." readonly>
                     </td>
                 `;
                 matrixBody.appendChild(tr);
