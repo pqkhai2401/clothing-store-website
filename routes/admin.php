@@ -210,7 +210,7 @@ Route::middleware(['auth.login', 'active.account', 'admin', 'force.password.chan
             });
 
         Route::middleware('permission:manage-orders')
-            ->prefix('orders')->name('orders.')->group(function () {
+            ->prefix('orders')->name('orders.')->group(function () use ($trashRoutes) {
             Route::get('/', [OrderController::class, 'index'])->name('list');
             Route::get('/export', [OrderController::class, 'export'])->name('export');
             Route::post('/bulk-update-status', [OrderController::class, 'bulkUpdateStatus'])->name('bulkUpdateStatus');
@@ -219,6 +219,9 @@ Route::middleware(['auth.login', 'active.account', 'admin', 'force.password.chan
             Route::get('/search-customers', [OrderController::class, 'searchCustomers'])->name('searchCustomers');
             Route::get('/search-variants', [OrderController::class, 'searchVariants'])->name('searchVariants');
             Route::get('/customers/{user}/addresses', [OrderController::class, 'customerAddresses'])->name('customerAddresses');
+            Route::post('/trash/bulk-restore', [OrderController::class, 'bulkRestore'])->name('bulkRestore');
+            Route::post('/trash/bulk-force-delete', [OrderController::class, 'bulkForceDelete'])->name('bulkForceDelete');
+            $trashRoutes(OrderController::class)();
             Route::get('/{id}/detail', [OrderController::class, 'detail'])->name('detail');
             Route::put('/{id}', [OrderController::class, 'update'])->name('update');
             Route::delete('/{id}', [OrderController::class, 'destroy'])->name('destroy');

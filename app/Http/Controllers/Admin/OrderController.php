@@ -601,6 +601,81 @@ class OrderController extends Controller
         return redirect()->route('admin.orders.list')->with('success', $message);
     }
 
+    public function trash(Request $request)
+    {
+        $keyword = trim((string) $request->input('search', $request->input('keyword')));
+        $perPage = in_array((int) $request->input('per_page'), [10, 25, 50], true)
+            ? (int) $request->input('per_page') : 10;
+
+        $query = Order::onlyTrashed()
+            ->with(['user', 'paymentMethod'])
+            ->orderBy('deleted_at', 'desc');
+
+        if ($keyword !== '') {
+            $query->where(function ($q) use ($keyword) {
+                $q->where('order_code', 'like', "%{$keyword}%")
+                    ->orWhere('phone', 'like', "%{$keyword}%")
+                    ->orWhereHas('user', fn ($u) => $u->where('username', 'like', "%{$keyword}%"));
+            });
+        }
+
+        $orders = $query->paginate($perPage)->withQueryString();
+
+        if ($request->ajax()) {
+            return response()->json([
+                'html' => view('admin.orders.partials.trash-table', compact('orders'))->render(),
+            ]);
+        }
+
+        return view('admin.orders.trash', compact('orders', 'keyword', 'perPage'));
+    }
+
+    public function restore(string $id)
+    {
+        $order = Order::onlyTrashed()->findOrFail($id);
+        $order->restore();
+
+        return redirect()->route('admin.orders.trash')
+            ->with('success', "Đã khôi phục đơn hàng \"{$order->order_code}\" thành công.");
+    }
+
+    public function forceDelete(string $id)
+    {
+        $order = Order::onlyTrashed()->findOrFail($id);
+        $orderLabel = $order->order_code ?? '#' . $order->id;
+        $order->forceDelete();
+
+        return redirect()->route('admin.orders.trash')
+            ->with('success', "Đã xóa vĩnh viễn đơn hàng \"{$orderLabel}\".");
+    }
+
+    public function bulkRestore(Request $request)
+    {
+        $ids = array_filter((array) $request->input('ids', []), 'is_numeric');
+        if (empty($ids)) {
+            return back()->with('error', 'Vui lòng chọn ít nhất một đơn hàng.');
+        }
+
+        $restored = Order::onlyTrashed()->whereIn('id', $ids)->restore();
+
+        return back()->with('success', "Đã khôi phục {$restored} đơn hàng thành công.");
+    }
+
+    public function bulkForceDelete(Request $request)
+    {
+        $ids = array_filter((array) $request->input('ids', []), 'is_numeric');
+        if (empty($ids)) {
+            return back()->with('error', 'Vui lòng chọn ít nhất một đơn hàng.');
+        }
+
+        $count = 0;
+        foreach (Order::onlyTrashed()->whereIn('id', $ids)->get() as $order) {
+            $count += (int) $order->forceDelete();
+        }
+
+        return back()->with('success', "Đã xóa vĩnh viễn {$count} đơn hàng.");
+    }
+
     private function autoGenerateStockIssueForOrder(Order $order): void
     {
         $exists = \App\Models\StockIssue::where('order_id', $order->id)

@@ -299,5 +299,7 @@
         </div>
     </main>
 
-    @include('layouts.components.confirm.delete')
+    @push('modals')
+        @include('layouts.components.confirm.delete')
+    @endpush
 @endsection

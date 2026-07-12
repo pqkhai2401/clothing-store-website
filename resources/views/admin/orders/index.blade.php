@@ -60,11 +60,15 @@
                     <p class="product-header-desc mb-0">Danh sách tất cả đơn hàng trong hệ thống.</p>
                 </div>
                 <div class="product-header-actions">
+                    
                     <a href="{{ route('admin.orders.export') }}?{{ http_build_query(request()->except('page')) }}"
                        class="btn product-action-btn product-action-btn--neutral">
                         <i class="fa-solid fa-download me-1"></i> Xuất Excel
                     </a>
-                      <a href="{{ route('admin.orders.create') }}" class="btn btn-dark product-action-btn">
+                    <a href="{{ route('admin.orders.trash') }}" class="btn btn-light border product-action-btn">
+                        <i class="fa-regular fa-trash-can me-1"></i> Thùng rác
+                    </a>
+                    <a href="{{ route('admin.orders.create') }}" class="btn btn-dark product-action-btn">
                         <i class="fa-solid fa-plus me-1"></i> Thêm đơn hàng
                     </a>
                 </div>
@@ -243,7 +247,9 @@
     </div>
 </div>
 
-@include('layouts.components.confirm.delete')
+@push('modals')
+    @include('layouts.components.confirm.delete')
+@endpush
 @endsection
 
 @push('scripts')

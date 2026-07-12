@@ -61,18 +61,19 @@
                             {{ $product->deleted_at?->format('d/m/Y H:i') }}
                         </td>
                         <td class="text-end pe-4">
-                            <div class="d-inline-flex gap-2">
-                                <form method="POST" action="{{ route('admin.products.restore', $product->id) }}">
+                            <div class="d-inline-flex align-items-center gap-1">
+                                <form method="POST" action="{{ route('admin.products.restore', $product->id) }}" class="d-inline">
                                     @csrf @method('PATCH')
-                                    <button type="submit" class="btn btn-sm btn-outline-success fw-semibold">
-                                        <i class="fa-solid fa-rotate-left me-1"></i> Khôi phục
+                                    <button type="submit" class="product-more-btn" title="Khôi phục">
+                                        <i class="fa-solid fa-rotate-left"></i>
                                     </button>
                                 </form>
-                                <button type="button" class="btn btn-sm btn-outline-danger fw-semibold"
+                                <button type="button" class="product-more-btn text-danger"
                                     data-delete-url="{{ route('admin.products.forceDelete', $product->id) }}"
                                     data-delete-name="{{ $product->name }}"
-                                    data-delete-type="sản phẩm (vĩnh viễn)">
-                                    <i class="fa-solid fa-trash me-1"></i> Xóa vĩnh viễn
+                                    data-delete-type="sản phẩm (vĩnh viễn)"
+                                    title="Xóa vĩnh viễn">
+                                    <i class="fa-regular fa-trash-can"></i>
                                 </button>
                             </div>
                         </td>

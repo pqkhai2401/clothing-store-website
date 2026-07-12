@@ -362,6 +362,30 @@
         color: #0F172A !important;
     }
 
+    /* Nút "Thùng rác" (btn-light) dùng chung một màu trung tính trên mọi trang quản trị,
+       đỏ khi hover — ghi đè cả rule dark-theme mặc định (đặc tả cao hơn nhờ có thêm
+       .product-admin-page để không phụ thuộc thứ tự nạp CSS giữa các trang). */
+    .product-admin-page .product-action-btn.btn-light {
+        background: #ffffff !important;
+        border: 1.5px solid #D8E0EA !important;
+        color: #64748B !important;
+    }
+    .product-admin-page .product-action-btn.btn-light:hover {
+        background: #FEF2F2 !important;
+        border-color: #F87171 !important;
+        color: #DC2626 !important;
+    }
+    [data-theme="dark"] .product-admin-page .product-action-btn.btn-light {
+        background: #101C33 !important;
+        border-color: #2A3B59 !important;
+        color: #94A3B8 !important;
+    }
+    [data-theme="dark"] .product-admin-page .product-action-btn.btn-light:hover {
+        background: rgba(239, 68, 68, 0.15) !important;
+        border-color: #EF4444 !important;
+        color: #F87171 !important;
+    }
+
     .product-table-wrap {
         overflow: hidden;
         background: #ffffff;
@@ -657,6 +681,12 @@
         color: #020617;
     }
 
+    .product-more-btn.text-danger:hover,
+    .product-more-btn.text-danger:focus {
+        background: #FEF2F2 !important;
+        color: #DC2626 !important;
+    }
+
     .product-row-menu {
         min-width: 168px;
         padding: 8px;
@@ -844,6 +874,13 @@
     [data-theme="dark"] .product-more-btn:hover {
         background: #1D3150 !important;
         border-color: #3B82F6 !important;
+    }
+
+    [data-theme="dark"] .product-more-btn.text-danger:hover,
+    [data-theme="dark"] .product-more-btn.text-danger:focus {
+        background: rgba(239, 68, 68, 0.15) !important;
+        border-color: #EF4444 !important;
+        color: #F87171 !important;
     }
 
     [data-theme="dark"] .product-row-menu {
