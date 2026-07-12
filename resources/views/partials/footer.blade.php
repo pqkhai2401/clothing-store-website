@@ -19,8 +19,8 @@
             <div class="col-md-3 mb-4 mb-md-0">
                 <h5 class="footer-title">Chăm sóc khách hàng</h5>
                 <ul class="footer-links">
-                    <li><a href="{{ url('/returns') }}">Hoàn trả & Đổi trả</a></li>
-                    <li><a href="{{ url('/faq') }}">Câu hỏi thường gặp</a></li>
+                    <li><a href="{{ route('returns') }}">Hoàn trả & Đổi trả</a></li>
+                    <li><a href="{{ route('faq') }}">Câu hỏi thường gặp</a></li>
                 </ul>
             </div>
             <div class="col-md-3">
