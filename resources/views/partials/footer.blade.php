@@ -19,8 +19,6 @@
             <div class="col-md-3 mb-4 mb-md-0">
                 <h5 class="footer-title">Chăm sóc khách hàng</h5>
                 <ul class="footer-links">
-                    <li><a href="{{ url('/contact') }}">Liên hệ</a></li>
-                    <li><a href="{{ url('/shipping') }}">Mua sắm</a></li>
                     <li><a href="{{ url('/returns') }}">Hoàn trả & Đổi trả</a></li>
                     <li><a href="{{ url('/faq') }}">Câu hỏi thường gặp</a></li>
                 </ul>
@@ -30,7 +28,10 @@
                 <ul class="footer-links">
                     <li class="text-muted"><i class="bi bi-geo-alt me-2"></i> 65 Huỳnh Thúc Kháng, Sài Gòn, Hồ Chí Minh 50000, Việt Nam</li>
                     <li class="text-muted"><i class="bi bi-telephone me-2"></i> 02838212360</li>
-                    <li class="text-muted"><i class="bi bi-envelope me-2"></i> #### </li>
+                    <li class="text-muted">
+                        <i class="bi bi-envelope me-2"></i> 
+                        <a href="mailto:pqkhai2401@gmail.com" class="text-reset text-decoration-none">pqkhai2401@gmail.com</a>
+                    </li>
                 </ul>
                 <div class="footer-socials mt-4">
                     <a href="https://www.facebook.com/kha.rea.19" target="_blank" rel="noopener noreferrer" aria-label="Facebook">
@@ -50,9 +51,8 @@
                 &copy; HK Store. All rights reserved.
             </div>
             <div class="col-md-6 text-center text-md-end">
-                <a href="{{ url('/privacy') }}" class="text-muted me-3">Chính sách bảo mật</a>
-                <a href="{{ url('/terms') }}" class="text-muted me-3">Điều khoản dịch vụ</a>
-                <a href="{{ url('/cookie-policy') }}" class="text-muted">Chính sách cookie</a>
+                <a href="{{ route('privacy') }}" class="text-muted me-3">Chính sách bảo mật</a>
+                <a href="{{ route('terms') }}" class="text-muted me-3">Điều khoản dịch vụ</a>
             </div>
         </div>
     </div>
