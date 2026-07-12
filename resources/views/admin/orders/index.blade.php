@@ -256,13 +256,6 @@
             let currentRow     = null;
 
             const statusLabels = @json($statusLabels);
-            const orderBadgeCss = {
-                pending:    'order-badge--pending',
-                processing: 'order-badge--processing',
-                shipping:   'order-badge--shipping',
-                completed:  'order-badge--completed',
-                cancelled:  'order-badge--cancelled',
-            };
             const statusTransitions = @json(\App\Http\Controllers\Admin\OrderController::STATUS_TRANSITIONS);
 
             document.addEventListener('click', function (e) {
@@ -317,31 +310,9 @@
                         return;
                     }
 
-                    /* Update row in DOM */
-                    if (currentRow) {
-                        const newStatus  = statusSel.value;
-                        const newPayment = paymentSel.value;
-
-                        const badgeEl = currentRow.querySelector('.order-badge');
-                        if (badgeEl) {
-                            badgeEl.className = 'order-badge ' + (orderBadgeCss[newStatus] ?? '');
-                            badgeEl.textContent = statusLabels[newStatus] ?? newStatus;
-                        }
-
-                        const payEl = currentRow.querySelector('.payment-badge');
-                        if (payEl) {
-                            payEl.className  = 'payment-badge ' + (newPayment === 'paid' ? 'payment-badge--paid' : 'payment-badge--unpaid');
-                            payEl.textContent = newPayment === 'paid' ? 'Đã thanh toán' : 'Chưa thanh toán';
-                        }
-
-                        const trigger = currentRow.querySelector('[data-update-order]');
-                        if (trigger) {
-                            trigger.dataset.status  = newStatus;
-                            trigger.dataset.payment = newPayment;
-                        }
-                    }
-
                     modal.hide();
+                    window.location.reload();
+                    return;
                 } catch {
                     errBox.textContent   = 'Không thể kết nối. Vui lòng thử lại.';
                     errBox.style.display = 'block';
@@ -415,13 +386,8 @@
 
                         if (!res.ok) throw new Error('update failed');
 
-                        const baseClass = field === 'status' ? 'order-badge' : 'payment-badge';
-                        trigger.className = baseClass + ' oc-row-trigger ' + newCss;
-                        trigger.dataset.value = newValue;
-                        trigger.querySelector('.oc-row-trigger-label').textContent = item.textContent;
-                        dropdown.querySelectorAll('.hk-cat-item').forEach(function (b) {
-                            b.classList.toggle('is-active', b === item);
-                        });
+                        window.location.reload();
+                        return;
                     } catch {
                         alert('Không thể cập nhật. Vui lòng thử lại.');
                         trigger.className = (field === 'status' ? 'order-badge' : 'payment-badge') + ' oc-row-trigger ' + (previousCss ?? '');
@@ -438,13 +404,14 @@
             });
         }());
 
-        /* ── Status dropdown ── */
-        (function () {
-            const trigger = document.getElementById('hkOrderStatusTrigger');
-            const panel   = document.getElementById('hkOrderStatusPanel');
-            const label   = document.getElementById('hkOrderStatusLabel');
-            const list    = document.getElementById('hkOrderStatusList');
-            const hidden  = document.getElementById('orderStatusHidden');
+        /* ── Filter đơn giản dạng "trigger + panel + hidden input" (trạng thái đơn / thanh toán) ── */
+        function initSimpleFilterDropdown(dropId, triggerId, panelId, labelId, listId, hiddenId) {
+            const drop    = document.getElementById(dropId);
+            const trigger = document.getElementById(triggerId);
+            const panel   = document.getElementById(panelId);
+            const label   = document.getElementById(labelId);
+            const list    = document.getElementById(listId);
+            const hidden  = document.getElementById(hiddenId);
             if (!trigger) return;
 
             function open()  { panel.hidden = false; trigger.classList.add('is-open'); trigger.setAttribute('aria-expanded', 'true'); }
@@ -464,39 +431,12 @@
             });
 
             document.addEventListener('click', function (e) {
-                if (!panel.hidden && !document.getElementById('hkOrderStatusDrop')?.contains(e.target)) close();
+                if (!panel.hidden && !drop?.contains(e.target)) close();
             });
-        }());
+        }
 
-        /* ── Payment dropdown ── */
-        (function () {
-            const trigger = document.getElementById('hkOrderPaymentTrigger');
-            const panel   = document.getElementById('hkOrderPaymentPanel');
-            const label   = document.getElementById('hkOrderPaymentLabel');
-            const list    = document.getElementById('hkOrderPaymentList');
-            const hidden  = document.getElementById('orderPaymentHidden');
-            if (!trigger) return;
-
-            function open()  { panel.hidden = false; trigger.classList.add('is-open'); trigger.setAttribute('aria-expanded', 'true'); }
-            function close() { panel.hidden = true;  trigger.classList.remove('is-open'); trigger.setAttribute('aria-expanded', 'false'); }
-
-            trigger.addEventListener('click', () => panel.hidden ? open() : close());
-
-            list.addEventListener('click', function (e) {
-                const btn = e.target.closest('.hk-cat-item');
-                if (!btn) return;
-                list.querySelectorAll('.hk-cat-item').forEach(b => b.classList.remove('is-active'));
-                btn.classList.add('is-active');
-                label.textContent = btn.dataset.label;
-                hidden.value = btn.dataset.value;
-                close();
-                hidden.dispatchEvent(new Event('change', { bubbles: true }));
-            });
-
-            document.addEventListener('click', function (e) {
-                if (!panel.hidden && !document.getElementById('hkOrderPaymentDrop')?.contains(e.target)) close();
-            });
-        }());
+        initSimpleFilterDropdown('hkOrderStatusDrop', 'hkOrderStatusTrigger', 'hkOrderStatusPanel', 'hkOrderStatusLabel', 'hkOrderStatusList', 'orderStatusHidden');
+        initSimpleFilterDropdown('hkOrderPaymentDrop', 'hkOrderPaymentTrigger', 'hkOrderPaymentPanel', 'hkOrderPaymentLabel', 'hkOrderPaymentList', 'orderPaymentHidden');
 
         /* ── Dropdown chọn kỳ linh hoạt (Năm nay/Năm ngoái/Chọn năm + Quý/Tháng của năm đó) ── */
         (function () {

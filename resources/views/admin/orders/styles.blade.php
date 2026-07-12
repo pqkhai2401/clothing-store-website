@@ -5,8 +5,9 @@
            để cột "Khách hàng" không bị kéo dãn ra khoảng trắng thừa không cần thiết */
         #orderTable { min-width: 1260px; }
 
-        /* ── Order status chips ────────────────────────────────── */
-        .order-badge {
+        /* ── Order status chips (đơn hàng + thanh toán dùng chung khung, khác màu variant) ── */
+        .order-badge,
+        .payment-badge {
             display: inline-flex;
             align-items: center;
             border-radius: 999px;
@@ -23,18 +24,6 @@
         .order-badge--shipping  { background: #F0F9FF; border: 1.5px solid #BAE6FD; color: #0369A1; }
         .order-badge--completed { background: #ECFDF5; border: 1.5px solid #86EFAC; color: #16A34A; }
         .order-badge--cancelled { background: #FEF2F2; border: 1.5px solid #FECACA; color: #DC2626; }
-
-        .payment-badge {
-            display: inline-flex;
-            align-items: center;
-            border-radius: 999px;
-            font-size: 12px;
-            font-weight: 700;
-            padding: 5px 13px;
-            min-height: 28px;
-            line-height: 1;
-            white-space: nowrap;
-        }
 
         .payment-badge--paid   { background: #ECFDF5; border: 1.5px solid #86EFAC; color: #16A34A; }
         .payment-badge--unpaid { background: #FEF2F2; border: 1.5px solid #FECACA; color: #DC2626; }
@@ -320,6 +309,5 @@
         .update-card .form-control { font-size: 13px; }
         .update-card label { font-size: 13px; font-weight: 700; color: #374151; }
         .item-table tbody td { font-size: 13px; }
-        .status-badge { border-radius: 2px; font-size: 11px; font-weight: 800; padding: 4px 8px; }
         .product-thumb { width: 44px; height: 44px; object-fit: cover; border-radius: 4px; border: 1px solid #e5e7eb; }
     </style>
