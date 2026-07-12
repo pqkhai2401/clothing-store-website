@@ -807,11 +807,10 @@
                         @forelse($reviews as $review)
                             @php
                                 // Tên hiển thị + ảnh đại diện của người đánh giá.
-                                // Nếu user có avatar_url -> lấy từ storage; nếu không -> ảnh chữ cái tự sinh.
+                                // Nếu user có avatar_url -> lấy từ storage hoặc Google; nếu không -> ảnh chữ cái tự sinh.
                                 $rvAuthor = $review->user->username ?? $review->user->name ?? 'Khách hàng';
-                                $rvAvatar = $review->user->avatar_url
-                                    ? asset('storage/' . $review->user->avatar_url)
-                                    : 'https://ui-avatars.com/api/?name=' . urlencode($rvAuthor) . '&background=random';
+                                $rvAvatar = $review->user->avatar_display_url
+                                    ?: 'https://ui-avatars.com/api/?name=' . urlencode($rvAuthor) . '&background=random';
                             @endphp
                             <div class="review-item">
                                 <div class="d-flex justify-content-between align-items-start">

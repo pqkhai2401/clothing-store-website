@@ -109,7 +109,7 @@
                     <button class="btn-icon d-flex align-items-center" type="button" id="userMenuButton" data-bs-toggle="dropdown" aria-expanded="false" title="Tài khoản">
                         @auth
                             <img
-                                src="{{ auth()->user()->avatar_url ? asset('storage/' . auth()->user()->avatar_url) : 'https://ui-avatars.com/api/?name=' . urlencode(auth()->user()->username) . '&background=random' }}"
+                                src="{{ auth()->user()->avatar_display_url ?: 'https://ui-avatars.com/api/?name=' . urlencode(auth()->user()->username) . '&background=random' }}"
                                 alt="Ảnh đại diện"
                                 class="rounded-circle me-2 nav-mini-avatar"
                             >
