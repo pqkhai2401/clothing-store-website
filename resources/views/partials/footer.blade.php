@@ -21,6 +21,8 @@
                 <ul class="footer-links">
                     <li><a href="{{ route('returns') }}">Hoàn trả & Đổi trả</a></li>
                     <li><a href="{{ route('faq') }}">Câu hỏi thường gặp</a></li>
+                    <li><a href="{{ route('privacy') }}">Chính sách bảo mật</a></li>
+                    <li><a href="{{ route('terms') }}">Điều khoản dịch vụ</a></li>
                 </ul>
             </div>
             <div class="col-md-3">
@@ -47,12 +49,8 @@
             </div>
         </div>
         <div class="row footer-bottom">
-            <div class="col-md-6 text-center text-md-start mb-3 mb-md-0">
+            <div class="col-12 text-center">
                 &copy; HK Store. All rights reserved.
-            </div>
-            <div class="col-md-6 text-center text-md-end">
-                <a href="{{ route('privacy') }}" class="text-muted me-3">Chính sách bảo mật</a>
-                <a href="{{ route('terms') }}" class="text-muted me-3">Điều khoản dịch vụ</a>
             </div>
         </div>
     </div>
