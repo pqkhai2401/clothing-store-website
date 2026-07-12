@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Listeners\LogAuthenticationActivity;
 use App\Models\Cart;
+use App\Models\Collection;
 use App\Models\Wishlist;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
@@ -62,6 +63,16 @@ class AppServiceProvider extends ServiceProvider
                 : 0;
 
             $view->with('cartCount', $cartCount);
+        });
+
+        // Cung cấp danh sách bộ sưu tập theo mùa cho dropdown trên header
+        View::composer('partials.header', function ($view): void {
+            $navCollections = Collection::where('status', true)
+                ->orderBy('id')
+                ->limit(8)
+                ->get(['id', 'name', 'slug']);
+
+            $view->with('navCollections', $navCollections);
         });
 
         View::composer([

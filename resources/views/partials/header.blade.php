@@ -79,8 +79,23 @@
                     <li class="nav-item">
                         <a class="nav-link" href="{{ route('new-arrivals') }}">Hàng mới về</a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ route('collections') }}">Bộ sưu tập</a>
+                    <li class="nav-item dropdown collection-dropdown">
+                        <a class="nav-link dropdown-toggle" href="{{ route('collections') }}" id="collectionsDropdown" role="button">
+                            Bộ sưu tập
+                        </a>
+                        <ul class="collection-menu" aria-labelledby="collectionsDropdown">
+                            @forelse(($navCollections ?? []) as $navCollection)
+                                <li>
+                                    <a href="{{ route('collections.show', $navCollection->slug) }}">{{ $navCollection->name }}</a>
+                                </li>
+                            @empty
+                                <li><a href="{{ route('collections') }}">Tất cả sản phẩm</a></li>
+                            @endforelse
+                            <li class="collection-menu-divider"></li>
+                            <li>
+                                <a href="{{ route('collections') }}" class="collection-menu-all">Tất cả bộ sưu tập</a>
+                            </li>
+                        </ul>
                     </li>
                 </ul>
             </div>

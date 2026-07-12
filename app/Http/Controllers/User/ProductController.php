@@ -428,4 +428,29 @@ class ProductController extends Controller
             'gender'      => $gender,
         ]));
     }
+
+    /**
+     * Hiển thị trang chi tiết một bộ sưu tập theo mùa (slug) + lọc theo giới tính.
+     */
+    public function getProductsByCollection(Request $request, string $slug)
+    {
+        $collection = ProductCollection::where('slug', $slug)
+            ->where('status', true)
+            ->firstOrFail();
+
+        // Lấy sản phẩm thuộc bộ sưu tập (bảng pivot collection_product), chỉ hàng đang active
+        $query = $collection->products()
+            ->where('products.status', true);
+
+        $this->applyFilters($query, $request);
+        $this->applySort($query, $request->query('sort', 'popularity'));
+
+        $products = $query->with('category')
+            ->paginate(12)
+            ->appends($request->query());
+
+        $gender = $request->query('gender');
+
+        return view('user.collections.show', compact('collection', 'products', 'gender'));
+    }
 }

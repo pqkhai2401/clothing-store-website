@@ -9,26 +9,28 @@ use Illuminate\Database\Seeder;
 class CollectionProductSeeder extends Seeder
 {
     /**
-     * Gán sản phẩm vào từng bộ sưu tập (bảng pivot collection_product).
-     * Mỗi bộ sưu tập nhận một tập sản phẩm ngẫu nhiên để trang bộ sưu tập có hàng hiển thị.
+     * Lưới an toàn (safety net) cho bộ sưu tập.
+     *
+     * CollectionSeeder mới đã gán sản phẩm theo mùa một cách xác định.
+     * Seeder này KHÔNG random đè lên nữa — nó chỉ bổ sung sản phẩm cho
+     * những bộ sưu tập vô tình bị trống, để trang bộ sưu tập luôn có hàng.
      */
     public function run(): void
     {
-        $collections = Collection::all();
-        $productIds  = Product::pluck('id');
+        $productIds = Product::where('status', true)->pluck('id');
 
-        if ($collections->isEmpty() || $productIds->isEmpty()) {
+        if ($productIds->isEmpty()) {
             return;
         }
 
-        foreach ($collections as $collection) {
-            // Mỗi bộ sưu tập gồm 6–12 sản phẩm ngẫu nhiên (không trùng).
-            $count = min($productIds->count(), random_int(6, 12));
-            $pick  = $productIds->random($count);
-            $pick  = $pick instanceof \Illuminate\Support\Collection ? $pick : collect([$pick]);
+        Collection::withCount('products')->get()->each(function (Collection $collection) use ($productIds): void {
+            if ($collection->products_count > 0) {
+                return; // đã có sản phẩm, giữ nguyên
+            }
 
-            // sync (thay vì attach) để chạy lại seeder không tạo lỗi khóa trùng.
-            $collection->products()->sync($pick->all());
-        }
+            // attach (không detach) một ít sản phẩm ngẫu nhiên để không bị trống
+            $count = min($productIds->count(), random_int(6, 10));
+            $collection->products()->syncWithoutDetaching($productIds->random($count)->all());
+        });
     }
 }

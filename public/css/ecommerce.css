@@ -686,4 +686,64 @@ a:hover {
     padding-right: 0;
 }
 
+/* Dropdown đơn giản - Bộ sưu tập theo mùa */
+.collection-dropdown {
+    position: relative;
+}
+
+.collection-dropdown .nav-link.dropdown-toggle::after {
+    display: none;
+}
+
+.collection-menu {
+    display: none;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    top: 100%;
+    min-width: 220px;
+    list-style: none;
+    margin: 0;
+    padding: 10px 0;
+    background-color: var(--background-color);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+    z-index: 1050;
+}
+
+.collection-dropdown:hover .collection-menu,
+.collection-dropdown.active .collection-menu {
+    display: block;
+}
+
+.collection-menu li a {
+    display: block;
+    padding: 9px 22px;
+    font-size: 14px;
+    font-weight: 400;
+    letter-spacing: 0.3px;
+    color: var(--text-color);
+    text-decoration: none;
+    transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.collection-menu li a:hover {
+    color: #c8a84b;
+    background-color: rgba(0, 0, 0, 0.03);
+}
+
+.collection-menu-divider {
+    height: 1px;
+    margin: 8px 0;
+    background-color: var(--border-color);
+}
+
+.collection-menu .collection-menu-all {
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 12px;
+    letter-spacing: 1px;
+}
+
 
