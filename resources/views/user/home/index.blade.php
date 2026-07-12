@@ -221,18 +221,6 @@
         </div>
     </section>
 
-    <!-- 6. products with the most views -->
-    <section class="py-5 bg-light">
-        <div class="container-fluid px-lg-5">
-            <div class="section-header text-center">
-                <h2 class="section-title">ĐƯỢC QUAN TÂM NHIỀU NHẤT</h2>
-                <div class="section-subtitle">Khám phá những sản phẩm được xem nhiều nhất trên cửa hàng.</div>
-            </div>
-            
-            @include('partials.product-grid', ['products' => $trendingNow, 'cols' => 'col-6 col-md-3'])
-        </div>
-    </section>
-
 {{--
     <!-- 7. Promotional Banner -->
     <section class="promo-section">
