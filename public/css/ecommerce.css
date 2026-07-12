@@ -686,16 +686,16 @@ a:hover {
     padding-right: 0;
 }
 
-/* Dropdown đơn giản - Bộ sưu tập theo mùa */
-.collection-dropdown {
+/* Dropdown đơn giản - dùng chung cho Bộ sưu tập & Sản phẩm */
+.simple-dropdown {
     position: relative;
 }
 
-.collection-dropdown .nav-link.dropdown-toggle::after {
+.simple-dropdown .nav-link.dropdown-toggle::after {
     display: none;
 }
 
-.collection-menu {
+.simple-menu {
     display: none;
     position: absolute;
     left: 50%;
@@ -712,12 +712,12 @@ a:hover {
     z-index: 1050;
 }
 
-.collection-dropdown:hover .collection-menu,
-.collection-dropdown.active .collection-menu {
+.simple-dropdown:hover .simple-menu,
+.simple-dropdown.active .simple-menu {
     display: block;
 }
 
-.collection-menu li a {
+.simple-menu li a {
     display: block;
     padding: 9px 22px;
     font-size: 14px;
@@ -728,22 +728,51 @@ a:hover {
     transition: color 0.2s ease, background-color 0.2s ease;
 }
 
-.collection-menu li a:hover {
+.simple-menu li a:hover {
     color: #c8a84b;
     background-color: rgba(0, 0, 0, 0.03);
 }
 
-.collection-menu-divider {
+.simple-menu-divider {
     height: 1px;
     margin: 8px 0;
     background-color: var(--border-color);
 }
 
-.collection-menu .collection-menu-all {
+.simple-menu .simple-menu-all {
     font-weight: 600;
     text-transform: uppercase;
     font-size: 12px;
     letter-spacing: 1px;
+}
+
+/* Biến thể phân nhóm (heading + danh mục con) - dùng cho dropdown Sản phẩm */
+.simple-menu-grouped {
+    min-width: 250px;
+    max-height: 82vh;
+    overflow-y: auto;
+}
+
+.simple-menu-grouped .simple-menu-heading > a {
+    font-family: var(--font-serif);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 13px;
+    letter-spacing: 1px;
+    color: var(--primary-color);
+    padding-top: 12px;
+    padding-bottom: 4px;
+}
+
+.simple-menu-grouped .simple-menu-heading > a:hover {
+    color: #c8a84b;
+    background-color: transparent;
+}
+
+.simple-menu-grouped .simple-menu-sub > a {
+    padding-left: 36px;
+    font-size: 13.5px;
+    color: var(--secondary-color);
 }
 
 
