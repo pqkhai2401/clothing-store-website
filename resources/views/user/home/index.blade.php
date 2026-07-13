@@ -199,7 +199,6 @@
         <div class="container-fluid px-lg-5">
             <div class="section-header text-center">
                 <h2 class="section-title">Hàng Mới Về</h2>
-                <div class="section-subtitle">Vừa được thêm vào bộ sưu tập</div>
             </div>
             
             @include('partials.product-grid', ['products' => $newArrivals, 'cols' => 'col-6 col-md-3'])
