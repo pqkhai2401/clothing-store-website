@@ -696,13 +696,9 @@ class OrderController extends Controller
             throw new \Exception("Không tìm thấy kho hàng hoạt động nào trong hệ thống.");
         }
 
-        // Generate PXK code
-        $prefix = 'PXK' . now()->format('Ymd');
-        $lastToday = \App\Models\StockIssue::withTrashed()->where('code', 'like', "{$prefix}%")
-            ->orderByDesc('code')
-            ->first();
-        $sequence = $lastToday ? ((int) substr($lastToday->code, -3)) + 1 : 1;
-        $code = $prefix . str_pad((string) $sequence, 3, '0', STR_PAD_LEFT);
+        // Mã phiếu xuất kho: dùng DocumentSequenceService (có lock chống trùng) để đồng nhất
+        // định dạng với phiếu tạo tay ở StockIssueController — không tự chế generator.
+        $code = app(\App\Services\DocumentSequenceService::class)->generateStockIssueCode();
 
         $totalQty = $orderItems->sum('quantity');
         $totalCost = $orderItems->sum(fn ($item) => $item->quantity * ($item->productVariant->cost_price ?? 0));

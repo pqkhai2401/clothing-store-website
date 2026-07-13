@@ -6,6 +6,10 @@
         'customer' => 'Khách hàng',
     ];
     $currentUserId = auth()->id();
+    $currentUser = auth()->user();
+    // Admin thường (không bảo vệ) không được đặt lại mật khẩu cho quản trị viên khác
+    // — chỉ admin hệ thống (bảo vệ) mới có quyền đó. Tính sẵn để ẩn/hiện nút reset.
+    $currentUserIsNormalAdmin = $currentUser?->isAdmin() && ! (bool) $currentUser?->is_protected;
     $isStaffPage = ($type ?? 'all') === 'staff';
     $isCustomerPage = ($type ?? 'all') === 'customer';
     $showBulkCheckbox = $isCustomerPage;
@@ -110,7 +114,8 @@
                                                     data-update-url="{{ route(($routePrefix ?? 'admin.users') . '.update', $user->id) }}">
                                                     <i class="fa-regular fa-pen-to-square"></i> Sửa
                                                 </button>
-                                                @if ($showRoleColumn && $user->id !== $currentUserId)
+                                                @if ($showRoleColumn && $user->id !== $currentUserId && ! $user->is_protected
+                                                    && ! ($currentUserIsNormalAdmin && $roleName === 'admin'))
                                                     <button type="button" class="dropdown-item js-reset-password"
                                                         data-reset-url="{{ route(($routePrefix ?? 'admin.users') . '.resetPassword', $user->id) }}"
                                                         data-username="{{ $user->username }}">

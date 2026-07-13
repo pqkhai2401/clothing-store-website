@@ -1,7 +1,8 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -10,9 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        DB::statement('ALTER TABLE products MODIFY thumbnail VARCHAR(255) NULL');
-        DB::statement('ALTER TABLE products MODIFY brand_id BIGINT UNSIGNED NULL');
-        DB::statement('ALTER TABLE products MODIFY description LONGTEXT NULL');
+        Schema::table('products', function (Blueprint $table) {
+            $table->string('thumbnail')->nullable()->change();
+            $table->unsignedBigInteger('brand_id')->nullable()->change();
+            $table->longText('description')->nullable()->change();
+        });
     }
 
     /**
@@ -20,8 +23,10 @@ return new class extends Migration
      */
     public function down(): void
     {
-        DB::statement('ALTER TABLE products MODIFY thumbnail VARCHAR(255) NOT NULL');
-        DB::statement('ALTER TABLE products MODIFY brand_id BIGINT UNSIGNED NOT NULL');
-        DB::statement('ALTER TABLE products MODIFY description LONGTEXT NOT NULL');
+        Schema::table('products', function (Blueprint $table) {
+            $table->string('thumbnail')->nullable(false)->change();
+            $table->unsignedBigInteger('brand_id')->nullable(false)->change();
+            $table->longText('description')->nullable(false)->change();
+        });
     }
 };

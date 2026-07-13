@@ -322,6 +322,13 @@
             fillRoleOptions(data.roles, user.role_id);
             syncLockReason();
 
+            // --- Personal info / address fields ---
+            // Nobody except self may edit a protected admin's basic info/address.
+            ['username', 'email', 'phone_number', 'city', 'ward', 'apartment_number'].forEach(name => {
+                const el = editForm.elements[name];
+                if (el) el.disabled = targetProtectedNotSelf;
+            });
+
             // --- Status field ---
             const statusSel = editForm.elements['is_active'];
             if (statusSel) {
@@ -401,6 +408,13 @@
                     hint.classList.remove('d-none');
                     const permErr = hint.querySelector('[data-error-for="permission"]');
                     if (permErr) permErr.textContent = 'Admin hệ thống được bảo vệ — bạn chỉ có thể chỉnh sửa thông tin cơ bản (tên, email, SĐT).';
+                }
+            } else if (targetProtectedNotSelf) {
+                const hint = editForm.querySelector('[data-permission-error-row]');
+                if (hint) {
+                    hint.classList.remove('d-none');
+                    const permErr = hint.querySelector('[data-error-for="permission"]');
+                    if (permErr) permErr.textContent = 'Chỉ chính admin hệ thống mới có thể sửa thông tin cá nhân của tài khoản này.';
                 }
             }
         }

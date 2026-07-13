@@ -134,27 +134,6 @@
                             @enderror
                         </div>
 
-                        @if(!empty($currentUserIsProtectedAdmin))
-                            <div class="md:col-span-2 hidden" id="isProtectedRow">
-                                <div class="rounded-xl border border-indigo-100 bg-indigo-50/70 p-4">
-                                    <div class="flex items-start justify-between gap-4">
-                                        <div class="flex min-w-0 flex-col gap-1">
-                                            <label for="is_protected" class="text-sm font-semibold text-slate-900">Admin hệ thống được bảo vệ</label>
-                                            <p class="m-0 text-sm leading-6 text-slate-600">Chỉ admin hệ thống khác mới được thay đổi role, mật khẩu hoặc khóa tài khoản này.</p>
-                                        </div>
-                                        <label class="relative inline-flex cursor-pointer items-center">
-                                            <input type="checkbox" name="is_protected" value="1" id="is_protected"
-                                                class="peer sr-only" {{ old('is_protected') ? 'checked' : '' }}>
-                                            <span class="h-6 w-11 rounded-full bg-slate-300 transition-colors peer-checked:bg-emerald-600"></span>
-                                            <span class="absolute left-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform peer-checked:translate-x-5"></span>
-                                        </label>
-                                    </div>
-                                </div>
-                                @error('is_protected')
-                                    <p class="{{ $errorClass }}">{{ $message }}</p>
-                                @enderror
-                            </div>
-                        @endif
                     </div>
                 </section>
 
@@ -250,25 +229,5 @@ document.querySelectorAll('.pw-toggle').forEach(function (btn) {
         if (icon) icon.className = show ? 'fa-regular fa-eye-slash' : 'fa-regular fa-eye';
     });
 });
-
-(function () {
-    var roleSelect   = document.getElementById('role_id');
-    var protectedRow = document.getElementById('isProtectedRow');
-    var protectedCb  = document.getElementById('is_protected');
-    if (!roleSelect || !protectedRow) return;
-
-    var adminRoleIds = @json(
-        ($roles ?? collect())->filter(fn ($r) => $r->name === 'admin')->pluck('id')->values()
-    );
-
-    function syncProtectedRow() {
-        var isAdmin = adminRoleIds.includes(parseInt(roleSelect.value));
-        protectedRow.classList.toggle('hidden', !isAdmin);
-        if (!isAdmin && protectedCb) protectedCb.checked = false;
-    }
-
-    roleSelect.addEventListener('change', syncProtectedRow);
-    syncProtectedRow();
-})();
 </script>
 @endpush

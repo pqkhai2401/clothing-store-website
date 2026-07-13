@@ -18,9 +18,14 @@ use Spatie\Permission\Models\Role;
 class UserController extends Controller
 {
     /**
-     * Số lượng admin được bảo vệ (is_protected) tối thiểu phải luôn còn lại
-     * trong hệ thống — tránh deadlock khi admin bảo vệ duy nhất nghỉ việc/gặp
-     * sự cố mà không còn ai đủ quyền thao tác trên tài khoản đó.
+     * Số lượng admin hệ thống (is_protected) tối đa được phép tồn tại cùng lúc.
+     * Muốn đổi người, phải gỡ protected của người cũ trước rồi mới bật cho người mới.
+     */
+    private const MAX_PROTECTED_ADMINS = 5;
+
+    /**
+     * Sàn tuyệt đối — không bao giờ được để 0 admin protected, nếu không sẽ
+     * không còn ai đủ quyền bật lại is_protected cho người khác (bế tắc vĩnh viễn).
      */
     private const MIN_PROTECTED_ADMINS = 2;
 
@@ -100,8 +105,7 @@ class UserController extends Controller
         }
 
         return view('admin.users.create', [
-            'roles'                       => $roles,
-            'currentUserIsProtectedAdmin' => $currentIsProtectedAdmin,
+            'roles' => $roles,
             ...$context,
         ]);
     }
@@ -127,9 +131,8 @@ class UserController extends Controller
             'lock_reason' => ['nullable', 'string', 'max:255'],
         ], $this->validationMessages());
 
-        $currentUser             = $request->user();
-        $currentIsProtectedAdmin = $currentUser->isAdmin() && (bool) $currentUser->is_protected;
-        $currentIsNormalAdmin    = $currentUser->isAdmin() && ! (bool) $currentUser->is_protected;
+        $currentUser          = $request->user();
+        $currentIsNormalAdmin = $currentUser->isAdmin() && ! (bool) $currentUser->is_protected;
 
         $roleForUser = $this->roleForContext($context['type'], $validated['role_id'] ?? null);
 
@@ -137,21 +140,13 @@ class UserController extends Controller
             return back()->withErrors(['role_id' => 'Quản trị viên thường chỉ được tạo tài khoản nhân viên.'])->withInput();
         }
 
-        if ($request->boolean('is_protected') && ! $currentIsProtectedAdmin) {
-            return back()->withErrors(['is_protected' => 'Chỉ admin hệ thống mới có quyền tạo admin hệ thống được bảo vệ.'])->withInput();
-        }
-
-        $isProtected = $currentIsProtectedAdmin
-            && $request->boolean('is_protected')
-            && $roleForUser?->name === UserRole::ADMIN->value;
-
         $user = User::create([
             'username'     => $validated['username'],
             'email'        => $validated['email'],
             'phone_number' => $validated['phone_number'] ?? null,
             'is_active'    => (bool) $validated['is_active'],
             'password'     => Hash::make($validated['password']),
-            'is_protected' => $isProtected,
+            'is_protected' => false,
         ]);
 
         if ($roleForUser) {
@@ -288,6 +283,16 @@ class UserController extends Controller
             }
         }
 
+        // 5b. Cannot exceed the maximum number of protected admins
+        if ($protectedChanged && $request->boolean('is_protected') && ! (bool) $targetUser->is_protected) {
+            $currentProtectedCount = User::role(UserRole::ADMIN->value)
+                ->where('is_protected', true)
+                ->count();
+            if ($currentProtectedCount >= self::MAX_PROTECTED_ADMINS) {
+                return $this->validationErrorResponse($request, 'is_protected', 'Hệ thống đã có đủ '.self::MAX_PROTECTED_ADMINS.' admin hệ thống được bảo vệ. Hãy gỡ bảo vệ 1 người trước khi thêm người mới.');
+            }
+        }
+
         // 6. Cannot change role of protected admin
         if ($targetIsProtectedAdmin && $roleChanged) {
             return $this->validationErrorResponse($request, 'role_id', 'Không thể thay đổi vai trò của admin hệ thống.');
@@ -312,6 +317,13 @@ class UserController extends Controller
         if ($currentIsNormalAdmin && $targetIsNormalAdmin && ! $isSelf
             && ($statusChanged || $roleChanged || $protectedChanged || $infoChanged || $addressChanged)) {
             return $this->validationErrorResponse($request, 'permission', 'Quản trị viên thường không có quyền chỉnh sửa thông tin của quản trị viên khác.');
+        }
+
+        // 8b. Nobody except self may edit personal info/address of a protected
+        // admin — not even another protected admin. is_protected/role/status
+        // keep their own rules (3, 5, 5b, 6, 7) to preserve the handover flow.
+        if ($targetIsProtectedAdmin && ! $isSelf && ($infoChanged || $addressChanged)) {
+            return $this->validationErrorResponse($request, 'permission', 'Chỉ chính admin hệ thống mới có thể sửa thông tin cá nhân của tài khoản này.');
         }
 
         // 10. Normal admin cannot promote anyone to admin role
@@ -425,8 +437,8 @@ class UserController extends Controller
         $targetIsProtectedAdmin = $targetUser->isAdmin() && (bool) $targetUser->is_protected;
         $targetIsNormalAdmin    = $targetUser->isAdmin() && ! (bool) $targetUser->is_protected;
 
-        if ($currentIsNormalAdmin && $targetIsProtectedAdmin) {
-            return $this->validationErrorResponse($request, 'permission', 'Quản trị viên thường không có quyền chỉnh sửa admin hệ thống.');
+        if ($targetIsProtectedAdmin && ! $isSelf) {
+            return $this->validationErrorResponse($request, 'permission', 'Chỉ chính admin hệ thống mới có thể đặt lại mật khẩu của tài khoản này.');
         }
 
         if ($currentIsNormalAdmin && $targetIsNormalAdmin) {
