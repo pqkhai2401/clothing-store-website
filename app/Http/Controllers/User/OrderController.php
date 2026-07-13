@@ -26,6 +26,9 @@ class OrderController extends Controller
         $status = $request->query('status', '');
 
         $query = Order::where('user_id', $request->user()->id)
+            // Ẩn đơn online (PayOS/MoMo) chưa thanh toán — đây là đơn "đang chờ thanh toán",
+            // trạng thái sống ở giỏ hàng; chỉ khi thanh toán/COD mới coi là đơn đã chốt.
+            ->excludingUnpaidOnline()
             ->with([
                 'paymentMethod',
                 'orderItems.productVariant.product',

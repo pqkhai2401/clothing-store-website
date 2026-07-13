@@ -18,6 +18,7 @@ class ProfileController extends Controller
 
         return response()->json([
             'username'         => $user->username,
+            'avatar_url'       => $user->avatar_display_url,
             'email'            => $user->email,
             'phone_number'     => $user->phone_number ?? '',
             'role_label'       => $this->getRoleLabel($user),

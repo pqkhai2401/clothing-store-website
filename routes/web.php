@@ -33,6 +33,8 @@ Route::get('/api/search/suggestions', [ProductController::class, 'suggestions'])
 
 // Route proxy lấy dữ liệu Tỉnh/Thành (tránh lỗi CORS khi gọi trực tiếp API bên thứ ba)
 Route::get('/api/location/provinces', [LocationController::class, 'provinces'])->name('location.provinces');
+Route::get('/api/location/provinces/{code}/wards', [LocationController::class, 'wards'])
+    ->whereNumber('code')->name('location.wards');
 
 // Route chi tiết sản phẩm: /san-pham/{slug}
 Route::get('/san-pham/{slug}', [ProductController::class, 'show'])->name('products.show');

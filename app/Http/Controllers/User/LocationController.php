@@ -26,11 +26,30 @@ class LocationController extends Controller
     /**
      * Lấy danh sách toàn bộ Tỉnh/Thành phố.
      * GET /api/location/provinces
+     *
+     * Dùng API v2 — dữ liệu địa giới 2 cấp (Tỉnh → Phường/Xã) theo cơ cấu hành
+     * chính mới sau sáp nhập 2025, không còn cấp Quận/Huyện. Nhờ vậy có thể nạp
+     * Phường/Xã trực tiếp theo Tỉnh (xem wards()).
      */
     public function provinces(): JsonResponse
     {
-        $data = $this->rememberIfNotEmpty('location.provinces', function () {
-            return $this->fetch('https://provinces.open-api.vn/api/p/');
+        $data = $this->rememberIfNotEmpty('location.provinces.v2', function () {
+            return $this->fetch('https://provinces.open-api.vn/api/v2/p/');
+        });
+
+        return response()->json($data);
+    }
+
+    /**
+     * Lấy danh sách Phường/Xã thuộc một Tỉnh/Thành phố.
+     * GET /api/location/provinces/{code}/wards
+     */
+    public function wards(int $code): JsonResponse
+    {
+        $data = $this->rememberIfNotEmpty("location.wards.v2.{$code}", function () use ($code) {
+            $province = $this->fetch("https://provinces.open-api.vn/api/v2/p/{$code}", ['depth' => 2]);
+
+            return $province['wards'] ?? [];
         });
 
         return response()->json($data);

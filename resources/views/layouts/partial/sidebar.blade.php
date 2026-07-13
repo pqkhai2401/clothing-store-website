@@ -118,7 +118,7 @@
                 </button>
                 <button class="account-menu-item" type="button">
                     <i class="fa-solid fa-gear"></i>
-                    <span>Cài đặt</span>
+                    <span >Cài đặt</span>
                 </button>
             </div>
 

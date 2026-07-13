@@ -64,7 +64,9 @@
                         @if($showAddressFields)
                             <div class="col-md-6">
                                 <label for="modal_city" class="form-label">Tỉnh, Thành phố</label>
-                                <input type="text" name="city" id="modal_city" class="form-control">
+                                <select name="city" id="modal_city" class="form-select">
+                                    <option value="">Chọn tỉnh / thành phố</option>
+                                </select>
                                 <div class="invalid-feedback d-block" data-error-for="city"></div>
                             </div>
 

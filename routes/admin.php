@@ -34,6 +34,7 @@ $accountRoutes = function (string $accountType): void {
         Route::patch('/{id}/restore', [UserController::class, 'restore'])->name('restore')->defaults('account_type', $accountType);
         Route::delete('/{id}/force-delete', [UserController::class, 'forceDelete'])->name('forceDelete')->defaults('account_type', $accountType);
     }
+    Route::get('/{id}/edit', [UserController::class, 'edit'])->name('edit')->defaults('account_type', $accountType);
     Route::get('/{id}', [UserController::class, 'show'])->name('show')->defaults('account_type', $accountType);
     Route::put('/{id}', [UserController::class, 'update'])->name('update')->defaults('account_type', $accountType);
     Route::patch('/{id}/reset-password', [UserController::class, 'resetPassword'])->name('resetPassword')->defaults('account_type', $accountType);

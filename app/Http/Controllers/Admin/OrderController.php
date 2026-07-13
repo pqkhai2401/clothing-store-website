@@ -176,7 +176,10 @@ class OrderController extends Controller
         $dateFrom      = $request->input('date_from');
         $dateTo        = $request->input('date_to');
 
-        $query = Order::with(['user', 'paymentMethod']);
+        // Ẩn đơn online (PayOS/MoMo) chưa thanh toán khỏi danh sách xử lý (và file xuất): đây là
+        // đơn "đang chờ thanh toán", chưa chốt — admin không xử lý được (canAdvanceOnlineOrder chặn)
+        // và sẽ tự supersede/hết hạn. Đơn online đã thanh toán / COD / chuyển khoản vẫn hiển thị.
+        $query = Order::with(['user', 'paymentMethod'])->excludingUnpaidOnline();
 
         if ($search !== '') {
             $query->where(function ($q) use ($search) {

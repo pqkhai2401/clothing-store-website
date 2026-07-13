@@ -194,7 +194,12 @@ class CheckoutController extends Controller
                 ]);
             }
 
-            $cartItems->each(fn ($item) => $item->delete());
+            // Đơn online (PayOS/MoMo) giữ nguyên giỏ hàng để người dùng có thể "Tiếp tục thanh toán"
+            // hoặc đặt lại với phương thức khác nếu chưa trả tiền. Giỏ chỉ bị xóa khi thanh toán
+            // thành công (markPaid()). Đơn COD/chuyển khoản là đơn đã chốt → xóa giỏ ngay.
+            if (! $paymentMethod->isOnlineGateway()) {
+                $cartItems->each(fn ($item) => $item->delete());
+            }
 
             // Đơn online (PayOS/MoMo) mới thay thế các đơn online chưa thanh toán cũ của user:
             // hủy chúng để tránh đơn treo tích tụ (chỉ đổi status, KHÔNG hoàn kho vì
@@ -283,10 +288,7 @@ class CheckoutController extends Controller
      */
     private function onlinePaymentMethodIds(): array
     {
-        return PaymentMethod::all()
-            ->filter(fn (PaymentMethod $method) => $method->isOnlineGateway())
-            ->pluck('id')
-            ->all();
+        return PaymentMethod::onlineGatewayIds();
     }
 
     private function cartItems($user)

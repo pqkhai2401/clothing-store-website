@@ -548,6 +548,60 @@
         white-space: nowrap;
     }
 
+    .account-row-avatar {
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        object-fit: cover;
+        flex-shrink: 0;
+        background: #e2e8f0;
+        border: 1px solid #e2e8f0;
+    }
+
+    [data-theme="dark"] .account-row-avatar {
+        background: #334155;
+        border-color: #334155;
+    }
+
+    .account-detail-head {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        padding-bottom: 18px;
+        margin-bottom: 18px;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .account-detail-avatar {
+        width: 96px;
+        height: 96px;
+        border-radius: 50%;
+        object-fit: cover;
+        background: #e2e8f0;
+        border: 3px solid #fff;
+        box-shadow: 0 2px 10px rgba(2, 6, 23, 0.12);
+    }
+
+    .account-detail-name {
+        font-size: 18px;
+        font-weight: 800;
+        color: #0f172a;
+    }
+
+    [data-theme="dark"] .account-detail-head {
+        border-bottom-color: #334155;
+    }
+
+    [data-theme="dark"] .account-detail-avatar {
+        background: #334155;
+        border-color: #1e293b;
+    }
+
+    [data-theme="dark"] .account-detail-name {
+        color: #e2e8f0;
+    }
+
     [data-theme="dark"] .role-badge {
         background: rgba(148,163,184,0.14) !important;
         border-color: rgba(148,163,184,0.32) !important;

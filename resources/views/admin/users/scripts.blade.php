@@ -134,18 +134,9 @@
 
         function renderDetail(user) {
             const fields = [
-                detailField('Họ và tên', user.username),
                 detailField('Email', user.email),
                 detailField('Số điện thoại', user.phone_number),
             ];
-
-            if (showRoleColumn) {
-                fields.push(detailField('Vai trò', roleLabel(user.role_name)));
-            }
-
-            if (user.is_protected) {
-                fields.push(detailField('Bảo vệ', 'Admin hệ thống'));
-            }
 
             fields.push(detailField('Trạng thái', user.status_label));
 
@@ -162,14 +153,62 @@
             fields.push(detailField('Ngày tạo', user.created_at));
             fields.push(detailField('Cập nhật lần cuối', user.updated_at));
 
-            detailBody.innerHTML = `<div class="row g-3">${fields.join('')}</div>`;
+            const avatar = user.avatar_url
+                || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.username || 'User')}&background=random&color=fff`;
+            const fallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.username || 'User')}&background=random&color=fff`;
+
+            const roleLine = showRoleColumn
+                ? `<div class="account-detail-role"><span class="role-badge" data-role="${escapeHtml(user.role_name || '')}">${escapeHtml(roleLabel(user.role_name))}</span></div>`
+                : '';
+            const protectedChip = user.is_protected
+                ? '<span class="system-admin-chip mt-1">Admin hệ thống</span>'
+                : '';
+
+            const header = `
+                <div class="account-detail-head">
+                    <img src="${escapeHtml(avatar)}" alt="${escapeHtml(user.username)}" class="account-detail-avatar"
+                        onerror="this.onerror=null;this.src='${fallback}';">
+                    <div class="account-detail-name">${escapeHtml(user.username)}</div>
+                    ${roleLine}
+                    ${protectedChip}
+                </div>`;
+
+            detailBody.innerHTML = header + `<div class="row g-3">${fields.join('')}</div>`;
         }
 
         function setField(name, value) {
             const field = editForm.elements[name];
-            if (field) {
-                field.value = value ?? '';
+            if (!field) return;
+            const v = value ?? '';
+            // Với <select> (vd Tỉnh/Thành phố nạp từ API): nếu giá trị đã lưu chưa
+            // có trong danh sách option thì thêm vào để không mất dữ liệu cũ.
+            if (field.tagName === 'SELECT' && v !== ''
+                && ! Array.from(field.options).some(opt => opt.value === v)) {
+                field.insertAdjacentHTML('beforeend', `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`);
             }
+            field.value = v;
+        }
+
+        // Nạp danh sách Tỉnh/Thành phố từ API địa giới hành chính vào select (giống
+        // trang khách hàng), thay cho danh sách cứng. Chỉ nạp 1 lần rồi đánh dấu.
+        async function loadProvincesInto(select) {
+            if (!select || select.dataset.provincesLoaded === '1') return;
+            try {
+                const res = await fetch('{{ route('location.provinces') }}', { headers: { 'Accept': 'application/json' } });
+                const data = await res.json();
+                const existing = new Set(Array.from(select.options).map(opt => opt.value));
+                select.insertAdjacentHTML('beforeend', data
+                    .filter(item => ! existing.has(item.name))
+                    .map(item => `<option value="${escapeHtml(item.name)}" data-code="${item.code}">${escapeHtml(item.name)}</option>`)
+                    .join(''));
+                select.dataset.provincesLoaded = '1';
+            } catch {
+                // API lỗi: giữ nguyên; setField vẫn tự thêm option cho giá trị đã lưu.
+            }
+        }
+
+        if (showAddressFields) {
+            loadProvincesInto(document.getElementById('modal_city'));
         }
 
         function resetErrors() {

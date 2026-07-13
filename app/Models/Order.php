@@ -2,6 +2,9 @@
 
 namespace App\Models;
 
+use App\Enums\OrderStatus;
+use App\Enums\PaymentStatus;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -101,5 +104,45 @@ class Order extends Model implements \OwenIt\Auditing\Contracts\Auditable
         }
 
         return null;
+    }
+
+    /**
+     * Loại các đơn cổng online (PayOS/MoMo) còn 'pending' + 'chưa thanh toán' khỏi kết quả.
+     * Đây là đơn "đang chờ thanh toán" — trạng thái sống ở giỏ hàng, chưa phải đơn đã chốt,
+     * nên không hiện ở danh sách đơn của user lẫn danh sách xử lý của admin. Đơn online đã
+     * thanh toán, hoặc COD/chuyển khoản, vẫn hiển thị bình thường.
+     */
+    public function scopeExcludingUnpaidOnline(Builder $query): Builder
+    {
+        $onlineIds = PaymentMethod::onlineGatewayIds();
+
+        if (empty($onlineIds)) {
+            return $query;
+        }
+
+        // NOT(online AND pending AND unpaid) = (không phải online) HOẶC (đã xử lý) HOẶC (đã trả).
+        return $query->where(function (Builder $q) use ($onlineIds) {
+            $q->whereNotIn('payment_method_id', $onlineIds)
+                ->orWhere('status', '!=', OrderStatus::PENDING->value)
+                ->orWhere('payment_status', '!=', PaymentStatus::UNPAID->value);
+        });
+    }
+
+    /**
+     * Xóa khỏi giỏ hàng các biến thể đã mua trong đơn này — gọi khi thanh toán online
+     * thành công. Chỉ xóa đúng biến thể của đơn (khớp product_variant_id) để không mất
+     * các sản phẩm người dùng lỡ thêm mới vào giỏ sau khi đặt đơn.
+     */
+    public function clearPurchasedItemsFromCart(): void
+    {
+        $cart = $this->user?->cart;
+
+        if (! $cart) {
+            return;
+        }
+
+        $variantIds = $this->orderItems()->pluck('product_variant_id');
+
+        $cart->cartItems()->whereIn('product_variant_id', $variantIds)->delete();
     }
 }

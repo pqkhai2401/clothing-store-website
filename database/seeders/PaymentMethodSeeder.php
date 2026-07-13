@@ -28,7 +28,8 @@ class PaymentMethodSeeder extends Seeder
             [
                 'name' => 'MoMo - Ví điện tử',
                 'status' => true,
-                'image' => 'https://developers.momo.vn/v3/assets/images/square-logo.svg',
+                // Logo host tại chỗ (public/images) — URL developers.momo.vn cũ trả về HTML nên vỡ ảnh.
+                'image' => '/images/momo-logo.svg',
             ],
         ];
 

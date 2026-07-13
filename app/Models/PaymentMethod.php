@@ -53,4 +53,20 @@ class PaymentMethod extends Model
     {
         return $this->isPayos() || $this->isMomo();
     }
+
+    /**
+     * ID các phương thức là cổng thanh toán online (PayOS/MoMo) — dùng cho các truy vấn cần
+     * lọc theo cổng online (vd ẩn đơn online chưa thanh toán). Cache trong vòng đời request
+     * để không truy vấn lặp lại.
+     */
+    public static function onlineGatewayIds(): array
+    {
+        static $ids = null;
+
+        if ($ids === null) {
+            $ids = static::all()->filter->isOnlineGateway()->pluck('id')->all();
+        }
+
+        return $ids;
+    }
 }

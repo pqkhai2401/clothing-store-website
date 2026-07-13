@@ -125,6 +125,8 @@ class UserController extends Controller
             'role_id' => [$context['type'] === 'customer' ? 'nullable' : 'required', 'integer', 'exists:roles,id'],
             'is_active' => ['required', 'boolean'],
             'password' => ['required', 'string', 'min:8', 'max:255'],
+            'gender' => ['nullable', 'in:nam,nu,khac'],
+            'avatar' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
             'city' => ['nullable', 'string', 'max:255'],
             'ward' => ['nullable', 'string', 'max:255'],
             'apartment_number' => ['nullable', 'string', 'max:255'],
@@ -140,10 +142,19 @@ class UserController extends Controller
             return back()->withErrors(['role_id' => 'Quản trị viên thường chỉ được tạo tài khoản nhân viên.'])->withInput();
         }
 
+        // Upload ảnh đại diện (nếu có) — tái dùng pattern ở User/ProfileController:
+        // lưu vào disk "public", thư mục "avatars", store() tự sinh tên file duy nhất.
+        $avatarPath = null;
+        if ($request->hasFile('avatar')) {
+            $avatarPath = $request->file('avatar')->store('avatars', 'public');
+        }
+
         $user = User::create([
             'username'     => $validated['username'],
             'email'        => $validated['email'],
             'phone_number' => $validated['phone_number'] ?? null,
+            'gender'       => $validated['gender'] ?? null,
+            'avatar_url'   => $avatarPath,
             'is_active'    => (bool) $validated['is_active'],
             'password'     => Hash::make($validated['password']),
             'is_protected' => false,
@@ -195,6 +206,35 @@ class UserController extends Controller
     }
 
     /**
+     * Hiển thị trang chỉnh sửa (bố cục giống trang Thêm) — thay cho modal cũ.
+     */
+    public function edit(string $id)
+    {
+        $request = request();
+        $user = User::with([
+            'roles',
+            'addresses' => fn ($query) => $query->latest('id'),
+        ])->findOrFail($id);
+        $context = $this->resolveContext($request, $user);
+        $this->authorizeContext($request, $context['type'], $user);
+
+        $currentUser             = $request->user();
+        $currentIsProtectedAdmin = $currentUser->isAdmin() && (bool) $currentUser->is_protected;
+
+        $roles = $this->rolesForContext($context['type']);
+        if (! $currentIsProtectedAdmin) {
+            $roles = $roles->filter(fn ($role) => $role->name !== UserRole::ADMIN->value)->values();
+        }
+
+        return view('admin.users.edit-page', [
+            'user'    => $user,
+            'address' => $user->addresses->first(),
+            'roles'   => $roles,
+            ...$context,
+        ]);
+    }
+
+    /**
      * Update the specified user.
      */
     public function update(Request $request, string $id)
@@ -219,6 +259,8 @@ class UserController extends Controller
             'phone_number' => ['nullable', 'string', 'max:20'],
             'role_id' => [$context['type'] === 'all' ? 'required' : 'nullable', 'integer', 'exists:roles,id'],
             'is_active' => ['required', 'boolean'],
+            'gender' => ['nullable', 'in:nam,nu,khac'],
+            'avatar' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
             'city' => ['nullable', 'string', 'max:255'],
             'ward' => ['nullable', 'string', 'max:255'],
             'apartment_number' => ['nullable', 'string', 'max:255'],
@@ -244,7 +286,9 @@ class UserController extends Controller
 
         $infoChanged = $validated['username'] !== $targetUser->username
             || $validated['email'] !== $targetUser->email
-            || ($validated['phone_number'] ?? null) !== $targetUser->phone_number;
+            || ($validated['phone_number'] ?? null) !== $targetUser->phone_number
+            || (array_key_exists('gender', $validated) && ($validated['gender'] ?? null) !== $targetUser->gender)
+            || $request->hasFile('avatar');
 
         $currentAddress = $targetUser->addresses()->latest('id')->first();
         $addressChanged = $this->hasAddressInput($validated) && (
@@ -341,9 +385,21 @@ class UserController extends Controller
             'username'     => $validated['username'],
             'email'        => $validated['email'],
             'phone_number' => $validated['phone_number'] ?? null,
+            'gender'       => $validated['gender'] ?? null,
             'is_active'    => $willBeActive,
             'lock_reason'  => $willBeActive ? null : ($validated['lock_reason'] ?? null),
         ];
+
+        // Ảnh đại diện mới (nếu có): lưu file mới, xóa file cũ nếu là ảnh tự upload
+        // (đường dẫn tương đối trong disk public — không xóa URL ngoài như ảnh Google).
+        if ($request->hasFile('avatar')) {
+            $newAvatar = $request->file('avatar')->store('avatars', 'public');
+            $oldAvatar = $targetUser->avatar_url;
+            if ($oldAvatar && ! \Illuminate\Support\Str::startsWith($oldAvatar, ['http://', 'https://'])) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($oldAvatar);
+            }
+            $updateData['avatar_url'] = $newAvatar;
+        }
 
         // Audit khóa tài khoản: chỉ ghi ai/lúc nào khi chuyển sang khóa; xóa dấu vết khi mở lại.
         if ($statusChanged) {
@@ -445,22 +501,31 @@ class UserController extends Controller
             return $this->validationErrorResponse($request, 'permission', 'Quản trị viên thường không có quyền reset mật khẩu của quản trị viên khác.');
         }
 
+        // Khách hàng đăng nhập ở storefront — nơi không có middleware buộc đổi
+        // mật khẩu — nên không set must_change_password (sẽ chẳng bao giờ được
+        // thực thi). Cờ này chỉ có ý nghĩa với admin/nhân viên trong khu vực admin.
+        $targetIsCustomer = $targetUser->isCustomer();
+
         $targetUser->update([
             'password' => Hash::make($validated['password']),
-            'must_change_password' => true,
+            'must_change_password' => ! $targetIsCustomer,
         ]);
 
         $this->recordPasswordResetAudit($targetUser);
         $targetUser->notify(new \App\Notifications\PasswordResetByAdmin($currentUser->username));
         $this->revokeUserAccess($targetUser);
 
+        $successMessage = $targetIsCustomer
+            ? 'Đặt lại mật khẩu thành công. Hãy thông báo mật khẩu mới cho khách hàng.'
+            : 'Đặt lại mật khẩu thành công. Tài khoản sẽ phải đổi mật khẩu ở lần đăng nhập kế tiếp.';
+
         if ($request->expectsJson() || $request->ajax()) {
             return response()->json([
-                'message' => 'Đặt lại mật khẩu thành công. Tài khoản sẽ phải đổi mật khẩu ở lần đăng nhập kế tiếp.',
+                'message' => $successMessage,
             ]);
         }
 
-        return redirect()->route($context['routePrefix'].'.list')->with('success', 'Đặt lại mật khẩu thành công.');
+        return redirect()->route($context['routePrefix'].'.list')->with('success', $successMessage);
     }
 
     /**
@@ -667,6 +732,12 @@ class UserController extends Controller
         if (Schema::hasTable('sessions')) {
             DB::table('sessions')->where('user_id', $user->id)->delete();
         }
+
+        // Khách hàng đăng nhập storefront bằng OAuth token (Passport) chứ không
+        // chỉ qua session — phải thu hồi token để thực sự đăng xuất họ ngay.
+        if (Schema::hasTable('oauth_access_tokens')) {
+            DB::table('oauth_access_tokens')->where('user_id', $user->id)->update(['revoked' => true]);
+        }
     }
 
     private function validationErrorResponse(Request $request, string $field, string $message)
@@ -854,6 +925,7 @@ class UserController extends Controller
         return [
             'id' => $user->id,
             'username' => $user->username,
+            'avatar_url' => $user->avatar_display_url,
             'email' => $user->email,
             'phone_number' => $user->phone_number,
             'role_id' => $role?->id,
@@ -886,6 +958,10 @@ class UserController extends Controller
             'password.required' => 'Vui lòng nhập mật khẩu',
             'password.min' => 'Mật khẩu phải có ít nhất 6 ký tự',
             'password.confirmed' => 'Mật khẩu xác nhận không khớp',
+            'gender.in' => 'Giới tính không hợp lệ',
+            'avatar.image' => 'File tải lên phải là một hình ảnh',
+            'avatar.mimes' => 'Ảnh đại diện chỉ chấp nhận: jpeg, png, jpg, webp',
+            'avatar.max' => 'Dung lượng ảnh đại diện không được vượt quá 2MB',
             'city.max' => 'Tỉnh, thành phố không được vượt quá 255 ký tự',
            
             'ward.max' => 'Phường, xã không được vượt quá 255 ký tự',

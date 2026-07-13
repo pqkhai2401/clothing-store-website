@@ -213,6 +213,10 @@ class PayosController extends Controller
 
         // Chỉ cập nhật trạng thái thanh toán; việc xử lý đơn/tồn kho do admin thực hiện.
         $order->update(['payment_status' => PaymentStatus::PAID->value]);
+
+        // Thanh toán xong mới xóa sản phẩm khỏi giỏ (đơn online trước đó vẫn giữ giỏ để user
+        // có thể tiếp tục thanh toán / đặt lại nếu bỏ dở).
+        $order->clearPurchasedItemsFromCart();
     }
 
     private function authorizeOrder(Request $request, Order $order): void

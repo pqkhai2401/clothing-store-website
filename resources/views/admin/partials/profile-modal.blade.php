@@ -50,6 +50,27 @@
 #profileModal .modal-body::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 4px; }
 
 /* ── Section ────────────────────────────────────────────────── */
+.pm-avatar-wrap {
+    display: flex;
+    justify-content: center;
+    padding: 22px 28px 4px;
+}
+
+.pm-avatar {
+    width: 92px;
+    height: 92px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: #e2e8f0;
+    border: 3px solid #fff;
+    box-shadow: 0 2px 10px rgba(2, 6, 23, 0.12);
+}
+
+[data-theme="dark"] .pm-avatar {
+    background: #334155;
+    border-color: #1e293b;
+}
+
 .pm-section {
     padding: 24px 28px;
     border-bottom: 1px solid #F1F5F9;
@@ -365,6 +386,11 @@
                 <form id="profileForm" novalidate>
                     @csrf
 
+                    {{-- ── Ảnh đại diện ── --}}
+                    <div class="pm-avatar-wrap">
+                        <img id="profile_avatar" class="pm-avatar" src="" alt="Ảnh đại diện">
+                    </div>
+
                     {{-- ── 1. Thông tin tài khoản ── --}}
                     <div class="pm-section">
                         <p class="pm-section-title">Thông tin tài khoản</p>
@@ -580,6 +606,12 @@
 
     // ── Fill form from API data ───────────────────────────────────
     function fillForm(data) {
+        const avatarImg = document.getElementById('profile_avatar');
+        if (avatarImg) {
+            const fallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(data.username || 'User')}&background=random&color=fff`;
+            avatarImg.src = data.avatar_url || fallback;
+            avatarImg.onerror = function () { this.onerror = null; this.src = fallback; };
+        }
         document.getElementById('profile_username').value     = data.username     ?? '';
         document.getElementById('profile_email').value        = data.email        ?? '';
         document.getElementById('profile_phone_number').value = data.phone_number ?? '';
