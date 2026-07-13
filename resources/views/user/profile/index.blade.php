@@ -213,7 +213,7 @@
                 <div class="avatar-wrapper">
                     <img
                         id="avatar-preview"
-                        src="{{ $user->avatar_url ? asset('storage/' . $user->avatar_url) : 'https://ui-avatars.com/api/?name=' . urlencode($user->username) . '&background=random' }}"
+                        src="{{ $user->avatar_display_url ?: 'https://ui-avatars.com/api/?name=' . urlencode($user->username) . '&background=random' }}"
                         alt="Ảnh đại diện"
                         class="avatar-preview rounded-circle img-thumbnail"
                     >

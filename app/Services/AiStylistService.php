@@ -1,0 +1,667 @@
+<?php
+
+namespace App\Services;
+
+use App\Enums\OrderStatus;
+use App\Models\Order;
+use App\Models\Product;
+use App\Models\ProductView;
+use App\Models\User;
+use App\Models\Wishlist;
+use Carbon\Carbon;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+
+/**
+ * =============================================================================
+ *  HỆ GỢI Ý LAI GIỮA NỘI DUNG VÀ LUẬT TRI THỨC TÍCH HỢP CLOUD AI
+ *  (Hybrid Content-Based & Knowledge/Rule-Based Recommendation driven by Cloud AI)
+ * =============================================================================
+ *
+ * Service này đóng vai trò "Stylist ảo": nó KHÔNG tự tính điểm bằng thuật toán
+ * cứng, mà DỰNG PROMPT ràng buộc chặt (Prompt Engineering) rồi nhờ Google Gemini
+ * suy luận phối đồ / cá nhân hóa, cuối cùng chỉ nhận về một MẢNG ID sản phẩm.
+ *
+ * Bốn kịch bản được giải quyết:
+ *   1. Mix & Match  : phối sản phẩm A thành một bộ hoàn chỉnh (Rule + Content).
+ *   2. Style Conflict: loại trừ item xung đột phong cách / trùng công năng.
+ *   3. Seasonal Sync : ưu tiên item cùng Bộ sưu tập (mùa) với sản phẩm neo.
+ *   4. Cold Start    : user mới -> ép theo mùa của tháng hiện tại; user cũ ->
+ *                      đọc lịch sử (views / wishlist / order) để cá nhân hóa.
+ *
+ * NGUYÊN TẮC AN TOÀN: Mọi phương thức public đều được BỌC fallback. Nếu Cloud AI
+ * lỗi / hết quota / trả JSON rác, hệ thống tự động rơi về `RecommendationService`
+ * (thuật toán SQL thuần đã có sẵn) để giao diện KHÔNG BAO GIỜ trắng trang.
+ */
+class AiStylistService
+{
+    /** Endpoint gốc của Gemini (chưa gồm ?key=). */
+    protected string $endpoint;
+
+    /** API key đọc từ config/services.php -> .env (GEMINI_API_KEY). */
+    protected ?string $apiKey;
+
+    /** Số ứng viên tối đa nạp vào prompt (giữ prompt gọn + ép AI chỉ chọn trong tập này). */
+    protected int $candidatePoolSize = 50;
+
+    public function __construct()
+    {
+        // Model mặc định 'gemini-flash-lite-latest': alias ổn định, còn hạn ngạch
+        // free tier (model cũ 'gemini-2.0-flash' đã bị Google đặt free-tier = 0 -> 429).
+        $model          = config('services.gemini.model', 'gemini-flash-lite-latest');
+        $this->apiKey   = config('services.gemini.key');
+        // Dùng API v1beta vì các model mới (flash-lite-latest, gemini-3.x...) chỉ
+        // phục vụ trên v1beta; endpoint v1 sẽ trả 404 với các model này.
+        $this->endpoint = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent";
+    }
+
+    /* =========================================================================
+     |  KỊCH BẢN 1 + 2 + 3: MIX & MATCH (phối đồ) theo sản phẩm neo
+     * ========================================================================= */
+
+    /**
+     * Gợi ý các sản phẩm PHỐI CÙNG một sản phẩm neo (khi khách xem / thêm vào giỏ).
+     *
+     * @param  Product  $anchor  Sản phẩm khách đang xem hoặc vừa thêm vào giỏ.
+     * @param  int      $limit   Số sản phẩm muốn gợi ý.
+     * @return Collection<int, Product>
+     */
+    public function getMixAndMatch(Product $anchor, int $limit = 4): Collection
+    {
+        // 0) Cache: kết quả phối đồ cho 1 sản phẩm ít thay đổi -> lưu 6 giờ để
+        //    đỡ gọi Gemini mỗi lần tải trang (tránh chạm trần quota/phút).
+        $cacheKey = "ai_match_{$anchor->id}_{$limit}";
+        if ($cached = $this->fromCache($cacheKey, $limit)) {
+            return $cached;
+        }
+
+        // 1) Lấy tập ứng viên: cùng giới tính (hoặc unisex), khác chính nó,
+        //    và KHÁC danh mục với sản phẩm neo (vì phối đồ là ghép món khác loại:
+        //    mua áo thì gợi quần/áo khoác/phụ kiện, không gợi thêm một cái áo y hệt).
+        $candidates = Product::query()
+            ->where('status', true)
+            ->where('id', '!=', $anchor->id)
+            ->where('category_id', '!=', $anchor->category_id)
+            ->when($anchor->gender && $anchor->gender !== 'unisex', function ($q) use ($anchor) {
+                $q->whereIn('gender', [$anchor->gender, 'unisex']);
+            })
+            ->with(['category', 'brand', 'collections'])
+            ->orderByDesc('views_count')
+            ->limit($this->candidatePoolSize)
+            ->get();
+
+        if ($candidates->isEmpty()) {
+            return $this->fallbackSimilar($anchor, $limit);
+        }
+
+        // 2) Dựng prompt Stylist và gọi AI.
+        $prompt   = $this->buildMixMatchPrompt($anchor, $candidates, $limit);
+        $chosenIds = $this->askGeminiForIds($prompt);
+
+        // 3) AI lỗi -> bù bằng chính pool phối đồ (ĐÃ lọc khác loại), KHÔNG dùng
+        //    "sản phẩm tương tự" vì nó cùng loại -> sẽ phá Kịch bản 2 (loại trừ trùng công năng).
+        if ($chosenIds === null) {
+            return $candidates->take($limit)->values();
+        }
+
+        // 4) Chỉ giữ ID hợp lệ nằm trong tập ứng viên (chống AI "bịa" ID).
+        $products = $this->hydrateOrderedProducts($chosenIds, $candidates->pluck('id')->all(), $limit);
+
+        // 5) AI trả thiếu -> bù cho đủ limit BẰNG POOL PHỐI ĐỒ (khác loại), giữ
+        //    đúng luật loại trừ. (Trước đây bù bằng fallbackSimilar -> lòi ra đồ cùng loại.)
+        $result = $this->topUp($products, fn () => $candidates, $limit);
+
+        // 6) Chỉ cache khi AI thật sự chạy (không cache kết quả fallback, để lần
+        //    sau còn thử gọi lại Gemini khi quota hồi phục).
+        $this->putCache($cacheKey, $result, now()->addHours(6));
+
+        return $result;
+    }
+
+    /* =========================================================================
+     |  KỊCH BẢN 4: TRANG CHỦ — Cold Start (user mới) hoặc cá nhân hóa (user cũ)
+     * ========================================================================= */
+
+    /**
+     * Gợi ý cho trang chủ.
+     *  - Guest / user chưa có lịch sử  -> ép theo MÙA của tháng hiện tại.
+     *  - User có lịch sử               -> cho AI đọc hồ sơ hành vi để cá nhân hóa.
+     *
+     * @param  User|null  $user
+     * @param  int        $limit
+     * @return Collection<int, Product>
+     */
+    public function getHomepageRecommendations(?User $user, int $limit = 8): Collection
+    {
+        $history = $user ? $this->collectUserHistory($user) : [];
+        $hasHistory = !empty($history['product_ids']);
+
+        // --- COLD START: không có user hoặc user chưa từng tương tác ---
+        if (!$hasHistory) {
+            $season = $this->seasonForMonth((int) now()->month);
+
+            // Cache theo mùa: mọi khách mới trong cùng 1 giờ dùng chung 1 kết quả.
+            $cacheKey = "ai_home_cold_{$season}_{$limit}";
+            if ($cached = $this->fromCache($cacheKey, $limit)) {
+                return $cached;
+            }
+
+            $candidates = $this->seasonalCandidatePool($season);
+            // Không có sản phẩm nào thuộc mùa hiện tại -> đành dùng phổ biến chung.
+            if ($candidates->isEmpty()) {
+                return $this->fallbackPopular($limit);
+            }
+
+            $prompt    = $this->buildColdStartPrompt($season, $candidates, $limit);
+            $chosenIds = $this->askGeminiForIds($prompt);
+
+            // AI lỗi/không cấu hình -> VẪN trả đúng đồ theo mùa (pool đã lọc sẵn),
+            // KHÔNG rơi về popular chung chung để giữ đúng tinh thần "Cold Start theo mùa".
+            // KHÔNG cache trường hợp này để lần sau còn thử gọi lại Gemini.
+            if ($chosenIds === null) {
+                return $candidates->take($limit)->values();
+            }
+
+            $products = $this->hydrateOrderedProducts($chosenIds, $candidates->pluck('id')->all(), $limit);
+            // Thiếu thì bù bằng chính pool theo mùa (không phải popular chung).
+            $result = $this->topUp($products, fn () => $candidates, $limit);
+            $this->putCache($cacheKey, $result, now()->addHour());
+
+            return $result;
+        }
+
+        // --- USER CŨ: cá nhân hóa dựa trên lịch sử ---
+        // Cache riêng theo user + "vân tay" lịch sử: khi user tương tác thêm
+        // (mua/thích sản phẩm mới) thì md5 đổi -> cache tự làm mới ngay.
+        $cacheKey = 'ai_home_user_' . $user->id
+            . '_' . md5(implode(',', $history['product_ids']))
+            . "_{$limit}";
+        if ($cached = $this->fromCache($cacheKey, $limit)) {
+            return $cached;
+        }
+
+        // Loại các sản phẩm đã mua/đã có trong wishlist ra khỏi tập ứng viên.
+        $candidates = Product::query()
+            ->where('status', true)
+            ->whereNotIn('id', $history['exclude_ids'])
+            ->with(['category', 'brand', 'collections'])
+            ->orderByDesc('views_count')
+            ->limit($this->candidatePoolSize)
+            ->get();
+
+        if ($candidates->isEmpty()) {
+            return $this->fallbackPersonalized($user, $limit);
+        }
+
+        $prompt    = $this->buildPersonalizedPrompt($history, $candidates, $limit);
+        $chosenIds = $this->askGeminiForIds($prompt);
+
+        if ($chosenIds === null) {
+            return $this->fallbackPersonalized($user, $limit);
+        }
+
+        $products = $this->hydrateOrderedProducts($chosenIds, $candidates->pluck('id')->all(), $limit);
+        $result = $this->topUp($products, fn () => $this->fallbackPersonalized($user, $limit), $limit);
+        $this->putCache($cacheKey, $result, now()->addMinutes(30));
+
+        return $result;
+    }
+
+    /* =========================================================================
+     |  PROMPT ENGINEERING
+     * ========================================================================= */
+
+    /**
+     * Prompt cho Mix & Match — gộp cả 3 luật: bổ trợ, loại trừ, đồng bộ mùa.
+     */
+    protected function buildMixMatchPrompt(Product $anchor, Collection $candidates, int $limit): string
+    {
+        $anchorSeasons = $anchor->collections->pluck('name')->implode(', ') ?: 'Không rõ';
+        $anchorInfo = sprintf(
+            "SẢN PHẨM KHÁCH ĐANG CHỌN:\n- ID: %d\n- Tên: %s\n- Danh mục: %s\n- Giới tính: %s\n- Giá: %s\n- Bộ sưu tập/Mùa: %s\n- Mô tả: %s",
+            $anchor->id,
+            $anchor->name,
+            $anchor->category->name ?? 'N/A',
+            $anchor->gender,
+            number_format((float) $anchor->price, 0, ',', '.') . 'đ',
+            $anchorSeasons,
+            $this->shorten($anchor->description)
+        );
+
+        return <<<PROMPT
+        Bạn là một STYLIST (chuyên gia phối đồ) thời trang chuyên nghiệp cho một shop quần áo tại Việt Nam.
+        Nhiệm vụ: từ sản phẩm khách đang chọn, hãy chọn ra tối đa {$limit} sản phẩm trong DANH SÁCH ỨNG VIÊN
+        để phối cùng tạo thành MỘT BỘ TRANG PHỤC HOÀN CHỈNH, hài hòa, có gu.
+
+        {$anchorInfo}
+
+        BẠN PHẢI TUÂN THỦ NGHIÊM NGẶT CÁC LUẬT SAU:
+        1. LUẬT BỔ TRỢ (Mix & Match): Chọn các món KHÁC CÔNG NĂNG để ghép thành bộ.
+           Ví dụ: áo thun -> phối quần short / quần jeans / áo khoác / phụ kiện.
+        2. LUẬT LOẠI TRỪ (Style Conflict):
+           - TUYỆT ĐỐI KHÔNG chọn món trùng công năng với sản phẩm khách đã chọn
+             (khách đã có quần dài thì KHÔNG gợi thêm một quần dài khác).
+           - KHÔNG trộn lẫn phong cách xung đột (đồ casual/năng động KHÔNG ghép với
+             đồ công sở đứng dáng, và ngược lại).
+        3. LUẬT ĐỒNG BỘ MÙA (Seasonal Sync): Ưu tiên tối đa các sản phẩm cùng Bộ sưu tập/Mùa
+           với sản phẩm khách chọn ("{$anchorSeasons}"). Ví dụ đồ Mùa hè phải phối với item mát mẻ cùng Mùa hè.
+        4. Ưu tiên các món có mức giá tương đồng để bộ đồ cân đối.
+
+        DANH SÁCH ỨNG VIÊN (chỉ được chọn ID trong danh sách này):
+        {$this->serializeCandidates($candidates)}
+
+        ĐỊNH DẠNG ĐẦU RA — BẮT BUỘC TUYỆT ĐỐI:
+        - CHỈ trả về DUY NHẤT một mảng JSON gồm các số ID đã chọn, ví dụ: [12, 4, 27].
+        - KHÔNG kèm chữ giải thích, KHÔNG markdown, KHÔNG dấu backtick.
+        - Nếu không có món nào phù hợp, trả về [].
+        PROMPT;
+    }
+
+    /**
+     * Prompt cho Cold Start theo mùa (user mới / guest).
+     */
+    protected function buildColdStartPrompt(string $season, Collection $candidates, int $limit): string
+    {
+        return <<<PROMPT
+        Bạn là chuyên gia merchandising của một shop thời trang tại Việt Nam.
+        Hiện đang là tháng {$this->currentMonth()} và cửa hàng muốn đẩy mạnh BỘ SƯU TẬP mùa {$season}.
+        Khách hàng này là KHÁCH MỚI, chưa có lịch sử mua/xem, nên chưa biết sở thích.
+
+        Nhiệm vụ: chọn ra tối đa {$limit} sản phẩm HẤP DẪN NHẤT, ĐA DẠNG danh mục
+        (đủ áo/quần/phụ kiện...) và PHÙ HỢP với mùa "{$season}" để trưng ở trang chủ,
+        tạo ấn tượng đầu tiên tốt và có khả năng chốt đơn cao.
+
+        DANH SÁCH ỨNG VIÊN (chỉ được chọn ID trong danh sách này):
+        {$this->serializeCandidates($candidates)}
+
+        ĐỊNH DẠNG ĐẦU RA — BẮT BUỘC: CHỈ trả về một mảng JSON các số ID, ví dụ [3, 9, 15, 21].
+        KHÔNG kèm giải thích, KHÔNG markdown. Nếu không có, trả về [].
+        PROMPT;
+    }
+
+    /**
+     * Prompt cá nhân hóa cho user cũ dựa trên hồ sơ hành vi.
+     */
+    protected function buildPersonalizedPrompt(array $history, Collection $candidates, int $limit): string
+    {
+        $profile = sprintf(
+            "HỒ SƠ SỞ THÍCH CỦA KHÁCH:\n- Danh mục hay xem/mua: %s\n- Thương hiệu ưa thích: %s\n- Giới tính thường mua: %s\n- Khoảng giá thường chi: %s",
+            implode(', ', $history['categories']) ?: 'Chưa rõ',
+            implode(', ', $history['brands']) ?: 'Chưa rõ',
+            implode(', ', $history['genders']) ?: 'Chưa rõ',
+            $history['price_hint'] ?? 'Chưa rõ'
+        );
+
+        return <<<PROMPT
+        Bạn là hệ thống gợi ý cá nhân hóa của một shop thời trang tại Việt Nam.
+        Dưới đây là hồ sơ hành vi (lịch sử xem, yêu thích, đã mua) của một khách hàng cũ.
+
+        {$profile}
+
+        Nhiệm vụ: chọn tối đa {$limit} sản phẩm trong DANH SÁCH ỨNG VIÊN mà khách này
+        NHIỀU KHẢ NĂNG THÍCH NHẤT, bám sát hồ sơ trên. Ưu tiên đúng gu (danh mục, thương hiệu,
+        giới tính, tầm giá), đồng thời tránh gợi lại đúng thứ khách đã có.
+
+        DANH SÁCH ỨNG VIÊN (chỉ được chọn ID trong danh sách này):
+        {$this->serializeCandidates($candidates)}
+
+        ĐỊNH DẠNG ĐẦU RA — BẮT BUỘC: CHỈ trả về một mảng JSON các số ID, ví dụ [5, 8, 1, 12].
+        KHÔNG kèm giải thích, KHÔNG markdown. Nếu không có, trả về [].
+        PROMPT;
+    }
+
+    /**
+     * Chuyển tập ứng viên thành các dòng text ngắn gọn để nhét vào prompt.
+     */
+    protected function serializeCandidates(Collection $candidates): string
+    {
+        return $candidates->map(function (Product $p) {
+            return sprintf(
+                'ID:%d | %s | Danh mục:%s | Giới tính:%s | Giá:%sđ | Mùa:%s',
+                $p->id,
+                $p->name,
+                $p->category->name ?? 'N/A',
+                $p->gender,
+                number_format((float) $p->price, 0, ',', '.'),
+                $p->collections->pluck('name')->implode('/') ?: 'N/A'
+            );
+        })->implode("\n");
+    }
+
+    /* =========================================================================
+     |  GỌI GEMINI + PARSE JSON AN TOÀN
+     * ========================================================================= */
+
+    /**
+     * Gửi prompt lên Gemini và trả về MẢNG ID (int) mà AI chọn.
+     * Trả về null nếu bất kỳ khâu nào lỗi -> tín hiệu để caller fallback.
+     *
+     * @return int[]|null
+     */
+    protected function askGeminiForIds(string $prompt): ?array
+    {
+        // Không cấu hình key -> coi như AI không khả dụng, để caller fallback.
+        if (empty($this->apiKey)) {
+            Log::warning('[AI-RECO] ⚠️ Thiếu GEMINI_API_KEY -> DÙNG FALLBACK SQL.');
+            return null;
+        }
+
+        try {
+            $http = Http::timeout(20)->retry(2, 500);
+
+            // Local (Windows/Laragon) thường thiếu CA -> tắt verify SSL cho đỡ vướng.
+            // Production giữ nguyên xác thực SSL để chống man-in-the-middle.
+            if (app()->environment('local')) {
+                $http = $http->withoutVerifying();
+            }
+
+            $response = $http->post($this->endpoint . '?key=' . $this->apiKey, [
+                'contents' => [
+                    ['parts' => [['text' => $prompt]]],
+                ],
+            ]);
+
+            if ($response->failed()) {
+                Log::warning('[AI-RECO] ⚠️ Gemini lỗi HTTP -> DÙNG FALLBACK SQL', [
+                    'status' => $response->status(), // 429 = hết quota, 400/403 = sai key/model
+                    'body'   => $response->body(),
+                ]);
+                return null;
+            }
+
+            $rawText = $response->json('candidates.0.content.parts.0.text');
+            if (empty($rawText)) {
+                return null;
+            }
+
+            $ids = $this->parseIdArray($rawText);
+
+            // ĐÈN BÁO: ghi log khi Gemini phản hồi hợp lệ -> chứng minh AI thật sự chạy
+            // (khác với nhánh fallback SQL). Xem trong storage/logs/laravel.log.
+            Log::info('[AI-RECO]  GEMINI CHẠY THẬT — AI đã trả về danh sách ID', [
+                'raw_text'   => trim($rawText),
+                'parsed_ids' => $ids,
+            ]);
+
+            return $ids;
+        } catch (\Throwable $e) {
+            // Bất kỳ lỗi mạng/timeout/exception nào cũng nuốt lại và fallback.
+            Log::error('[AI-RECO]  Ngoại lệ khi gọi Gemini -> DÙNG FALLBACK SQL', ['message' => $e->getMessage()]);
+            return null;
+        }
+    }
+
+    /**
+     * Bóc mảng ID từ chuỗi text AI trả về, xử lý an toàn mọi trường hợp bẩn:
+     * dính ```json, kèm chữ giải thích, xuống dòng thừa...
+     *
+     * @return int[]|null
+     */
+    protected function parseIdArray(string $raw): ?array
+    {
+        $clean = str_replace(['```json', '```JSON', '```'], '', trim($raw));
+
+        // Cắt lấy đúng đoạn từ '[' đầu tiên đến ']' cuối cùng.
+        $start = strpos($clean, '[');
+        $end   = strrpos($clean, ']');
+        if ($start === false || $end === false || $end < $start) {
+            return null;
+        }
+        $clean = substr($clean, $start, $end - $start + 1);
+
+        $decoded = json_decode($clean, true);
+        if (!is_array($decoded)) {
+            return null;
+        }
+
+        // Chỉ giữ số nguyên dương, bỏ trùng, giữ nguyên thứ tự AI xếp.
+        $ids = [];
+        foreach ($decoded as $value) {
+            if (is_numeric($value) && (int) $value > 0) {
+                $ids[(int) $value] = true; // key ép unique
+            }
+        }
+
+        return array_keys($ids);
+    }
+
+    /* =========================================================================
+     |  ELOQUENT: lấy Product thật theo mảng ID, GIỮ ĐÚNG THỨ TỰ ưu tiên của AI
+     * ========================================================================= */
+
+    /**
+     * Nhận mảng ID do AI chọn, lọc theo tập ID hợp lệ, rồi lấy Model Product
+     * thực tế từ DB đúng theo thứ tự AI đã xếp (dùng ORDER BY FIELD).
+     *
+     * @param  int[]  $aiIds       ID theo thứ tự AI chọn.
+     * @param  int[]  $validIds    Tập ID ứng viên hợp lệ (chống AI bịa ID).
+     * @return Collection<int, Product>
+     */
+    protected function hydrateOrderedProducts(array $aiIds, array $validIds, int $limit): Collection
+    {
+        $validSet = array_flip($validIds);
+        $filtered = array_values(array_filter($aiIds, fn ($id) => isset($validSet[$id])));
+        $filtered = array_slice($filtered, 0, $limit);
+
+        if (empty($filtered)) {
+            return collect();
+        }
+
+        $orderExpression = 'FIELD(id, ' . implode(',', $filtered) . ')';
+
+        return Product::whereIn('id', $filtered)
+            ->where('status', true)
+            ->with(['category', 'brand', 'collections'])
+            ->orderByRaw($orderExpression)
+            ->get();
+    }
+
+    /**
+     * Bù cho đủ $limit sản phẩm bằng nguồn fallback nếu AI trả về thiếu.
+     *
+     * @param  Collection<int, Product>  $current
+     * @param  callable                  $fallbackFactory  () => Collection
+     * @return Collection<int, Product>
+     */
+    protected function topUp(Collection $current, callable $fallbackFactory, int $limit): Collection
+    {
+        if ($current->count() >= $limit) {
+            return $current->take($limit)->values();
+        }
+
+        $existingIds = $current->pluck('id')->all();
+        $extra = $fallbackFactory()
+            ->reject(fn (Product $p) => in_array($p->id, $existingIds))
+            ->take($limit - $current->count());
+
+        return $current->concat($extra)->take($limit)->values();
+    }
+
+    /* =========================================================================
+     |  CACHE — lưu MẢNG ID (nhẹ), hydrate Product tươi mỗi request
+     * ========================================================================= */
+
+    /**
+     * Đọc cache: lấy mảng ID đã lưu rồi nạp lại Product THẬT từ DB (để giá/tồn kho
+     * luôn mới). Trả null nếu cache trống hoặc sản phẩm đã bị ẩn/xóa hết.
+     */
+    protected function fromCache(string $key, int $limit): ?Collection
+    {
+        $ids = Cache::get($key);
+        if (!is_array($ids) || $ids === []) {
+            return null;
+        }
+
+        $products = $this->hydrateOrderedProducts($ids, $ids, $limit);
+        return $products->isNotEmpty() ? $products : null;
+    }
+
+    /**
+     * Ghi cache: chỉ lưu danh sách ID (không lưu cả Model cho nhẹ và không bị cũ).
+     */
+    protected function putCache(string $key, Collection $products, \DateTimeInterface $ttl): void
+    {
+        Cache::put($key, $products->pluck('id')->all(), $ttl);
+    }
+
+    /* =========================================================================
+     |  THU THẬP LỊCH SỬ HÀNH VI (cho nhánh cá nhân hóa)
+     * ========================================================================= */
+
+    /**
+     * Tổng hợp hồ sơ hành vi của user từ product_views, wishlists, order_items.
+     *
+     * @return array{product_ids:int[], exclude_ids:int[], categories:string[], brands:string[], genders:string[], price_hint:?string}
+     */
+    protected function collectUserHistory(User $user): array
+    {
+        $productIds = collect();
+        $excludeIds = collect();
+        $categories = collect();
+        $brands     = collect();
+        $genders    = collect();
+        $prices     = collect();
+
+        $absorb = function (?Product $product, bool $exclude = false)
+            use ($productIds, $excludeIds, $categories, $brands, $genders, $prices) {
+            if (!$product) {
+                return;
+            }
+            $productIds->push($product->id);
+            if ($exclude) {
+                $excludeIds->push($product->id);
+            }
+            $categories->push($product->category->name ?? null);
+            $brands->push($product->brand->name ?? null);
+            $genders->push($product->gender);
+            $prices->push((float) $product->price);
+        };
+
+        // 1) Sản phẩm đã mua (đơn đã hoàn thành) -> tín hiệu mạnh nhất, và LOẠI TRỪ khỏi gợi ý.
+        Order::where('user_id', $user->id)
+            ->where('status', OrderStatus::COMPLETED->value)
+            ->with('orderItems.productVariant.product.category', 'orderItems.productVariant.product.brand')
+            ->get()
+            ->each(function (Order $order) use ($absorb) {
+                foreach ($order->orderItems as $item) {
+                    $absorb($item->productVariant->product ?? null, true);
+                }
+            });
+
+        // 2) Wishlist -> tín hiệu sở thích, cũng loại khỏi gợi ý (khách đã lưu rồi).
+        Wishlist::where('user_id', $user->id)
+            ->with('product.category', 'product.brand')
+            ->get()
+            ->each(fn (Wishlist $w) => $absorb($w->product ?? null, true));
+
+        // 3) Lịch sử xem 60 ngày gần nhất -> tín hiệu quan tâm (KHÔNG loại trừ).
+        ProductView::where('user_id', $user->id)
+            ->where('viewed_at', '>=', Carbon::now()->subDays(60))
+            ->with('product.category', 'product.brand')
+            ->latest('viewed_at')
+            ->limit(50)
+            ->get()
+            ->each(fn (ProductView $v) => $absorb($v->product ?? null, false));
+
+        return [
+            'product_ids' => $productIds->unique()->values()->all(),
+            'exclude_ids' => $excludeIds->unique()->values()->all(),
+            'categories'  => $categories->filter()->countBy()->sortDesc()->keys()->take(5)->all(),
+            'brands'      => $brands->filter()->countBy()->sortDesc()->keys()->take(5)->all(),
+            'genders'     => $genders->filter()->unique()->values()->all(),
+            'price_hint'  => $prices->isNotEmpty()
+                ? number_format($prices->avg(), 0, ',', '.') . 'đ (trung bình)'
+                : null,
+        ];
+    }
+
+    /* =========================================================================
+     |  TIỆN ÍCH MÙA / BỘ SƯU TẬP
+     * ========================================================================= */
+
+    /**
+     * Tập ứng viên thuộc một mùa (Bộ sưu tập). Nếu mùa đó chưa có sản phẩm,
+     * nới lỏng ra toàn bộ sản phẩm hot để không bị rỗng.
+     */
+    protected function seasonalCandidatePool(string $season): Collection
+    {
+        // Khớp MỀM bằng LIKE để bền với cách đặt tên Bộ sưu tập trong DB.
+        // VD từ khóa "Thu" khớp cả "Bộ sưu tập Thu", "BST Thu Đông", "Thu 2026"...
+        $inSeason = Product::query()
+            ->where('status', true)
+            ->whereHas('collections', fn ($q) => $q->where('name', 'like', "%{$season}%"))
+            ->with(['category', 'brand', 'collections'])
+            ->orderByDesc('views_count')
+            ->limit($this->candidatePoolSize)
+            ->get();
+
+        if ($inSeason->isNotEmpty()) {
+            return $inSeason;
+        }
+
+        return Product::query()
+            ->where('status', true)
+            ->with(['category', 'brand', 'collections'])
+            ->orderByDesc('views_count')
+            ->limit($this->candidatePoolSize)
+            ->get();
+    }
+
+    /**
+     * Ánh xạ THÁNG hiện tại của máy chủ -> tên Bộ sưu tập (mùa) cần đẩy bán.
+     *
+     * Theo yêu cầu nghiệp vụ: "bán trước mùa" (ví dụ tháng 7 đã đẩy đồ Thu,
+     * tháng 12 đẩy đồ Đông). Bảng ánh xạ dưới đây có thể chỉnh tùy chiến lược shop.
+     *
+     * TRẢ VỀ TỪ KHÓA khớp tên Bộ sưu tập trong DB (Xuân/Hạ/Thu/Đông), dùng cho
+     * so khớp LIKE ở seasonalCandidatePool() — không phải chuỗi "Mùa ..." cứng.
+     */
+    protected function seasonForMonth(int $month): string
+    {
+        return match ($month) {
+            1, 2       => 'Đông',
+            3, 4       => 'Xuân',
+            5, 6       => 'Hạ',
+            7, 8, 9    => 'Thu',
+            10, 11, 12 => 'Đông',
+            default    => 'Xuân',
+        };
+    }
+
+    protected function currentMonth(): int
+    {
+        return (int) now()->month;
+    }
+
+    /* =========================================================================
+     |  FALLBACK — tái sử dụng RecommendationService (thuật toán SQL thuần đã có)
+     * ========================================================================= */
+
+    protected function fallbackSimilar(Product $anchor, int $limit): Collection
+    {
+        return RecommendationService::getSimilarProducts($anchor, $limit);
+    }
+
+    protected function fallbackPersonalized(?User $user, int $limit): Collection
+    {
+        return RecommendationService::getPersonalizedRecommendations($user, $limit);
+    }
+
+    protected function fallbackPopular(int $limit): Collection
+    {
+        return RecommendationService::getPopularProducts($limit);
+    }
+
+    /* =========================================================================
+     |  HELPER NHỎ
+     * ========================================================================= */
+
+    /** Rút gọn mô tả để prompt không phình to. */
+    protected function shorten(?string $text, int $length = 120): string
+    {
+        $text = trim(strip_tags((string) $text));
+        return mb_strlen($text) > $length ? mb_substr($text, 0, $length) . '...' : ($text ?: 'N/A');
+    }
+}

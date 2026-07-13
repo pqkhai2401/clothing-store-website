@@ -6,13 +6,13 @@
 /vendor
 .env
 .env.backup
+.do/app.yaml.local
 .phpunit.result.cache
 Homestead.json
 Homestead.yaml
 npm-debug.log
 yarn-error.log
 /public/upload
-composer.lock
 /.osp
 /storage/oauth-private.key
 /storage/oauth-public.key

@@ -2,7 +2,7 @@
     <div class="container-fluid px-lg-5">
         <div class="section-header text-center mb-5">
             <h2 class="section-title">Gợi Ý Cho Bạn</h2>
-            <div class="section-subtitle"><i class="bi bi-cpu me-1 text-dark"></i> Được cá nhân hóa bởi AI Recommendation Engine</div>
+            <div class="section-subtitle"><i class="bi bi-cpu me-1 text-dark"></i> Được cá nhân hóa bởi AI Recommendation</div>
         </div>
         
         <div class="row">

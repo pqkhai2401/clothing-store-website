@@ -5,12 +5,17 @@ namespace App\Http\Controllers\User;
 use App\Http\Controllers\Controller;
 use App\Models\Collection;
 use App\Models\Product;
-use App\Services\RecommendationService;
+use App\Services\AiStylistService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class HomeController extends Controller
 {
+    public function __construct(
+        protected AiStylistService $stylist
+    ) {
+    }
+
     /**
      * Hiển thị trang chủ với dữ liệu động và gợi ý AI.
      */
@@ -41,8 +46,10 @@ class HomeController extends Controller
             ->limit(4)
             ->get();
 
-        // 5. Gọi AI Engine để lấy danh sách gợi ý cá nhân hóa cho người dùng hiện tại
-        $recommendedProducts = RecommendationService::getPersonalizedRecommendations(Auth::user(), 8);
+        // 5. Gọi Cloud AI (Gemini) để gợi ý cá nhân hóa / Cold Start theo mùa.
+        //    Guest -> tự bốc BST theo tháng hiện tại; user cũ -> đọc lịch sử hành vi.
+        //    Nếu AI lỗi, service tự fallback về thuật toán SQL nên không sợ trắng trang.
+        $recommendedProducts = $this->stylist->getHomepageRecommendations(Auth::user(), 8);
 
         return view('user.home.index', compact(
             'collections',

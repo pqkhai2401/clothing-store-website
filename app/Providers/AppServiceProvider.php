@@ -4,7 +4,7 @@ namespace App\Providers;
 
 use App\Listeners\LogAuthenticationActivity;
 use App\Models\Cart;
-use App\Models\Setting;
+use App\Models\Collection;
 use App\Models\Wishlist;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
@@ -12,6 +12,7 @@ use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Passport\Passport;
@@ -32,6 +33,10 @@ class AppServiceProvider extends ServiceProvider
     {
         Paginator::useBootstrapFive();
         Passport::enablePasswordGrant();
+
+        if ($this->app->environment('production')) {
+            URL::forceScheme('https');
+        }
 
         // Ghi nhật ký đăng nhập / đăng xuất của nhân sự quản trị
         Event::listen(Login::class, [LogAuthenticationActivity::class, 'handleLogin']);
@@ -60,16 +65,14 @@ class AppServiceProvider extends ServiceProvider
             $view->with('cartCount', $cartCount);
         });
 
-        // Cung cấp thông tin thương hiệu (logo, tên shop, địa chỉ, liên hệ) cho header/footer website
-        // và cho sidebar + phiếu in bên khu quản trị
-        View::composer([
-            'partials.header',
-            'partials.footer',
-            'layouts.partial.sidebar',
-            'admin.stock-issues.partials.show-content',
-            'admin.goods-receipts.partials.show-content',
-        ], function ($view): void {
-            $view->with('siteSettings', Setting::current());
+        // Cung cấp danh sách bộ sưu tập theo mùa cho dropdown trên header
+        View::composer('partials.header', function ($view): void {
+            $navCollections = Collection::where('status', true)
+                ->orderBy('id')
+                ->limit(8)
+                ->get(['id', 'name', 'slug']);
+
+            $view->with('navCollections', $navCollections);
         });
 
         View::composer([

@@ -818,11 +818,10 @@
                         @forelse($reviews as $review)
                             @php
                                 // Tên hiển thị + ảnh đại diện của người đánh giá.
-                                // Nếu user có avatar_url -> lấy từ storage; nếu không -> ảnh chữ cái tự sinh.
+                                // Nếu user có avatar_url -> lấy từ storage hoặc Google; nếu không -> ảnh chữ cái tự sinh.
                                 $rvAuthor = $review->user->username ?? $review->user->name ?? 'Khách hàng';
-                                $rvAvatar = $review->user->avatar_url
-                                    ? asset('storage/' . $review->user->avatar_url)
-                                    : 'https://ui-avatars.com/api/?name=' . urlencode($rvAuthor) . '&background=random';
+                                $rvAvatar = $review->user->avatar_display_url
+                                    ?: 'https://ui-avatars.com/api/?name=' . urlencode($rvAuthor) . '&background=random';
                             @endphp
                             <div class="review-item">
                                 <div class="d-flex justify-content-between align-items-start">
@@ -856,6 +855,19 @@
                 </div>
             </div>
         </section>
+
+        {{-- ===== GỢI Ý PHỐI CÙNG (MIX & MATCH — AI STYLIST) ===== --}}
+        @if($mixAndMatchProducts->count() > 0)
+            <section class="py-5 my-3">
+                <h2 class="related-section-title">Phối cùng phong cách</h2>
+                <div class="related-section-subtitle">AI Stylist gợi ý các món ghép thành bộ hoàn chỉnh</div>
+
+                @include('partials.product-grid', [
+                    'products' => $mixAndMatchProducts,
+                    'cols' => 'col-6 col-md-3'
+                ])
+            </section>
+        @endif
 
         {{-- ===== SẢN PHẨM LIÊN QUAN ===== --}}
         @if($relatedProducts->count() > 0)

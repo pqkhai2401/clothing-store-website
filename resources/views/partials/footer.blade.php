@@ -19,10 +19,10 @@
             <div class="col-md-3 mb-4 mb-md-0">
                 <h5 class="footer-title">Chăm sóc khách hàng</h5>
                 <ul class="footer-links">
-                    <li><a href="{{ url('/contact') }}">Liên hệ</a></li>
-                    <li><a href="{{ url('/shipping') }}">Mua sắm</a></li>
-                    <li><a href="{{ url('/returns') }}">Hoàn trả & Đổi trả</a></li>
-                    <li><a href="{{ url('/faq') }}">Câu hỏi thường gặp</a></li>
+                    <li><a href="{{ route('returns') }}">Hoàn trả & Đổi trả</a></li>
+                    <li><a href="{{ route('faq') }}">Câu hỏi thường gặp</a></li>
+                    <li><a href="{{ route('privacy') }}">Chính sách bảo mật</a></li>
+                    <li><a href="{{ route('terms') }}">Điều khoản dịch vụ</a></li>
                 </ul>
             </div>
             <div class="col-md-3">
@@ -48,11 +48,6 @@
         <div class="row footer-bottom">
             <div class="col-md-6 text-center text-md-start mb-3 mb-md-0">
                 &copy; {{ $siteSettings->site_name }}. All rights reserved.
-            </div>
-            <div class="col-md-6 text-center text-md-end">
-                <a href="{{ url('/privacy') }}" class="text-muted me-3">Chính sách bảo mật</a>
-                <a href="{{ url('/terms') }}" class="text-muted me-3">Điều khoản dịch vụ</a>
-                <a href="{{ url('/cookie-policy') }}" class="text-muted">Chính sách cookie</a>
             </div>
         </div>
     </div>
