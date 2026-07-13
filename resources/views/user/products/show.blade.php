@@ -845,6 +845,19 @@
             </div>
         </section>
 
+        {{-- ===== GỢI Ý PHỐI CÙNG (MIX & MATCH — AI STYLIST) ===== --}}
+        @if($mixAndMatchProducts->count() > 0)
+            <section class="py-5 my-3">
+                <h2 class="related-section-title">Phối cùng phong cách</h2>
+                <div class="related-section-subtitle">AI Stylist gợi ý các món ghép thành bộ hoàn chỉnh</div>
+
+                @include('partials.product-grid', [
+                    'products' => $mixAndMatchProducts,
+                    'cols' => 'col-6 col-md-3'
+                ])
+            </section>
+        @endif
+
         {{-- ===== SẢN PHẨM LIÊN QUAN ===== --}}
         @if($relatedProducts->count() > 0)
             <section class="py-5 my-3">

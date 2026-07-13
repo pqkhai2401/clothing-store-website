@@ -81,8 +81,13 @@ class ProductController extends Controller
         // Biến thể mặc định (đầu tiên) để hiển thị SKU và giá ban đầu
         $defaultVariant = $product->productVariants->first();
 
-        // Lấy 4 sản phẩm tương tự bằng thuật toán AI Content-based filtering
+        // Lấy 4 sản phẩm TƯƠNG TỰ (cùng danh mục) bằng thuật toán Content-based filtering.
         $relatedProducts = \App\Services\RecommendationService::getSimilarProducts($product, 4);
+
+        // Lấy 4 sản phẩm PHỐI CÙNG (Mix & Match) do Cloud AI đóng vai Stylist gợi ý:
+        // khác công năng, không xung đột phong cách, ưu tiên cùng Bộ sưu tập/mùa.
+        // AI lỗi -> service tự fallback về sản phẩm tương tự.
+        $mixAndMatchProducts = app(\App\Services\AiStylistService::class)->getMixAndMatch($product, 4);
 
         // Kiểm tra sản phẩm có trong wishlist của user không (dùng cho nút ❤️ real-time)
         $isInWishlist = Auth::check()
@@ -132,6 +137,7 @@ class ProductController extends Controller
             'sizes',
             'defaultVariant',
             'relatedProducts',
+            'mixAndMatchProducts',
             'isInWishlist',
             'reviews',
             'canReview',
