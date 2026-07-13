@@ -51,8 +51,15 @@ class InventoryReportController extends Controller
         $rows = $issues->map(function (StockIssue $issue) use ($cogsByIssue) {
             $agg = $cogsByIssue->get($issue->id);
             $revenue = (float) $issue->total_sale_amount;
-            $cogs    = (float) ($agg->cogs ?? 0);
-            $profit  = $revenue - $cogs;
+
+            // Giá vốn ưu tiên theo LÔ (FIFO) từ sổ cái. Với phiếu cũ (phát sinh trước khi
+            // quản lý theo lô) bút toán export không gắn lô/unit_cost = 0 → fallback về
+            // total_cost_amount đã chốt lúc tạo phiếu, để không khai khống lãi.
+            $cogs = (float) ($agg->cogs ?? 0);
+            if ($cogs <= 0) {
+                $cogs = (float) $issue->total_cost_amount;
+            }
+            $profit = $revenue - $cogs;
 
             return [
                 'issue'   => $issue,

@@ -56,6 +56,12 @@
     padding: 22px 28px 4px;
 }
 
+.pm-avatar-frame {
+    position: relative;
+    width: 92px;
+    height: 92px;
+}
+
 .pm-avatar {
     width: 92px;
     height: 92px;
@@ -70,6 +76,28 @@
     background: #334155;
     border-color: #1e293b;
 }
+
+.pm-avatar-edit {
+    position: absolute;
+    right: -2px;
+    bottom: -2px;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: #16A34A;
+    color: #ffffff;
+    border: 3px solid #fff;
+    cursor: pointer;
+    font-size: 12px;
+    transition: background 0.15s;
+}
+
+.pm-avatar-edit:hover { background: #15803D; }
+
+[data-theme="dark"] .pm-avatar-edit { border-color: #0F1B31; }
 
 .pm-section {
     padding: 24px 28px;
@@ -388,8 +416,15 @@
 
                     {{-- ── Ảnh đại diện ── --}}
                     <div class="pm-avatar-wrap">
-                        <img id="profile_avatar" class="pm-avatar" src="" alt="Ảnh đại diện">
+                        <div class="pm-avatar-frame">
+                            <img id="profile_avatar" class="pm-avatar" src="" alt="Ảnh đại diện">
+                            <label for="profile_avatar_input" class="pm-avatar-edit" title="Đổi ảnh đại diện">
+                                <i class="fa-solid fa-camera"></i>
+                            </label>
+                            <input type="file" class="d-none" id="profile_avatar_input" name="avatar" accept="image/*">
+                        </div>
                     </div>
+                    <p class="pm-error text-center" id="err_avatar" style="margin: 6px 0 0;"></p>
 
                     {{-- ── 1. Thông tin tài khoản ── --}}
                     <div class="pm-section">
@@ -572,6 +607,8 @@
             if (input) input.classList.remove('is-invalid');
             if (err)   { err.textContent = ''; err.classList.remove('show'); }
         });
+        const avatarErr = document.getElementById('err_avatar');
+        if (avatarErr) { avatarErr.textContent = ''; avatarErr.classList.remove('show'); }
     }
 
     function showErrors(errors) {
@@ -636,6 +673,10 @@
         // Clear password fields on open
         ['profile_current_password', 'profile_password', 'profile_password_confirmation']
             .forEach(id => { document.getElementById(id).value = ''; });
+
+        // Clear any previously chosen avatar file
+        const avatarInput = document.getElementById('profile_avatar_input');
+        if (avatarInput) avatarInput.value = '';
     }
 
     // ── Open modal: fetch data then show ─────────────────────────
@@ -687,9 +728,13 @@
             formData.delete('current_password');
         }
 
+        // PHP không tự parse được body multipart/form-data trên request PATCH thật sự,
+        // nên phải gửi bằng POST kèm _method=PATCH để Laravel spoof lại đúng route.
+        formData.append('_method', 'PATCH');
+
         try {
             const res  = await fetch(UPDATE_URL, {
-                method: 'PATCH',
+                method: 'POST',
                 body: formData,
                 headers: {
                     'Accept': 'application/json',
@@ -735,6 +780,34 @@
         } finally {
             setSaving(false);
         }
+    }
+
+    // ── Avatar upload preview ─────────────────────────────────────
+    const avatarInputEl = document.getElementById('profile_avatar_input');
+    const avatarImgEl   = document.getElementById('profile_avatar');
+    const avatarErrEl   = document.getElementById('err_avatar');
+
+    if (avatarInputEl) {
+        avatarInputEl.addEventListener('change', function () {
+            if (avatarErrEl) { avatarErrEl.textContent = ''; avatarErrEl.classList.remove('show'); }
+
+            const file = this.files && this.files[0];
+            if (!file) return;
+
+            const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
+            if (!allowedTypes.includes(file.type)) {
+                this.value = '';
+                if (avatarErrEl) { avatarErrEl.textContent = 'Ảnh đại diện chỉ chấp nhận định dạng: jpeg, png, jpg, gif.'; avatarErrEl.classList.add('show'); }
+                return;
+            }
+            if (file.size > 2 * 1024 * 1024) {
+                this.value = '';
+                if (avatarErrEl) { avatarErrEl.textContent = 'Dung lượng ảnh đại diện không được vượt quá 2MB.'; avatarErrEl.classList.add('show'); }
+                return;
+            }
+
+            avatarImgEl.src = URL.createObjectURL(file);
+        });
     }
 
     // ── Password eye toggle ───────────────────────────────────────
