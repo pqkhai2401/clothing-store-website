@@ -23,6 +23,10 @@ Route::name('404-not-found')->get('404-not-found', function () {
 });
 
 Route::view('/about', 'user.about.index')->name('about');
+Route::view('/dieu-khoan-dich-vu', 'user.terms.index')->name('terms');
+Route::view('/chinh-sach-bao-mat', 'user.privacy.index')->name('privacy');
+Route::view('/chinh-sach-doi-tra', 'user.returns.index')->name('returns');
+Route::view('/cau-hoi-thuong-gap', 'user.faq.index')->name('faq');
 
 Route::get('/products', [ProductController::class, 'index'])->name('products.index');
 Route::get('/new-arrivals', [ProductController::class, 'index'])->name('new-arrivals');

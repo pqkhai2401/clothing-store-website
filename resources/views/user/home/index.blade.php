@@ -190,30 +190,6 @@
                         </div>
                     </div>
                 @endforeach
-                <!-- Men -->
-                <div class="col-md-6">
-                    <div class="category-container">
-                        <div class="category-img-wrapper">
-                            <img src="{{ asset('images/category_men.png') }}" alt="Men's Collection" class="category-img">
-                        </div>
-                        <div class="category-overlay">
-                            <h3 class="category-title">Nam</h3>
-                            <a href="{{ url('/men') }}" class="category-link">Xem Bộ Sưu Tập</a>
-                        </div>
-                    </div>
-                </div>
-                <!-- Women -->
-                <div class="col-md-6">
-                    <div class="category-container">
-                        <div class="category-img-wrapper">
-                            <img src="{{ asset('images/category_women.png') }}" alt="Bộ Sưu Tập Nữ" class="category-img">
-                        </div>
-                        <div class="category-overlay">
-                            <h3 class="category-title">Nữ</h3>
-                            <a href="{{ url('/women') }}" class="category-link">Xem Bộ Sưu Tập</a>
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
     </section>
@@ -223,7 +199,6 @@
         <div class="container-fluid px-lg-5">
             <div class="section-header text-center">
                 <h2 class="section-title">Hàng Mới Về</h2>
-                <div class="section-subtitle">Vừa được thêm vào bộ sưu tập</div>
             </div>
             
             @include('partials.product-grid', ['products' => $newArrivals, 'cols' => 'col-6 col-md-3'])
@@ -242,18 +217,6 @@
             </div>
             
             @include('partials.product-grid', ['products' => $bestSellers, 'cols' => 'col-6 col-md-3'])
-        </div>
-    </section>
-
-    <!-- 6. products with the most views -->
-    <section class="py-5 bg-light">
-        <div class="container-fluid px-lg-5">
-            <div class="section-header text-center">
-                <h2 class="section-title">ĐƯỢC QUAN TÂM NHIỀU NHẤT</h2>
-                <div class="section-subtitle">Khám phá những sản phẩm được xem nhiều nhất trên cửa hàng.</div>
-            </div>
-            
-            @include('partials.product-grid', ['products' => $trendingNow, 'cols' => 'col-6 col-md-3'])
         </div>
     </section>
 

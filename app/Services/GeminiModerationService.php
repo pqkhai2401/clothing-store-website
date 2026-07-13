@@ -48,13 +48,13 @@ class GeminiModerationService
     {
         // Mặc định 'gemini-2.0-flash': model flash mới, nhanh & rẻ, đang được
         // phục vụ trên endpoint v1 (model cũ 'gemini-1.5-flash' đã bị gỡ -> 404).
-        $model          = config('services.gemini.model', 'gemini-2.0-flash');
+        $model          = config('services.gemini.model', 'gemini-flash-lite-latest');
         $this->apiKey   = config('services.gemini.key');
         // Ép về bool an toàn: các giá trị "true"/"1"/1/true đều thành true.
         $this->demoMode = filter_var(config('services.gemini.demo_mode', false), FILTER_VALIDATE_BOOLEAN);
-        // Sử dụng phiên bản API ỔN ĐỊNH (v1) thay cho v1beta để tương thích
-        // với tài khoản đang chạy ở bản Stable.
-        $this->endpoint = "https://generativelanguage.googleapis.com/v1/models/{$model}:generateContent";
+        // Dùng v1beta: các model còn hạn ngạch free tier (flash-lite-latest, gemini-3.x)
+        // chỉ phục vụ trên v1beta. Model cũ 'gemini-2.0-flash' đã bị free-tier = 0 -> 429.
+        $this->endpoint = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent";
     }
 
     /**

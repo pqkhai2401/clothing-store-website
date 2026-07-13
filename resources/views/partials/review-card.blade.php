@@ -1,6 +1,6 @@
 @php
     $rAuthor = is_object($review) ? $review->user->username : ($review['author'] ?? 'Anonymous');
-    $rAvatar = is_object($review) ? ($review->user->avatar_url ?? null) : ($review['avatar'] ?? null);
+    $rAvatar = is_object($review) ? ($review->user->avatar_display_url ?? null) : ($review['avatar'] ?? null);
     $rRating = is_object($review) ? $review->rating : ($review['rating'] ?? 5);
     $rComment = is_object($review) ? $review->comment : ($review['comment'] ?? '');
     $rDate = is_object($review) ? $review->created_at->format('M d, Y') : ($review['date'] ?? date('M d, Y'));

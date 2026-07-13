@@ -686,4 +686,93 @@ a:hover {
     padding-right: 0;
 }
 
+/* Dropdown đơn giản - dùng chung cho Bộ sưu tập & Sản phẩm */
+.simple-dropdown {
+    position: relative;
+}
+
+.simple-dropdown .nav-link.dropdown-toggle::after {
+    display: none;
+}
+
+.simple-menu {
+    display: none;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    top: 100%;
+    min-width: 220px;
+    list-style: none;
+    margin: 0;
+    padding: 10px 0;
+    background-color: var(--background-color);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+    z-index: 1050;
+}
+
+.simple-dropdown:hover .simple-menu,
+.simple-dropdown.active .simple-menu {
+    display: block;
+}
+
+.simple-menu li a {
+    display: block;
+    padding: 9px 22px;
+    font-size: 14px;
+    font-weight: 400;
+    letter-spacing: 0.3px;
+    color: var(--text-color);
+    text-decoration: none;
+    transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.simple-menu li a:hover {
+    color: #c8a84b;
+    background-color: rgba(0, 0, 0, 0.03);
+}
+
+.simple-menu-divider {
+    height: 1px;
+    margin: 8px 0;
+    background-color: var(--border-color);
+}
+
+.simple-menu .simple-menu-all {
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 12px;
+    letter-spacing: 1px;
+}
+
+/* Biến thể phân nhóm (heading + danh mục con) - dùng cho dropdown Sản phẩm */
+.simple-menu-grouped {
+    min-width: 250px;
+    max-height: 82vh;
+    overflow-y: auto;
+}
+
+.simple-menu-grouped .simple-menu-heading > a {
+    font-family: var(--font-serif);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 13px;
+    letter-spacing: 1px;
+    color: var(--primary-color);
+    padding-top: 12px;
+    padding-bottom: 4px;
+}
+
+.simple-menu-grouped .simple-menu-heading > a:hover {
+    color: #c8a84b;
+    background-color: transparent;
+}
+
+.simple-menu-grouped .simple-menu-sub > a {
+    padding-left: 36px;
+    font-size: 13.5px;
+    color: var(--secondary-color);
+}
+
 

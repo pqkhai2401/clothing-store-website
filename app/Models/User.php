@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Str;
 use Laravel\Passport\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 
@@ -76,6 +77,27 @@ class User extends Authenticatable implements \OwenIt\Auditing\Contracts\Auditab
     public function isStaff(): bool
     {
         return $this->hasRole(UserRole::STAFF->value);
+    }
+
+    /**
+     * URL ảnh đại diện sẵn sàng để hiển thị.
+     *
+     * avatar_url có thể là đường dẫn tương đối trong disk "public" (ảnh do người dùng
+     * tự upload, ví dụ: avatars/xxx.jpg) hoặc một URL tuyệt đối từ Google OAuth
+     * (ví dụ: https://lh3.googleusercontent.com/...). Hai trường hợp này cần xử lý
+     * khác nhau, nếu không sẽ tạo ra đường dẫn sai dạng "/storage/https://...".
+     */
+    public function getAvatarDisplayUrlAttribute(): ?string
+    {
+        if (! $this->avatar_url) {
+            return null;
+        }
+
+        if (Str::startsWith($this->avatar_url, ['http://', 'https://'])) {
+            return $this->avatar_url;
+        }
+
+        return asset('storage/'.$this->avatar_url);
     }
 
     /**

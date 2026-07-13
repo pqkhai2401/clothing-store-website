@@ -20,67 +20,68 @@
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url('/') }}">TRANG CHỦ</a>
                     </li>
-                    <li class="nav-item dropdown mega-dropdown">
+                    <li class="nav-item dropdown simple-dropdown">
                         <a class="nav-link dropdown-toggle" href="{{ url('/products') }}" id="productsDropdown" role="button">
                             Sản phẩm
                         </a>
-                        <div class="mega-menu" aria-labelledby="productsDropdown">
-                            <div class="mega-menu-inner">
-                                <!-- Cột chung -->
-                                <div class="mega-col mega-col-general">
-                                    <ul class="mega-list">
-                                        <li><a href="{{ url('/products') }}">Tất cả sản phẩm</a></li>
-                                        <li><a href="{{ url('/products?sort=best-selling') }}">Sản phẩm bán chạy</a></li>
-                                        <li><a href="{{ url('/products?sort=newest') }}">Sản phẩm mới nhất</a></li>
-                                    </ul>
-                                </div>
-                                <div class="mega-col-separator"></div>
-                                <!-- Cột Nam -->
-                                <div class="mega-col">
-                                    <h6 class="mega-heading">
-                                        <a href="{{ route('category.products', 'nam') }}" class="mega-heading-link">NAM</a>
-                                    </h6>
-                                    <hr class="mega-divider">
-                                    <ul class="mega-list">
-                                        <li><a href="{{ route('category.products', 'nam-ao-thun') }}">Áo thun</a></li>
-                                        <li><a href="{{ route('category.products', 'nam-ao-so-mi') }}">Áo sơ mi</a></li>
-                                        <li><a href="{{ route('category.products', 'nam-ao-polo') }}">Áo polo</a></li>
-                                        <li><a href="{{ route('category.products', 'nam-ao-hoodie') }}">Áo hoodie</a></li>
-                                        <li><a href="{{ route('category.products', 'nam-ao-khoac') }}">Áo khoác</a></li>
-                                        <li><a href="{{ route('category.products', 'nam-ao-blazer') }}">Áo blazer</a></li>
-                                        <li><a href="{{ route('category.products', 'nam-quan-jeans') }}">Quần jeans</a></li>
-                                        <li><a href="{{ route('category.products', 'nam-quan-tay') }}">Quần tây</a></li>
-                                        <li><a href="{{ route('category.products', 'nam-quan-short') }}">Quần short</a></li>
-                                        <li><a href="{{ route('category.products', 'nam-quan-jogger') }}">Quần jogger</a></li>
-                                    </ul>
-                                </div>
-                                <!-- Cột Nữ -->
-                                <div class="mega-col">
-                                    <h6 class="mega-heading">
-                                        <a href="{{ route('category.products', 'nu') }}" class="mega-heading-link">NỮ</a>
-                                    </h6>
-                                    <hr class="mega-divider">
-                                    <ul class="mega-list">
-                                        <li><a href="{{ route('category.products', 'nu-ao-thun') }}">Áo thun</a></li>
-                                        <li><a href="{{ route('category.products', 'nu-ao-so-mi') }}">Áo sơ mi</a></li>
-                                        <li><a href="{{ route('category.products', 'nu-ao-polo') }}">Áo polo</a></li>
-                                        <li><a href="{{ route('category.products', 'nu-ao-hoodie') }}">Áo hoodie</a></li>
-                                        <li><a href="{{ route('category.products', 'nu-ao-khoac') }}">Áo khoác</a></li>
-                                        <li><a href="{{ route('category.products', 'nu-ao-len') }}">Áo len</a></li>
-                                        <li><a href="{{ route('category.products', 'nu-quan-jeans') }}">Quần jeans</a></li>
-                                        <li><a href="{{ route('category.products', 'nu-quan-tay') }}">Quần tây</a></li>
-                                        <li><a href="{{ route('category.products', 'nu-dam') }}">Đầm</a></li>
-                                        <li><a href="{{ route('category.products', 'nu-vay') }}">Váy</a></li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
+                        <ul class="simple-menu simple-menu-grouped" aria-labelledby="productsDropdown">
+                            <!-- Nhóm Nam -->
+                            <li class="simple-menu-heading"><a href="{{ route('category.products', 'nam') }}">NAM</a></li>
+                            <li class="simple-menu-sub"><a href="{{ route('category.products', 'nam-ao-thun') }}">Áo thun</a></li>
+                            <li class="simple-menu-sub"><a href="{{ route('category.products', 'nam-ao-so-mi') }}">Áo sơ mi</a></li>
+                            <li class="simple-menu-sub"><a href="{{ route('category.products', 'nam-ao-polo') }}">Áo polo</a></li>
+                            <li class="simple-menu-sub"><a href="{{ route('category.products', 'nam-ao-hoodie') }}">Áo hoodie</a></li>
+                            <li class="simple-menu-sub"><a href="{{ route('category.products', 'nam-ao-khoac') }}">Áo khoác</a></li>
+                            <li class="simple-menu-sub"><a href="{{ route('category.products', 'nam-ao-blazer') }}">Áo blazer</a></li>
+                            <li class="simple-menu-sub"><a href="{{ route('category.products', 'nam-quan-jeans') }}">Quần jeans</a></li>
+                            <li class="simple-menu-sub"><a href="{{ route('category.products', 'nam-quan-tay') }}">Quần tây</a></li>
+                            <li class="simple-menu-sub"><a href="{{ route('category.products', 'nam-quan-short') }}">Quần short</a></li>
+                            <li class="simple-menu-sub"><a href="{{ route('category.products', 'nam-quan-jogger') }}">Quần jogger</a></li>
+
+                            <li class="simple-menu-divider"></li>
+                            <!-- Nhóm Nữ -->
+                            <li class="simple-menu-heading"><a href="{{ route('category.products', 'nu') }}">NỮ</a></li>
+                            <li class="simple-menu-sub"><a href="{{ route('category.products', 'nu-ao-thun') }}">Áo thun</a></li>
+                            <li class="simple-menu-sub"><a href="{{ route('category.products', 'nu-ao-so-mi') }}">Áo sơ mi</a></li>
+                            <li class="simple-menu-sub"><a href="{{ route('category.products', 'nu-ao-polo') }}">Áo polo</a></li>
+                            <li class="simple-menu-sub"><a href="{{ route('category.products', 'nu-ao-hoodie') }}">Áo hoodie</a></li>
+                            <li class="simple-menu-sub"><a href="{{ route('category.products', 'nu-ao-khoac') }}">Áo khoác</a></li>
+                            <li class="simple-menu-sub"><a href="{{ route('category.products', 'nu-ao-len') }}">Áo len</a></li>
+                            <li class="simple-menu-sub"><a href="{{ route('category.products', 'nu-quan-jeans') }}">Quần jeans</a></li>
+                            <li class="simple-menu-sub"><a href="{{ route('category.products', 'nu-quan-tay') }}">Quần tây</a></li>
+                            <li class="simple-menu-sub"><a href="{{ route('category.products', 'nu-dam') }}">Đầm</a></li>
+                            <li class="simple-menu-sub"><a href="{{ route('category.products', 'nu-vay') }}">Váy</a></li>
+
+                            <li class="simple-menu-divider"></li>
+                            <!-- Nhóm Phụ kiện -->
+                            <li class="simple-menu-heading"><a href="{{ route('category.products', 'phu-kien') }}">PHỤ KIỆN</a></li>
+                            <li class="simple-menu-sub"><a href="{{ route('category.products', 'mu-non') }}">Mũ nón</a></li>
+                            <li class="simple-menu-sub"><a href="{{ route('category.products', 'tui-xach') }}">Túi xách</a></li>
+
+                            <li class="simple-menu-divider"></li>
+                            <li><a href="{{ url('/products') }}" class="simple-menu-all">Tất cả sản phẩm</a></li>
+                        </ul>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{{ route('new-arrivals') }}">Hàng mới về</a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ route('collections') }}">Bộ sưu tập</a>
+                    <li class="nav-item dropdown simple-dropdown">
+                        <a class="nav-link dropdown-toggle" href="{{ route('collections') }}" id="collectionsDropdown" role="button">
+                            Bộ sưu tập
+                        </a>
+                        <ul class="simple-menu" aria-labelledby="collectionsDropdown">
+                            @forelse(($navCollections ?? []) as $navCollection)
+                                <li>
+                                    <a href="{{ route('collections.show', $navCollection->slug) }}">{{ $navCollection->name }}</a>
+                                </li>
+                            @empty
+                                <li><a href="{{ route('collections') }}">Tất cả sản phẩm</a></li>
+                            @endforelse
+                            <li class="simple-menu-divider"></li>
+                            <li>
+                                <a href="{{ route('collections') }}" class="simple-menu-all">Tất cả bộ sưu tập</a>
+                            </li>
+                        </ul>
                     </li>
                 </ul>
             </div>
@@ -109,7 +110,7 @@
                     <button class="btn-icon d-flex align-items-center" type="button" id="userMenuButton" data-bs-toggle="dropdown" aria-expanded="false" title="Tài khoản">
                         @auth
                             <img
-                                src="{{ auth()->user()->avatar_url ? asset('storage/' . auth()->user()->avatar_url) : 'https://ui-avatars.com/api/?name=' . urlencode(auth()->user()->username) . '&background=random' }}"
+                                src="{{ auth()->user()->avatar_display_url ?: 'https://ui-avatars.com/api/?name=' . urlencode(auth()->user()->username) . '&background=random' }}"
                                 alt="Ảnh đại diện"
                                 class="rounded-circle me-2 nav-mini-avatar"
                             >
