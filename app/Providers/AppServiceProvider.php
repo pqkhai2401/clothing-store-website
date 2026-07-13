@@ -75,12 +75,21 @@ class AppServiceProvider extends ServiceProvider
             $view->with('navCollections', $navCollections);
         });
 
+        // Cấu hình website (tên, logo, hotline...) dùng ở header/footer storefront,
+        // sidebar admin và các phiếu in kho. Chia sẻ chung cho mọi view cần.
+        View::composer([
+            'partials.header',
+            'partials.footer',
+            'layouts.partial.sidebar',
+            'admin.goods-receipts.partials.show-content',
+            'admin.stock-issues.partials.show-content',
+        ], function ($view): void {
+            $view->with('siteSettings', \App\Models\Setting::current());
+        });
+
         View::composer([
             'layouts.partial.sidebar',
         ], function ($view): void {
-            // Tên/thông tin website hiển thị ở đầu sidebar admin.
-            $view->with('siteSettings', \App\Models\Setting::current());
-
             $menu = [];
 
             if (Auth::check()) {
