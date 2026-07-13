@@ -78,6 +78,9 @@ class AppServiceProvider extends ServiceProvider
         View::composer([
             'layouts.partial.sidebar',
         ], function ($view): void {
+            // Tên/thông tin website hiển thị ở đầu sidebar admin.
+            $view->with('siteSettings', \App\Models\Setting::current());
+
             $menu = [];
 
             if (Auth::check()) {

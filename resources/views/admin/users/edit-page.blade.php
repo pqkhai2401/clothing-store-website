@@ -31,6 +31,7 @@
         $currentRoleId = $user->roles->first()?->id;
         $selectedCity = old('city', $address?->city ?? '');
         $selectedWard = old('ward', $address?->ward ?? '');
+        $avatarUrl = $user->avatar_display_url ?: 'https://ui-avatars.com/api/?name='.urlencode($user->username).'&background=random&color=fff';
     @endphp
 
     <div class="min-h-screen bg-slate-50 pb-32">
@@ -56,8 +57,8 @@
 
                     <div class="flex flex-col items-center gap-4">
                         <div class="h-32 w-32 overflow-hidden rounded-full bg-slate-100 ring-1 ring-slate-200 flex items-center justify-center">
-                            <img id="avatarPreview" src="{{ $user->avatar_display_url }}"
-                                data-existing="{{ $user->avatar_display_url }}" alt="Ảnh đại diện"
+                            <img id="avatarPreview" src="{{ $avatarUrl }}"
+                                data-existing="{{ $avatarUrl }}" alt="Ảnh đại diện"
                                 class="h-full w-full object-cover">
                         </div>
 

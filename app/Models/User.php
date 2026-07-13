@@ -61,27 +61,6 @@ class User extends Authenticatable implements \OwenIt\Auditing\Contracts\Auditab
     ];
 
     /**
-     * URL ảnh đại diện để hiển thị. Xử lý được cả 3 trường hợp:
-     * - avatar_url là URL đầy đủ (vd ảnh Google) → dùng nguyên.
-     * - avatar_url là đường dẫn tương đối trong disk "public" (ảnh tự upload).
-     * - chưa có ảnh → sinh ảnh chữ cái đầu từ ui-avatars theo tên.
-     */
-    public function getAvatarDisplayUrlAttribute(): string
-    {
-        $raw = $this->avatar_url;
-
-        if ($raw) {
-            if (\Illuminate\Support\Str::startsWith($raw, ['http://', 'https://'])) {
-                return $raw;
-            }
-
-            return \Illuminate\Support\Facades\Storage::disk('public')->url($raw);
-        }
-
-        return 'https://ui-avatars.com/api/?name='.urlencode($this->username ?: 'User').'&background=random&color=fff';
-    }
-
-    /**
      * Check if the user has the Admin role.
      */
     public function isAdmin(): bool
@@ -112,6 +91,12 @@ class User extends Authenticatable implements \OwenIt\Auditing\Contracts\Auditab
      * tự upload, ví dụ: avatars/xxx.jpg) hoặc một URL tuyệt đối từ Google OAuth
      * (ví dụ: https://lh3.googleusercontent.com/...). Hai trường hợp này cần xử lý
      * khác nhau, nếu không sẽ tạo ra đường dẫn sai dạng "/storage/https://...".
+     * *
+     * URL ảnh đại diện để hiển thị. Xử lý được cả 3 trường hợp:
+     * - avatar_url là URL đầy đủ (vd ảnh Google) → dùng nguyên.
+     * - avatar_url là đường dẫn tương đối trong disk "public" (ảnh tự upload).
+     * - chưa có ảnh → sinh ảnh chữ cái đầu từ ui-avatars theo tên.
+     
      */
     public function getAvatarDisplayUrlAttribute(): ?string
     {

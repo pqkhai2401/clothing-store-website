@@ -77,7 +77,7 @@
                                     <td data-cell="id" data-sort-value="{{ $user->id }}">{{ $user->id }}</td>
                                     <td data-cell="username" data-sort-value="{{ $user->username }}">
                                         <div class="d-flex align-items-center gap-2 flex-wrap">
-                                            <img src="{{ $user->avatar_display_url }}" alt="{{ $user->username }}"
+                                            <img src="{{ $user->avatar_display_url ?: 'https://ui-avatars.com/api/?name='.urlencode($user->username).'&background=random&color=fff' }}" alt="{{ $user->username }}"
                                                 class="account-row-avatar" loading="lazy"
                                                 onerror="this.onerror=null;this.src='https://ui-avatars.com/api/?name={{ urlencode($user->username) }}&background=random&color=fff';">
                                             <span class="fw-bold text-dark">{{ $user->username }}</span>
