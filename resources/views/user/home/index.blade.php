@@ -17,6 +17,35 @@
         text-align: center;
     }
 
+    #heroCarousel, #heroCarousel .carousel-inner, #heroCarousel .carousel-item {
+        height: 75vh;
+    }
+
+    #heroCarousel .carousel-item {
+        background-size: cover;
+        background-position: center;
+        color: #ffffff;
+        text-align: center;
+    }
+
+    #heroCarousel .carousel-item::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.2);
+    }
+
+    #heroCarousel .hero-content {
+        position: relative;
+        z-index: 1;
+    }
+
+    @media (max-width: 768px) {
+        #heroCarousel, #heroCarousel .carousel-inner, #heroCarousel .carousel-item {
+            height: 60vh;
+        }
+    }
+
     .hero-content h1 {
         font-family: var(--font-serif);
         font-size: 5rem;
@@ -161,13 +190,55 @@
 @section('content')
 
     <!-- 1. Hero Banner -->
-    <section class="hero-section">
-        <div class="container hero-content">
-            <h1 class="animate__animated animate__fadeInUp">PHONG CÁCH TỐI GIẢN</h1>
-            <p class="animate__animated animate__fadeInUp animate__delay-1s">Nâng tầm phong cách hàng ngày với bộ sưu tập được chọn lọc kỹ càng</p>
-            <a href="{{ url('/products') }}" class="btn btn-black animate__animated animate__fadeInUp animate__delay-2s">Khám Phá Hàng Mới</a>
+    @if($heroBanners->isNotEmpty())
+        <div id="heroCarousel" class="carousel slide" data-bs-ride="carousel" data-bs-interval="5000">
+            <div class="carousel-inner">
+                @foreach($heroBanners as $index => $banner)
+                    <div class="carousel-item @if($index === 0) active @endif"
+                         style="background-image: url('{{ asset($banner->image_path) }}');">
+                        <div class="d-flex align-items-center justify-content-center h-100">
+                            <div class="container hero-content">
+                                @if($banner->title)
+                                    <h1 class="animate__animated animate__fadeInUp">{{ $banner->title }}</h1>
+                                @endif
+                                @if($banner->subtitle)
+                                    <p class="animate__animated animate__fadeInUp animate__delay-1s">{{ $banner->subtitle }}</p>
+                                @endif
+                                @if($banner->button_text && $banner->button_link)
+                                    <a href="{{ $banner->button_link }}" class="btn btn-black animate__animated animate__fadeInUp animate__delay-2s">{{ $banner->button_text }}</a>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+            @if($heroBanners->count() > 1)
+                <button class="carousel-control-prev" type="button" data-bs-target="#heroCarousel" data-bs-slide="prev">
+                    <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                    <span class="visually-hidden">Trước</span>
+                </button>
+                <button class="carousel-control-next" type="button" data-bs-target="#heroCarousel" data-bs-slide="next">
+                    <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                    <span class="visually-hidden">Sau</span>
+                </button>
+                <div class="carousel-indicators">
+                    @foreach($heroBanners as $index => $banner)
+                        <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="{{ $index }}"
+                                class="@if($index === 0) active @endif" aria-current="{{ $index === 0 ? 'true' : 'false' }}"
+                                aria-label="Slide {{ $index + 1 }}"></button>
+                    @endforeach
+                </div>
+            @endif
         </div>
-    </section>
+    @else
+        <section class="hero-section">
+            <div class="container hero-content">
+                <h1 class="animate__animated animate__fadeInUp">PHONG CÁCH TỐI GIẢN</h1>
+                <p class="animate__animated animate__fadeInUp animate__delay-1s">Nâng tầm phong cách hàng ngày với bộ sưu tập được chọn lọc kỹ càng</p>
+                <a href="{{ url('/products') }}" class="btn btn-black animate__animated animate__fadeInUp animate__delay-2s">Khám Phá Hàng Mới</a>
+            </div>
+        </section>
+    @endif
 
     <!-- 2. Featured Categories -->
     <section class="py-5 my-5">

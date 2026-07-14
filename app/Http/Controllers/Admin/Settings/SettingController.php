@@ -28,6 +28,12 @@ class SettingController extends Controller
             'address' => 'nullable|string|max:255',
             'hotline' => 'nullable|string|max:30',
             'email' => 'nullable|email|max:255',
+            'facebook_url' => 'nullable|url|max:255',
+            'facebook_enabled' => 'nullable|boolean',
+            'instagram_url' => 'nullable|url|max:255',
+            'instagram_enabled' => 'nullable|boolean',
+            'zalo_url' => 'nullable|url|max:255',
+            'zalo_enabled' => 'nullable|boolean',
         ]);
 
         $logoPath = $setting->logo_path;
@@ -46,6 +52,12 @@ class SettingController extends Controller
             'address' => $request->input('address'),
             'hotline' => $request->input('hotline'),
             'email' => $request->input('email'),
+            'facebook_url' => $request->input('facebook_url'),
+            'facebook_enabled' => $request->boolean('facebook_enabled'),
+            'instagram_url' => $request->input('instagram_url'),
+            'instagram_enabled' => $request->boolean('instagram_enabled'),
+            'zalo_url' => $request->input('zalo_url'),
+            'zalo_enabled' => $request->boolean('zalo_enabled'),
         ]);
 
         return redirect()->route('admin.settings.edit')->with('success', 'Cập nhật cài đặt website thành công.');

@@ -12,6 +12,18 @@ class Setting extends Model
         'address',
         'hotline',
         'email',
+        'facebook_url',
+        'facebook_enabled',
+        'instagram_url',
+        'instagram_enabled',
+        'zalo_url',
+        'zalo_enabled',
+    ];
+
+    protected $casts = [
+        'facebook_enabled' => 'boolean',
+        'instagram_enabled' => 'boolean',
+        'zalo_enabled' => 'boolean',
     ];
 
     protected static ?self $cached = null;
