@@ -83,14 +83,14 @@
                                         {{ $review->created_at?->format('d/m/Y') ?? '—' }}
                                     </td>
                                     <td class="text-center">
-                                        <div class="d-inline-flex gap-1">
+                                        <div class="d-flex align-items-center justify-content-center gap-1">
                                             {{-- Nút DUYỆT: hiện khi review chưa ở trạng thái approved --}}
                                             @if($review->status !== 'approved')
                                                 <form action="{{ route('admin.reviews.approve', $review->id) }}" method="POST"
                                                       onsubmit="return confirm('Duyệt và hiển thị công khai đánh giá này?');" class="d-inline">
                                                     @csrf
                                                     @method('PATCH')
-                                                    <button type="submit" class="btn btn-sm btn-outline-success" title="Duyệt">
+                                                    <button type="submit" class="rv-row-action-btn text-success" title="Duyệt">
                                                         <i class="fa-solid fa-check"></i>
                                                     </button>
                                                 </form>
@@ -102,18 +102,18 @@
                                                       onsubmit="return confirm('Từ chối và ẩn đánh giá này khỏi website?');" class="d-inline">
                                                     @csrf
                                                     @method('PATCH')
-                                                    <button type="submit" class="btn btn-sm btn-outline-warning" title="Từ chối">
+                                                    <button type="submit" class="rv-row-action-btn text-warning" title="Từ chối">
                                                         <i class="fa-solid fa-ban"></i>
                                                     </button>
                                                 </form>
                                             @endif
 
                                             {{-- Nút XÓA (đưa vào thùng rác) --}}
-                                            <button type="button" class="btn btn-sm btn-outline-danger" title="Xóa"
+                                            <button type="button" class="rv-row-action-btn text-danger" title="Xóa"
                                                 data-delete-url="{{ route('admin.reviews.destroy', $review->id) }}"
                                                 data-delete-name="{{ $review->user?->username ?? 'đánh giá này' }}"
                                                 data-delete-type="đánh giá">
-                                                <i class="fa-solid fa-trash"></i>
+                                                <i class="fa-regular fa-trash-can"></i>
                                             </button>
                                         </div>
                                     </td>
