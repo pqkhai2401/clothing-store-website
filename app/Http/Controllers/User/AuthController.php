@@ -466,7 +466,7 @@ class AuthController extends AppBaseController
                 'event' => 'login fail',
                 'auditable_type' => 'App\Models\User',
                 'auditable_id' => $user->id,
-                'url' => url('/login'),
+                'url' => url('/dang-nhap'),
                 'ip_address' => $request->ip(),
                 'user_agent' => $request->server('HTTP_USER_AGENT'),
             ]);
@@ -514,7 +514,7 @@ class AuthController extends AppBaseController
             'event' => 'login success',
             'auditable_type' => 'App\Models\User',
             'auditable_id' => Auth::user()->id,
-            'url' => url('/login'),
+            'url' => url('/dang-nhap'),
             'ip_address' => $request->ip(),
             'user_agent' => $request->server('HTTP_USER_AGENT')
         ]);

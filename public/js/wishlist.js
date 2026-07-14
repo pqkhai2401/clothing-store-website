@@ -31,7 +31,7 @@
         // Gán cờ loading tránh double-click
         btn.dataset.loading = 'true';
 
-        fetch('/wishlist/toggle/' + productId, {
+        fetch('/yeu-thich/bat-tat/' + productId, {
             method: 'POST',
             headers: {
                 'Accept':       'application/json',
@@ -41,7 +41,7 @@
         .then(function (r) {
             if (r.status === 401) {
                 // Chưa đăng nhập → chuyển đến trang login
-                window.location.href = '/login';
+                window.location.href = '/dang-nhap';
                 return null;
             }
             return r.json();

@@ -28,6 +28,34 @@
             margin-top: 4px; font-size: 11px; color: #6b7280; cursor: help;
         }
         .rv-ai-info i { color: #6366f1; margin-right: 2px; }
+
+        /* ===== Nút thao tác dạng ô vuông (đồng bộ với trang Quản lý đơn hàng) ===== */
+        .rv-row-action-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 30px;
+            height: 30px;
+            border: 1px solid transparent;
+            border-radius: 8px;
+            color: #0F172A;
+            background: #F1F5F9;
+            font-size: 13px;
+            transition: background .15s, color .15s;
+        }
+        .rv-row-action-btn:hover { background: #E2E8F0; color: #020617; }
+        .rv-row-action-btn.text-success:hover { background: #dcfce7; color: #166534; }
+        .rv-row-action-btn.text-warning:hover { background: #fef3c7; color: #92400e; }
+        .rv-row-action-btn.text-danger:hover { background: #fee2e2; color: #991b1b; }
+
+        [data-theme="dark"] .rv-row-action-btn {
+            background: #101C33 !important;
+            color: #CBD5E1 !important;
+        }
+        [data-theme="dark"] .rv-row-action-btn:hover {
+            background: #162843 !important;
+            color: #fff !important;
+        }
     </style>
 
 

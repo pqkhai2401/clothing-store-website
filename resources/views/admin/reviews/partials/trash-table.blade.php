@@ -36,19 +36,19 @@
                         <td style="font-size:12px;">{{ \Illuminate\Support\Str::limit($review->comment, 60) ?? '-' }}</td>
                         <td><span class="deleted-at">{{ $review->deleted_at?->format('d/m/Y H:i') }}</span></td>
                         <td class="text-center">
-                            <div class="d-inline-flex gap-1">
+                            <div class="d-flex align-items-center justify-content-center gap-1">
                                 <form method="POST" action="{{ route('admin.reviews.restore', $review->id) }}">
                                     @csrf
                                     @method('PATCH')
-                                    <button type="submit" class="btn btn-sm btn-outline-success" title="Khôi phục">
+                                    <button type="submit" class="rv-row-action-btn text-success" title="Khôi phục">
                                         <i class="fa-solid fa-rotate-left"></i>
                                     </button>
                                 </form>
-                                <button type="button" class="btn btn-sm btn-danger" title="Xóa vĩnh viễn"
+                                <button type="button" class="rv-row-action-btn text-danger" title="Xóa vĩnh viễn"
                                     data-delete-url="{{ route('admin.reviews.forceDelete', $review->id) }}"
                                     data-delete-name="{{ $review->user?->username ?? 'đánh giá này' }}"
                                     data-delete-type="đánh giá (vĩnh viễn)">
-                                    <i class="fa-solid fa-trash"></i>
+                                    <i class="fa-regular fa-trash-can"></i>
                                 </button>
                             </div>
                         </td>

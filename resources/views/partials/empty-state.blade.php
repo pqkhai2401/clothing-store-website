@@ -3,7 +3,7 @@
     $esTitle = $title ?? 'No items found';
     $esMessage = $message ?? 'There are currently no items in this list.';
     $esBtnText = $button_text ?? 'Return to Shop';
-    $esBtnUrl = $button_url ?? url('/products');
+    $esBtnUrl = $button_url ?? url('/san-pham');
 @endphp
 
 <div class="empty-state-container text-center py-5 my-5">

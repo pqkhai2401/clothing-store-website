@@ -1718,7 +1718,7 @@
                 btn.disabled  = true;
 
                 try {
-                    await fetch(`/user/addresses/${btn.dataset.deleteAddr}`, {
+                    await fetch(`/tai-khoan/dia-chi/${btn.dataset.deleteAddr}`, {
                         method: 'DELETE',
                         headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf },
                     });

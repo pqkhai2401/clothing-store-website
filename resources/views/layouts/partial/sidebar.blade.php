@@ -3,6 +3,7 @@
     $accountName = $currentUser?->username ?: 'admin';
     $displayEmail = $currentUser?->email ?: 'admin@example.com';
     $userInitial = \Illuminate\Support\Str::of($accountName)->trim()->substr(0, 1)->upper();
+    $userAvatarUrl = $currentUser?->avatar_display_url;
     $roleLabel = $currentUser?->can('manage-staff') ? 'Quản trị viên' : 'Nhân viên';
     $profileUrl = $currentUser?->can('manage-staff') ? route('admin.staff.list') : '#';
     $brandUrl = $currentUser?->can('view-dashboard') ? route('admin.dashboard') : route('admin.customers.list');
@@ -12,7 +13,11 @@
     <div class="sidebar-brand admin-sidebar-brand">
         <a href="{{ $brandUrl }}" class="brand-link admin-brand-link">
             <span class="admin-brand-mark">
-                {{ $userInitial }}
+                @if($userAvatarUrl)
+                    <img src="{{ $userAvatarUrl }}" alt="{{ $accountName }}" class="account-avatar-img">
+                @else
+                    {{ $userInitial }}
+                @endif
             </span>
             <span class="brand-text admin-brand-text">
                 <strong>{{ $siteSettings->site_name }}</strong>
@@ -90,7 +95,13 @@
     <div class="sidebar-account dropup">
         <button class="sidebar-account-toggle" type="button" data-bs-toggle="dropdown" data-bs-display="static"
             aria-expanded="false">
-            <span class="account-avatar">{{ $userInitial }}</span>
+            <span class="account-avatar">
+                @if($userAvatarUrl)
+                    <img src="{{ $userAvatarUrl }}" alt="{{ $accountName }}" class="account-avatar-img">
+                @else
+                    {{ $userInitial }}
+                @endif
+            </span>
             <span class="account-summary">
                 <span class="account-name">{{ $accountName }}</span>
                 <span class="account-email">{{ $displayEmail }}</span>
@@ -100,7 +111,13 @@
 
         <div class="dropdown-menu sidebar-account-menu">
             <div class="account-menu-header">
-                <span class="account-avatar account-avatar-lg">{{ $userInitial }}</span>
+                <span class="account-avatar account-avatar-lg">
+                    @if($userAvatarUrl)
+                        <img src="{{ $userAvatarUrl }}" alt="{{ $accountName }}" class="account-avatar-img">
+                    @else
+                        {{ $userInitial }}
+                    @endif
+                </span>
                 <span class="account-summary">
                     <span class="account-name">{{ $accountName }}</span>
                     <span class="account-email">{{ $displayEmail }}</span>
@@ -178,6 +195,13 @@
         font-size: 14px;
         font-weight: 700;
         line-height: 1;
+        overflow: hidden;
+    }
+
+    .account-avatar-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
     }
 
     .admin-brand-text,
