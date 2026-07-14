@@ -33,6 +33,7 @@ class Order extends Model implements \OwenIt\Auditing\Contracts\Auditable
         'discount_amount',
         'status',
         'payment_status',
+        'completed_at',
     ];
 
     protected $casts = [
@@ -41,6 +42,7 @@ class Order extends Model implements \OwenIt\Auditing\Contracts\Auditable
         'discount_amount' => 'decimal:2',
         'payos_payload' => 'array',
         'momo_payload' => 'array',
+        'completed_at' => 'datetime',
     ];
 
     /**

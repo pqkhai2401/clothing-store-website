@@ -156,7 +156,8 @@
                         </td>
                         <td class="text-center">
                             <div class="d-flex align-items-center justify-content-center gap-1">
-                                <a href="{{ route('admin.orders.detail', $order->id) }}" class="order-row-action-btn" title="Xem chi tiết">
+                                <a href="{{ route('admin.orders.detail', $order->id) }}" class="order-row-action-btn"
+                                    data-order-detail="{{ $order->id }}" title="Xem chi tiết">
                                     <i class="fa-regular fa-eye"></i>
                                 </a>
                                 <button type="button" class="order-row-action-btn"

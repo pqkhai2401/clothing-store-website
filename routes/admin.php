@@ -16,6 +16,7 @@ use App\Http\Controllers\Admin\StockIssueController;
 use App\Http\Controllers\Admin\StocktakeController;
 use App\Http\Controllers\Admin\SupplierController;
 use App\Http\Controllers\Admin\ProfileController;
+use App\Http\Controllers\Admin\RevenueController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\VoucherController;
 use App\Http\Controllers\Admin\CollectionController;
@@ -178,6 +179,12 @@ Route::middleware(['auth.login', 'active.account', 'admin', 'force.password.chan
         Route::middleware('permission:manage-goods-receipts')
             ->prefix('warehouses')->name('warehouses.')->group(function () {
                 Route::post('/', [WarehouseController::class, 'store'])->name('store');
+            });
+
+        Route::middleware('permission:manage-revenue')
+            ->prefix('revenue')->name('revenue.')->group(function () {
+                Route::get('/', [RevenueController::class, 'index'])->name('index');
+                Route::get('/export', [RevenueController::class, 'export'])->name('export');
             });
 
         Route::middleware('permission:manage-goods-receipts')

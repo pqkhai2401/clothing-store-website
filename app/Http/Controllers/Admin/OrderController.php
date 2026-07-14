@@ -451,6 +451,9 @@ class OrderController extends Controller
                 'status'            => $validated['status'],
                 // Đơn tạo thẳng ở trạng thái "Hoàn thành" coi như đã thu tiền → tự đánh dấu đã thanh toán.
                 'payment_status'    => $validated['status'] === 'completed' ? 'paid' : $validated['payment_status'],
+                // Mốc ghi nhận doanh thu (xem báo cáo Thống kê doanh thu) — chỉ set khi đơn thực
+                // sự hoàn tất ngay từ lúc tạo, không set cho các trạng thái khác.
+                'completed_at'      => $validated['status'] === 'completed' ? now() : null,
             ]);
 
             foreach ($validated['items'] as $item) {
@@ -477,7 +480,7 @@ class OrderController extends Controller
             ->with('success', "Đã tạo đơn hàng \"{$order->order_code}\" thành công.");
     }
 
-    public function detail(string $id)
+    public function detail(Request $request, string $id)
     {
         $order = Order::with([
             'user',
@@ -488,12 +491,25 @@ class OrderController extends Controller
             'orderItems.productVariant.size',
         ])->findOrFail($id);
 
-        return view('admin.orders.detail', [
+        $data = [
             'order' => $order,
             'statusLabels' => self::STATUS_LABELS,
             'paymentStatusLabels' => self::PAYMENT_STATUS_LABELS,
             'statusBadge' => self::STATUS_BADGE,
-        ]);
+        ];
+
+        // Danh sách đơn mở popup "chỉ xem" qua AJAX; truy cập trực tiếp URL vẫn render trang đầy đủ.
+        if ($request->ajax()) {
+            return response()->json([
+                'html'         => view('admin.orders.partials.detail-content', $data)->render(),
+                'code'         => $order->order_code ?? ('#' . $order->id),
+                'status'       => $order->status,
+                'status_label' => self::STATUS_LABELS[$order->status] ?? $order->status,
+                'status_css'   => self::STATUS_BADGE[$order->status] ?? '',
+            ]);
+        }
+
+        return view('admin.orders.detail', $data);
     }
 
     public function update(Request $request, string $id)
@@ -555,6 +571,9 @@ class OrderController extends Controller
                 'status' => $newStatus,
                 'payment_status' => $paymentStatus,
                 'note' => $request->input('note'),
+                // Mốc ghi nhận doanh thu: chỉ set lần đầu đơn chuyển sang "Hoàn thành" (completed
+                // là trạng thái cuối nên không có chuyện đơn quay lại rồi hoàn tất lần 2).
+                'completed_at' => $newStatus === 'completed' ? now() : $order->completed_at,
             ]);
 
             if (in_array($newStatus, ['processing', 'shipping'], true) && !in_array($oldStatus, ['processing', 'shipping'], true)) {

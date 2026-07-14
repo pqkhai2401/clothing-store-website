@@ -32,6 +32,10 @@
         .oc-summary-row { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; font-size: 13px; }
         .oc-summary-row.total { font-weight: 800; font-size: 15px; border-top: 1px solid #e5e7eb; margin-top: 6px; padding-top: 10px; }
 
+        /* Ngăn cách 2 phần Khách hàng / Địa chỉ trong cùng một thẻ */
+        .oc-card-divider { border: 0; border-top: 1px solid #e5e7eb; opacity: 1; }
+        .oc-subsection-title { font-size: 13px; font-weight: 800; color: #0F172A; }
+
         /* ── Dropdown tuỳ chỉnh (bo viền) thay cho <select> mặc định của trình duyệt ── */
         .edit-field .oc-dropdown.hk-cat-filter { width: 100%; flex: none; }
         .oc-dropdown .hk-cat-trigger:disabled { opacity: .6; cursor: not-allowed; background: #F8FAFC; }
@@ -60,6 +64,8 @@
         [data-theme="dark"] .oc-customer-card { background: rgba(34,197,94,0.1) !important; border-color: #16A34A !important; color: #E2E8F0; }
         [data-theme="dark"] .sticky-action-bar { background: #0F1B33 !important; border-color: #2A3B59 !important; }
         [data-theme="dark"] .oc-summary-row.total { border-color: #2A3B59 !important; }
+        [data-theme="dark"] .oc-card-divider { border-color: #2A3B59 !important; }
+        [data-theme="dark"] .oc-subsection-title { color: #E2E8F0 !important; }
     </style>
 @endpush
 
@@ -84,9 +90,9 @@
             {{-- ── CỘT TRÁI ── --}}
             <div class="col-lg-8">
 
-                {{-- Khách hàng --}}
+                {{-- Khách hàng & Địa chỉ giao hàng (gộp chung 1 thẻ) --}}
                 <div class="card edit-card shadow-sm mb-4">
-                    <div class="card-header"><span class="fw-bold" style="font-size:14px;">Khách hàng</span></div>
+                    <div class="card-header"><span class="fw-bold" style="font-size:14px;">Khách hàng &amp; Địa chỉ giao hàng</span></div>
                     <div class="card-body p-4">
                         <div class="edit-field oc-search-wrap mb-2">
                             <label>Tìm khách hàng <span class="text-danger">*</span></label>
@@ -102,13 +108,11 @@
                             </div>
                             <button type="button" class="btn btn-sm btn-light border" id="ocChangeCustomer">Đổi khách hàng</button>
                         </div>
-                    </div>
-                </div>
 
-                {{-- Địa chỉ giao hàng --}}
-                <div class="card edit-card shadow-sm mb-4">
-                    <div class="card-header"><span class="fw-bold" style="font-size:14px;">Địa chỉ giao hàng</span></div>
-                    <div class="card-body p-4">
+                        <hr class="oc-card-divider my-4">
+
+                        <div class="oc-subsection-title mb-3">Địa chỉ giao hàng</div>
+
                         <div class="edit-field">
                             <label>Địa chỉ đã lưu</label>
                             <div class="hk-cat-filter oc-dropdown" id="ocAddressDrop">

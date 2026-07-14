@@ -247,6 +247,26 @@
     </div>
 </div>
 
+{{-- Modal chi tiết đơn hàng (chỉ xem) --}}
+<div class="modal fade account-modal" id="orderDetailModal" tabindex="-1" aria-labelledby="orderDetailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width:880px;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="orderDetailModalLabel">Chi tiết đơn hàng</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+            </div>
+            <div class="modal-body px-4 py-4" id="orderDetailBody">
+                <div class="text-center py-5 text-muted" id="orderDetailLoading">
+                    <span class="spinner-border spinner-border-sm me-2"></span> Đang tải...
+                </div>
+            </div>
+            <div class="modal-footer justify-content-end pb-4 px-4">
+                <button type="button" class="btn account-action-btn btn-light" data-bs-dismiss="modal">Đóng</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @push('modals')
     @include('layouts.components.confirm.delete')
 @endpush
@@ -255,6 +275,39 @@
 @push('scripts')
     <script>
     (function () {
+        /* ── Popup chi tiết đơn hàng (chỉ xem) ── */
+        (function () {
+            const modalEl = document.getElementById('orderDetailModal');
+            if (!modalEl) return;
+            const modal   = new bootstrap.Modal(modalEl);
+            const body    = document.getElementById('orderDetailBody');
+            const titleEl = document.getElementById('orderDetailModalLabel');
+            const loadingHtml = '<div class="text-center py-5 text-muted"><span class="spinner-border spinner-border-sm me-2"></span> Đang tải...</div>';
+
+            document.addEventListener('click', async function (e) {
+                const link = e.target.closest('[data-order-detail]');
+                if (!link) return;
+                e.preventDefault(); // chặn điều hướng sang trang full; JS lỗi thì href vẫn mở được trang
+
+                const url = link.getAttribute('href');
+                titleEl.textContent = 'Chi tiết đơn hàng';
+                body.innerHTML = loadingHtml;
+                modal.show();
+
+                try {
+                    const res = await fetch(url, {
+                        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                    });
+                    if (!res.ok) throw new Error('load failed');
+                    const data = await res.json();
+                    body.innerHTML = data.html || '';
+                    titleEl.textContent = 'Chi tiết đơn hàng ' + (data.code || '');
+                } catch {
+                    body.innerHTML = '<div class="text-center py-5 text-danger">Không tải được chi tiết đơn hàng. Vui lòng thử lại.</div>';
+                }
+            });
+        }());
+
         /* ── Order Update Modal ── */
         (function () {
             const modal        = new bootstrap.Modal(document.getElementById('orderUpdateModal'));

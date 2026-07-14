@@ -4,25 +4,39 @@
 
 @push('styles')
 <style>
+    /* Bảng màu dùng biến của theme admin (--hk-*) để tự đổi đúng theo nút "Giao diện tối",
+       thay vì @media (prefers-color-scheme) vốn chỉ theo cài đặt hệ điều hành và có thể
+       lệch với trạng thái sáng/tối thực tế của trang. */
     .rpt-stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; }
-    .rpt-stat { background:#fff; border:1px solid #e5e7eb; border-radius:14px; padding:16px 18px; }
-    .rpt-stat-label { font-size:12px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:.03em; }
-    .rpt-stat-value { font-size:22px; font-weight:850; color:#0f172a; margin-top:6px; }
-    .rpt-stat--profit .rpt-stat-value { color:#166534; }
-    .rpt-stat--cogs .rpt-stat-value { color:#9a3412; }
-    .rpt-table { width:100%; border-collapse:collapse; font-size:13px; }
-    .rpt-table thead th { background:#f9fafb; text-align:left; padding:11px 14px; font-weight:800; color:#475569; font-size:11px; text-transform:uppercase; letter-spacing:.03em; border-bottom:1.5px solid #e5e7eb; white-space:nowrap; }
-    .rpt-table tbody td { padding:12px 14px; border-bottom:1px solid #f3f4f6; vertical-align:middle; }
-    .rpt-table tbody tr:hover { background:#f8fafc; }
-    .rpt-num { text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums; }
-    .rpt-profit-pos { color:#166534; font-weight:800; }
-    .rpt-profit-neg { color:#b91c1c; font-weight:800; }
-    .rpt-pill { font-size:11px; font-weight:800; padding:2px 8px; border-radius:99px; background:#eef2ff; color:#3730a3; }
-    @media (prefers-color-scheme: dark) {
-        .rpt-stat, .rpt-table thead th { background:#0b1220; border-color:#1e293b; }
-        .rpt-stat-value { color:#e2e8f0; }
-        .rpt-table tbody tr:hover { background:#0b1220; }
+    .rpt-stat {
+        background: var(--hk-bg-card);
+        border: 1px solid var(--hk-border);
+        border-radius: 14px;
+        padding: 16px 18px;
     }
+    .rpt-stat-label { font-size:12px; font-weight:700; color: var(--hk-text-2); text-transform:uppercase; letter-spacing:.03em; }
+    .rpt-stat-value { font-size:22px; font-weight:850; color: var(--hk-text-1); margin-top:6px; }
+    .rpt-stat--cogs .rpt-stat-value { color:#b45309; }
+    [data-theme="dark"] .rpt-stat--cogs .rpt-stat-value { color:#fbbf24; }
+    .rpt-stat--profit.is-pos .rpt-stat-value { color:#15803d; }
+    .rpt-stat--profit.is-neg .rpt-stat-value { color:#dc2626; }
+    [data-theme="dark"] .rpt-stat--profit.is-pos .rpt-stat-value { color:#4ade80; }
+    [data-theme="dark"] .rpt-stat--profit.is-neg .rpt-stat-value { color:#f87171; }
+
+    .rpt-table { width:100%; border-collapse:collapse; font-size:13px; }
+    .rpt-table thead th {
+        background: var(--hk-bg-th);
+        text-align:left; padding:11px 14px; font-weight:800;
+        color: var(--hk-text-2); font-size:11px; text-transform:uppercase; letter-spacing:.03em;
+        border-bottom:1.5px solid var(--hk-border); white-space:nowrap;
+    }
+    .rpt-table tbody td { padding:12px 14px; border-bottom:1px solid var(--hk-border); vertical-align:middle; color: var(--hk-text-1); }
+    .rpt-table tbody tr:hover { background: var(--hk-bg-th); }
+    .rpt-num { text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums; }
+    .rpt-profit-pos { color:#15803d; font-weight:800; }
+    .rpt-profit-neg { color:#dc2626; font-weight:800; }
+    [data-theme="dark"] .rpt-profit-pos { color:#4ade80; }
+    [data-theme="dark"] .rpt-profit-neg { color:#f87171; }
 </style>
 @endpush
 
@@ -32,7 +46,7 @@
 
     <div class="d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
         <div>
-            <h1 class="h4 fw-bold mb-1" style="color:#174761;">Báo cáo lãi gộp (FIFO)</h1>
+            <h1 class="h4 fw-bold mb-1">Báo cáo lãi gộp (FIFO)</h1>
             <p class="mb-0 text-muted" style="font-size:13px;">
                 Giá vốn tính theo lô đã trừ FIFO tại thời điểm bán (từ sổ cái kho).
             </p>
@@ -68,11 +82,11 @@
             <div class="rpt-stat-label">Giá vốn (FIFO)</div>
             <div class="rpt-stat-value">{{ number_format($summary['cogs'], 0, ',', '.') }}đ</div>
         </div>
-        <div class="rpt-stat rpt-stat--profit">
+        <div class="rpt-stat rpt-stat--profit {{ $summary['profit'] >= 0 ? 'is-pos' : 'is-neg' }}">
             <div class="rpt-stat-label">Lãi gộp</div>
             <div class="rpt-stat-value">{{ number_format($summary['profit'], 0, ',', '.') }}đ</div>
         </div>
-        <div class="rpt-stat">
+        <div class="rpt-stat rpt-stat--profit {{ $summary['margin'] >= 0 ? 'is-pos' : 'is-neg' }}">
             <div class="rpt-stat-label">Biên lãi gộp</div>
             <div class="rpt-stat-value">{{ number_format($summary['margin'], 1) }}%</div>
         </div>

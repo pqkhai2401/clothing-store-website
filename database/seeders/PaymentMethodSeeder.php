@@ -17,7 +17,7 @@ class PaymentMethodSeeder extends Seeder
             ],
             [
                 'name' => 'Chuyển khoản ngân hàng',
-                'status' => true,
+                'status' => false,
                 'image' => 'https://cdn-icons-png.flaticon.com/512/2168/2168252.png',
             ],
             [
