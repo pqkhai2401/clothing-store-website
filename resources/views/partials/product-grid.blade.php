@@ -14,7 +14,7 @@
                 'title' => 'No products found',
                 'message' => 'Try adjusting your search or filter values to find what you are looking for.',
                 'button_text' => 'Clear Filters',
-                'button_url' => url('/products')
+                'button_url' => url('/san-pham')
             ])
         </div>
     @endforelse

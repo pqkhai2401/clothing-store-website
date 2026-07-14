@@ -913,10 +913,8 @@
                 btn.classList.add('active');
                 selectedColorId = parseInt(btn.getAttribute('data-color-id'));
 
-                // Nếu đã chọn đủ cả Màu và Size -> gọi API kiểm tra biến thể
-                if (selectedSizeId) {
-                    checkVariant();
-                }
+                // Cập nhật giá real-time ngay khi chọn màu (dù chưa chọn size)
+                checkVariant();
             });
         });
 
@@ -928,14 +926,15 @@
                 btn.classList.add('active');
                 selectedSizeId = parseInt(btn.getAttribute('data-size-id'));
 
-                // Nếu đã chọn đủ cả Màu và Size -> gọi API kiểm tra biến thể
-                if (selectedColorId) {
-                    checkVariant();
-                }
+                // Cập nhật giá real-time ngay khi chọn size (dù chưa chọn màu)
+                checkVariant();
             });
         });
 
         // ===== Gọi API kiểm tra biến thể (Fetch API) =====
+        // Được gọi ngay khi chọn Màu HOẶC Size (không cần chọn đủ cả 2):
+        // - Chỉ chọn 1 trong 2 -> API trả về khoảng giá (min-max) của các biến thể khớp
+        // - Chọn đủ cả 2 -> API trả về đúng 1 biến thể (giá, tồn kho, SKU, ảnh)
         function checkVariant() {
             fetch('/api/products/check-variant', {
                 method: 'POST',
@@ -952,29 +951,35 @@
             })
             .then(function (response) { return response.json(); })
             .then(function (data) {
-                if (data.found) {
-                    // Cập nhật SKU
+                if (!data.found) {
+                    // Không có biến thể nào khớp với lựa chọn hiện tại
+                    skuEl.textContent = 'N/A';
+                    currentStock = 0;
+                    stockInfo.innerHTML = '<span class="out-of-stock">Biến thể không có sẵn</span>';
+                    disableButtons();
+                    return;
+                }
+
+                if (data.mode === 'exact') {
+                    // Đã chọn đủ Màu + Size -> hiển thị giá, tồn kho, SKU, ảnh của đúng biến thể đó
                     skuEl.textContent = data.sku || 'N/A';
+                    updatePriceDisplay(data.price, data.price, data.has_discount, data.final_price, data.final_price);
 
-                    // Cập nhật giá hiển thị
-                    updatePriceDisplay(data.price, data.has_discount, data.discount_type, data.discount_value, data.final_price);
-
-                    // Cập nhật thông tin tồn kho
                     currentStock = data.stock;
                     updateStockDisplay(data.stock);
 
-                    // Cập nhật ảnh biến thể: nếu có ảnh riêng thì đổi, không thì giữ ảnh gốc
                     if (data.image) {
                         mainImage.src = resolveImageUrl(data.image);
                     } else {
                         mainImage.src = originalThumbnail;
                     }
                 } else {
-                    // Biến thể không tồn tại
+                    // Mới chọn Màu hoặc Size (chưa đủ cả 2) -> chỉ cập nhật khoảng giá, chưa xác định tồn kho/SKU
                     skuEl.textContent = 'N/A';
+                    updatePriceDisplay(data.min_price, data.max_price, data.has_discount, data.min_final, data.max_final);
+
                     currentStock = 0;
-                    stockInfo.innerHTML = '<span class="out-of-stock">Biến thể không có sẵn</span>';
-                    disableButtons();
+                    stockInfo.innerHTML = '';
                 }
             })
             .catch(function () {
@@ -982,20 +987,24 @@
             });
         }
 
-        // ===== Cập nhật hiển thị giá =====
-        function updatePriceDisplay(price, hasDiscount, discountType, discountValue, finalPrice) {
-            var priceNum = parseFloat(price);
-            var discountNum = parseFloat(discountValue) || 0;
-            var finalNum = parseFloat(finalPrice);
+        // ===== Cập nhật hiển thị giá (hỗ trợ cả giá đơn và khoảng giá min-max) =====
+        function updatePriceDisplay(minPrice, maxPrice, hasDiscount, minFinal, maxFinal) {
+            var minNum = parseFloat(minPrice) || 0;
+            var maxNum = parseFloat(maxPrice) || 0;
+            var minFinalNum = parseFloat(minFinal) || 0;
+            var maxFinalNum = parseFloat(maxFinal) || 0;
+            var isRange = minNum !== maxNum;
 
-            if (hasDiscount && discountNum > 0) {
-                var badge = discountType === 'percent' ? '-' + discountNum + '%' : '-' + formatCurrency(discountNum) + 'đ';
+            function fmtRange(a, b) {
+                return isRange ? (formatCurrency(a) + 'đ - ' + formatCurrency(b) + 'đ') : (formatCurrency(a) + 'đ');
+            }
+
+            if (hasDiscount) {
                 priceBlock.innerHTML =
-                    '<span class="original-price">' + formatCurrency(priceNum) + 'đ</span>' +
-                    '<span class="sale-price">' + formatCurrency(finalNum) + 'đ</span>' +
-                    '<span class="discount-badge">' + badge + '</span>';
+                    '<span class="original-price">' + fmtRange(minNum, maxNum) + '</span>' +
+                    '<span class="sale-price">' + fmtRange(minFinalNum, maxFinalNum) + '</span>';
             } else {
-                priceBlock.innerHTML = '<span>' + formatCurrency(priceNum) + 'đ</span>';
+                priceBlock.innerHTML = '<span>' + fmtRange(minNum, maxNum) + '</span>';
             }
         }
 
@@ -1171,7 +1180,7 @@
 
             btn.disabled = true;
 
-            fetch('/wishlist/toggle/' + productId, {
+            fetch('/yeu-thich/bat-tat/' + productId, {
                 method: 'POST',
                 headers: {
                     'Accept': 'application/json',

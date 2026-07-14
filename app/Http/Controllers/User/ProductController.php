@@ -153,45 +153,71 @@ class ProductController extends Controller
         ));
     }
 
-   //kiểm tra biến thể sản phẩm theo cặp Màu + Size
+   //kiểm tra biến thể sản phẩm theo Màu và/hoặc Size (hỗ trợ chọn từng phần)
     public function checkVariant(Request $request): JsonResponse
     {
         $request->validate([
             'product_id' => 'required|integer|exists:products,id',
-            'color_id'   => 'required|integer|exists:colors,id',
-            'size_id'    => 'required|integer|exists:sizes,id',
+            'color_id'   => 'nullable|integer|exists:colors,id',
+            'size_id'    => 'nullable|integer|exists:sizes,id',
         ]);
 
-        // Tìm biến thể khớp chính xác với product_id + color_id + size_id
-        $variant = ProductVariant::where('product_id', $request->product_id)
-            ->where('color_id', $request->color_id)
-            ->where('size_id', $request->size_id)
-            ->where('status', 'Active')
-            ->first();
+        $product = Product::findOrFail($request->product_id);
 
-        if (!$variant) {
+        // Lọc biến thể theo những gì đã chọn (có thể chỉ màu, chỉ size, hoặc cả hai)
+        $query = ProductVariant::where('product_id', $product->id)
+            ->where('status', 'Active');
+
+        if ($request->filled('color_id')) {
+            $query->where('color_id', $request->color_id);
+        }
+        if ($request->filled('size_id')) {
+            $query->where('size_id', $request->size_id);
+        }
+
+        $variants = $query->get();
+
+        if ($variants->isEmpty()) {
             return response()->json([
                 'found' => false,
                 'message' => 'Biến thể không tồn tại.',
             ], 404);
         }
 
-        // Lấy thông tin giá từ bảng products (giá chung cho sản phẩm)
-        $product = Product::findOrFail($request->product_id);
+        // Đã chọn đủ cả màu và size -> trả về đúng 1 biến thể (giá, tồn kho, SKU, ảnh)
+        if ($request->filled('color_id') && $request->filled('size_id')) {
+            $variant = $variants->first();
+            $price = (float) $variant->price;
+            $finalPrice = $product->discountedPrice($price);
 
-        $price = (float) $variant->price;
-        $finalPrice = $product->discountedPrice($price);
+            return response()->json([
+                'found'          => true,
+                'mode'           => 'exact',
+                'stock'          => $variant->stock,
+                'sku'            => $variant->sku,
+                'price'          => $price,
+                'discount_type'  => $product->discount_type,
+                'discount_value' => (float) $product->discount_value,
+                'has_discount'   => $product->hasActiveDiscount(),
+                'final_price'    => $finalPrice,
+                'image'          => $variant->image,
+            ]);
+        }
+
+        // Chỉ chọn màu hoặc chỉ chọn size -> trả về khoảng giá min-max của các biến thể khớp
+        $minPrice = (float) $variants->min('price');
+        $maxPrice = (float) $variants->max('price');
 
         return response()->json([
-            'found'       => true,
-            'stock'       => $variant->stock,
-            'sku'         => $variant->sku,
-            'price'       => $price,
-            'discount_type' => $product->discount_type,
+            'found'          => true,
+            'mode'           => 'range',
+            'min_price'      => $minPrice,
+            'max_price'      => $maxPrice,
+            'min_final'      => $product->discountedPrice($minPrice),
+            'max_final'      => $product->discountedPrice($maxPrice),
+            'discount_type'  => $product->discount_type,
             'discount_value' => (float) $product->discount_value,
-            'has_discount' => $product->hasActiveDiscount(),
-            'final_price' => $finalPrice,
-            'image'       => $variant->image,
+            'has_discount'   => $product->hasActiveDiscount(),
         ]);
     }
 
@@ -225,7 +251,8 @@ class ProductController extends Controller
 
         return view('user.products.index', array_merge(
             compact('products', 'pageTitle'),
-            $this->filterViewData($request)
+            $this->filterViewData($request),
+            ['currentSort' => $sort]
         ));
     }
 

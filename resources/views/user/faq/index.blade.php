@@ -167,7 +167,7 @@
                 </button>
                 <div class="policy-body">
                     <div class="policy-body-inner">
-                        <p>Sau khi đăng nhập, quý khách vào mục <a href="{{ url('/orders') }}">Đơn hàng của tôi</a> để xem trạng thái và lịch sử các đơn đã đặt. Mỗi đơn hàng đều hiển thị tình trạng xử lý, vận chuyển và giao hàng.</p>
+                        <p>Sau khi đăng nhập, quý khách vào mục <a href="{{ url('/don-hang') }}">Đơn hàng của tôi</a> để xem trạng thái và lịch sử các đơn đã đặt. Mỗi đơn hàng đều hiển thị tình trạng xử lý, vận chuyển và giao hàng.</p>
                     </div>
                 </div>
             </div>

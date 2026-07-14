@@ -10,7 +10,7 @@
             <div class="col-md-3 mb-4 mb-md-0">
                 <h5 class="footer-title">Về chúng tôi</h5>
                 <ul class="footer-links">
-                    <li><a href="{{ url('/about') }}">Về chúng tôi</a></li>
+                    <li><a href="{{ url('/gioi-thieu') }}">Về chúng tôi</a></li>
                     {{-- <li><a href="{{ url('/sustainability') }}">Bền vững</a></li>
                     <li><a href="{{ url('/careers') }}">Cơ hội nghề nghiệp</a></li>
                     <li><a href="{{ url('/press') }}">Phóng viên</a></li> --}}
@@ -33,15 +33,21 @@
                     <li class="text-muted"><i class="bi bi-envelope me-2"></i> {{ $siteSettings->email ?: '—' }}</li>
                 </ul>
                 <div class="footer-socials mt-4">
-                    <a href="https://www.facebook.com/kha.rea.19" target="_blank" rel="noopener noreferrer" aria-label="Facebook">
-                        <img src="{{ asset('images/Facebook.png') }}" alt="Facebook" loading="lazy">
-                    </a>
-                    <a href="https://www.instagram.com/kha_rea.19/?hl=en" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
-                        <img src="{{ asset('images/Instagram.png') }}" alt="Instagram" loading="lazy">
-                    </a>
-                    <a href="https://zalo.me/0357989856" target="_blank" rel="noopener noreferrer" aria-label="Zalo">
-                        <img src="{{ asset('images/Zalo.png') }}" alt="Zalo" loading="lazy">
-                    </a>
+                    @if($siteSettings->facebook_enabled && $siteSettings->facebook_url)
+                        <a href="{{ $siteSettings->facebook_url }}" target="_blank" rel="noopener noreferrer" aria-label="Facebook">
+                            <img src="{{ asset('images/Facebook.png') }}" alt="Facebook" loading="lazy">
+                        </a>
+                    @endif
+                    @if($siteSettings->instagram_enabled && $siteSettings->instagram_url)
+                        <a href="{{ $siteSettings->instagram_url }}" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
+                            <img src="{{ asset('images/Instagram.png') }}" alt="Instagram" loading="lazy">
+                        </a>
+                    @endif
+                    @if($siteSettings->zalo_enabled && $siteSettings->zalo_url)
+                        <a href="{{ $siteSettings->zalo_url }}" target="_blank" rel="noopener noreferrer" aria-label="Zalo">
+                            <img src="{{ asset('images/Zalo.png') }}" alt="Zalo" loading="lazy">
+                        </a>
+                    @endif
                 </div>
             </div>
         </div>

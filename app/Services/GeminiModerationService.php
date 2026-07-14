@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
@@ -73,6 +74,16 @@ class GeminiModerationService
             return $this->moderateViaKeywords($comment);
         }
 
+        // 0b. CACHE: cùng một nội dung bình luận thì quyết định kiểm duyệt luôn
+        //     giống hệt -> lưu lại 7 ngày để không gọi Gemini lại (tiết kiệm quota,
+        //     tránh 429, và xử lý tức thì khi gặp comment trùng / spam lặp lại).
+        //     Khóa cache = md5 nội dung đã chuẩn hóa (bỏ khoảng trắng, hạ chữ thường).
+        $cacheKey = 'ai_moderation_' . md5(mb_strtolower(trim($comment)));
+        $cached = Cache::get($cacheKey);
+        if (is_array($cached)) {
+            return $cached;
+        }
+
         // 1. Kiểm tra API key: nếu chưa cấu hình thì ném lỗi để Job bắt và
         //    chuyển review sang trạng thái 'flagged' (Admin duyệt tay).
         if (empty($this->apiKey)) {
@@ -117,7 +128,13 @@ class GeminiModerationService
         }
 
         // 6. Parse chuỗi JSON đó thành mảng PHP và chuẩn hóa dữ liệu.
-        return $this->normalizeResult($rawJson);
+        $result = $this->normalizeResult($rawJson);
+
+        // 7. Chỉ cache khi ĐÃ có kết quả hợp lệ. Các trường hợp lỗi ở trên đều
+        //    ném exception nên không bao giờ bị cache -> lần sau vẫn gọi lại Gemini.
+        Cache::put($cacheKey, $result, now()->addDays(7));
+
+        return $result;
     }
 
     /**

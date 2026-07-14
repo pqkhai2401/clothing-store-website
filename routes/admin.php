@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\InventoryReportController;
 use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\ReviewController;
+use App\Http\Controllers\Admin\Settings\HeroBannerController;
 use App\Http\Controllers\Admin\Settings\SettingController;
 use App\Http\Controllers\Admin\SizeController;
 use App\Http\Controllers\Admin\StockIssueController;
@@ -289,5 +290,16 @@ Route::middleware(['auth.login', 'active.account', 'admin', 'force.password.chan
             ->prefix('settings')->name('settings.')->group(function () {
                 Route::get('/', [SettingController::class, 'edit'])->name('edit');
                 Route::put('/', [SettingController::class, 'update'])->name('update');
+            });
+
+        Route::middleware('permission:manage-settings')
+            ->prefix('hero-banners')->name('hero-banners.')->group(function () {
+                Route::get('/', [HeroBannerController::class, 'index'])->name('list');
+                Route::get('/create', [HeroBannerController::class, 'create'])->name('create');
+                Route::post('/', [HeroBannerController::class, 'store'])->name('store');
+                Route::get('/{id}/edit', [HeroBannerController::class, 'edit'])->name('edit');
+                Route::put('/{id}', [HeroBannerController::class, 'update'])->name('update');
+                Route::patch('/{id}/toggle-status', [HeroBannerController::class, 'toggleStatus'])->name('toggleStatus');
+                Route::delete('/{id}', [HeroBannerController::class, 'destroy'])->name('destroy');
             });
     });

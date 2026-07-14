@@ -784,8 +784,11 @@
                         $pSlug     = $prod->slug;
                         $prod->loadMissing('productVariants');
                         $pPrice    = $prod->min_variant_price ?? 0;
+                        $pMaxPrice = $prod->max_variant_price ?? $pPrice;
+                        $pIsRange  = $pMaxPrice && $pMaxPrice != $pPrice;
                         $pDiscount = $prod->discount_value ?? 0;
                         $pFinalPrice = $prod->hasActiveDiscount() && $pPrice ? $prod->discountedPrice((float) $pPrice) : null;
+                        $pMaxFinalPrice = $prod->hasActiveDiscount() && $pMaxPrice ? $prod->discountedPrice((float) $pMaxPrice) : null;
                         $pCategory = $prod->category->name ?? 'Thời trang';
                         $pUrl      = url('/san-pham/' . $pSlug);
                         $pImage    = $prod->thumbnail
@@ -832,10 +835,10 @@
                             {{-- Giá --}}
                             <div class="wishlist-card-price">
                                 @if($pFinalPrice)
-                                    <span class="price-original">Từ {{ number_format($pPrice, 0, ',', '.') }}đ</span>
-                                    <span class="price-sale">Từ {{ number_format($pFinalPrice, 0, ',', '.') }}đ</span>
+                                    <span class="price-original">{{ number_format($pPrice, 0, ',', '.') }}đ@if($pIsRange) - {{ number_format($pMaxPrice, 0, ',', '.') }}đ@endif</span>
+                                    <span class="price-sale">{{ number_format($pFinalPrice, 0, ',', '.') }}đ@if($pIsRange) - {{ number_format($pMaxFinalPrice, 0, ',', '.') }}đ@endif</span>
                                 @elseif($pPrice)
-                                    <span class="price-normal">Từ {{ number_format($pPrice, 0, ',', '.') }}đ</span>
+                                    <span class="price-normal">{{ number_format($pPrice, 0, ',', '.') }}đ@if($pIsRange) - {{ number_format($pMaxPrice, 0, ',', '.') }}đ@endif</span>
                                 @else
                                     <span class="price-normal">Liên hệ</span>
                                 @endif
@@ -917,7 +920,7 @@
                     Hãy khám phá các sản phẩm của chúng tôi và lưu lại
                     những sản phẩm bạn yêu thích!
                 </p>
-                <a href="{{ url('/products') }}" class="btn-continue-shopping">
+                <a href="{{ url('/san-pham') }}" class="btn-continue-shopping">
                     <i class="bi bi-arrow-left"></i> Tiếp tục mua sắm
                 </a>
             </div>
@@ -937,7 +940,7 @@
                         Dựa trên những sản phẩm bạn đã yêu thích — được phân tích và gợi ý bởi hệ thống AI của HK Store
                     </p>
                 </div>
-                <a href="{{ url('/products') }}" class="btn-view-all-ai">
+                <a href="{{ url('/san-pham') }}" class="btn-view-all-ai">
                     Xem tất cả <i class="bi bi-arrow-right ms-1"></i>
                 </a>
             </div>
@@ -951,8 +954,17 @@
                         $rSlug     = $recProduct->slug;
                         $recProduct->loadMissing('productVariants');
                         $rPrice    = $recProduct->min_variant_price ?? 0;
+                        $rMaxPrice = $recProduct->max_variant_price ?? $rPrice;
+                        $rIsRange  = $rMaxPrice && $rMaxPrice != $rPrice;
                         $rDiscount = $recProduct->discount_value ?? 0;
                         $rFinal    = $recProduct->hasActiveDiscount() && $rPrice ? $recProduct->discountedPrice((float) $rPrice) : null;
+                        $rMaxFinal = $recProduct->hasActiveDiscount() && $rMaxPrice ? $recProduct->discountedPrice((float) $rMaxPrice) : null;
+                        $rPriceText = $rPrice
+                            ? number_format($rPrice, 0, ',', '.') . 'đ' . ($rIsRange ? ' - ' . number_format($rMaxPrice, 0, ',', '.') . 'đ' : '')
+                            : 'Liên hệ';
+                        $rFinalText = $rFinal
+                            ? number_format($rFinal, 0, ',', '.') . 'đ' . ($rIsRange ? ' - ' . number_format($rMaxFinal, 0, ',', '.') . 'đ' : '')
+                            : '';
                         $rCategory = $recProduct->category->name ?? 'Thời trang';
                         $rUrl      = url('/san-pham/' . $rSlug);
                         $rImage    = $recProduct->thumbnail
@@ -969,8 +981,8 @@
                          data-category="{{ $rCategory }}"
                          data-url="{{ $rUrl }}"
                          data-image="{{ $rImage }}"
-                          data-price="{{ $rPrice ? 'Từ '.number_format($rPrice, 0, ',', '.').'đ' : 'Liên hệ' }}"
-                          data-final="{{ $rFinal ? 'Từ '.number_format($rFinal, 0, ',', '.') . 'đ' : '' }}"
+                          data-price="{{ $rPriceText }}"
+                          data-final="{{ $rFinalText }}"
                          data-discount="{{ $rDiscount }}">
                         <div class="ai-rec-card-img-wrap">
                             @if($rDiscount > 0)
@@ -1006,10 +1018,10 @@
                         </h3>
                         <div class="ai-rec-card-price">
                             @if($rFinal)
-                                <span class="p-original">Từ {{ number_format($rPrice, 0, ',', '.') }}đ</span>
-                                <span class="p-sale">Từ {{ number_format($rFinal, 0, ',', '.') }}đ</span>
+                                <span class="p-original">{{ $rPriceText }}</span>
+                                <span class="p-sale">{{ $rFinalText }}</span>
                             @elseif($rPrice)
-                                <span class="p-normal">Từ {{ number_format($rPrice, 0, ',', '.') }}đ</span>
+                                <span class="p-normal">{{ $rPriceText }}</span>
                             @else
                                 <span class="p-normal">Liên hệ</span>
                             @endif
@@ -1131,7 +1143,7 @@
 
         btnEl.disabled = true;
 
-        fetch('/wishlist/remove/' + productId, {
+        fetch('/yeu-thich/xoa/' + productId, {
             method: 'DELETE',
             headers: {
                 'Accept': 'application/json',
@@ -1161,8 +1173,8 @@
                     setTimeout(() => {
                         const params = new URLSearchParams(window.location.search);
                         params.set('page', currentPage - 1);
-                        window.location.href = '/wishlist?' + params.toString();
-                    }, 400);
+                        window.location.href = '/yeu-thich?' + params.toString();
+}, 400);
                     return;
                 }
 
@@ -1177,7 +1189,7 @@
                         const params = new URLSearchParams(window.location.search);
                         params.delete('page');
                         const qs = params.toString();
-                        window.location.href = '/wishlist' + (qs ? '?' + qs : '');
+                        window.location.href = '/yeu-thich' + (qs ? '?' + qs : '');
                     }, 400);
                     return;
                 }
@@ -1212,7 +1224,7 @@
         btnClearAll.addEventListener('click', function () {
             if (!confirm('Bạn có chắc muốn xóa toàn bộ danh sách yêu thích không?')) return;
 
-            fetch('/wishlist/clear', {
+            fetch('/yeu-thich/xoa-tat-ca', {
                 method: 'DELETE',
                 headers: {
                     'Accept': 'application/json',
@@ -1322,7 +1334,7 @@
 
         btnEl.disabled = true;
 
-        fetch('/wishlist/toggle/' + productId, {
+        fetch('/yeu-thich/bat-tat/' + productId, {
             method: 'POST',
             headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': getCsrf() }
         })
@@ -1354,7 +1366,7 @@
                     const params = new URLSearchParams(window.location.search);
                     const currentPage = getCurrentPage();
                     params.set('page', currentPage + 1);
-                    window.location.href = '/wishlist?' + params.toString();
+                    window.location.href = '/yeu-thich?' + params.toString();
                 }, 600);
             } else if (recCard) {
                 const d = recCard.dataset;

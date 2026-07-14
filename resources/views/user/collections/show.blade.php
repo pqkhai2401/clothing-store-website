@@ -108,7 +108,7 @@
                     <div class="text-center py-5">
                         <i class="bi bi-bag-x" style="font-size:48px; color:#ccc;"></i>
                         <p class="mt-3 mb-1" style="font-size:18px; font-weight:500;">Bộ sưu tập hiện tại chưa có sản phẩm nào phù hợp</p>
-                        <p class="text-muted" style="font-size:14px;"><a href="{{ url('/products') }}">Khám phá sản phẩm khác</a></p>
+                        <p class="text-muted" style="font-size:14px;"><a href="{{ url('/san-pham') }}">Khám phá sản phẩm khác</a></p>
                     </div>
                 @else
                     @include('partials.product-grid', ['products' => $products, 'cols' => 'col-6 col-md-3'])

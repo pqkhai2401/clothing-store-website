@@ -87,6 +87,14 @@ class AppServiceProvider extends ServiceProvider
             $view->with('siteSettings', \App\Models\Setting::current());
         });
 
+        // Danh sách banner trang chủ đang bật, dùng cho slider hero-section.
+        View::composer('user.home.index', function ($view): void {
+            $view->with('heroBanners', \App\Models\HeroBanner::where('is_active', true)
+                ->orderBy('sort_order')
+                ->orderByDesc('id')
+                ->get());
+        });
+
         View::composer([
             'layouts.partial.sidebar',
         ], function ($view): void {
@@ -246,6 +254,14 @@ class AppServiceProvider extends ServiceProvider
                         'url'            => $r('admin.settings.edit', '/admin/settings'),
                         'active_pattern' => 'admin/settings*',
                         'icon'           => 'fa-solid fa-gear',
+                        'parent'         => [],
+                    ],
+                    [
+                        'permission'     => 'manage-settings',
+                        'title'          => 'Banner trang chủ',
+                        'url'            => $r('admin.hero-banners.list', '/admin/hero-banners'),
+                        'active_pattern' => 'admin/hero-banners*',
+                        'icon'           => 'fa-solid fa-images',
                         'parent'         => [],
                     ],
                 ];

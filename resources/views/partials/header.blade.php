@@ -24,7 +24,7 @@
                         <a class="nav-link" href="{{ url('/') }}">TRANG CHỦ</a>
                     </li>
                     <li class="nav-item dropdown simple-dropdown">
-                        <a class="nav-link dropdown-toggle" href="{{ url('/products') }}" id="productsDropdown" role="button">
+                        <a class="nav-link dropdown-toggle" href="{{ url('/san-pham') }}" id="productsDropdown" role="button">
                             Sản phẩm
                         </a>
                         <ul class="simple-menu simple-menu-grouped" aria-labelledby="productsDropdown">
@@ -62,7 +62,7 @@
                             <li class="simple-menu-sub"><a href="{{ route('category.products', 'tui-xach') }}">Túi xách</a></li>
 
                             <li class="simple-menu-divider"></li>
-                            <li><a href="{{ url('/products') }}" class="simple-menu-all">Tất cả sản phẩm</a></li>
+                            <li><a href="{{ url('/san-pham') }}" class="simple-menu-all">Tất cả sản phẩm</a></li>
                         </ul>
                     </li>
                     <li class="nav-item">
@@ -97,13 +97,13 @@
                 </button>
 
                 <!-- Wishlist -->
-                <a href="{{ url('/wishlist') }}" class="btn-icon" title="Danh sách yêu thích">
+                <a href="{{ url('/yeu-thich') }}" class="btn-icon" title="Danh sách yêu thích">
                     <i class="bi bi-heart"></i>
                     <span class="badge-count">{{ $wishlistCount ?? 0 }}</span>
                 </a>
 
                 <!-- Cart -->
-                <a href="{{ url('/cart') }}" class="btn-icon" title="Giỏ hàng">
+                <a href="{{ url('/gio-hang') }}" class="btn-icon" title="Giỏ hàng">
                     <i class="bi bi-bag"></i>
                     <span class="badge-count" id="cartCountBadge">{{ $cartCount ?? 0 }}</span>
                 </a>
@@ -157,7 +157,7 @@
             </button>
 
             <div class="nav-search-inner">
-                <form action="{{ url('/search') }}" method="GET" class="nav-search-form" id="navSearchForm">
+                <form action="{{ url('/tim-kiem') }}" method="GET" class="nav-search-form" id="navSearchForm">
                     <i class="bi bi-search nav-search-icon"></i>
                     <input type="text" name="q" id="searchInput" class="nav-search-input"
                            placeholder="Bạn đang tìm kiếm sản phẩm nào?..." autocomplete="off"
@@ -171,12 +171,12 @@
                 <div class="nav-search-trending" id="navSearchTrending">
                     <span class="nav-search-trending-label">Từ khóa phổ biến</span>
                     <div class="nav-search-tags">
-                        <a href="{{ url('/search') }}?q=Áo sơ mi" class="nav-search-tag">Áo sơ mi</a>
-                        <a href="{{ url('/search') }}?q=Áo khoác" class="nav-search-tag">Áo khoác</a>
-                        <a href="{{ url('/search') }}?q=Quần jeans" class="nav-search-tag">Quần jeans</a>
-                        <a href="{{ url('/search') }}?q=Đầm" class="nav-search-tag">Đầm</a>
-                        <a href="{{ url('/search') }}?q=Áo hoodie" class="nav-search-tag">Áo hoodie</a>
-                        <a href="{{ url('/search') }}?q=Áo blazer" class="nav-search-tag">Áo blazer</a>
+                        <a href="{{ url('/tim-kiem') }}?q=Áo sơ mi" class="nav-search-tag">Áo sơ mi</a>
+                        <a href="{{ url('/tim-kiem') }}?q=Áo khoác" class="nav-search-tag">Áo khoác</a>
+                        <a href="{{ url('/tim-kiem') }}?q=Quần jeans" class="nav-search-tag">Quần jeans</a>
+                        <a href="{{ url('/tim-kiem') }}?q=Đầm" class="nav-search-tag">Đầm</a>
+                        <a href="{{ url('/tim-kiem') }}?q=Áo hoodie" class="nav-search-tag">Áo hoodie</a>
+                        <a href="{{ url('/tim-kiem') }}?q=Áo blazer" class="nav-search-tag">Áo blazer</a>
                     </div>
                 </div>
             </div>

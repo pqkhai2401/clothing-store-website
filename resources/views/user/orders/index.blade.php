@@ -1013,7 +1013,7 @@
         if (!confirm('Bạn có chắc muốn hủy đơn hàng này? Thao tác không thể hoàn tác.')) return;
 
         try {
-            const res  = await fetch(`/orders/${orderId}/cancel`, {
+            const res  = await fetch(`/don-hang/${orderId}/huy`, {
                 method: 'PATCH',
                 headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf },
             });
@@ -1076,7 +1076,7 @@
             openModal();
 
             try {
-                const res  = await fetch(`/orders/${id}/detail`, {
+                const res  = await fetch(`/don-hang/${id}/chi-tiet`, {
                     headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf }
                 });
                 const data = await res.json();

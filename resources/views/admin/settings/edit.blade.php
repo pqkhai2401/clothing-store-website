@@ -13,7 +13,7 @@
              <div>
                 <h1 class="product-header-title mb-2">Quản lý cài đặt hệ thống</h1>
                 <p class="product-header-desc mb-0">
-                    Quản lý logo, ten shop, địa chỉ, hotline và email liên hệ của website. Những thông tin này sẽ được hiển thị ở chân trang (footer) của website.
+                    Quản lý logo, tên shop, địa chỉ, hotline, email liên hệ và mạng xã hội của website. Những thông tin này sẽ được hiển thị ở chân trang (footer) của website.
                 </p>
             </div>
             <div class="row">
@@ -75,6 +75,56 @@
                         @error('email')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
+                    </div>
+
+                    <div class="stg-divider"></div>
+
+                    <h2 class="stg-title" style="font-size: 18px; margin-bottom: 18px;">Mạng xã hội</h2>
+                    <p class="text-muted mb-3" style="font-size: 12px;">Bật/tắt để hiện hoặc ẩn nhanh icon ở footer mà không cần xóa đường dẫn.</p>
+
+                    <div class="mb-3 d-flex gap-2 align-items-start">
+                        <div class="flex-grow-1">
+                            <label class="stg-label">Facebook</label>
+                            <input type="url" name="facebook_url" class="stg-input @error('facebook_url') is-invalid @enderror"
+                                value="{{ old('facebook_url', $setting->facebook_url) }}" placeholder="https://facebook.com/...">
+                            @error('facebook_url')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                        <div class="form-check form-switch mt-4 pt-1">
+                            <input class="form-check-input" type="checkbox" role="switch" name="facebook_enabled" value="1"
+                                {{ old('facebook_enabled', $setting->facebook_enabled) ? 'checked' : '' }}>
+                        </div>
+                    </div>
+
+                    <div class="mb-3 d-flex gap-2 align-items-start">
+                        <div class="flex-grow-1">
+                            <label class="stg-label">Instagram</label>
+                            <input type="url" name="instagram_url" class="stg-input @error('instagram_url') is-invalid @enderror"
+                                value="{{ old('instagram_url', $setting->instagram_url) }}" placeholder="https://instagram.com/...">
+                            @error('instagram_url')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                        <div class="form-check form-switch mt-4 pt-1">
+                            <input class="form-check-input" type="checkbox" role="switch" name="instagram_enabled" value="1"
+                                {{ old('instagram_enabled', $setting->instagram_enabled) ? 'checked' : '' }}>
+                        </div>
+                    </div>
+
+                    <div class="mb-3 d-flex gap-2 align-items-start">
+                        <div class="flex-grow-1">
+                            <label class="stg-label">Zalo</label>
+                            <input type="url" name="zalo_url" class="stg-input @error('zalo_url') is-invalid @enderror"
+                                value="{{ old('zalo_url', $setting->zalo_url) }}" placeholder="https://zalo.me/...">
+                            @error('zalo_url')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                        <div class="form-check form-switch mt-4 pt-1">
+                            <input class="form-check-input" type="checkbox" role="switch" name="zalo_enabled" value="1"
+                                {{ old('zalo_enabled', $setting->zalo_enabled) ? 'checked' : '' }}>
+                        </div>
                     </div>
 
                     <div class="stg-divider"></div>
