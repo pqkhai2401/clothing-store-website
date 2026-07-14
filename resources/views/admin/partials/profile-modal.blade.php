@@ -769,9 +769,23 @@
                 document.querySelectorAll('.account-name').forEach(el => {
                     el.textContent = data.user.username;
                 });
-                const initials = document.querySelectorAll('.account-avatar');
-                initials.forEach(el => {
-                    el.textContent = data.user.username.charAt(0).toUpperCase();
+
+                const initial = data.user.username.charAt(0).toUpperCase();
+                document.querySelectorAll('.admin-brand-mark, .account-avatar').forEach(el => {
+                    if (data.user.avatar_url) {
+                        let img = el.querySelector('.account-avatar-img');
+                        if (!img) {
+                            el.textContent = '';
+                            img = document.createElement('img');
+                            img.className = 'account-avatar-img';
+                            img.alt = data.user.username;
+                            el.appendChild(img);
+                        }
+                        img.src = data.user.avatar_url;
+                    } else {
+                        el.innerHTML = '';
+                        el.textContent = initial;
+                    }
                 });
             }
 
