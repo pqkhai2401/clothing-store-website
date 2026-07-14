@@ -226,7 +226,6 @@ Route::middleware(['auth.login', 'active.account', 'admin', 'force.password.chan
             Route::get('/{id}/detail', [OrderController::class, 'detail'])->name('detail');
             Route::get('/{id}/edit-content', [OrderController::class, 'editContent'])->name('editContent');
             Route::put('/{id}/edit-content', [OrderController::class, 'updateContent'])->name('updateContent');
-            Route::put('/{id}', [OrderController::class, 'update'])->name('update');
             Route::delete('/{id}', [OrderController::class, 'destroy'])->name('destroy');
             });
 

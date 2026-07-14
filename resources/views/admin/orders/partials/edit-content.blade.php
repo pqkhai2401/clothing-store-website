@@ -1,7 +1,10 @@
 {{--
     Nội dung form "Sửa đơn hàng" — nạp qua AJAX vào offcanvas (partials/edit-offcanvas.blade.php).
-    Variables expected: $order, $scope ('full'|'limited'), $addresses (Collection<Address> của khách),
-    $items (mảng item hiện tại của đơn, chỉ cần khi $scope === 'full').
+    Gộp cả đổi trạng thái giao hàng/thanh toán (trước đây là modal riêng ở index.blade.php) VÀ
+    sửa nội dung đơn (địa chỉ/SĐT/sản phẩm/phí ship/ghi chú) vào cùng 1 panel.
+    Variables expected: $order, $scope ('full'|'limited'|'none'), $addresses (Collection<Address>),
+    $items, $allowedStatuses (mảng key=>label các trạng thái được phép chọn), $paymentStatusLabels,
+    $isOnlineGateway (bool).
 --}}
 @php
     $orderBadgeCss = [
@@ -41,11 +44,9 @@
         <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Đóng"></button>
     </div>
 
-    <div class="offcanvas-body flex-grow-1 overflow-auto" data-edit-errors-anchor>
-        <div class="alert alert-danger d-none" data-edit-errors-summary></div>
-
+    <div class="offcanvas-body flex-grow-1 overflow-auto p-3" data-edit-errors-anchor>
         @if($scope === 'limited')
-            <div class="alert alert-secondary" style="font-size:12.5px;">
+            <div class="alert alert-secondary py-2 px-3 mb-3" style="font-size:12.5px;">
                 @if($order->status === 'processing')
                     Đơn đã chuyển "Đang xử lý" (đã trừ kho) nên chỉ có thể cập nhật thông tin giao hàng.
                 @else
@@ -55,172 +56,201 @@
             </div>
         @endif
 
-        {{-- Địa chỉ giao hàng --}}
-        <div class="card edit-card shadow-sm mb-4">
-            <div class="card-header"><span class="fw-bold" style="font-size:14px;">Địa chỉ giao hàng</span></div>
-            <div class="card-body p-4">
-                <div class="edit-field">
-                    <label>Địa chỉ đã lưu</label>
-                    <input type="hidden" name="address_id" id="oeAddressId" value="{{ $selectedAddressId }}">
-                    <div class="hk-cat-filter oc-dropdown" id="oeAddressDrop">
-                        <button type="button" class="hk-cat-trigger" id="oeAddressTrigger" aria-haspopup="listbox" aria-expanded="false">
-                            <span class="hk-cat-trigger-label" id="oeAddressLabel">— Chọn địa chỉ —</span>
-                            <i class="fa-solid fa-chevron-down hk-cat-arrow"></i>
-                        </button>
-                        <div class="hk-cat-panel" id="oeAddressPanel" hidden>
-                            <div class="hk-cat-list" id="oeAddressList" role="listbox">
-                                @foreach($addresses as $a)
-                                    @php
-                                        $addrLabel = collect([$a->apartment_number, $a->ward, $a->district, $a->city])->filter()->implode(', ');
-                                    @endphp
-                                    <button type="button" class="hk-cat-item {{ (string) $selectedAddressId === (string) $a->id ? 'is-active' : '' }}"
-                                        data-value="{{ $a->id }}" data-label="{{ $addrLabel }}">{{ $addrLabel }}</button>
+        {{-- Trạng thái đơn hàng --}}
+        <div class="card edit-card shadow-sm mb-3">
+            <div class="card-header py-2"><span class="fw-bold" style="font-size:14px;">Trạng thái đơn hàng</span></div>
+            <div class="card-body p-3">
+                <div class="row g-3">
+                    <div class="col-md-6 edit-field mb-0">
+                        <label>Trạng thái giao hàng <span class="text-danger">*</span></label>
+                        <select name="status" class="form-select form-select-sm @error('status') is-invalid @enderror">
+                            @foreach($allowedStatuses as $val => $label)
+                                <option value="{{ $val }}" {{ old('status', $order->status) === $val ? 'selected' : '' }}>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                        @error('status') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                    </div>
+                    <div class="col-md-6 edit-field mb-0">
+                        <label>Trạng thái thanh toán <span class="text-danger">*</span></label>
+                        @if($isOnlineGateway)
+                            <input type="hidden" name="payment_status" value="{{ $order->payment_status }}">
+                            <div class="form-control form-control-sm bg-light text-muted" style="font-size:13px;">
+                                {{ $paymentStatusLabels[$order->payment_status] ?? $order->payment_status }}
+                            </div>
+                            <div class="form-text" style="font-size:11.5px;">Đồng bộ tự động từ cổng thanh toán online, không thể sửa tay.</div>
+                        @else
+                            <select name="payment_status" class="form-select form-select-sm @error('payment_status') is-invalid @enderror">
+                                @foreach($paymentStatusLabels as $val => $label)
+                                    <option value="{{ $val }}" {{ old('payment_status', $order->payment_status) === $val ? 'selected' : '' }}>{{ $label }}</option>
                                 @endforeach
-                                <button type="button" class="hk-cat-item {{ $selectedAddressId ? '' : 'is-active' }}"
-                                    data-value="__new__" data-label="+ Thêm địa chỉ mới">+ Thêm địa chỉ mới</button>
+                            </select>
+                            @error('payment_status') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                        @endif
+                    </div>
+                </div>
+                <div class="edit-field mt-3 mb-0">
+                    <label>Ghi chú</label>
+                    <textarea name="note" class="form-control form-control-sm @error('note') is-invalid @enderror" rows="2"
+                        placeholder="Ghi chú nội bộ (không bắt buộc)">{{ old('note', $order->note) }}</textarea>
+                    @error('note') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                </div>
+            </div>
+        </div>
+
+        @if($scope !== 'none')
+            {{-- Địa chỉ giao hàng --}}
+            <div class="card edit-card shadow-sm mb-3">
+                <div class="card-header py-2"><span class="fw-bold" style="font-size:14px;">Địa chỉ giao hàng</span></div>
+                <div class="card-body p-3">
+                    <div class="row g-3">
+                        <div class="col-md-7 edit-field mb-0">
+                            <label>Địa chỉ đã lưu</label>
+                            <input type="hidden" name="address_id" id="oeAddressId" value="{{ $selectedAddressId }}">
+                            <div class="hk-cat-filter oc-dropdown" id="oeAddressDrop">
+                                <button type="button" class="hk-cat-trigger" id="oeAddressTrigger" aria-haspopup="listbox" aria-expanded="false">
+                                    <span class="hk-cat-trigger-label" id="oeAddressLabel">— Chọn địa chỉ —</span>
+                                    <i class="fa-solid fa-chevron-down hk-cat-arrow"></i>
+                                </button>
+                                <div class="hk-cat-panel" id="oeAddressPanel" hidden>
+                                    <div class="hk-cat-list" id="oeAddressList" role="listbox">
+                                        @foreach($addresses as $a)
+                                            @php
+                                                $addrLabel = collect([$a->apartment_number, $a->ward, $a->district, $a->city])->filter()->implode(', ');
+                                            @endphp
+                                            <button type="button" class="hk-cat-item {{ (string) $selectedAddressId === (string) $a->id ? 'is-active' : '' }}"
+                                                data-value="{{ $a->id }}" data-label="{{ $addrLabel }}">{{ $addrLabel }}</button>
+                                        @endforeach
+                                        <button type="button" class="hk-cat-item {{ $selectedAddressId ? '' : 'is-active' }}"
+                                            data-value="__new__" data-label="+ Thêm địa chỉ mới">+ Thêm địa chỉ mới</button>
+                                    </div>
+                                </div>
+                            </div>
+                            @error('address_id') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                        </div>
+                        <div class="col-md-5 edit-field mb-0">
+                            <label>Số điện thoại <span class="text-danger">*</span></label>
+                            <input type="text" name="phone" class="form-control form-control-sm @error('phone') is-invalid @enderror" value="{{ old('phone', $order->phone) }}">
+                            @error('phone') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                        </div>
+                    </div>
+
+                    <div id="oeNewAddressFields" class="d-none mt-3">
+                        <div class="row g-3">
+                            <div class="col-md-6 edit-field mb-0">
+                                <label>Tỉnh/Thành phố <span class="text-danger">*</span></label>
+                                <input type="text" name="new_address[city]" class="form-control form-control-sm @error('new_address.city') is-invalid @enderror" value="{{ old('new_address.city') }}">
+                                @error('new_address.city') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                            </div>
+                            <div class="col-md-6 edit-field mb-0">
+                                <label>Quận/Huyện</label>
+                                <input type="text" name="new_address[district]" class="form-control form-control-sm" value="{{ old('new_address.district') }}">
+                            </div>
+                            <div class="col-md-6 edit-field mb-0">
+                                <label>Phường/Xã <span class="text-danger">*</span></label>
+                                <input type="text" name="new_address[ward]" class="form-control form-control-sm @error('new_address.ward') is-invalid @enderror" value="{{ old('new_address.ward') }}">
+                                @error('new_address.ward') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                            </div>
+                            <div class="col-md-6 edit-field mb-0">
+                                <label>Địa chỉ cụ thể <span class="text-danger">*</span></label>
+                                <input type="text" name="new_address[apartment_number]" class="form-control form-control-sm @error('new_address.apartment_number') is-invalid @enderror" value="{{ old('new_address.apartment_number') }}">
+                                @error('new_address.apartment_number') <div class="invalid-feedback">{{ $message }}</div> @enderror
                             </div>
                         </div>
                     </div>
-                    @error('address_id') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
-                </div>
-
-                <div id="oeNewAddressFields" class="d-none">
-                    <div class="row g-3">
-                        <div class="col-md-6 edit-field mb-0">
-                            <label>Tỉnh/Thành phố <span class="text-danger">*</span></label>
-                            <input type="text" name="new_address[city]" class="form-control @error('new_address.city') is-invalid @enderror" value="{{ old('new_address.city') }}">
-                            @error('new_address.city') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                        </div>
-                        <div class="col-md-6 edit-field mb-0">
-                            <label>Quận/Huyện</label>
-                            <input type="text" name="new_address[district]" class="form-control" value="{{ old('new_address.district') }}">
-                        </div>
-                        <div class="col-md-6 edit-field mb-0">
-                            <label>Phường/Xã <span class="text-danger">*</span></label>
-                            <input type="text" name="new_address[ward]" class="form-control @error('new_address.ward') is-invalid @enderror" value="{{ old('new_address.ward') }}">
-                            @error('new_address.ward') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                        </div>
-                        <div class="col-md-6 edit-field mb-0">
-                            <label>Địa chỉ cụ thể <span class="text-danger">*</span></label>
-                            <input type="text" name="new_address[apartment_number]" class="form-control @error('new_address.apartment_number') is-invalid @enderror" value="{{ old('new_address.apartment_number') }}">
-                            @error('new_address.apartment_number') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                        </div>
-                    </div>
-                </div>
-
-                <div class="edit-field mb-0">
-                    <label>Số điện thoại liên hệ <span class="text-danger">*</span></label>
-                    <input type="text" name="phone" class="form-control @error('phone') is-invalid @enderror" value="{{ old('phone', $order->phone) }}">
-                    @error('phone') <div class="invalid-feedback">{{ $message }}</div> @enderror
                 </div>
             </div>
-        </div>
 
-        {{-- Sản phẩm --}}
-        <div class="card edit-card shadow-sm mb-4">
-            <div class="card-header"><span class="fw-bold" style="font-size:14px;">Sản phẩm</span></div>
-            <div class="card-body p-4">
-                @if($scope === 'full')
-                    <div class="edit-field oc-search-wrap">
-                        <label>Tìm sản phẩm (tên hoặc SKU)</label>
-                        <input type="text" id="oeProductSearch" class="form-control" placeholder="Nhập tên sản phẩm hoặc SKU..." autocomplete="off">
-                        <div class="oc-search-results d-none" id="oeProductResults"></div>
-                    </div>
+            {{-- Sản phẩm + Tổng cộng --}}
+            <div class="card edit-card shadow-sm mb-0">
+                <div class="card-header py-2"><span class="fw-bold" style="font-size:14px;">Sản phẩm</span></div>
+                <div class="card-body p-3">
+                    @if($scope === 'full')
+                        <div class="edit-field oc-search-wrap mb-2">
+                            <input type="text" id="oeProductSearch" class="form-control form-control-sm" placeholder="Tìm theo tên sản phẩm hoặc SKU để thêm vào đơn..." autocomplete="off">
+                            <div class="oc-search-results d-none" id="oeProductResults"></div>
+                        </div>
 
-                    @error('items') <div class="text-danger mb-2" style="font-size:13px;">{{ $message }}</div> @enderror
+                        @error('items') <div class="text-danger mb-2" style="font-size:13px;">{{ $message }}</div> @enderror
 
-                    <div class="table-responsive">
-                        <table class="table oc-items-table mb-0">
-                            <thead>
-                                <tr>
-                                    <th>Sản phẩm</th>
-                                    <th>Đơn giá</th>
-                                    <th style="width:90px;">Số lượng</th>
-                                    <th>Thành tiền</th>
-                                    <th style="width:40px;"></th>
-                                </tr>
-                            </thead>
-                            <tbody id="oeItemsBody">
-                                <tr id="oeEmptyItemsRow">
-                                    <td colspan="5" class="oc-empty-items">Chưa có sản phẩm nào.</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    <div id="oeItemsHidden"></div>
-                @else
-                    <div class="table-responsive">
-                        <table class="table oc-items-table mb-0">
-                            <thead>
-                                <tr>
-                                    <th>Sản phẩm</th>
-                                    <th>Đơn giá</th>
-                                    <th style="width:90px;">Số lượng</th>
-                                    <th>Thành tiền</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($items as $item)
+                        <div class="table-responsive">
+                            <table class="table oc-items-table mb-0">
+                                <thead>
                                     <tr>
-                                        <td>{{ $item['product_name'] }} {{ $item['color'] ? '· '.$item['color'] : '' }} {{ $item['size'] ? '· '.$item['size'] : '' }}</td>
-                                        <td>{{ number_format($item['unit_price'], 0, ',', '.') }}đ</td>
-                                        <td>{{ $item['quantity'] }}</td>
-                                        <td>{{ number_format($item['unit_price'] * $item['quantity'], 0, ',', '.') }}đ</td>
+                                        <th>Sản phẩm</th>
+                                        <th style="width:110px;">Đơn giá</th>
+                                        <th style="width:90px;">Số lượng</th>
+                                        <th style="width:120px;">Thành tiền</th>
+                                        <th style="width:40px;"></th>
                                     </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                @endif
-            </div>
-        </div>
+                                </thead>
+                                <tbody id="oeItemsBody">
+                                    <tr id="oeEmptyItemsRow">
+                                        <td colspan="5" class="oc-empty-items">Chưa có sản phẩm nào.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div id="oeItemsHidden"></div>
 
-        {{-- Phí vận chuyển & Tổng cộng --}}
-        <div class="card edit-card shadow-sm mb-4">
-            <div class="card-header"><span class="fw-bold" style="font-size:14px;">Phí vận chuyển & Tổng cộng</span></div>
-            <div class="card-body p-4">
-                @if($scope === 'full')
-                    <div class="edit-field">
-                        <label>Phí vận chuyển</label>
-                        <input type="number" name="shipping_fee" id="oeShippingFee" min="0" step="1000"
-                            class="form-control @error('shipping_fee') is-invalid @enderror"
-                            value="{{ old('shipping_fee', (float) $order->shipping_fee) }}">
-                        @error('shipping_fee') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                    </div>
-                    <div class="oc-summary-row">
-                        <span>Tạm tính</span>
-                        <span id="oeSubtotal">0đ</span>
-                    </div>
-                    <div class="oc-summary-row">
-                        <span>Phí vận chuyển</span>
-                        <span id="oeSummaryShipping">0đ</span>
-                    </div>
-                    <div class="oc-summary-row total mb-0">
-                        <span>Tổng tiền</span>
-                        <span id="oeTotal">0đ</span>
-                    </div>
-                @else
-                    <div class="oc-summary-row">
-                        <span>Phí vận chuyển</span>
-                        <span>{{ number_format((float) $order->shipping_fee, 0, ',', '.') }}đ</span>
-                    </div>
-                    <div class="oc-summary-row total mb-0">
-                        <span>Tổng tiền</span>
-                        <span>{{ number_format((float) $order->total_money, 0, ',', '.') }}đ</span>
-                    </div>
-                @endif
-            </div>
-        </div>
+                        <hr class="my-3">
 
-        {{-- Ghi chú --}}
-        <div class="card edit-card shadow-sm mb-0">
-            <div class="card-header"><span class="fw-bold" style="font-size:14px;">Ghi chú</span></div>
-            <div class="card-body p-4">
-                <textarea name="note" class="form-control @error('note') is-invalid @enderror" rows="3"
-                    placeholder="Ghi chú nội bộ (không bắt buộc)">{{ old('note', $order->note) }}</textarea>
-                @error('note') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        <div class="edit-field mb-2">
+                            <label>Phí vận chuyển</label>
+                            <input type="number" name="shipping_fee" id="oeShippingFee" min="0" step="1000"
+                                class="form-control form-control-sm @error('shipping_fee') is-invalid @enderror"
+                                value="{{ old('shipping_fee', (float) $order->shipping_fee) }}">
+                            @error('shipping_fee') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gr-summary-bar">
+                            <div style="font-size:12.5px;" class="text-muted">
+                                Tạm tính: <span id="oeSubtotal" class="fw-bold text-dark">0đ</span>
+                                &nbsp;·&nbsp; Ship: <span id="oeSummaryShipping" class="fw-bold text-dark">0đ</span>
+                            </div>
+                            <div style="font-size:15px;">
+                                Tổng tiền: <span id="oeTotal" class="fw-bold">0đ</span>
+                            </div>
+                        </div>
+                    @else
+                        <div class="table-responsive">
+                            <table class="table oc-items-table mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Sản phẩm</th>
+                                        <th style="width:110px;">Đơn giá</th>
+                                        <th style="width:70px;">SL</th>
+                                        <th style="width:120px;">Thành tiền</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($items as $item)
+                                        <tr>
+                                            <td>
+                                                <div class="fw-semibold">{{ $item['product_name'] }}</div>
+                                                @if($item['color'] || $item['size'])
+                                                    <div class="text-muted" style="font-size:12px;">{{ collect([$item['color'], $item['size']])->filter()->implode(' · ') }}</div>
+                                                @endif
+                                            </td>
+                                            <td>{{ number_format($item['unit_price'], 0, ',', '.') }}đ</td>
+                                            <td>{{ $item['quantity'] }}</td>
+                                            <td>{{ number_format($item['unit_price'] * $item['quantity'], 0, ',', '.') }}đ</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                        <hr class="my-3">
+                        <div class="d-flex justify-content-between align-items-center flex-wrap">
+                            <div style="font-size:12.5px;" class="text-muted">
+                                Phí vận chuyển: <span class="fw-bold text-dark">{{ number_format((float) $order->shipping_fee, 0, ',', '.') }}đ</span>
+                            </div>
+                            <div style="font-size:15px;">
+                                Tổng tiền: <span class="fw-bold">{{ number_format((float) $order->total_money, 0, ',', '.') }}đ</span>
+                            </div>
+                        </div>
+                    @endif
+                </div>
             </div>
-        </div>
+        @endif
     </div>
 
     <div class="border-top bg-light px-4 py-3 d-flex flex-wrap justify-content-end gap-2">
@@ -243,13 +273,13 @@
     /* ── Dropdown địa chỉ (bo viền) ── */
     (function () {
         const root    = document.getElementById('oeAddressDrop');
+        if (!root) return;
         const trigger = document.getElementById('oeAddressTrigger');
         const panel   = document.getElementById('oeAddressPanel');
         const label   = document.getElementById('oeAddressLabel');
         const list    = document.getElementById('oeAddressList');
         const hidden  = document.getElementById('oeAddressId');
         const newFields = document.getElementById('oeNewAddressFields');
-        if (!root) return;
 
         function open()  { panel.hidden = false; trigger.classList.add('is-open'); trigger.setAttribute('aria-expanded', 'true'); }
         function close() { panel.hidden = true;  trigger.classList.remove('is-open'); trigger.setAttribute('aria-expanded', 'false'); }
@@ -316,15 +346,21 @@
             return;
         }
 
-        body.innerHTML = items.map((item, idx) => `
+        body.innerHTML = items.map((item, idx) => {
+            const sub = [item.color, item.size].filter(Boolean).join(' · ');
+            return `
             <tr>
-                <td>${item.name} ${item.color ? '· ' + item.color : ''} ${item.size ? '· ' + item.size : ''}</td>
+                <td>
+                    <div class="fw-semibold">${item.name}</div>
+                    ${sub ? `<div class="text-muted" style="font-size:12px;">${sub}</div>` : ''}
+                </td>
                 <td>${money(item.unit_price)}</td>
                 <td><input type="number" class="form-control form-control-sm oc-qty-input" data-idx="${idx}" min="1" max="${item.stock || item.quantity}" value="${item.quantity}"></td>
                 <td>${money(item.unit_price * item.quantity)}</td>
                 <td><button type="button" class="btn btn-sm btn-light border oe-remove-item" data-idx="${idx}"><i class="fa-solid fa-trash"></i></button></td>
             </tr>
-        `).join('');
+        `;
+        }).join('');
 
         hiddenWrap.innerHTML = items.map((item, idx) => `
             <input type="hidden" name="items[${idx}][product_variant_id]" value="${item.id}">
