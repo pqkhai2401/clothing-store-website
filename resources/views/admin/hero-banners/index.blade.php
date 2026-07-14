@@ -2,95 +2,161 @@
 
 @section('title', 'Banner trang chủ')
 
+@push('styles')
+    @include('admin.products.styles')
+    <style>
+        .hero-banner-table { min-width: 900px; }
+
+        .hero-banner-thumb {
+            width: 110px;
+            height: 55px;
+            object-fit: cover;
+            border-radius: 6px;
+            border: 1px solid #e5e7eb;
+        }
+
+        .hero-banner-row-action-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 30px;
+            height: 30px;
+            border: 1px solid transparent;
+            border-radius: 8px;
+            color: #0F172A;
+            background: #F1F5F9;
+            font-size: 13px;
+            transition: background .15s, color .15s;
+        }
+        .hero-banner-row-action-btn:hover {
+            background: #E2E8F0;
+            color: #020617;
+        }
+        .hero-banner-row-action-btn.text-danger:hover {
+            background: #FEF2F2;
+            color: #DC2626;
+        }
+
+        .hero-banner-status-btn {
+            border: 0;
+            background: none;
+            padding: 0;
+            cursor: pointer;
+        }
+
+        [data-theme="dark"] .hero-banner-row-action-btn {
+            background: #101C33 !important;
+            color: #CBD5E1 !important;
+        }
+        [data-theme="dark"] .hero-banner-row-action-btn:hover {
+            background: #162843 !important;
+            color: #fff !important;
+        }
+        [data-theme="dark"] .hero-banner-row-action-btn.text-danger:hover {
+            background: rgba(239, 68, 68, 0.15) !important;
+            color: #F87171 !important;
+        }
+        [data-theme="dark"] .hero-banner-thumb {
+            border-color: #22324D !important;
+        }
+    </style>
+@endpush
+
 @section('content')
-<main class="app-main container-fluid py-4">
+<div class="product-admin-page container-fluid py-4">
     <x-notification />
 
-    <div class="d-flex align-items-center justify-content-between gap-3 mb-4 flex-wrap">
-        <div>
-            <h1 class="h4 fw-bold mb-1" style="color:#174761;">Banner trang chủ</h1>
-            <p class="mb-0 text-muted" style="font-size:13px;">Quản lý các banner hero hiển thị ở đầu trang chủ. Bật nhiều banner cùng lúc sẽ hiển thị dạng slider tự động chuyển.</p>
+    <section class="px-3 px-md-4">
+        <div class="d-flex align-items-start justify-content-between flex-wrap gap-3">
+            <div>
+                <h1 class="product-header-title mb-2">Banner trang chủ</h1>
+                <p class="product-header-desc mb-0">Quản lý các banner hero hiển thị ở đầu trang chủ. Bật nhiều banner cùng lúc sẽ hiển thị dạng slider tự động chuyển.</p>
+            </div>
+            <div class="product-header-actions">
+                <a href="{{ route('admin.hero-banners.create') }}" class="btn btn-dark product-action-btn">
+                    <i class="fa-solid fa-plus me-1"></i> Thêm banner
+                </a>
+            </div>
         </div>
-        <div class="product-header-actions">
-            <a href="{{ route('admin.hero-banners.create') }}" class="btn btn-dark product-action-btn">
-                <i class="fa-solid fa-plus me-1"></i> Thêm banner
-            </a>
-        </div>
-    </div>
 
-    <div class="card shadow-sm">
-        <div class="card-body p-0">
+        <div class="product-table-wrap mt-4">
             <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0" style="font-size: 13px;">
-                    <thead class="table-light">
+                <table class="table table-hover product-table hero-banner-table align-middle">
+                    <thead>
                         <tr>
-                            <th class="ps-3" style="width: 60px;">ID</th>
+                            <th style="width: 60px;">ID</th>
                             <th style="width: 140px;">Ảnh</th>
                             <th>Tiêu đề</th>
                             <th>Mô tả ngắn</th>
                             <th class="text-center" style="width: 90px;">Thứ tự</th>
-                            <th style="width: 130px;">Trạng thái</th>
-                            <th class="text-end pe-3" style="width: 170px;">Hành động</th>
+                            <th style="width: 150px;">Trạng thái</th>
+                            <th class="text-center" style="width: 110px;">Thao tác</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse($heroBanners as $banner)
                             <tr>
-                                <td class="ps-3 fw-bold">{{ $banner->id }}</td>
+                                <td class="fw-bold">{{ $banner->id }}</td>
                                 <td>
-                                    <img src="{{ asset($banner->image_path) }}" alt="{{ $banner->title }}"
-                                         class="img-thumbnail" style="width: 110px; height: 55px; object-fit: cover;">
+                                    <img src="{{ asset($banner->image_path) }}" alt="{{ $banner->title }}" class="hero-banner-thumb">
                                 </td>
-                                <td><strong class="text-primary">{{ $banner->title ?: '—' }}</strong></td>
+                                <td><strong class="text-dark">{{ $banner->title ?: '—' }}</strong></td>
                                 <td class="text-muted" style="max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                                     {{ $banner->subtitle }}
                                 </td>
                                 <td class="text-center">
-                                    <span class="badge bg-secondary rounded-pill" style="font-size: 12px;">{{ $banner->sort_order }}</span>
+                                    <span class="status-badge status-badge--inactive">{{ $banner->sort_order }}</span>
                                 </td>
                                 <td>
-                                    <form action="{{ route('admin.hero-banners.toggleStatus', $banner->id) }}" method="POST" class="d-inline">
+                                    <form action="{{ route('admin.hero-banners.toggleStatus', $banner->id) }}" method="POST">
                                         @csrf
                                         @method('PATCH')
-                                        <button type="submit" class="btn btn-sm border-0 p-0" style="background:none;" title="Bấm để bật/tắt hiển thị">
+                                        <button type="submit" class="hero-banner-status-btn" title="Bấm để bật/tắt hiển thị">
                                             @if($banner->is_active)
-                                                <span class="badge bg-success" style="font-size: 11px; padding: 5px 8px;">Đang hiển thị</span>
+                                                <span class="status-badge status-badge--active">Đang hiển thị</span>
                                             @else
-                                                <span class="badge bg-secondary" style="font-size: 11px; padding: 5px 8px;">Đang tắt</span>
+                                                <span class="status-badge status-badge--inactive">Đang tắt</span>
                                             @endif
                                         </button>
                                     </form>
                                 </td>
-                                <td class="text-end pe-3">
-                                    <div class="btn-group">
-                                        <a href="{{ route('admin.hero-banners.edit', $banner->id) }}" class="btn btn-sm btn-outline-primary" title="Sửa">
-                                            <i class="fa-solid fa-pen"></i>
+                                <td class="text-center">
+                                    <div class="d-flex align-items-center justify-content-center gap-1">
+                                        <a href="{{ route('admin.hero-banners.edit', $banner->id) }}" class="hero-banner-row-action-btn" title="Sửa">
+                                            <i class="fa-solid fa-pen-clip"></i>
                                         </a>
-                                        <form action="{{ route('admin.hero-banners.destroy', $banner->id) }}" method="POST"
-                                              onsubmit="return confirm('Bạn có chắc chắn muốn xóa banner này không?');" class="d-inline">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Xóa">
-                                                <i class="fa-solid fa-trash"></i>
-                                            </button>
-                                        </form>
+                                        <button type="button" class="hero-banner-row-action-btn text-danger"
+                                            data-delete-url="{{ route('admin.hero-banners.destroy', $banner->id) }}"
+                                            data-delete-name="{{ $banner->title ?: '#'.$banner->id }}"
+                                            data-delete-type="banner"
+                                            title="Xóa">
+                                            <i class="fa-regular fa-trash-can"></i>
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="text-center py-4 text-muted">Chưa có banner nào. Trang chủ đang hiển thị banner mặc định.</td>
+                                <td colspan="7" class="text-center py-5">
+                                    <i class="fa-solid fa-images text-muted mb-3" style="font-size:42px;display:block;"></i>
+                                    <div class="fw-semibold text-muted">Chưa có banner nào. Trang chủ đang hiển thị banner mặc định.</div>
+                                </td>
                             </tr>
                         @endforelse
                     </tbody>
                 </table>
             </div>
         </div>
+
         @if($heroBanners->hasPages())
-            <div class="card-footer bg-white d-flex justify-content-end py-3">
+            <div class="bg-white border border-top-0 rounded-bottom px-3 py-2">
                 {{ $heroBanners->links() }}
             </div>
         @endif
-    </div>
-</main>
+    </section>
+</div>
+
+@push('modals')
+    @include('layouts.components.confirm.delete')
+@endpush
 @endsection
