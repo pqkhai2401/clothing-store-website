@@ -4,49 +4,6 @@
 
 @push('styles')
     @include('admin.orders.styles')
-    <style>
-        /* Modal update order */
-        .account-modal .modal-content {
-            border: 1px solid #d8dee6;
-            border-radius: 8px;
-            overflow: hidden;
-        }
-        .account-modal .modal-header {
-            background: #ffffff;
-            border-bottom: 1px solid #d8dee6;
-        }
-        .account-modal .modal-title {
-            font-size: 15px;
-            font-weight: 800;
-            text-transform: uppercase;
-        }
-        .account-action-btn {
-            min-height: 38px;
-            padding: 8px 20px;
-            border-radius: 10px;
-            font-weight: 700;
-            font-size: 13px;
-        }
-        .account-action-btn.btn-dark {
-            background: #16A34A !important;
-            border-color: #16A34A !important;
-            color: #fff !important;
-        }
-        .account-action-btn.btn-dark:hover {
-            background: #15803D !important;
-            border-color: #15803D !important;
-        }
-        .account-action-btn.btn-light {
-            background: #fff !important;
-            border: 1.5px solid #F87171 !important;
-            color: #DC2626 !important;
-        }
-        .account-action-btn.btn-light:hover {
-            background: #FEF2F2 !important;
-            border-color: #EF4444 !important;
-            color: #B91C1C !important;
-        }
-    </style>
 @endpush
 
 @section('content')
@@ -200,52 +157,7 @@
         </section>
     </div>
 
-    {{-- ── Order Update Modal ── --}}
-<div class="modal fade account-modal" id="orderUpdateModal" tabindex="-1" aria-labelledby="orderUpdateModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered" style="max-width:420px;">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="orderUpdateModalLabel">
-                    Cập nhật trạng thái đơn hàng
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body px-4 py-4">
-                <div class="mb-3">
-                    <label class="form-label" style="font-size:13px; font-weight:700;">
-                        Trạng thái thanh toán <span class="text-danger">*</span>
-                    </label>
-                    <select id="ouPaymentStatus" class="form-select" style="font-size:13px;">
-                        <option value="unpaid">Chưa thanh toán</option>
-                        <option value="paid">Đã thanh toán</option>
-                    </select>
-                    <div id="ouPaymentHint" class="form-text text-muted" style="font-size:12px; display:none;">
-                        Đồng bộ tự động từ cổng thanh toán online, không thể sửa tay.
-                    </div>
-                </div>
-                <div class="mb-1">
-                    <label class="form-label" style="font-size:13px; font-weight:700;">
-                        Trạng thái giao hàng <span class="text-danger">*</span>
-                    </label>
-                    <select id="ouOrderStatus" class="form-select" style="font-size:13px;">
-                        @foreach($statusLabels as $val => $label)
-                            <option value="{{ $val }}">{{ $label }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div id="ouError" class="text-danger mt-2" style="font-size:12px; display:none;"></div>
-            </div>
-            <div class="modal-footer justify-content-center gap-3 pb-4">
-                <button type="button" class="btn account-action-btn btn-light" data-bs-dismiss="modal">
-                    Huỷ
-                </button>
-                <button type="button" id="ouSaveBtn" class="btn account-action-btn btn-dark" style="min-width:120px;">
-                    Cập nhật
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
+    @include('admin.orders.partials.edit-offcanvas')
 
 {{-- Modal chi tiết đơn hàng (chỉ xem) --}}
 <div class="modal fade account-modal" id="orderDetailModal" tabindex="-1" aria-labelledby="orderDetailModalLabel" aria-hidden="true">
@@ -304,179 +216,6 @@
                     titleEl.textContent = 'Chi tiết đơn hàng ' + (data.code || '');
                 } catch {
                     body.innerHTML = '<div class="text-center py-5 text-danger">Không tải được chi tiết đơn hàng. Vui lòng thử lại.</div>';
-                }
-            });
-        }());
-
-        /* ── Order Update Modal ── */
-        (function () {
-            const modal        = new bootstrap.Modal(document.getElementById('orderUpdateModal'));
-            const statusSel    = document.getElementById('ouOrderStatus');
-            const paymentSel   = document.getElementById('ouPaymentStatus');
-            const paymentHint  = document.getElementById('ouPaymentHint');
-            const saveBtn      = document.getElementById('ouSaveBtn');
-            const errBox       = document.getElementById('ouError');
-            const csrf         = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
-            let currentOrderId = null;
-            let currentRow     = null;
-
-            const statusLabels = @json($statusLabels);
-            const statusTransitions = @json(\App\Http\Controllers\Admin\OrderController::STATUS_TRANSITIONS);
-
-            document.addEventListener('click', function (e) {
-                const btn = e.target.closest('[data-update-order]');
-                if (!btn) return;
-                currentOrderId = btn.dataset.updateOrder;
-                currentRow     = btn.closest('tr');
-
-                const currentStatus   = btn.dataset.status;
-                const paymentStatus   = btn.dataset.payment;
-                const isOnlineGateway = btn.dataset.onlineGateway === '1';
-                // Đơn online-gateway (PayOS/MoMo) chưa "paid" thì chỉ được hủy, không xử lý tiếp —
-                // khớp với gate canAdvanceOnlineOrder() ở backend.
-                const blockedByPayment = isOnlineGateway && paymentStatus !== 'paid';
-                let transitions = statusTransitions[currentStatus] ?? [];
-                if (blockedByPayment) {
-                    transitions = transitions.filter(function (s) { return s === 'cancelled'; });
-                }
-                const allowed = [currentStatus, ...transitions];
-                statusSel.innerHTML = allowed.map(function (val) {
-                    return `<option value="${val}">${statusLabels[val] ?? val}</option>`;
-                }).join('');
-
-                statusSel.value  = currentStatus;
-                paymentSel.value = paymentStatus;
-                // Đơn online-gateway: payment_status chỉ do webhook đồng bộ, khoá không cho sửa tay.
-                paymentSel.disabled = isOnlineGateway;
-                paymentHint.style.display = isOnlineGateway ? 'block' : 'none';
-                errBox.style.display = 'none';
-                errBox.textContent   = '';
-                saveBtn.disabled = false;
-                saveBtn.textContent = 'Cập nhật';
-                modal.show();
-            });
-
-            saveBtn.addEventListener('click', async function () {
-                if (!currentOrderId) return;
-                saveBtn.disabled    = true;
-                saveBtn.innerHTML   = '<span class="spinner-border spinner-border-sm me-1"></span> Đang lưu...';
-                errBox.style.display = 'none';
-
-                try {
-                    const res = await fetch(`/admin/orders/${currentOrderId}`, {
-                        method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/json',
-                            'X-CSRF-TOKEN': csrf,
-                        },
-                        body: JSON.stringify({
-                            status:         statusSel.value,
-                            payment_status: paymentSel.value,
-                            note:           '',
-                        }),
-                    });
-
-                    if (!res.ok) {
-                        const data = await res.json().catch(() => ({}));
-                        const msg = data?.message || Object.values(data?.errors ?? {}).flat().join(' ') || 'Có lỗi xảy ra.';
-                        errBox.textContent   = msg;
-                        errBox.style.display = 'block';
-                        saveBtn.disabled     = false;
-                        saveBtn.textContent  = 'Cập nhật';
-                        return;
-                    }
-
-                    modal.hide();
-                    window.location.reload();
-                    return;
-                } catch {
-                    errBox.textContent   = 'Không thể kết nối. Vui lòng thử lại.';
-                    errBox.style.display = 'block';
-                    saveBtn.disabled     = false;
-                    saveBtn.textContent  = 'Cập nhật';
-                }
-            });
-        }());
-
-        /* ── Sổ xuống chọn nhanh trạng thái đơn / thanh toán ngay trong bảng ── */
-        (function () {
-            const csrf = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
-
-            function closeAllPanels(except) {
-                document.querySelectorAll('.oc-row-panel').forEach(function (p) {
-                    if (p === except) return;
-                    p.hidden = true;
-                    p.closest('.oc-row-dropdown')?.querySelector('.oc-row-trigger')?.classList.remove('is-open');
-                });
-            }
-
-            document.addEventListener('click', async function (e) {
-                const trigger = e.target.closest('.oc-row-trigger');
-                if (trigger) {
-                    const dropdown = trigger.closest('.oc-row-dropdown');
-                    const panel = dropdown.querySelector('.oc-row-panel');
-                    const willOpen = panel.hidden;
-                    closeAllPanels();
-                    panel.hidden = !willOpen;
-                    trigger.classList.toggle('is-open', willOpen);
-                    return;
-                }
-
-                const item = e.target.closest('.oc-row-panel .hk-cat-item');
-                if (item) {
-                    const dropdown = item.closest('.oc-row-dropdown');
-                    const row       = dropdown.closest('tr');
-                    const orderId   = dropdown.dataset.orderId;
-                    const field     = dropdown.dataset.field;
-                    const newValue  = item.dataset.value;
-                    const newCss    = item.dataset.css;
-
-                    // Dùng data-value ở phần tử [data-field] (dropdown tương tác hoặc badge tĩnh
-                    // khi trạng thái/thanh toán bị khoá) để lấy giá trị hiện tại của field còn lại.
-                    const statusDrop  = row.querySelector('[data-field="status"]');
-                    const paymentDrop = row.querySelector('[data-field="payment_status"]');
-
-                    const payload = {
-                        status:         field === 'status' ? newValue : (statusDrop?.dataset.value ?? ''),
-                        payment_status: field === 'payment_status' ? newValue : (paymentDrop?.dataset.value ?? ''),
-                        note: '',
-                    };
-
-                    closeAllPanels();
-
-                    const trigger = dropdown.querySelector('.oc-row-trigger');
-                    const previousValue = trigger.dataset.value;
-                    const previousCss   = Array.from(trigger.classList).find(c => c.startsWith('order-badge--') || c.startsWith('payment-badge--'));
-                    trigger.disabled = true;
-
-                    try {
-                        const res = await fetch(`/admin/orders/${orderId}`, {
-                            method: 'PUT',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Accept': 'application/json',
-                                'X-CSRF-TOKEN': csrf,
-                            },
-                            body: JSON.stringify(payload),
-                        });
-
-                        if (!res.ok) throw new Error('update failed');
-
-                        window.location.reload();
-                        return;
-                    } catch {
-                        alert('Không thể cập nhật. Vui lòng thử lại.');
-                        trigger.className = (field === 'status' ? 'order-badge' : 'payment-badge') + ' oc-row-trigger ' + (previousCss ?? '');
-                        trigger.dataset.value = previousValue;
-                    } finally {
-                        trigger.disabled = false;
-                    }
-                    return;
-                }
-
-                if (!e.target.closest('.oc-row-dropdown')) {
-                    closeAllPanels();
                 }
             });
         }());
@@ -693,6 +432,45 @@
         }());
 
     }());
+    </script>
+
+    <script>
+    /* ── Chạy lại các thẻ <script> bên trong một khối HTML vừa được nạp qua innerHTML ──
+       (trình duyệt không tự thực thi <script> được gán qua innerHTML, phải dựng lại thủ công) ── */
+    window.runInjectedScripts = window.runInjectedScripts || function (container) {
+        Array.from(container.querySelectorAll('script')).forEach(function (oldScript) {
+            const newScript = document.createElement('script');
+            Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
+            newScript.textContent = oldScript.textContent;
+            oldScript.replaceWith(newScript);
+        });
+    };
+
+    /* ── Panel "Sửa đơn hàng" trượt từ phải: nạp form qua AJAX ──
+       Dùng event delegation vì bảng được nạp lại qua AJAX. */
+    document.addEventListener('click', function (e) {
+        const trigger = e.target.closest('[data-order-edit-trigger]');
+        if (!trigger) return;
+        e.preventDefault();
+
+        const url = trigger.dataset.editUrl;
+        const offcanvasEl = document.getElementById('orderEditOffcanvas');
+        const bodyEl = offcanvasEl?.querySelector('[data-order-edit-body]');
+        if (!url || !offcanvasEl || !bodyEl) return;
+
+        bodyEl.innerHTML = '<div class="offcanvas-body text-center py-5"><div class="spinner-border text-secondary" role="status"></div></div>';
+        bootstrap.Offcanvas.getOrCreateInstance(offcanvasEl).show();
+
+        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
+            .then(res => { if (!res.ok) throw new Error('request-failed'); return res.json(); })
+            .then(data => {
+                bodyEl.innerHTML = data.html;
+                window.runInjectedScripts(bodyEl);
+            })
+            .catch(() => {
+                bodyEl.innerHTML = '<div class="offcanvas-body text-danger p-4">Không thể tải form sửa đơn hàng. Vui lòng thử lại.</div>';
+            });
+    });
     </script>
 
     @include('admin.partials.realtime-table')

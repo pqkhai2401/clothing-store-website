@@ -19,12 +19,6 @@
         .oc-search-item:hover { background: #f0fdf4; }
         .oc-search-item .oc-item-sub { color: #6b7280; font-size: 12px; }
 
-        .oc-customer-card {
-            display: flex; align-items: center; justify-content: space-between;
-            border: 1.5px solid #16A34A; background: #F0FDF4; border-radius: 8px;
-            padding: 10px 14px; font-size: 13px;
-        }
-
         .oc-items-table th, .oc-items-table td { font-size: 13px; vertical-align: middle; }
         .oc-items-table .oc-qty-input { width: 70px; }
         .oc-empty-items { padding: 24px; text-align: center; color: #94A3B8; font-size: 13px; }
@@ -61,7 +55,6 @@
         [data-theme="dark"] .oc-search-results { background: #101C33 !important; border-color: #2A3B59 !important; }
         [data-theme="dark"] .oc-search-item { border-color: #1E293B !important; color: #E2E8F0; }
         [data-theme="dark"] .oc-search-item:hover { background: #162843 !important; }
-        [data-theme="dark"] .oc-customer-card { background: rgba(34,197,94,0.1) !important; border-color: #16A34A !important; color: #E2E8F0; }
         [data-theme="dark"] .sticky-action-bar { background: #0F1B33 !important; border-color: #2A3B59 !important; }
         [data-theme="dark"] .oc-summary-row.total { border-color: #2A3B59 !important; }
         [data-theme="dark"] .oc-card-divider { border-color: #2A3B59 !important; }
@@ -90,29 +83,33 @@
             {{-- ── CỘT TRÁI ── --}}
             <div class="col-lg-8">
 
-                {{-- Khách hàng & Địa chỉ giao hàng (gộp chung 1 thẻ) --}}
+                {{-- Khách hàng, Địa chỉ giao hàng, Sản phẩm (gộp 1 thẻ) --}}
                 <div class="card edit-card shadow-sm mb-4">
-                    <div class="card-header"><span class="fw-bold" style="font-size:14px;">Khách hàng &amp; Địa chỉ giao hàng</span></div>
+                    <div class="card-header"><span class="fw-bold" style="font-size:14px;">Thông tin đơn hàng</span></div>
                     <div class="card-body p-4">
-                        <div class="edit-field oc-search-wrap mb-2">
-                            <label>Tìm khách hàng <span class="text-danger">*</span></label>
-                            <input type="text" id="ocCustomerSearch" class="form-control @error('user_id') is-invalid @enderror"
-                                placeholder="Nhập tên, email hoặc SĐT khách hàng..." autocomplete="off">
-                            <div class="oc-search-results d-none" id="ocCustomerResults"></div>
-                            @error('user_id') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
-                        </div>
-                        <div id="ocSelectedCustomer" class="oc-customer-card d-none">
-                            <div>
-                                <div class="fw-bold" id="ocSelectedCustomerName"></div>
-                                <div class="text-muted" id="ocSelectedCustomerSub"></div>
+
+                        <div class="section-title mb-3">Khách hàng</div>
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-7 edit-field oc-search-wrap mb-0">
+                                <label>Tên khách hàng <span class="text-danger">*</span></label>
+                                <input type="text" id="ocCustomerSearch" name="customer_name"
+                                    class="form-control @error('user_id') is-invalid @enderror @error('customer_name') is-invalid @enderror"
+                                    value="{{ old('customer_name') }}"
+                                    placeholder="Nhập tên, email hoặc SĐT khách hàng..." autocomplete="off">
+                                <div class="oc-search-results d-none" id="ocCustomerResults"></div>
+                                @error('user_id') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                                @error('customer_name') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                             </div>
-                            <button type="button" class="btn btn-sm btn-light border" id="ocChangeCustomer">Đổi khách hàng</button>
+                            <div class="col-md-5 edit-field mb-0">
+                                <label>Số điện thoại <span class="text-danger">*</span></label>
+                                <input type="text" name="phone" id="ocPhone" class="form-control @error('phone') is-invalid @enderror" value="{{ old('phone') }}">
+                                @error('phone') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                            </div>
                         </div>
 
-                        <hr class="oc-card-divider my-4">
+                        <hr>
 
-                        <div class="oc-subsection-title mb-3">Địa chỉ giao hàng</div>
-
+                        <div class="section-title mb-3">Địa chỉ giao hàng</div>
                         <div class="edit-field">
                             <label>Địa chỉ đã lưu</label>
                             <div class="hk-cat-filter oc-dropdown" id="ocAddressDrop">
@@ -150,13 +147,10 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </div>
 
-                {{-- Sản phẩm --}}
-                <div class="card edit-card shadow-sm mb-4">
-                    <div class="card-header"><span class="fw-bold" style="font-size:14px;">Sản phẩm</span></div>
-                    <div class="card-body p-4">
+                        <hr>
+
+                        <div class="section-title mb-3">Sản phẩm</div>
                         <div class="edit-field oc-search-wrap">
                             <label>Tìm sản phẩm (tên hoặc SKU)</label>
                             <input type="text" id="ocProductSearch" class="form-control" placeholder="Nhập tên sản phẩm hoặc SKU..." autocomplete="off">
@@ -194,12 +188,6 @@
                 <div class="card edit-card shadow-sm mb-4">
                     <div class="card-header"><span class="fw-bold" style="font-size:14px;">Thanh toán & Vận chuyển</span></div>
                     <div class="card-body p-4">
-                        <div class="edit-field">
-                            <label>Số điện thoại liên hệ <span class="text-danger">*</span></label>
-                            <input type="text" name="phone" id="ocPhone" class="form-control @error('phone') is-invalid @enderror" value="{{ old('phone') }}">
-                            @error('phone') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                        </div>
-
                         @php
                             $oldPaymentMethodId = old('payment_method_id');
                             $selectedPaymentMethodLabel = '— Chọn phương thức —';
@@ -325,16 +313,14 @@
     const csrf = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
     const money = (n) => Number(n || 0).toLocaleString('vi-VN') + 'đ';
 
-    /* ── Tìm & chọn khách hàng ── */
+    /* ── Tìm & chọn khách hàng (gõ tên khách chưa có sẵn = tạo khách hàng mới khi lưu đơn) ── */
     (function () {
         const input   = document.getElementById('ocCustomerSearch');
         const results = document.getElementById('ocCustomerResults');
         const userIdField = document.getElementById('ocUserId');
-        const selectedCard = document.getElementById('ocSelectedCustomer');
-        const selectedName = document.getElementById('ocSelectedCustomerName');
-        const selectedSub  = document.getElementById('ocSelectedCustomerSub');
-        const changeBtn    = document.getElementById('ocChangeCustomer');
+        const phoneField   = document.getElementById('ocPhone');
         let timer = null;
+        let selectedName = null;
 
         function search(q) {
             fetch(`{{ route('admin.orders.searchCustomers') }}?q=${encodeURIComponent(q)}`, {
@@ -346,10 +332,10 @@
 
         function renderResults(customers) {
             if (!customers.length) {
-                results.innerHTML = '<div class="oc-search-item text-muted">Không tìm thấy khách hàng.</div>';
+                results.innerHTML = '<div class="oc-search-item text-muted">Không tìm thấy khách hàng — sẽ tạo khách hàng mới khi lưu đơn.</div>';
             } else {
                 results.innerHTML = customers.map(c => `
-                    <div class="oc-search-item" data-id="${c.id}" data-name="${c.username}" data-sub="${c.email ?? ''} ${c.phone_number ?? ''}">
+                    <div class="oc-search-item" data-id="${c.id}" data-name="${c.username}" data-phone="${c.phone_number ?? ''}">
                         <div>${c.username}</div>
                         <div class="oc-item-sub">${c.email ?? ''} ${c.phone_number ? '· ' + c.phone_number : ''}</div>
                     </div>
@@ -359,6 +345,16 @@
         }
 
         input.addEventListener('input', function () {
+            // Sửa lại tên sau khi đã chọn 1 khách (hoặc gõ tên hoàn toàn mới chưa từng chọn) →
+            // bỏ liên kết tới khách đã chọn, coi như đang nhập khách hàng mới.
+            if (userIdField.value !== '' && input.value !== selectedName) {
+                userIdField.value = '';
+                selectedName = null;
+            }
+            if (!userIdField.value) {
+                resetAddressForNewCustomer();
+            }
+
             clearTimeout(timer);
             const q = input.value.trim();
             timer = setTimeout(() => search(q), 300);
@@ -373,21 +369,12 @@
             if (!item) return;
 
             userIdField.value = item.dataset.id;
-            selectedName.textContent = item.dataset.name;
-            selectedSub.textContent  = item.dataset.sub;
-            selectedCard.classList.remove('d-none');
-            input.closest('.oc-search-wrap').classList.add('d-none');
+            input.value = item.dataset.name;
+            selectedName = item.dataset.name;
+            phoneField.value = item.dataset.phone;
             results.classList.add('d-none');
 
             loadAddresses(item.dataset.id);
-        });
-
-        changeBtn.addEventListener('click', function () {
-            userIdField.value = '';
-            selectedCard.classList.add('d-none');
-            input.closest('.oc-search-wrap').classList.remove('d-none');
-            input.value = '';
-            input.focus();
         });
 
         document.addEventListener('click', function (e) {
@@ -478,6 +465,17 @@
                     newAddressFields.classList.remove('d-none');
                 }
             });
+    }
+
+    /* ── Chưa/không còn gắn với khách hàng nào có sẵn → coi như đang nhập khách hàng mới,
+       không có địa chỉ đã lưu nào nên luôn đưa thẳng về khối "nhập địa chỉ mới". ── */
+    function resetAddressForNewCustomer() {
+        const html = '<button type="button" class="hk-cat-item is-active" data-value="__new__" data-label="+ Thêm địa chỉ mới">+ Thêm địa chỉ mới</button>';
+        addressDropdown.setOptions(html);
+        addressDropdown.enable();
+        document.getElementById('ocAddressLabel').textContent = '+ Thêm địa chỉ mới';
+        addressIdField.value = '';
+        newAddressFields.classList.remove('d-none');
     }
 
     /* ── Tìm & thêm sản phẩm ── */
@@ -611,9 +609,11 @@
     }
 
     document.getElementById('createOrderForm').addEventListener('submit', function (e) {
-        if (!document.getElementById('ocUserId').value) {
+        const hasExistingCustomer = !!document.getElementById('ocUserId').value;
+        const hasNewCustomerName  = document.getElementById('ocCustomerSearch').value.trim() !== '';
+        if (!hasExistingCustomer && !hasNewCustomerName) {
             e.preventDefault();
-            alert('Vui lòng chọn khách hàng.');
+            alert('Vui lòng nhập hoặc chọn khách hàng.');
             return;
         }
         if (!items.length) {

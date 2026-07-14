@@ -231,7 +231,8 @@ Route::middleware(['auth.login', 'active.account', 'admin', 'force.password.chan
             Route::post('/trash/bulk-force-delete', [OrderController::class, 'bulkForceDelete'])->name('bulkForceDelete');
             $trashRoutes(OrderController::class)();
             Route::get('/{id}/detail', [OrderController::class, 'detail'])->name('detail');
-            Route::put('/{id}', [OrderController::class, 'update'])->name('update');
+            Route::get('/{id}/edit-content', [OrderController::class, 'editContent'])->name('editContent');
+            Route::put('/{id}/edit-content', [OrderController::class, 'updateContent'])->name('updateContent');
             Route::delete('/{id}', [OrderController::class, 'destroy'])->name('destroy');
             });
 
