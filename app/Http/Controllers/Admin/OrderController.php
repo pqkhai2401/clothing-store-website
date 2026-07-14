@@ -398,7 +398,7 @@ class OrderController extends Controller
         $q = trim((string) $request->input('q'));
 
         $variants = ProductVariant::query()
-            ->with(['product:id,name', 'color:id,name', 'size:id,name'])
+            ->with(['product:id,name,thumbnail', 'color:id,name,hex_code', 'size:id,name'])
             ->whereHas('product', fn ($p) => $p->where('status', true))
             ->where('stock', '>', 0)
             ->when($q !== '', function ($query) use ($q) {
@@ -413,7 +413,9 @@ class OrderController extends Controller
             ->map(fn (ProductVariant $variant) => [
                 'id'          => $variant->id,
                 'product_name' => $variant->product->name,
+                'thumbnail'   => $variant->product->thumbnail,
                 'color'       => $variant->color->name ?? '',
+                'color_hex'   => $variant->color?->display_hex_code ?? '#ccc',
                 'size'        => $variant->size->name ?? '',
                 'sku'         => $variant->sku,
                 'stock'       => $variant->stock,
@@ -555,7 +557,7 @@ class OrderController extends Controller
         return "khach.{$phone}.{$suffix}@khachhang.local";
     }
 
-    public function detail(string $id)
+    public function detail(Request $request, string $id)
     {
         $order = Order::with([
             'user',
@@ -630,7 +632,9 @@ class OrderController extends Controller
         $items = $order->orderItems->map(fn (OrderItem $item) => [
             'product_variant_id' => $item->product_variant_id,
             'product_name'       => $item->productVariant->product->name ?? '—',
+            'thumbnail'          => $item->productVariant->product->thumbnail ?? null,
             'color'              => $item->productVariant->color->name ?? '',
+            'color_hex'          => $item->productVariant->color?->display_hex_code ?? '#ccc',
             'size'               => $item->productVariant->size->name ?? '',
             'sku'                => $item->productVariant->sku ?? '',
             'unit_price'         => (float) $item->unit_price,
@@ -753,27 +757,7 @@ class OrderController extends Controller
         }
 
         DB::transaction(function () use ($order, $validated, $scope, $newStatus) {
-            $oldStatus = $order->status;
-
-            // Đơn online-gateway (PayOS/MoMo): payment_status chỉ do webhook/IPN đồng bộ, admin
-            // không sửa tay được — bỏ qua giá trị form gửi lên, giữ nguyên giá trị hiện tại.
-            // Đơn COD/thủ công: admin toàn quyền, và "Hoàn thành" coi như đã thu tiền (COD thu
-            // khi giao xong) → tự đánh dấu đã thanh toán.
-            $isOnlineGateway = $order->paymentMethod?->isOnlineGateway() ?? false;
-            $paymentStatus = match (true) {
-                $isOnlineGateway => $order->payment_status,
-                $newStatus === 'completed' => 'paid',
-                default => $validated['payment_status'],
-            };
-
-            $updateData = [
-                'status'         => $newStatus,
-                'payment_status' => $paymentStatus,
-                'note'           => $validated['note'] ?? null,
-                // Mốc ghi nhận doanh thu: chỉ set lần đầu đơn chuyển sang "Hoàn thành" (completed
-                // là trạng thái cuối nên không có chuyện đơn quay lại rồi hoàn tất lần 2).
-                'completed_at'   => $newStatus === 'completed' ? now() : $order->completed_at,
-            ];
+            $order->note = $validated['note'] ?? null;
 
             if ($scope !== 'none') {
                 $address = ($validated['address_id'] ?? null)
@@ -786,8 +770,8 @@ class OrderController extends Controller
                         'apartment_number' => $validated['new_address']['apartment_number'],
                     ]);
 
-                $updateData['address_id'] = $address->id;
-                $updateData['phone']      = $validated['phone'];
+                $order->address_id = $address->id;
+                $order->phone      = $validated['phone'];
             }
 
             if ($scope === 'full') {
@@ -813,17 +797,11 @@ class OrderController extends Controller
                     ]);
                 }
 
-                $updateData['shipping_fee'] = $validated['shipping_fee'];
-                $updateData['total_money']  = $itemsTotal + (float) $validated['shipping_fee'] - (float) $order->discount_amount;
+                $order->shipping_fee = $validated['shipping_fee'];
+                $order->total_money  = $itemsTotal + (float) $validated['shipping_fee'] - (float) $order->discount_amount;
             }
 
-            $order->update($updateData);
-
-            if (in_array($newStatus, ['processing', 'shipping'], true) && !in_array($oldStatus, ['processing', 'shipping'], true)) {
-                $this->autoGenerateStockIssueForOrder($order);
-            } elseif ($newStatus === 'cancelled') {
-                $this->restoreStockForCancelledOrder($order);
-            }
+            $this->applyStatusChange($order, $newStatus, $validated['payment_status']);
         });
 
         $message = 'Cập nhật đơn hàng thành công.';
@@ -833,6 +811,76 @@ class OrderController extends Controller
         }
 
         return redirect()->route('admin.orders.detail', $id)->with('success', $message);
+    }
+
+    /**
+     * Đổi nhanh trạng thái giao hàng/thanh toán ngay từ dropdown trong bảng danh sách — không đụng
+     * tới địa chỉ/SĐT/sản phẩm (khác với updateContent()). Dùng chung các quy tắc chuyển trạng thái
+     * với updateContent() qua applyStatusChange().
+     */
+    public function quickUpdateStatus(Request $request, string $id)
+    {
+        $order = Order::with('paymentMethod')->findOrFail($id);
+
+        $validated = $request->validate([
+            'status'         => ['required', Rule::in(array_keys(self::STATUS_LABELS))],
+            'payment_status' => ['required', Rule::in(array_keys(self::PAYMENT_STATUS_LABELS))],
+        ], [
+            'status.required' => 'Vui lòng chọn trạng thái đơn hàng.',
+            'payment_status.required' => 'Vui lòng chọn trạng thái thanh toán.',
+        ]);
+
+        $newStatus = $validated['status'];
+
+        if (! self::isValidStatusTransition($order->status, $newStatus)) {
+            $message = "Không thể chuyển đơn hàng từ \"" . (self::STATUS_LABELS[$order->status] ?? $order->status)
+                . "\" sang \"" . (self::STATUS_LABELS[$newStatus] ?? $newStatus) . "\".";
+
+            return response()->json(['success' => false, 'message' => $message], 422);
+        }
+
+        if (! self::canAdvanceOnlineOrder($order, $newStatus)) {
+            $message = "Đơn hàng thanh toán online (PayOS/MoMo) chưa được xác nhận thanh toán, "
+                . "không thể chuyển sang \"" . (self::STATUS_LABELS[$newStatus] ?? $newStatus) . "\".";
+
+            return response()->json(['success' => false, 'message' => $message], 422);
+        }
+
+        DB::transaction(function () use ($order, $validated, $newStatus) {
+            $this->applyStatusChange($order, $newStatus, $validated['payment_status']);
+        });
+
+        return response()->json(['success' => true, 'message' => 'Cập nhật trạng thái đơn hàng thành công.']);
+    }
+
+    /**
+     * Áp dụng đổi status + tính lại payment_status theo đúng quy tắc (khóa thanh toán online,
+     * "Hoàn thành" tự đánh dấu đã trả cho COD) + hiệu ứng kho (trừ/hoàn) — dùng chung bởi
+     * updateContent() (đổi kèm nội dung) và quickUpdateStatus() (đổi nhanh từ danh sách).
+     */
+    private function applyStatusChange(Order $order, string $newStatus, string $submittedPaymentStatus): void
+    {
+        $oldStatus = $order->status;
+
+        $isOnlineGateway = $order->paymentMethod?->isOnlineGateway() ?? false;
+        $order->payment_status = match (true) {
+            $isOnlineGateway => $order->payment_status,
+            $newStatus === 'completed' => 'paid',
+            default => $submittedPaymentStatus,
+        };
+
+        $order->status = $newStatus;
+        // Mốc ghi nhận doanh thu: chỉ set lần đầu đơn chuyển sang "Hoàn thành" (completed là trạng
+        // thái cuối nên không có chuyện đơn quay lại rồi hoàn tất lần 2).
+        $order->completed_at = $newStatus === 'completed' ? now() : $order->completed_at;
+
+        $order->save();
+
+        if (in_array($newStatus, ['processing', 'shipping'], true) && ! in_array($oldStatus, ['processing', 'shipping'], true)) {
+            $this->autoGenerateStockIssueForOrder($order);
+        } elseif ($newStatus === 'cancelled') {
+            $this->restoreStockForCancelledOrder($order);
+        }
     }
 
     /**

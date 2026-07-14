@@ -220,6 +220,97 @@
             });
         }());
 
+        /* ── Sổ xuống chọn nhanh trạng thái đơn/thanh toán ngay trong bảng ── */
+        (function () {
+            const csrf = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+
+            function closeAllPanels(except) {
+                document.querySelectorAll('.oc-row-panel').forEach(function (p) {
+                    if (p === except) return;
+                    p.hidden = true;
+                    p.closest('.oc-row-dropdown')?.querySelector('.oc-row-trigger')?.classList.remove('is-open');
+                });
+            }
+
+            document.addEventListener('click', async function (e) {
+                const trigger = e.target.closest('.oc-row-trigger');
+                if (trigger) {
+                    const dropdown = trigger.closest('.oc-row-dropdown');
+                    const panel = dropdown.querySelector('.oc-row-panel');
+                    const willOpen = panel.hidden;
+                    closeAllPanels();
+                    panel.hidden = !willOpen;
+                    trigger.classList.toggle('is-open', willOpen);
+                    return;
+                }
+
+                const item = e.target.closest('.oc-row-panel .hk-cat-item');
+                if (item) {
+                    const dropdown = item.closest('.oc-row-dropdown');
+                    const row       = dropdown.closest('tr');
+                    const orderId   = dropdown.dataset.orderId;
+                    const field     = dropdown.dataset.field;
+                    const newValue  = item.dataset.value;
+
+                    // Dùng data-value ở phần tử [data-field] (dropdown tương tác hoặc badge tĩnh
+                    // khi trạng thái/thanh toán bị khoá) để lấy giá trị hiện tại của field còn lại.
+                    const statusDrop  = row.querySelector('[data-field="status"]');
+                    const paymentDrop = row.querySelector('[data-field="payment_status"]');
+
+                    const payload = {
+                        status:         field === 'status' ? newValue : (statusDrop?.dataset.value ?? ''),
+                        payment_status: field === 'payment_status' ? newValue : (paymentDrop?.dataset.value ?? ''),
+                    };
+
+                    closeAllPanels();
+
+                    const rowTrigger = dropdown.querySelector('.oc-row-trigger');
+                    const previousValue = rowTrigger.dataset.value;
+                    const previousCss   = Array.from(rowTrigger.classList).find(c => c.startsWith('order-badge--') || c.startsWith('payment-badge--'));
+                    rowTrigger.disabled = true;
+
+                    try {
+                        const res = await fetch(`/admin/orders/${orderId}/quick-status`, {
+                            method: 'PATCH',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': csrf,
+                            },
+                            body: JSON.stringify(payload),
+                        });
+
+                        const data = await res.json().catch(() => ({}));
+
+                        if (!res.ok) {
+                            alert(data.message || 'Không thể cập nhật. Vui lòng thử lại.');
+                            rowTrigger.className = (field === 'status' ? 'order-badge' : 'payment-badge') + ' oc-row-trigger ' + (previousCss ?? '');
+                            rowTrigger.dataset.value = previousValue;
+                            return;
+                        }
+
+                        if (window.reloadAdminTable) {
+                            window.reloadAdminTable();
+                        } else {
+                            window.location.reload();
+                        }
+                        return;
+                    } catch {
+                        alert('Không thể kết nối. Vui lòng thử lại.');
+                        rowTrigger.className = (field === 'status' ? 'order-badge' : 'payment-badge') + ' oc-row-trigger ' + (previousCss ?? '');
+                        rowTrigger.dataset.value = previousValue;
+                    } finally {
+                        rowTrigger.disabled = false;
+                    }
+                    return;
+                }
+
+                if (!e.target.closest('.oc-row-dropdown')) {
+                    closeAllPanels();
+                }
+            });
+        }());
+
         /* ── Filter đơn giản dạng "trigger + panel + hidden input" (trạng thái đơn / thanh toán) ── */
         function initSimpleFilterDropdown(dropId, triggerId, panelId, labelId, listId, hiddenId) {
             const drop    = document.getElementById(dropId);

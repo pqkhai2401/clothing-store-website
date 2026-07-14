@@ -40,6 +40,36 @@
             white-space: nowrap;
         }
 
+        /* ── Sổ xuống chọn nhanh trạng thái đơn/thanh toán ngay trong bảng ── */
+        .oc-row-dropdown { position: relative; display: inline-block; width: auto; }
+        .oc-row-trigger {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border-width: 1.5px;
+            border-style: solid;
+            cursor: pointer;
+        }
+        .oc-row-trigger:hover { filter: brightness(0.97); }
+        .oc-row-trigger:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.15);
+        }
+        .oc-row-caret {
+            font-size: 9px;
+            opacity: .65;
+            transition: transform .15s;
+        }
+        .oc-row-trigger.is-open .oc-row-caret { transform: rotate(180deg); }
+
+        /* Mở từ trái qua phải, rộng vừa nội dung thay vì lệch phải/quá cứng như select mặc định */
+        .oc-row-dropdown .hk-cat-panel {
+            left: 0;
+            right: auto;
+            width: 190px;
+        }
+        .oc-row-panel .hk-cat-list .hk-cat-item { font-size: 13px; }
+
         /* ── Nút Xem/Sửa hiển thị trực tiếp, không cần mở menu "..." ── */
         .order-row-action-btn {
             display: inline-flex;
@@ -189,6 +219,16 @@
         [data-theme="dark"] .order-code {
             background: #162843 !important;
             color: #CBD5E1 !important;
+        }
+        [data-theme="dark"] .oc-row-panel {
+            background: #101C33 !important;
+            border-color: #2A3B59 !important;
+        }
+        [data-theme="dark"] .oc-row-panel .hk-cat-item {
+            color: #E2E8F0 !important;
+        }
+        [data-theme="dark"] .oc-row-panel .hk-cat-item:hover {
+            background: #162843 !important;
         }
         [data-theme="dark"] .order-row-action-btn {
             background: #101C33 !important;
