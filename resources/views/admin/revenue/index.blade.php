@@ -269,7 +269,7 @@
                             <tr>
                                 <td>{{ $row['date']?->format('d/m/Y H:i') ?? '—' }}</td>
                                 <td class="fw-bold">
-                                    <a href="{{ route('admin.orders.detail', $row['order']->id) }}">
+                                    <a href="{{ route('admin.orders.detail', $row['order']->id) }}" data-order-detail>
                                         {{ $row['order']->order_code ?? ('#' . $row['order']->id) }}
                                     </a>
                                 </td>
@@ -296,11 +296,62 @@
         </div>
     </div>
 </main>
+
+{{-- Modal chi tiết đơn hàng (chỉ xem) — cùng cơ chế AJAX với trang Quản lý đơn hàng --}}
+<div class="modal fade account-modal" id="orderDetailModal" tabindex="-1" aria-labelledby="orderDetailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width:880px;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="orderDetailModalLabel">Chi tiết đơn hàng</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+            </div>
+            <div class="modal-body px-4 py-4" id="orderDetailBody">
+                <div class="text-center py-5 text-muted" id="orderDetailLoading">
+                    <span class="spinner-border spinner-border-sm me-2"></span> Đang tải...
+                </div>
+            </div>
+            <div class="modal-footer justify-content-end pb-4 px-4">
+                <button type="button" class="btn account-action-btn btn-light" data-bs-dismiss="modal">Đóng</button>
+            </div>
+        </div>
+    </div>
+</div>
 @endsection
 
 @push('scripts')
 <script>
 (function () {
+    /* ── Popup chi tiết đơn hàng (chỉ xem) — thay vì điều hướng sang trang đầy đủ ── */
+    (function () {
+        var modalEl = document.getElementById('orderDetailModal');
+        if (!modalEl) return;
+        var modal = new bootstrap.Modal(modalEl);
+        var body = document.getElementById('orderDetailBody');
+        var titleEl = document.getElementById('orderDetailModalLabel');
+        var loadingHtml = '<div class="text-center py-5 text-muted"><span class="spinner-border spinner-border-sm me-2"></span> Đang tải...</div>';
+
+        document.addEventListener('click', async function (e) {
+            var link = e.target.closest('[data-order-detail]');
+            if (!link) return;
+            e.preventDefault();
+
+            var url = link.getAttribute('href');
+            titleEl.textContent = 'Chi tiết đơn hàng';
+            body.innerHTML = loadingHtml;
+            modal.show();
+
+            try {
+                var res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } });
+                if (!res.ok) throw new Error('load failed');
+                var data = await res.json();
+                body.innerHTML = data.html || '';
+                titleEl.textContent = 'Chi tiết đơn hàng ' + (data.code || '');
+            } catch (err) {
+                body.innerHTML = '<div class="text-center py-5 text-danger">Không tải được chi tiết đơn hàng. Vui lòng thử lại.</div>';
+            }
+        });
+    }());
+
     // Đổi "Khoảng thời gian" sang "Tùy chỉnh..." thì hiện ô Từ ngày/Đến ngày, chờ bấm "Áp dụng"
     // (không tự submit vì còn phải nhập ngày). Các preset khác tự áp dụng ngay khi đổi lựa chọn,
     // giống hành vi bộ lọc ở trang Dashboard.
