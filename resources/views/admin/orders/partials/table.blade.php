@@ -165,9 +165,17 @@
                                     data-payment="{{ $order->payment_status }}"
                                     data-online-gateway="{{ $isOnlineGateway ? '1' : '0' }}"
                                     data-code="{{ $order->order_code ?? '#'.$order->id }}"
-                                    title="Cập nhật">
+                                    title="Cập nhật trạng thái">
                                     <i class="fa-regular fa-pen-to-square"></i>
                                 </button>
+                                @if(\App\Http\Controllers\Admin\OrderController::editableScope($order) !== 'none')
+                                    <button type="button" class="order-row-action-btn"
+                                        data-order-edit-trigger
+                                        data-edit-url="{{ route('admin.orders.editContent', $order->id) }}"
+                                        title="Sửa đơn hàng">
+                                        <i class="fa-solid fa-pen-clip"></i>
+                                    </button>
+                                @endif
                                 @if($order->status === 'pending')
                                     <button type="button" class="order-row-action-btn text-danger"
                                         data-delete-url="{{ route('admin.orders.destroy', $order->id) }}"

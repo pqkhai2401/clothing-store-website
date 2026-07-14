@@ -200,6 +200,8 @@
         </section>
     </div>
 
+    @include('admin.orders.partials.edit-offcanvas')
+
     {{-- ── Order Update Modal ── --}}
 <div class="modal fade account-modal" id="orderUpdateModal" tabindex="-1" aria-labelledby="orderUpdateModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" style="max-width:420px;">
@@ -640,6 +642,45 @@
         }());
 
     }());
+    </script>
+
+    <script>
+    /* ── Chạy lại các thẻ <script> bên trong một khối HTML vừa được nạp qua innerHTML ──
+       (trình duyệt không tự thực thi <script> được gán qua innerHTML, phải dựng lại thủ công) ── */
+    window.runInjectedScripts = window.runInjectedScripts || function (container) {
+        Array.from(container.querySelectorAll('script')).forEach(function (oldScript) {
+            const newScript = document.createElement('script');
+            Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
+            newScript.textContent = oldScript.textContent;
+            oldScript.replaceWith(newScript);
+        });
+    };
+
+    /* ── Panel "Sửa đơn hàng" trượt từ phải: nạp form qua AJAX ──
+       Dùng event delegation vì bảng được nạp lại qua AJAX. */
+    document.addEventListener('click', function (e) {
+        const trigger = e.target.closest('[data-order-edit-trigger]');
+        if (!trigger) return;
+        e.preventDefault();
+
+        const url = trigger.dataset.editUrl;
+        const offcanvasEl = document.getElementById('orderEditOffcanvas');
+        const bodyEl = offcanvasEl?.querySelector('[data-order-edit-body]');
+        if (!url || !offcanvasEl || !bodyEl) return;
+
+        bodyEl.innerHTML = '<div class="offcanvas-body text-center py-5"><div class="spinner-border text-secondary" role="status"></div></div>';
+        bootstrap.Offcanvas.getOrCreateInstance(offcanvasEl).show();
+
+        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
+            .then(res => { if (!res.ok) throw new Error('request-failed'); return res.json(); })
+            .then(data => {
+                bodyEl.innerHTML = data.html;
+                window.runInjectedScripts(bodyEl);
+            })
+            .catch(() => {
+                bodyEl.innerHTML = '<div class="offcanvas-body text-danger p-4">Không thể tải form sửa đơn hàng. Vui lòng thử lại.</div>';
+            });
+    });
     </script>
 
     @include('admin.partials.realtime-table')

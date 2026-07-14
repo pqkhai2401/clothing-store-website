@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Color;
 use App\Models\GoodsReceipt;
@@ -241,6 +242,7 @@ class GoodsReceiptController extends Controller
         $suppliers = $this->activeSuppliers();
         $goodsReceiptVariants = $this->goodsReceiptVariants();
         $warehouses = Warehouse::where('status', true)->orderBy('is_default', 'desc')->orderBy('name')->get();
+        $quickCreateData = $this->quickCreateFormData();
 
         return view('admin.goods-receipts.index', compact(
             'goodsReceipts',
@@ -250,7 +252,7 @@ class GoodsReceiptController extends Controller
             'suppliers',
             'goodsReceiptVariants',
             'warehouses'
-        ) + ['tab' => 'inbound']);
+        ) + $quickCreateData + ['tab' => 'inbound']);
     }
 
     public function create()
@@ -259,15 +261,22 @@ class GoodsReceiptController extends Controller
         $variants   = $this->goodsReceiptVariants();
         $warehouses = Warehouse::where('status', true)->orderBy('is_default', 'desc')->orderBy('name')->get();
 
-        // Dùng cho modal "Tạo nhanh sản phẩm" (Quick Create) ngay trong màn hình nhập kho.
-        $quickCreateCategories = Category::whereNull('parent_id')->with('childrenCategories')->orderBy('name')->get();
-        $quickCreateColors     = Color::orderBy('name')->get();
-        $quickCreateSizes      = Size::where('status', 1)->orderBy('sort_weight')->orderBy('name')->get();
+        return view('admin.goods-receipts.create', compact('suppliers', 'variants', 'warehouses')
+            + $this->quickCreateFormData());
+    }
 
-        return view('admin.goods-receipts.create', compact(
-            'suppliers', 'variants', 'warehouses',
-            'quickCreateCategories', 'quickCreateColors', 'quickCreateSizes'
-        ));
+    /**
+     * Dữ liệu cho modal "Thêm nhanh sản phẩm" (Quick Create) — dùng chung cho màn tạo phiếu
+     * nhập kho (offcanvas ở trang danh sách) và trang tạo phiếu dạng toàn màn hình.
+     */
+    private function quickCreateFormData(): array
+    {
+        return [
+            'quickCreateCategories' => Category::whereNull('parent_id')->with('childrenCategories')->orderBy('name')->get(),
+            'quickCreateBrands'     => Brand::orderBy('name')->get(),
+            'quickCreateColors'     => Color::orderBy('name')->get(),
+            'quickCreateSizes'      => Size::where('status', 1)->orderBy('sort_weight')->orderBy('name')->get(),
+        ];
     }
 
     public function stockCard(ProductVariant $variant)

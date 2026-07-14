@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Maatwebsite\Excel\Facades\Excel;
@@ -93,6 +94,31 @@ class OrderController extends Controller
         $isOnlineGateway = $order->paymentMethod?->isOnlineGateway() ?? false;
 
         return !$isOnlineGateway || $order->payment_status === 'paid';
+    }
+
+    /**
+     * Phạm vi được phép sửa NỘI DUNG đơn hàng (địa chỉ/SĐT/sản phẩm/phí ship/ghi chú) — khác với
+     * việc đổi status/payment_status ở update(). Trả về:
+     * - 'full': sửa được tất cả (địa chỉ, SĐT, sản phẩm, phí ship, ghi chú) — chỉ khi đơn còn
+     *   "Chờ xác nhận" VÀ (COD/thủ công, hoặc online nhưng CHƯA từng tạo link thanh toán).
+     * - 'limited': chỉ sửa được địa chỉ/SĐT/ghi chú — đơn "Đang xử lý" (đã trừ kho/xuất kho nên
+     *   khóa sản phẩm+tiền), hoặc đơn online đã tạo link thanh toán (payos_payload/momo_payload
+     *   đã "đóng băng" số tiền phía cổng, dù đơn vẫn đang "Chờ xác nhận").
+     * - 'none': không sửa gì — đơn "Đang giao"/"Hoàn thành"/"Đã hủy".
+     */
+    public static function editableScope(Order $order): string
+    {
+        if (! in_array($order->status, ['pending', 'processing'], true)) {
+            return 'none';
+        }
+
+        if ($order->status === 'processing') {
+            return 'limited';
+        }
+
+        $hasOnlinePaymentLink = filled($order->payos_payload) || filled($order->momo_payload);
+
+        return $hasOnlinePaymentLink ? 'limited' : 'full';
     }
 
     /**
@@ -570,6 +596,184 @@ class OrderController extends Controller
 
         return redirect()->route('admin.orders.detail', $id)
             ->with('success', 'Cập nhật đơn hàng thành công.');
+    }
+
+    /**
+     * Trả form "Sửa đơn hàng" (địa chỉ/SĐT/sản phẩm/phí ship/ghi chú) — khác với update() ở trên
+     * (chỉ đổi status/payment_status). Dùng cho panel trượt phải (AJAX) ở danh sách + trang chi tiết.
+     */
+    public function editContent(Request $request, string $id)
+    {
+        $order = Order::with([
+            'user',
+            'orderItems.productVariant.product',
+            'orderItems.productVariant.color',
+            'orderItems.productVariant.size',
+        ])->findOrFail($id);
+
+        $scope = self::editableScope($order);
+
+        if ($scope === 'none') {
+            $message = 'Đơn hàng ở trạng thái này không thể sửa nội dung.';
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['message' => $message], 403);
+            }
+
+            abort(403, $message);
+        }
+
+        $data = $this->editFormData($order, $scope);
+
+        if ($request->ajax()) {
+            return response()->json([
+                'html' => view('admin.orders.partials.edit-content', $data)->render(),
+            ]);
+        }
+
+        return redirect()->route('admin.orders.detail', $id);
+    }
+
+    private function editFormData(Order $order, string $scope): array
+    {
+        $addresses = $order->user->addresses()->orderByDesc('is_default')->orderByDesc('id')->get();
+
+        $items = $order->orderItems->map(fn (OrderItem $item) => [
+            'product_variant_id' => $item->product_variant_id,
+            'product_name'       => $item->productVariant->product->name ?? '—',
+            'color'              => $item->productVariant->color->name ?? '',
+            'size'               => $item->productVariant->size->name ?? '',
+            'sku'                => $item->productVariant->sku ?? '',
+            'unit_price'         => (float) $item->unit_price,
+            'quantity'           => $item->quantity,
+            'stock'              => $item->productVariant->stock ?? 0,
+        ])->values();
+
+        return [
+            'order'     => $order,
+            'scope'     => $scope,
+            'addresses' => $addresses,
+            'items'     => $items,
+        ];
+    }
+
+    /**
+     * Lưu form "Sửa đơn hàng". Luôn re-check editableScope() trên server (không tin UI đã ẩn
+     * field) — nếu client cố gửi field bị khóa (vd items khi scope=limited) thì rule validate
+     * tương ứng đơn giản không tồn tại nên input đó bị bỏ qua hoàn toàn, không áp dụng.
+     */
+    public function updateContent(Request $request, string $id)
+    {
+        $order = Order::with('paymentMethod')->findOrFail($id);
+        $scope = self::editableScope($order);
+
+        if ($scope === 'none') {
+            $message = 'Đơn hàng ở trạng thái này không thể sửa nội dung.';
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['message' => $message], 403);
+            }
+
+            return back()->withErrors(['status' => $message]);
+        }
+
+        $rules = [
+            'address_id'                    => ['nullable', 'integer', Rule::exists('addresses', 'id')],
+            'new_address.city'              => ['required_without:address_id', 'nullable', 'string', 'max:255'],
+            'new_address.district'          => ['nullable', 'string', 'max:255'],
+            'new_address.ward'              => ['required_without:address_id', 'nullable', 'string', 'max:255'],
+            'new_address.apartment_number'  => ['required_without:address_id', 'nullable', 'string', 'max:255'],
+            'phone' => ['required', 'string', 'max:20'],
+            'note'  => ['nullable', 'string', 'max:1000'],
+        ];
+
+        if ($scope === 'full') {
+            $rules['shipping_fee']              = ['required', 'numeric', 'min:0'];
+            $rules['items']                     = ['required', 'array', 'min:1'];
+            $rules['items.*.product_variant_id'] = ['required', 'integer', Rule::exists('product_variants', 'id')];
+            $rules['items.*.quantity']           = ['required', 'integer', 'min:1'];
+        }
+
+        $validator = Validator::make($request->all(), $rules, [
+            'new_address.city.required_without' => 'Vui lòng nhập tỉnh/thành phố cho địa chỉ mới.',
+            'new_address.ward.required_without' => 'Vui lòng nhập phường/xã cho địa chỉ mới.',
+            'new_address.apartment_number.required_without' => 'Vui lòng nhập địa chỉ cụ thể cho địa chỉ mới.',
+            'phone.required' => 'Vui lòng nhập số điện thoại.',
+            'items.required' => 'Vui lòng thêm ít nhất một sản phẩm vào đơn hàng.',
+            'items.*.quantity.min' => 'Số lượng sản phẩm phải lớn hơn 0.',
+        ]);
+
+        if ($validator->fails()) {
+            if ($request->ajax() || $request->wantsJson()) {
+                $data = $this->editFormData(
+                    $order->fresh(['user', 'orderItems.productVariant.product', 'orderItems.productVariant.color', 'orderItems.productVariant.size']),
+                    $scope
+                );
+                $errorBag = (new \Illuminate\Support\ViewErrorBag())->put('default', $validator->errors());
+                $html = view('admin.orders.partials.edit-content', $data)->with('errors', $errorBag)->render();
+
+                return response()->json(['message' => 'Dữ liệu chưa hợp lệ.', 'html' => $html], 422);
+            }
+
+            return back()->withErrors($validator)->withInput();
+        }
+
+        $validated = $validator->validated();
+
+        DB::transaction(function () use ($order, $validated, $scope) {
+            $address = ($validated['address_id'] ?? null)
+                ? Address::where('id', $validated['address_id'])->where('user_id', $order->user_id)->firstOrFail()
+                : Address::create([
+                    'user_id'          => $order->user_id,
+                    'city'             => $validated['new_address']['city'],
+                    'district'         => $validated['new_address']['district'] ?? null,
+                    'ward'             => $validated['new_address']['ward'],
+                    'apartment_number' => $validated['new_address']['apartment_number'],
+                ]);
+
+            $updateData = [
+                'address_id' => $address->id,
+                'phone'      => $validated['phone'],
+                'note'       => $validated['note'] ?? null,
+            ];
+
+            if ($scope === 'full') {
+                $variants = ProductVariant::with('product')
+                    ->whereIn('id', collect($validated['items'])->pluck('product_variant_id'))
+                    ->get()
+                    ->keyBy('id');
+
+                $itemsTotal = 0;
+                foreach ($validated['items'] as $item) {
+                    $variant = $variants[$item['product_variant_id']];
+                    $itemsTotal += $variant->final_price * $item['quantity'];
+                }
+
+                $order->orderItems()->delete();
+                foreach ($validated['items'] as $item) {
+                    $variant = $variants[$item['product_variant_id']];
+                    OrderItem::create([
+                        'order_id'           => $order->id,
+                        'product_variant_id' => $variant->id,
+                        'unit_price'         => $variant->final_price,
+                        'quantity'           => $item['quantity'],
+                    ]);
+                }
+
+                $updateData['shipping_fee'] = $validated['shipping_fee'];
+                $updateData['total_money']  = $itemsTotal + (float) $validated['shipping_fee'] - (float) $order->discount_amount;
+            }
+
+            $order->update($updateData);
+        });
+
+        $message = 'Cập nhật đơn hàng thành công.';
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => $message]);
+        }
+
+        return redirect()->route('admin.orders.detail', $id)->with('success', $message);
     }
 
     /**

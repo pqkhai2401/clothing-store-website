@@ -139,16 +139,18 @@ class ProductController extends Controller
         $request->validate([
             'name'        => ['required', 'string', 'max:255'],
             'category_id' => ['required', 'integer', Rule::exists('categories', 'id')],
+            'brand_id'    => ['nullable', 'integer', Rule::exists('brands', 'id')],
+            'gender'      => ['required', Rule::in(Gender::values())],
             'color_id'    => ['required', 'integer', Rule::exists('colors', 'id')],
             'size_id'     => ['required', 'integer', Rule::exists('sizes', 'id')],
-            'cost_price'  => ['required', 'numeric', 'min:0'],
+            'sku'         => ['nullable', 'string', 'max:100', Rule::unique('product_variants', 'sku')],
         ], [
             'name.required'        => 'Tên sản phẩm không được để trống.',
             'category_id.required' => 'Vui lòng chọn danh mục.',
+            'gender.required'      => 'Vui lòng chọn giới tính.',
             'color_id.required'    => 'Vui lòng chọn màu sắc.',
             'size_id.required'     => 'Vui lòng chọn kích thước.',
-            'cost_price.required'  => 'Vui lòng nhập giá vốn.',
-            'cost_price.min'       => 'Giá vốn không được âm.',
+            'sku.unique'           => 'SKU này đã tồn tại, vui lòng chọn mã khác.',
         ]);
 
         $slug = Str::slug($request->input('name'));
@@ -156,15 +158,15 @@ class ProductController extends Controller
             $slug = $slug . '-' . time();
         }
 
-        $costPrice = max(0, (float) $request->input('cost_price'));
+        $sku = trim((string) $request->input('sku'));
 
-        $variant = DB::transaction(function () use ($request, $slug, $costPrice) {
+        $variant = DB::transaction(function () use ($request, $slug, $sku) {
             $product = Product::create([
                 'name'        => $request->input('name'),
                 'slug'        => $slug,
                 'category_id' => $request->input('category_id'),
-                'brand_id'    => null,
-                'gender'      => Gender::UNISEX->value,
+                'brand_id'    => $request->input('brand_id') ?: null,
+                'gender'      => $request->input('gender'),
                 'description' => null,
                 'thumbnail'   => null,
                 'is_featured' => false,
@@ -174,9 +176,11 @@ class ProductController extends Controller
             return $product->productVariants()->create([
                 'color_id'   => $request->input('color_id'),
                 'size_id'    => $request->input('size_id'),
-                'sku'        => Str::upper(Str::random(10)),
-                'cost_price' => $costPrice,
-                'price'      => $costPrice,
+                'sku'        => $sku !== '' ? $sku : Str::upper(Str::random(10)),
+                // Giá vốn/giá bán/tồn kho do KHO quản lý (qua Batch) — khởi tạo 0, nhập hàng
+                // thực tế qua Phiếu nhập kho sẽ điền giá nhập cho dòng hàng ngay bên dưới.
+                'cost_price' => 0,
+                'price'      => 0,
                 'stock'      => 0,
             ])->load(['product:id,name,thumbnail', 'color:id,name,hex_code', 'size:id,name']);
         });

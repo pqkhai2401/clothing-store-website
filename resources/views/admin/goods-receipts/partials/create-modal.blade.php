@@ -223,10 +223,17 @@
                     <span class="fw-bold" style="font-size:14px;">Sản phẩm nhập kho</span>
                 </div>
                 <div class="card-body p-3">
-                    <div class="gr-picker-wrap">
-                        <input type="text" class="gr-picker-input" id="grModalPickerInput"
-                            placeholder="Tìm theo tên sản phẩm, SKU, màu hoặc size để thêm vào phiếu..." autocomplete="off">
-                        <div class="gr-picker-panel" id="grModalPickerPanel" hidden></div>
+                    <div class="d-flex gap-2 align-items-start">
+                        <div class="gr-picker-wrap flex-grow-1">
+                            <input type="text" class="gr-picker-input" id="grModalPickerInput"
+                                placeholder="Tìm theo tên sản phẩm, SKU, màu hoặc size để thêm vào phiếu..." autocomplete="off">
+                            <div class="gr-picker-panel" id="grModalPickerPanel" hidden></div>
+                        </div>
+                        <button type="button" class="gr-add-product-btn flex-shrink-0"
+                            title="Thêm sản phẩm mới"
+                            data-bs-toggle="modal" data-bs-target="#qcpModal">
+                            <i class="fa-solid fa-plus"></i>
+                        </button>
                     </div>
                     <div class="invalid-feedback d-block mt-2" data-gr-error="items"></div>
 
@@ -272,6 +279,8 @@
         </div>
     </form>
 </div>
+
+@include('admin.goods-receipts.partials.quick-create-product-modal')
 
 @once
 @push('styles')
@@ -419,6 +428,36 @@
     border-color: #000;
     color: #fff;
     box-shadow: 0 4px 12px rgba(23,71,97,.2);
+}
+
+.gr-add-product-btn {
+    width: 42px; height: 42px; flex-shrink: 0;
+    border-radius: 10px;
+    border: 1.5px solid #d1d5db;
+    background: #fff;
+    color: #374151;
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: all .15s;
+}
+.gr-add-product-btn:hover {
+    background: #174761;
+    border-color: #000;
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(23,71,97,.2);
+}
+[data-theme="dark"] .gr-add-product-btn {
+    background: var(--hk-bg-card, #1e293b);
+    border-color: var(--hk-border, #334155);
+    color: var(--hk-text-1, #e2e8f0);
+}
+[data-theme="dark"] .gr-add-product-btn:hover {
+    background: var(--hk-accent, #3b82f6);
+    border-color: var(--hk-accent, #3b82f6);
+    color: #fff;
 }
 
 .gr-picker-wrap { position: relative; }
@@ -1153,6 +1192,180 @@
             submitter?.removeAttribute('disabled');
         }
     });
+
+    /* ── "Thêm nhanh sản phẩm" (Quick Create) ngay trong khung tạo phiếu nhập ── */
+    const csrfToken     = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    const qcpModalEl    = document.getElementById('qcpModal');
+    const qcpModal      = qcpModalEl ? new bootstrap.Modal(qcpModalEl) : null;
+    const qcpName       = document.getElementById('qcpName');
+    const qcpCategory   = document.getElementById('qcpCategory');
+    const qcpBrand      = document.getElementById('qcpBrand');
+    const qcpColor      = document.getElementById('qcpColor');
+    const qcpSize       = document.getElementById('qcpSize');
+    const qcpSku        = document.getElementById('qcpSku');
+    const qcpSimilarBox = document.getElementById('qcpSimilarBox');
+    const qcpError      = document.getElementById('qcpError');
+    const qcpSubmitBtn  = document.getElementById('qcpSubmitBtn');
+
+    let qcpSearchTimer = null;
+
+    function qcpGender() {
+        const checked = document.querySelector('input[name="qcpGender"]:checked');
+        return checked ? checked.value : 'unisex';
+    }
+
+    function resetQcpDropdown(prefix) {
+        const hidden = document.getElementById(prefix);
+        const label  = document.getElementById(prefix + 'Label');
+        const list   = document.getElementById(prefix + 'List');
+        if (!hidden || !label || !list) return;
+        const defaultItem = list.querySelector('.hk-cat-item[data-value=""]');
+        hidden.value = '';
+        label.textContent = defaultItem?.dataset.label || '';
+        list.querySelectorAll('.hk-cat-item').forEach(item => item.classList.toggle('is-active', item === defaultItem));
+    }
+
+    function qcpResetForm() {
+        if (!qcpName) return;
+        qcpName.value = '';
+        ['qcpCategory', 'qcpBrand', 'qcpColor', 'qcpSize'].forEach(resetQcpDropdown);
+        qcpSku.value = '';
+        document.getElementById('qcpGenderUnisex').checked = true;
+        qcpSimilarBox.style.display = 'none';
+        qcpSimilarBox.innerHTML = '';
+        qcpError.style.display = 'none';
+        qcpError.textContent = '';
+    }
+
+    if (qcpModalEl) {
+        qcpModalEl.addEventListener('show.bs.modal', qcpResetForm);
+    }
+
+    // ── Quick-create custom dropdowns (Danh mục / Thương hiệu / Màu sắc / Kích thước) ──
+    function wireQcpDropdown(prefix) {
+        const filter  = document.getElementById(prefix + 'Filter');
+        const trigger = document.getElementById(prefix + 'Trigger');
+        const panel   = document.getElementById(prefix + 'Panel');
+        const label   = document.getElementById(prefix + 'Label');
+        const list    = document.getElementById(prefix + 'List');
+        const hidden  = document.getElementById(prefix);
+        if (!filter || !trigger || !panel || !list || !hidden) return;
+
+        trigger.addEventListener('click', function (e) {
+            e.stopPropagation();
+            const shouldOpen = panel.hidden;
+            document.querySelectorAll('.qcp-dropdown .hk-cat-panel').forEach(p => { p.hidden = true; });
+            document.querySelectorAll('.qcp-dropdown .hk-cat-trigger').forEach(t => {
+                t.classList.remove('is-open');
+                t.setAttribute('aria-expanded', 'false');
+            });
+            if (shouldOpen) {
+                panel.hidden = false;
+                trigger.classList.add('is-open');
+                trigger.setAttribute('aria-expanded', 'true');
+            }
+        });
+
+        list.addEventListener('click', function (e) {
+            const btn = e.target.closest('.hk-cat-item');
+            if (!btn) return;
+            hidden.value = btn.dataset.value || '';
+            label.textContent = btn.dataset.label || '';
+            list.querySelectorAll('.hk-cat-item').forEach(item => item.classList.toggle('is-active', item === btn));
+            panel.hidden = true;
+            trigger.classList.remove('is-open');
+            trigger.setAttribute('aria-expanded', 'false');
+        });
+    }
+
+    ['qcpCategory', 'qcpBrand', 'qcpColor', 'qcpSize'].forEach(wireQcpDropdown);
+
+    document.addEventListener('click', function (e) {
+        if (e.target.closest('.qcp-dropdown')) return;
+        document.querySelectorAll('.qcp-dropdown .hk-cat-panel').forEach(p => { p.hidden = true; });
+        document.querySelectorAll('.qcp-dropdown .hk-cat-trigger').forEach(t => {
+            t.classList.remove('is-open');
+            t.setAttribute('aria-expanded', 'false');
+        });
+    });
+
+    if (qcpName) {
+        qcpName.addEventListener('input', function () {
+            const value = this.value.trim();
+            clearTimeout(qcpSearchTimer);
+            if (!value) {
+                qcpSimilarBox.style.display = 'none';
+                return;
+            }
+            qcpSearchTimer = setTimeout(function () {
+                fetch(`{{ route('admin.products.searchSimilar') }}?name=${encodeURIComponent(value)}`, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                })
+                    .then(res => res.json())
+                    .then(data => {
+                        const products = data.products || [];
+                        if (products.length === 0) {
+                            qcpSimilarBox.style.display = 'none';
+                            return;
+                        }
+                        qcpSimilarBox.innerHTML = '<div class="gr-picker-empty" style="text-align:left; padding:8px 12px; color:#92400e; background:#fef3c7; font-size:12px;">'
+                            + 'Có thể đã tồn tại sản phẩm tương tự:</div>'
+                            + products.map(p => `<div class="gr-picker-item" style="cursor:default;">${esc(p.name)}</div>`).join('');
+                        qcpSimilarBox.style.display = 'block';
+                    })
+                    .catch(() => { qcpSimilarBox.style.display = 'none'; });
+            }, 350);
+        });
+    }
+
+    if (qcpSubmitBtn) {
+        qcpSubmitBtn.addEventListener('click', function () {
+            const payload = {
+                name: qcpName.value.trim(),
+                category_id: qcpCategory.value,
+                brand_id: qcpBrand.value,
+                gender: qcpGender(),
+                color_id: qcpColor.value,
+                size_id: qcpSize.value,
+                sku: qcpSku.value.trim(),
+            };
+
+            if (!payload.name || !payload.category_id || !payload.color_id || !payload.size_id) {
+                qcpError.textContent = 'Vui lòng điền đầy đủ các trường bắt buộc.';
+                qcpError.style.display = 'block';
+                return;
+            }
+
+            qcpSubmitBtn.setAttribute('disabled', 'disabled');
+
+            fetch('{{ route('admin.products.quickCreate') }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: JSON.stringify(payload),
+            })
+                .then(async res => {
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.message || 'Có lỗi xảy ra.');
+                    return data;
+                })
+                .then(data => {
+                    variants.push(data.variant);
+                    addVariant(data.variant.id);
+                    qcpModal?.hide();
+                })
+                .catch(err => {
+                    qcpError.textContent = err.message;
+                    qcpError.style.display = 'block';
+                })
+                .finally(() => {
+                    qcpSubmitBtn.removeAttribute('disabled');
+                });
+        });
+    }
 })();
 </script>
 @endpush
