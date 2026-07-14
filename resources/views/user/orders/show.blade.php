@@ -364,6 +364,7 @@
                 </div>
             </div>
 
+
             {{-- Shipping address --}}
             <div class="info-block">
                 <div class="info-block-title">Địa chỉ giao hàng</div>
@@ -375,13 +376,23 @@
                             {{ collect([
                                 $order->address->apartment_number,
                                 $order->address->ward,
-                                $order->address->district,
                                 $order->address->city,
                             ])->filter()->join(', ') }}
                         </div>
                     @endif
                 </div>
             </div>
+            
+            @if($order->status === 'pending' && $order->payment_status === 'unpaid' && $order->paymentMethod?->isOnlineGateway())
+                <a href="{{ $order->paymentResumeUrl() }}"
+                   style="display:flex; align-items:center; justify-content:center; gap:8px;
+                          width:100%; height:46px; margin-bottom:20px; border-radius:8px;
+                          background:#0d6efd; color:#fff; font-size:14px; font-weight:700;
+                          text-decoration:none; transition:background .2s;"
+                   onmouseover="this.style.background='#0b5ed7'" onmouseout="this.style.background='#0d6efd'">
+                    <i class="bi bi-qr-code"></i> Tiếp tục thanh toán
+                </a>
+            @endif
 
         </div>
     </div>

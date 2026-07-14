@@ -195,6 +195,28 @@
         color: #fff;
     }
 
+    .btn-pay-order {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        font-weight: 600;
+        color: #fff;
+        border: 1.5px solid #0d6efd;
+        background: #0d6efd;
+        padding: 8px 20px;
+        border-radius: 6px;
+        text-decoration: none;
+        transition: all 0.2s;
+        white-space: nowrap;
+    }
+
+    .btn-pay-order:hover {
+        background: #0b5ed7;
+        border-color: #0b5ed7;
+        color: #fff;
+    }
+
     /* ── Empty state ── */
     .orders-empty {
         text-align: center;
@@ -461,6 +483,23 @@
 
     .od-btn-cancel:hover { background: #dc2626; color: #fff; }
 
+    .od-btn-pay {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        font-weight: 600;
+        padding: 9px 24px;
+        border-radius: 6px;
+        border: 1.5px solid #0d6efd;
+        background: #0d6efd;
+        color: #fff;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+
+    .od-btn-pay:hover { background: #0b5ed7; border-color: #0b5ed7; color: #fff; }
+
     /* loading skeleton */
     .od-skeleton-line {
         height: 14px;
@@ -723,6 +762,11 @@
                     </div>
                     <div style="display:flex; gap:8px; align-items:center;">
                         @if($order->status === 'pending' && $order->payment_status === 'unpaid')
+                            @if($order->paymentMethod?->isOnlineGateway())
+                                <a href="{{ $order->paymentResumeUrl() }}" class="btn-pay-order">
+                                    <i class="bi bi-qr-code"></i> Tiếp tục thanh toán
+                                </a>
+                            @endif
                             <button type="button" class="btn-cancel-order"
                                     data-cancel-order="{{ $order->id }}">
                                 <i class="bi bi-x-circle"></i> Hủy đơn
@@ -763,9 +807,14 @@
             </div>
         </div>
         <div class="od-footer" style="justify-content:space-between;">
-            <button class="od-btn-cancel" id="odBtnCancel" style="display:none;">
-                <i class="bi bi-x-circle"></i> Hủy đơn hàng
-            </button>
+            <div style="display:flex; gap:8px; align-items:center;">
+                <a class="od-btn-pay" id="odBtnPay" href="#" style="display:none;">
+                    <i class="bi bi-qr-code"></i> Tiếp tục thanh toán
+                </a>
+                <button class="od-btn-cancel" id="odBtnCancel" style="display:none;">
+                    <i class="bi bi-x-circle"></i> Hủy đơn hàng
+                </button>
+            </div>
             <button class="od-btn-close" id="odBtnClose">Đóng</button>
         </div>
     </div>
@@ -818,6 +867,7 @@
     const body        = document.getElementById('odBody');
     const title       = document.getElementById('odTitle');
     const odCancelBtn = document.getElementById('odBtnCancel');
+    const odPayBtn    = document.getElementById('odBtnPay');
     const csrf        = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
 
     let currentOrderId = null;
@@ -841,6 +891,7 @@
         document.body.style.overflow = '';
         currentOrderId = null;
         odCancelBtn.style.display = 'none';
+        odPayBtn.style.display = 'none';
     }
 
     document.getElementById('odClose').addEventListener('click', closeModal);
@@ -864,6 +915,13 @@
             <span class="order-status-badge ${st.cls}" style="font-size:11px;padding:4px 12px;border-radius:20px;">${esc(st.label)}</span>`;
 
         odCancelBtn.style.display = d.can_cancel ? '' : 'none';
+
+        if (d.can_pay && d.pay_url) {
+            odPayBtn.href = d.pay_url;
+            odPayBtn.style.display = '';
+        } else {
+            odPayBtn.style.display = 'none';
+        }
 
         const itemRows = d.items.map(item => {
             const imgTag = item.image

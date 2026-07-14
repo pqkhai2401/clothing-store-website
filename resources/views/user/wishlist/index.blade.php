@@ -782,9 +782,10 @@
                         $pid  = $prod->id;
                         $pName     = $prod->name;
                         $pSlug     = $prod->slug;
-                        $pPrice    = $prod->price;
-                        $pDiscount = $prod->discount ?? 0;
-                        $pFinalPrice = $pDiscount > 0 ? $pPrice * (100 - $pDiscount) / 100 : null;
+                        $prod->loadMissing('productVariants');
+                        $pPrice    = $prod->min_variant_price ?? 0;
+                        $pDiscount = $prod->discount_value ?? 0;
+                        $pFinalPrice = $prod->hasActiveDiscount() && $pPrice ? $prod->discountedPrice((float) $pPrice) : null;
                         $pCategory = $prod->category->name ?? 'Thời trang';
                         $pUrl      = url('/san-pham/' . $pSlug);
                         $pImage    = $prod->thumbnail
@@ -831,10 +832,12 @@
                             {{-- Giá --}}
                             <div class="wishlist-card-price">
                                 @if($pFinalPrice)
-                                    <span class="price-original">{{ number_format($pPrice, 0, ',', '.') }}đ</span>
-                                    <span class="price-sale">{{ number_format($pFinalPrice, 0, ',', '.') }}đ</span>
+                                    <span class="price-original">Từ {{ number_format($pPrice, 0, ',', '.') }}đ</span>
+                                    <span class="price-sale">Từ {{ number_format($pFinalPrice, 0, ',', '.') }}đ</span>
+                                @elseif($pPrice)
+                                    <span class="price-normal">Từ {{ number_format($pPrice, 0, ',', '.') }}đ</span>
                                 @else
-                                    <span class="price-normal">{{ number_format($pPrice, 0, ',', '.') }}đ</span>
+                                    <span class="price-normal">Liên hệ</span>
                                 @endif
                             </div>
 
@@ -946,9 +949,10 @@
                         $rId       = $recProduct->id;
                         $rName     = $recProduct->name;
                         $rSlug     = $recProduct->slug;
-                        $rPrice    = $recProduct->price;
-                        $rDiscount = $recProduct->discount ?? 0;
-                        $rFinal    = $rDiscount > 0 ? $rPrice * (100 - $rDiscount) / 100 : null;
+                        $recProduct->loadMissing('productVariants');
+                        $rPrice    = $recProduct->min_variant_price ?? 0;
+                        $rDiscount = $recProduct->discount_value ?? 0;
+                        $rFinal    = $recProduct->hasActiveDiscount() && $rPrice ? $recProduct->discountedPrice((float) $rPrice) : null;
                         $rCategory = $recProduct->category->name ?? 'Thời trang';
                         $rUrl      = url('/san-pham/' . $rSlug);
                         $rImage    = $recProduct->thumbnail
@@ -965,8 +969,8 @@
                          data-category="{{ $rCategory }}"
                          data-url="{{ $rUrl }}"
                          data-image="{{ $rImage }}"
-                         data-price="{{ number_format($rPrice, 0, ',', '.') }}đ"
-                         data-final="{{ $rFinal ? number_format($rFinal, 0, ',', '.') . 'đ' : '' }}"
+                          data-price="{{ $rPrice ? 'Từ '.number_format($rPrice, 0, ',', '.').'đ' : 'Liên hệ' }}"
+                          data-final="{{ $rFinal ? 'Từ '.number_format($rFinal, 0, ',', '.') . 'đ' : '' }}"
                          data-discount="{{ $rDiscount }}">
                         <div class="ai-rec-card-img-wrap">
                             @if($rDiscount > 0)
@@ -1002,10 +1006,12 @@
                         </h3>
                         <div class="ai-rec-card-price">
                             @if($rFinal)
-                                <span class="p-original">{{ number_format($rPrice, 0, ',', '.') }}đ</span>
-                                <span class="p-sale">{{ number_format($rFinal, 0, ',', '.') }}đ</span>
+                                <span class="p-original">Từ {{ number_format($rPrice, 0, ',', '.') }}đ</span>
+                                <span class="p-sale">Từ {{ number_format($rFinal, 0, ',', '.') }}đ</span>
+                            @elseif($rPrice)
+                                <span class="p-normal">Từ {{ number_format($rPrice, 0, ',', '.') }}đ</span>
                             @else
-                                <span class="p-normal">{{ number_format($rPrice, 0, ',', '.') }}đ</span>
+                                <span class="p-normal">Liên hệ</span>
                             @endif
                         </div>
                     </div>

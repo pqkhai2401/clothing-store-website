@@ -17,13 +17,19 @@ class PaymentMethodSeeder extends Seeder
             ],
             [
                 'name' => 'Chuyển khoản ngân hàng',
-                'status' => true,
+                'status' => false,
                 'image' => 'https://cdn-icons-png.flaticon.com/512/2168/2168252.png',
             ],
             [
                 'name' => 'PayOS - Quét mã QR',
                 'status' => true,
                 'image' => 'https://payos.vn/docs/img/logo.svg',
+            ],
+            [
+                'name' => 'MoMo - Ví điện tử',
+                'status' => true,
+                // Logo host tại chỗ (public/images) — URL developers.momo.vn cũ trả về HTML nên vỡ ảnh.
+                'image' => '/images/momo-logo.svg',
             ],
         ];
 
@@ -37,7 +43,6 @@ class PaymentMethodSeeder extends Seeder
             );
         }
 
-        // Ẩn phương thức VNPay cũ (đã thay bằng PayOS) nếu còn tồn tại.
-        PaymentMethod::where('name', 'VNPay')->update(['status' => false]);
+       
     }
 }

@@ -44,7 +44,7 @@ class ForgotPasswordController extends AppBaseController
             return back()->withErrors($validator)->withInput($request->only('email'));
         }
 
-        $email = trim((string) $request->input('email'));
+        $email = mb_strtolower(trim((string) $request->input('email')));
 
         // Kiểm tra email có tồn tại trong bảng users hay không
         $user = User::where('email', $email)->first();

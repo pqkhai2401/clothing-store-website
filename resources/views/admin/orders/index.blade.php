@@ -4,49 +4,6 @@
 
 @push('styles')
     @include('admin.orders.styles')
-    <style>
-        /* Modal update order */
-        .account-modal .modal-content {
-            border: 1px solid #d8dee6;
-            border-radius: 8px;
-            overflow: hidden;
-        }
-        .account-modal .modal-header {
-            background: #ffffff;
-            border-bottom: 1px solid #d8dee6;
-        }
-        .account-modal .modal-title {
-            font-size: 15px;
-            font-weight: 800;
-            text-transform: uppercase;
-        }
-        .account-action-btn {
-            min-height: 38px;
-            padding: 8px 20px;
-            border-radius: 10px;
-            font-weight: 700;
-            font-size: 13px;
-        }
-        .account-action-btn.btn-dark {
-            background: #16A34A !important;
-            border-color: #16A34A !important;
-            color: #fff !important;
-        }
-        .account-action-btn.btn-dark:hover {
-            background: #15803D !important;
-            border-color: #15803D !important;
-        }
-        .account-action-btn.btn-light {
-            background: #fff !important;
-            border: 1.5px solid #F87171 !important;
-            color: #DC2626 !important;
-        }
-        .account-action-btn.btn-light:hover {
-            background: #FEF2F2 !important;
-            border-color: #EF4444 !important;
-            color: #B91C1C !important;
-        }
-    </style>
 @endpush
 
 @section('content')
@@ -60,11 +17,15 @@
                     <p class="product-header-desc mb-0">Danh sách tất cả đơn hàng trong hệ thống.</p>
                 </div>
                 <div class="product-header-actions">
+                    
                     <a href="{{ route('admin.orders.export') }}?{{ http_build_query(request()->except('page')) }}"
                        class="btn product-action-btn product-action-btn--neutral">
                         <i class="fa-solid fa-download me-1"></i> Xuất Excel
                     </a>
-                      <a href="{{ route('admin.orders.create') }}" class="btn btn-dark product-action-btn">
+                    <a href="{{ route('admin.orders.trash') }}" class="btn btn-light border product-action-btn">
+                        <i class="fa-regular fa-trash-can me-1"></i> Thùng rác
+                    </a>
+                    <a href="{{ route('admin.orders.create') }}" class="btn btn-dark product-action-btn">
                         <i class="fa-solid fa-plus me-1"></i> Thêm đơn hàng
                     </a>
                 </div>
@@ -196,255 +157,77 @@
         </section>
     </div>
 
-    {{-- ── Order Update Modal ── --}}
-<div class="modal fade account-modal" id="orderUpdateModal" tabindex="-1" aria-labelledby="orderUpdateModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered" style="max-width:420px;">
+    @include('admin.orders.partials.edit-offcanvas')
+
+{{-- Modal chi tiết đơn hàng (chỉ xem) --}}
+<div class="modal fade account-modal" id="orderDetailModal" tabindex="-1" aria-labelledby="orderDetailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width:880px;">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="orderUpdateModalLabel">
-                    Cập nhật trạng thái đơn hàng
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <h5 class="modal-title" id="orderDetailModalLabel">Chi tiết đơn hàng</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
             </div>
-            <div class="modal-body px-4 py-4">
-                <div class="mb-3">
-                    <label class="form-label" style="font-size:13px; font-weight:700;">
-                        Trạng thái thanh toán <span class="text-danger">*</span>
-                    </label>
-                    <select id="ouPaymentStatus" class="form-select" style="font-size:13px;">
-                        <option value="unpaid">Chưa thanh toán</option>
-                        <option value="paid">Đã thanh toán</option>
-                    </select>
+            <div class="modal-body px-4 py-4" id="orderDetailBody">
+                <div class="text-center py-5 text-muted" id="orderDetailLoading">
+                    <span class="spinner-border spinner-border-sm me-2"></span> Đang tải...
                 </div>
-                <div class="mb-1">
-                    <label class="form-label" style="font-size:13px; font-weight:700;">
-                        Trạng thái giao hàng <span class="text-danger">*</span>
-                    </label>
-                    <select id="ouOrderStatus" class="form-select" style="font-size:13px;">
-                        @foreach($statusLabels as $val => $label)
-                            <option value="{{ $val }}">{{ $label }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div id="ouError" class="text-danger mt-2" style="font-size:12px; display:none;"></div>
             </div>
-            <div class="modal-footer justify-content-center gap-3 pb-4">
-                <button type="button" class="btn account-action-btn btn-light" data-bs-dismiss="modal">
-                    Huỷ
-                </button>
-                <button type="button" id="ouSaveBtn" class="btn account-action-btn btn-dark" style="min-width:120px;">
-                    Cập nhật
-                </button>
+            <div class="modal-footer justify-content-end pb-4 px-4">
+                <button type="button" class="btn account-action-btn btn-light" data-bs-dismiss="modal">Đóng</button>
             </div>
         </div>
     </div>
 </div>
+
+@push('modals')
+    @include('layouts.components.confirm.delete')
+@endpush
 @endsection
 
 @push('scripts')
     <script>
     (function () {
-        /* ── Order Update Modal ── */
+        /* ── Popup chi tiết đơn hàng (chỉ xem) ── */
         (function () {
-            const modal       = new bootstrap.Modal(document.getElementById('orderUpdateModal'));
-            const statusSel   = document.getElementById('ouOrderStatus');
-            const paymentSel  = document.getElementById('ouPaymentStatus');
-            const saveBtn     = document.getElementById('ouSaveBtn');
-            const errBox      = document.getElementById('ouError');
-            const csrf        = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
-            let currentOrderId = null;
-            let currentRow     = null;
-
-            const statusLabels = @json($statusLabels);
-            const orderBadgeCss = {
-                pending:    'order-badge--pending',
-                processing: 'order-badge--processing',
-                shipping:   'order-badge--shipping',
-                completed:  'order-badge--completed',
-                cancelled:  'order-badge--cancelled',
-            };
-            const statusTransitions = @json(\App\Http\Controllers\Admin\OrderController::STATUS_TRANSITIONS);
-
-            document.addEventListener('click', function (e) {
-                const btn = e.target.closest('[data-update-order]');
-                if (!btn) return;
-                currentOrderId = btn.dataset.updateOrder;
-                currentRow     = btn.closest('tr');
-
-                const currentStatus = btn.dataset.status;
-                const allowed = [currentStatus, ...(statusTransitions[currentStatus] ?? [])];
-                statusSel.innerHTML = allowed.map(function (val) {
-                    return `<option value="${val}">${statusLabels[val] ?? val}</option>`;
-                }).join('');
-
-                statusSel.value  = currentStatus;
-                paymentSel.value = btn.dataset.payment;
-                errBox.style.display = 'none';
-                errBox.textContent   = '';
-                saveBtn.disabled = false;
-                saveBtn.textContent = 'Cập nhật';
-                modal.show();
-            });
-
-            saveBtn.addEventListener('click', async function () {
-                if (!currentOrderId) return;
-                saveBtn.disabled    = true;
-                saveBtn.innerHTML   = '<span class="spinner-border spinner-border-sm me-1"></span> Đang lưu...';
-                errBox.style.display = 'none';
-
-                try {
-                    const res = await fetch(`/admin/orders/${currentOrderId}`, {
-                        method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/json',
-                            'X-CSRF-TOKEN': csrf,
-                        },
-                        body: JSON.stringify({
-                            status:         statusSel.value,
-                            payment_status: paymentSel.value,
-                            note:           '',
-                        }),
-                    });
-
-                    if (!res.ok) {
-                        const data = await res.json().catch(() => ({}));
-                        const msg = data?.message || Object.values(data?.errors ?? {}).flat().join(' ') || 'Có lỗi xảy ra.';
-                        errBox.textContent   = msg;
-                        errBox.style.display = 'block';
-                        saveBtn.disabled     = false;
-                        saveBtn.textContent  = 'Cập nhật';
-                        return;
-                    }
-
-                    /* Update row in DOM */
-                    if (currentRow) {
-                        const newStatus  = statusSel.value;
-                        const newPayment = paymentSel.value;
-
-                        const badgeEl = currentRow.querySelector('.order-badge');
-                        if (badgeEl) {
-                            badgeEl.className = 'order-badge ' + (orderBadgeCss[newStatus] ?? '');
-                            badgeEl.textContent = statusLabels[newStatus] ?? newStatus;
-                        }
-
-                        const payEl = currentRow.querySelector('.payment-badge');
-                        if (payEl) {
-                            payEl.className  = 'payment-badge ' + (newPayment === 'paid' ? 'payment-badge--paid' : 'payment-badge--unpaid');
-                            payEl.textContent = newPayment === 'paid' ? 'Đã thanh toán' : 'Chưa thanh toán';
-                        }
-
-                        const trigger = currentRow.querySelector('[data-update-order]');
-                        if (trigger) {
-                            trigger.dataset.status  = newStatus;
-                            trigger.dataset.payment = newPayment;
-                        }
-                    }
-
-                    modal.hide();
-                } catch {
-                    errBox.textContent   = 'Không thể kết nối. Vui lòng thử lại.';
-                    errBox.style.display = 'block';
-                    saveBtn.disabled     = false;
-                    saveBtn.textContent  = 'Cập nhật';
-                }
-            });
-        }());
-
-        /* ── Sổ xuống chọn nhanh trạng thái đơn / thanh toán ngay trong bảng ── */
-        (function () {
-            const csrf = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
-
-            function closeAllPanels(except) {
-                document.querySelectorAll('.oc-row-panel').forEach(function (p) {
-                    if (p === except) return;
-                    p.hidden = true;
-                    p.closest('.oc-row-dropdown')?.querySelector('.oc-row-trigger')?.classList.remove('is-open');
-                });
-            }
+            const modalEl = document.getElementById('orderDetailModal');
+            if (!modalEl) return;
+            const modal   = new bootstrap.Modal(modalEl);
+            const body    = document.getElementById('orderDetailBody');
+            const titleEl = document.getElementById('orderDetailModalLabel');
+            const loadingHtml = '<div class="text-center py-5 text-muted"><span class="spinner-border spinner-border-sm me-2"></span> Đang tải...</div>';
 
             document.addEventListener('click', async function (e) {
-                const trigger = e.target.closest('.oc-row-trigger');
-                if (trigger) {
-                    const dropdown = trigger.closest('.oc-row-dropdown');
-                    const panel = dropdown.querySelector('.oc-row-panel');
-                    const willOpen = panel.hidden;
-                    closeAllPanels();
-                    panel.hidden = !willOpen;
-                    trigger.classList.toggle('is-open', willOpen);
-                    return;
-                }
+                const link = e.target.closest('[data-order-detail]');
+                if (!link) return;
+                e.preventDefault(); // chặn điều hướng sang trang full; JS lỗi thì href vẫn mở được trang
 
-                const item = e.target.closest('.oc-row-panel .hk-cat-item');
-                if (item) {
-                    const dropdown = item.closest('.oc-row-dropdown');
-                    const row       = dropdown.closest('tr');
-                    const orderId   = dropdown.dataset.orderId;
-                    const field     = dropdown.dataset.field;
-                    const newValue  = item.dataset.value;
-                    const newCss    = item.dataset.css;
+                const url = link.getAttribute('href');
+                titleEl.textContent = 'Chi tiết đơn hàng';
+                body.innerHTML = loadingHtml;
+                modal.show();
 
-                    const statusDrop  = row.querySelector('.oc-row-dropdown[data-field="status"]');
-                    const paymentDrop = row.querySelector('.oc-row-dropdown[data-field="payment_status"]');
-                    const statusTrigger  = statusDrop.querySelector('.oc-row-trigger');
-                    const paymentTrigger = paymentDrop.querySelector('.oc-row-trigger');
-
-                    const payload = {
-                        status:         field === 'status' ? newValue : statusTrigger.dataset.value,
-                        payment_status: field === 'payment_status' ? newValue : paymentTrigger.dataset.value,
-                        note: '',
-                    };
-
-                    closeAllPanels();
-
-                    const trigger = dropdown.querySelector('.oc-row-trigger');
-                    const previousValue = trigger.dataset.value;
-                    const previousCss   = Array.from(trigger.classList).find(c => c.startsWith('order-badge--') || c.startsWith('payment-badge--'));
-                    trigger.disabled = true;
-
-                    try {
-                        const res = await fetch(`/admin/orders/${orderId}`, {
-                            method: 'PUT',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Accept': 'application/json',
-                                'X-CSRF-TOKEN': csrf,
-                            },
-                            body: JSON.stringify(payload),
-                        });
-
-                        if (!res.ok) throw new Error('update failed');
-
-                        const baseClass = field === 'status' ? 'order-badge' : 'payment-badge';
-                        trigger.className = baseClass + ' oc-row-trigger ' + newCss;
-                        trigger.dataset.value = newValue;
-                        trigger.querySelector('.oc-row-trigger-label').textContent = item.textContent;
-                        dropdown.querySelectorAll('.hk-cat-item').forEach(function (b) {
-                            b.classList.toggle('is-active', b === item);
-                        });
-                    } catch {
-                        alert('Không thể cập nhật. Vui lòng thử lại.');
-                        trigger.className = (field === 'status' ? 'order-badge' : 'payment-badge') + ' oc-row-trigger ' + (previousCss ?? '');
-                        trigger.dataset.value = previousValue;
-                    } finally {
-                        trigger.disabled = false;
-                    }
-                    return;
-                }
-
-                if (!e.target.closest('.oc-row-dropdown')) {
-                    closeAllPanels();
+                try {
+                    const res = await fetch(url, {
+                        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                    });
+                    if (!res.ok) throw new Error('load failed');
+                    const data = await res.json();
+                    body.innerHTML = data.html || '';
+                    titleEl.textContent = 'Chi tiết đơn hàng ' + (data.code || '');
+                } catch {
+                    body.innerHTML = '<div class="text-center py-5 text-danger">Không tải được chi tiết đơn hàng. Vui lòng thử lại.</div>';
                 }
             });
         }());
 
-        /* ── Status dropdown ── */
-        (function () {
-            const trigger = document.getElementById('hkOrderStatusTrigger');
-            const panel   = document.getElementById('hkOrderStatusPanel');
-            const label   = document.getElementById('hkOrderStatusLabel');
-            const list    = document.getElementById('hkOrderStatusList');
-            const hidden  = document.getElementById('orderStatusHidden');
+        /* ── Filter đơn giản dạng "trigger + panel + hidden input" (trạng thái đơn / thanh toán) ── */
+        function initSimpleFilterDropdown(dropId, triggerId, panelId, labelId, listId, hiddenId) {
+            const drop    = document.getElementById(dropId);
+            const trigger = document.getElementById(triggerId);
+            const panel   = document.getElementById(panelId);
+            const label   = document.getElementById(labelId);
+            const list    = document.getElementById(listId);
+            const hidden  = document.getElementById(hiddenId);
             if (!trigger) return;
 
             function open()  { panel.hidden = false; trigger.classList.add('is-open'); trigger.setAttribute('aria-expanded', 'true'); }
@@ -464,39 +247,12 @@
             });
 
             document.addEventListener('click', function (e) {
-                if (!panel.hidden && !document.getElementById('hkOrderStatusDrop')?.contains(e.target)) close();
+                if (!panel.hidden && !drop?.contains(e.target)) close();
             });
-        }());
+        }
 
-        /* ── Payment dropdown ── */
-        (function () {
-            const trigger = document.getElementById('hkOrderPaymentTrigger');
-            const panel   = document.getElementById('hkOrderPaymentPanel');
-            const label   = document.getElementById('hkOrderPaymentLabel');
-            const list    = document.getElementById('hkOrderPaymentList');
-            const hidden  = document.getElementById('orderPaymentHidden');
-            if (!trigger) return;
-
-            function open()  { panel.hidden = false; trigger.classList.add('is-open'); trigger.setAttribute('aria-expanded', 'true'); }
-            function close() { panel.hidden = true;  trigger.classList.remove('is-open'); trigger.setAttribute('aria-expanded', 'false'); }
-
-            trigger.addEventListener('click', () => panel.hidden ? open() : close());
-
-            list.addEventListener('click', function (e) {
-                const btn = e.target.closest('.hk-cat-item');
-                if (!btn) return;
-                list.querySelectorAll('.hk-cat-item').forEach(b => b.classList.remove('is-active'));
-                btn.classList.add('is-active');
-                label.textContent = btn.dataset.label;
-                hidden.value = btn.dataset.value;
-                close();
-                hidden.dispatchEvent(new Event('change', { bubbles: true }));
-            });
-
-            document.addEventListener('click', function (e) {
-                if (!panel.hidden && !document.getElementById('hkOrderPaymentDrop')?.contains(e.target)) close();
-            });
-        }());
+        initSimpleFilterDropdown('hkOrderStatusDrop', 'hkOrderStatusTrigger', 'hkOrderStatusPanel', 'hkOrderStatusLabel', 'hkOrderStatusList', 'orderStatusHidden');
+        initSimpleFilterDropdown('hkOrderPaymentDrop', 'hkOrderPaymentTrigger', 'hkOrderPaymentPanel', 'hkOrderPaymentLabel', 'hkOrderPaymentList', 'orderPaymentHidden');
 
         /* ── Dropdown chọn kỳ linh hoạt (Năm nay/Năm ngoái/Chọn năm + Quý/Tháng của năm đó) ── */
         (function () {
@@ -676,6 +432,45 @@
         }());
 
     }());
+    </script>
+
+    <script>
+    /* ── Chạy lại các thẻ <script> bên trong một khối HTML vừa được nạp qua innerHTML ──
+       (trình duyệt không tự thực thi <script> được gán qua innerHTML, phải dựng lại thủ công) ── */
+    window.runInjectedScripts = window.runInjectedScripts || function (container) {
+        Array.from(container.querySelectorAll('script')).forEach(function (oldScript) {
+            const newScript = document.createElement('script');
+            Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
+            newScript.textContent = oldScript.textContent;
+            oldScript.replaceWith(newScript);
+        });
+    };
+
+    /* ── Panel "Sửa đơn hàng" trượt từ phải: nạp form qua AJAX ──
+       Dùng event delegation vì bảng được nạp lại qua AJAX. */
+    document.addEventListener('click', function (e) {
+        const trigger = e.target.closest('[data-order-edit-trigger]');
+        if (!trigger) return;
+        e.preventDefault();
+
+        const url = trigger.dataset.editUrl;
+        const offcanvasEl = document.getElementById('orderEditOffcanvas');
+        const bodyEl = offcanvasEl?.querySelector('[data-order-edit-body]');
+        if (!url || !offcanvasEl || !bodyEl) return;
+
+        bodyEl.innerHTML = '<div class="offcanvas-body text-center py-5"><div class="spinner-border text-secondary" role="status"></div></div>';
+        bootstrap.Offcanvas.getOrCreateInstance(offcanvasEl).show();
+
+        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
+            .then(res => { if (!res.ok) throw new Error('request-failed'); return res.json(); })
+            .then(data => {
+                bodyEl.innerHTML = data.html;
+                window.runInjectedScripts(bodyEl);
+            })
+            .catch(() => {
+                bodyEl.innerHTML = '<div class="offcanvas-body text-danger p-4">Không thể tải form sửa đơn hàng. Vui lòng thử lại.</div>';
+            });
+    });
     </script>
 
     @include('admin.partials.realtime-table')

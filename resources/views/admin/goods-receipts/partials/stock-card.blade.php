@@ -32,6 +32,60 @@
 </div>
 
 <div class="modal-body skc-body">
+    @once
+        <style>
+            .skc-section-title { font-size: 13px; font-weight: 800; color: #0f172a; margin: 2px 0 8px; }
+            .skc-section-title + .skc-table-wrap { margin-bottom: 18px; }
+            .skc-batch--muted td { opacity: .5; }
+            .skc-bstatus { font-size: 10.5px; font-weight: 800; padding: 2px 8px; border-radius: 99px; text-transform: uppercase; letter-spacing: .03em; }
+            .skc-bstatus--active { background:#dcfce7; color:#166534; }
+            .skc-bstatus--depleted { background:#f1f5f9; color:#64748b; }
+            .skc-bstatus--locked { background:#fee2e2; color:#991b1b; }
+            .skc-bstatus--expired { background:#ffedd5; color:#9a3412; }
+        </style>
+    @endonce
+
+    {{-- TỒN THEO LÔ (Batch) — nguồn dữ liệu thật của tồn kho; lô còn hàng (FIFO) lên trước --}}
+    <div class="skc-section-title">Tồn theo lô (Batch)</div>
+    <div class="skc-table-wrap">
+        <table class="skc-table">
+            <thead>
+                <tr>
+                    <th>Mã lô</th>
+                    <th>Ngày nhập</th>
+                    <th>SL nhập</th>
+                    <th>Còn lại</th>
+                    <th>Giá vốn</th>
+                    <th>Trạng thái</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse($batches as $batch)
+                    @php
+                        $isActive = $batch->status === \App\Models\ProductBatch::STATUS_ACTIVE && $batch->quantity_remaining > 0;
+                        $bStatus = [
+                            'active'   => ['Còn hàng', 'skc-bstatus--active'],
+                            'depleted' => ['Đã hết',  'skc-bstatus--depleted'],
+                            'locked'   => ['Khóa lô', 'skc-bstatus--locked'],
+                            'expired'  => ['Hết hạn', 'skc-bstatus--expired'],
+                        ][$batch->status] ?? ['Đã hết', 'skc-bstatus--depleted'];
+                    @endphp
+                    <tr class="{{ $isActive ? '' : 'skc-batch--muted' }}">
+                        <td class="fw-bold">{{ $batch->batch_code }}</td>
+                        <td class="skc-date">{{ $batch->received_at?->format('d/m/Y') ?? '—' }}</td>
+                        <td>{{ number_format($batch->quantity_import) }}</td>
+                        <td><strong>{{ number_format($batch->quantity_remaining) }}</strong></td>
+                        <td>{{ number_format($batch->cost_price, 0, ',', '.') }}đ</td>
+                        <td><span class="skc-bstatus {{ $bStatus[1] }}">{{ $bStatus[0] }}</span></td>
+                    </tr>
+                @empty
+                    <tr><td colspan="6" class="skc-empty">Biến thể này chưa có lô hàng nào.</td></tr>
+                @endforelse
+            </tbody>
+        </table>
+    </div>
+
+    <div class="skc-section-title">Lịch sử giao dịch kho</div>
     <div class="skc-table-wrap">
         <table class="skc-table">
             <thead>

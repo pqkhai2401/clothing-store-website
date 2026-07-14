@@ -525,8 +525,8 @@
                         $variant      = $item->productVariant;
                         $product      = $variant->product;
                         $image        = $variant->image ?: $product->thumbnail;
-                        $unitPrice    = $variant->sale_price > 0 ? (float) $variant->sale_price : (float) $product->final_price;
-                        $unitOriginal = $product->discount > 0 ? $unitPrice / (1 - $product->discount / 100) : $unitPrice;
+                        $unitOriginal = (float) $variant->price;
+                        $unitPrice    = (float) $variant->final_price;
                         $linePrice    = $unitPrice * $item->quantity;
                         $lineOriginal = $unitOriginal * $item->quantity;
                         $savings      = $lineOriginal - $linePrice;
@@ -654,9 +654,9 @@
                     <span id="summaryTotal">{{ number_format($total, 0, ',', '.') }}đ</span>
                 </div>
 
-                <div class="summary-savings-note" id="summarySavings" style="{{ ($subtotal < array_sum(array_map(fn($i) => $i->productVariant->product->price * $i->quantity, $cartItems->all())) ) ? '' : 'display:none;' }}">
+                <div class="summary-savings-note" id="summarySavings" style="{{ ($subtotal < array_sum(array_map(fn($i) => $i->productVariant->price * $i->quantity, $cartItems->all())) ) ? '' : 'display:none;' }}">
                     @php
-                        $totalOriginal = $cartItems->sum(fn($i) => $i->productVariant->product->price * $i->quantity);
+                        $totalOriginal = $cartItems->sum(fn($i) => $i->productVariant->price * $i->quantity);
                         $totalSavings = $totalOriginal - $subtotal;
                     @endphp
                     @if($totalSavings > 0)
@@ -1213,3 +1213,4 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 @endpush
+

@@ -39,7 +39,10 @@ class User extends Authenticatable implements \OwenIt\Auditing\Contracts\Auditab
         'phone_number',
         'is_active',
         'is_protected',
+        'must_change_password',
         'lock_reason',
+        'locked_by',
+        'locked_at',
         'email_verified_at',
     ];
 
@@ -53,6 +56,8 @@ class User extends Authenticatable implements \OwenIt\Auditing\Contracts\Auditab
         'password' => 'hashed',
         'is_active' => 'boolean',
         'is_protected' => 'boolean',
+        'must_change_password' => 'boolean',
+        'locked_at' => 'datetime',
     ];
 
     /**
@@ -86,6 +91,12 @@ class User extends Authenticatable implements \OwenIt\Auditing\Contracts\Auditab
      * tự upload, ví dụ: avatars/xxx.jpg) hoặc một URL tuyệt đối từ Google OAuth
      * (ví dụ: https://lh3.googleusercontent.com/...). Hai trường hợp này cần xử lý
      * khác nhau, nếu không sẽ tạo ra đường dẫn sai dạng "/storage/https://...".
+     * *
+     * URL ảnh đại diện để hiển thị. Xử lý được cả 3 trường hợp:
+     * - avatar_url là URL đầy đủ (vd ảnh Google) → dùng nguyên.
+     * - avatar_url là đường dẫn tương đối trong disk "public" (ảnh tự upload).
+     * - chưa có ảnh → sinh ảnh chữ cái đầu từ ui-avatars theo tên.
+     
      */
     public function getAvatarDisplayUrlAttribute(): ?string
     {

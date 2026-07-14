@@ -112,6 +112,7 @@
 
         @include('admin.users.detail')
         @include('admin.users.edit')
+        @include('admin.users.reset-password')
     </div>
 @endsection
 

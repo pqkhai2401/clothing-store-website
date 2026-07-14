@@ -589,12 +589,23 @@
 
                     {{-- Giá sản phẩm --}}
                     <div class="product-detail-price" id="productPriceBlock">
-                        @if($product->discount > 0)
-                            <span class="original-price">{{ number_format($product->price, 0, ',', '.') }}đ</span>
-                            <span class="sale-price">{{ number_format($product->final_price, 0, ',', '.') }}đ</span>
-                            <span class="discount-badge">-{{ $product->discount }}%</span>
+                        @php
+                            $minPrice = $product->min_variant_price;
+                            $maxPrice = $product->max_variant_price;
+                            $minFinal = $minPrice !== null ? $product->discountedPrice($minPrice) : null;
+                            $maxFinal = $maxPrice !== null ? $product->discountedPrice($maxPrice) : null;
+                        @endphp
+                        @if($minPrice === null)
+                            <span>Liên hệ</span>
+                        @elseif($product->hasActiveDiscount())
+                            <span class="original-price">{{ number_format($minPrice, 0, ',', '.') }}đ - {{ number_format($maxPrice, 0, ',', '.') }}đ</span>
+                            <span class="sale-price">{{ number_format($minFinal, 0, ',', '.') }}đ - {{ number_format($maxFinal, 0, ',', '.') }}đ</span>
                         @else
-                            <span>{{ number_format($product->price, 0, ',', '.') }}đ</span>
+                            @if($minPrice == $maxPrice)
+                                <span>{{ number_format($minPrice, 0, ',', '.') }}đ</span>
+                            @else
+                                <span>{{ number_format($minPrice, 0, ',', '.') }}đ - {{ number_format($maxPrice, 0, ',', '.') }}đ</span>
+                            @endif
                         @endif
                     </div>
 
@@ -946,7 +957,7 @@
                     skuEl.textContent = data.sku || 'N/A';
 
                     // Cập nhật giá hiển thị
-                    updatePriceDisplay(data.price, data.discount, data.final_price);
+                    updatePriceDisplay(data.price, data.has_discount, data.discount_type, data.discount_value, data.final_price);
 
                     // Cập nhật thông tin tồn kho
                     currentStock = data.stock;
@@ -972,16 +983,17 @@
         }
 
         // ===== Cập nhật hiển thị giá =====
-        function updatePriceDisplay(price, discount, finalPrice) {
+        function updatePriceDisplay(price, hasDiscount, discountType, discountValue, finalPrice) {
             var priceNum = parseFloat(price);
-            var discountNum = parseInt(discount) || 0;
+            var discountNum = parseFloat(discountValue) || 0;
             var finalNum = parseFloat(finalPrice);
 
-            if (discountNum > 0) {
+            if (hasDiscount && discountNum > 0) {
+                var badge = discountType === 'percent' ? '-' + discountNum + '%' : '-' + formatCurrency(discountNum) + 'đ';
                 priceBlock.innerHTML =
                     '<span class="original-price">' + formatCurrency(priceNum) + 'đ</span>' +
                     '<span class="sale-price">' + formatCurrency(finalNum) + 'đ</span>' +
-                    '<span class="discount-badge">-' + discountNum + '%</span>';
+                    '<span class="discount-badge">' + badge + '</span>';
             } else {
                 priceBlock.innerHTML = '<span>' + formatCurrency(priceNum) + 'đ</span>';
             }
@@ -1198,4 +1210,3 @@
     })();
 </script>
 @endpush
-

@@ -360,7 +360,7 @@
     width: 15px;
     height: 15px;
     cursor: pointer;
-    accent-color: #174761;
+    accent-color: #000;
 }
 /* Highlight selected row lightly */
 tr.hk-row-selected { background-color: #f0f7ff !important; }

@@ -7,6 +7,7 @@ use App\Http\Controllers\User\ForgotPasswordController;
 use App\Http\Controllers\User\CartController;
 use App\Http\Controllers\User\CheckoutController;
 use App\Http\Controllers\User\PayosController;
+use App\Http\Controllers\User\MomoController;
 use App\Http\Controllers\User\LocationController;
 use App\Http\Controllers\User\OrderController;
 use App\Http\Controllers\User\ProfileController;
@@ -34,10 +35,10 @@ Route::get('/collections', [ProductController::class, 'index'])->name('collectio
 Route::get('/search', [ProductController::class, 'search'])->name('search');
 Route::get('/api/search/suggestions', [ProductController::class, 'suggestions'])->name('search.suggestions');
 
-// Route proxy lấy dữ liệu Tỉnh/Thành - Quận/Huyện - Phường/Xã (tránh lỗi CORS khi gọi trực tiếp API bên thứ ba)
+// Route proxy lấy dữ liệu Tỉnh/Thành (tránh lỗi CORS khi gọi trực tiếp API bên thứ ba)
 Route::get('/api/location/provinces', [LocationController::class, 'provinces'])->name('location.provinces');
-Route::get('/api/location/districts/{province_code}', [LocationController::class, 'districts'])->name('location.districts');
-Route::get('/api/location/wards/{district_code}', [LocationController::class, 'wards'])->name('location.wards');
+Route::get('/api/location/provinces/{code}/wards', [LocationController::class, 'wards'])
+    ->whereNumber('code')->name('location.wards');
 
 // Route chi tiết sản phẩm: /san-pham/{slug}
 Route::get('/san-pham/{slug}', [ProductController::class, 'show'])->name('products.show');
@@ -50,7 +51,7 @@ Route::get('/danh-muc/{slug}', [ProductController::class, 'getProductsByCategory
 Route::get('/bo-suu-tap/{slug}', [ProductController::class, 'getProductsByCollection'])
     ->name('collections.show');
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'active.account'])->group(function () {
     Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
     Route::post('/cart/add', [CartController::class, 'store'])->name('cart.add');
     Route::patch('/cart/{cartItem}', [CartController::class, 'update'])->name('cart.update');
@@ -66,8 +67,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/checkout/payos/{order}', [PayosController::class, 'show'])->name('checkout.payos.show');
     Route::get('/checkout/payos/{order}/status', [PayosController::class, 'status'])->name('checkout.payos.status');
 
+    // MoMo: trang QR nhúng + poll trạng thái + return (fallback từ app/trang hosted)
+    Route::get('/checkout/momo-return', [MomoController::class, 'return'])->name('checkout.momo.return');
+    Route::get('/checkout/momo/{order}', [MomoController::class, 'show'])->name('checkout.momo.show');
+    Route::get('/checkout/momo/{order}/status', [MomoController::class, 'status'])->name('checkout.momo.status');
+
     Route::get('/user/addresses', [AddressController::class, 'index'])->name('addresses.index');
     Route::post('/user/addresses', [AddressController::class, 'store'])->name('addresses.store');
+    Route::put('/user/addresses/{address}', [AddressController::class, 'update'])->name('addresses.update');
     Route::delete('/user/addresses/{address}', [AddressController::class, 'destroy'])->name('addresses.destroy');
 
     // Gửi đánh giá sản phẩm (yêu cầu đăng nhập). {product} là ID sản phẩm.
@@ -76,7 +83,7 @@ Route::middleware('auth')->group(function () {
 
 
 // Orders
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'active.account'])->group(function () {
     Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
     Route::get('/orders/{id}/detail', [OrderController::class, 'detail'])->name('orders.detail');
     Route::patch('/orders/{id}/cancel', [OrderController::class, 'cancelOrder'])->name('orders.cancel');
@@ -84,14 +91,14 @@ Route::middleware('auth')->group(function () {
 });
 
 // Profile
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'active.account'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'index'])->name('profile.index');
     Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::put('/profile/change-password', [ProfileController::class, 'changePassword'])->name('profile.change-password');
 });
 
 // Wishlist (yêu cầu đăng nhập)
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'active.account'])->group(function () {
     Route::get('/wishlist', [WishlistController::class, 'index'])->name('wishlist.index');
     Route::post('/wishlist/add/{productId}', [WishlistController::class, 'add'])->name('wishlist.add');
     Route::post('/wishlist/toggle/{productId}', [WishlistController::class, 'toggle'])->name('wishlist.toggle');
@@ -101,7 +108,8 @@ Route::middleware('auth')->group(function () {
 
 // Auth
 Route::get('/login', [AuthController::class, 'index'])->name(name: 'auth.loginpage')->middleware('redirect.authenticated');
-Route::post('/login', [AuthController::class, 'webLogin'])->name(name: 'auth.login');
+Route::post('/login', [AuthController::class, 'webLogin'])->name(name: 'auth.login')
+    ->middleware('throttle:5,1');
 Route::get('/register', [AuthController::class, 'registerPage'])->name('auth.registerpage')->middleware('redirect.authenticated');
 Route::post('/register', [AuthController::class, 'webRegister'])->name('auth.register');
 Route::get('/auth/google/redirect', [AuthController::class, 'redirectToGoogle'])
@@ -111,13 +119,16 @@ Route::get('/auth/google/callback', [AuthController::class, 'handleGoogleCallbac
 // Quên mật khẩu (Forgot Password) - quy trình: Nhập Email -> Gửi OTP -> Xác thực OTP -> Đặt lại mật khẩu
 Route::middleware('redirect.authenticated')->group(function () {
     Route::get('/forgot-password', [ForgotPasswordController::class, 'showForgotForm'])->name('auth.password.request');
-    Route::post('/forgot-password', [ForgotPasswordController::class, 'sendOtp'])->name('auth.password.send');
+    Route::post('/forgot-password', [ForgotPasswordController::class, 'sendOtp'])->name('auth.password.send')
+        ->middleware('throttle:5,1');
 
     Route::get('/verify-otp', [ForgotPasswordController::class, 'showVerifyForm'])->name('auth.password.verify');
-    Route::post('/verify-otp', [ForgotPasswordController::class, 'verifyOtp'])->name('auth.password.verify.submit');
+    Route::post('/verify-otp', [ForgotPasswordController::class, 'verifyOtp'])->name('auth.password.verify.submit')
+        ->middleware('throttle:6,1');
 
     Route::get('/reset-password', [ForgotPasswordController::class, 'showResetForm'])->name('auth.password.reset');
-    Route::post('/reset-password', [ForgotPasswordController::class, 'resetPassword'])->name('auth.password.update');
+    Route::post('/reset-password', [ForgotPasswordController::class, 'resetPassword'])->name('auth.password.update')
+        ->middleware('throttle:6,1');
 });
 
-Route::get('/logout', action: [AuthController::class, 'webLogout'])->name('auth.logout');
+Route::post('/logout', action: [AuthController::class, 'webLogout'])->name('auth.logout');

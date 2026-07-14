@@ -22,9 +22,10 @@ class ActivityLog extends Audit
         'updated'      => 'Cập nhật',
         'deleted'      => 'Xóa',
         'restored'     => 'Khôi phục',
-        'role_updated' => 'Đổi vai trò',
-        'login'        => 'Đăng nhập',
-        'logout'       => 'Đăng xuất',
+        'role_updated'   => 'Đổi vai trò',
+        'password_reset' => 'Reset mật khẩu',
+        'login'          => 'Đăng nhập',
+        'logout'         => 'Đăng xuất',
     ];
 
     /**
@@ -35,9 +36,10 @@ class ActivityLog extends Audit
         'updated'      => 'info',
         'deleted'      => 'danger',
         'restored'     => 'warning',
-        'role_updated' => 'warning',
-        'login'        => 'neutral',
-        'logout'       => 'muted',
+        'role_updated'   => 'warning',
+        'password_reset' => 'warning',
+        'login'          => 'neutral',
+        'logout'         => 'muted',
     ];
 
     /**

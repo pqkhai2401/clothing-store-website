@@ -26,41 +26,35 @@ class LocationController extends Controller
     /**
      * Lấy danh sách toàn bộ Tỉnh/Thành phố.
      * GET /api/location/provinces
+     *
+     * Dùng API v2 — dữ liệu địa giới 2 cấp (Tỉnh → Phường/Xã) theo cơ cấu hành
+     * chính mới sau sáp nhập 2025, không còn cấp Quận/Huyện. Nhờ vậy có thể nạp
+     * Phường/Xã trực tiếp theo Tỉnh (xem wards()).
      */
     public function provinces(): JsonResponse
     {
-        $data = $this->rememberIfNotEmpty('location.provinces', function () {
-            return $this->fetch('https://provinces.open-api.vn/api/p/');
+        $data = $this->rememberIfNotEmpty('location.provinces.v2', function () {
+            return $this->fetch('https://provinces.open-api.vn/api/v2/p/');
         });
 
         return response()->json($data);
     }
 
     /**
-     * Lấy danh sách Quận/Huyện thuộc một Tỉnh/Thành phố.
-     * GET /api/location/districts/{province_code}
+     * Lấy danh sách Phường/Xã thuộc một Tỉnh/Thành phố.
+     * GET /api/location/provinces/{code}/wards
      */
-    public function districts(string $provinceCode): JsonResponse
+    public function wards(int $code): JsonResponse
     {
-        $data = $this->rememberIfNotEmpty("location.districts.$provinceCode", function () use ($provinceCode) {
-            return $this->fetch("https://provinces.open-api.vn/api/p/{$provinceCode}", ['depth' => 2], 'districts');
+        $data = $this->rememberIfNotEmpty("location.wards.v2.{$code}", function () use ($code) {
+            $province = $this->fetch("https://provinces.open-api.vn/api/v2/p/{$code}", ['depth' => 2]);
+
+            return $province['wards'] ?? [];
         });
 
         return response()->json($data);
     }
 
-    /**
-     * Lấy danh sách Phường/Xã thuộc một Quận/Huyện.
-     * GET /api/location/wards/{district_code}
-     */
-    public function wards(string $districtCode): JsonResponse
-    {
-        $data = $this->rememberIfNotEmpty("location.wards.$districtCode", function () use ($districtCode) {
-            return $this->fetch("https://provinces.open-api.vn/api/d/{$districtCode}", ['depth' => 2], 'wards');
-        });
-
-        return response()->json($data);
-    }
 
     /**
      * Giống Cache::remember, nhưng KHÔNG lưu vào cache nếu kết quả rỗng.
@@ -97,7 +91,14 @@ class LocationController extends Controller
     private function fetch(string $url, array $query = [], ?string $key = null): array
     {
         try {
-            $response = Http::timeout(10)->retry(3, 200)->get($url, $query);
+            $http = Http::timeout(10)->retry(3, 200);
+
+            $caBundle = storage_path('certs/cacert.pem');
+            if (is_file($caBundle)) {
+                $http = $http->withOptions(['verify' => $caBundle]);
+            }
+
+            $response = $http->get($url, $query);
 
             if (! $response->successful()) {
                 return [];

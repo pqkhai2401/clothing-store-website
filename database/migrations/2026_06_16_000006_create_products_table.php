@@ -17,9 +17,10 @@ return new class extends Migration
             $table->string('name');
             $table->string('slug')->unique();
             $table->longText('description');
-            $table->decimal('price', 15, 2);
-            $table->decimal('cost_price', 15, 2)->default(0);
-            $table->unsignedTinyInteger('discount')->default(0);
+            $table->string('discount_type', 20)->nullable();
+            $table->decimal('discount_value', 15, 2)->default(0);
+            $table->timestamp('discount_start_at')->nullable();
+            $table->timestamp('discount_end_at')->nullable();
             $table->string('thumbnail');
             $table->foreignId('category_id')->constrained('categories')->restrictOnDelete();
             $table->foreignId('brand_id')->constrained('brands')->restrictOnDelete();

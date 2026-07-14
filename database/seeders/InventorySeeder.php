@@ -216,7 +216,7 @@ class InventorySeeder extends Seeder
                 $variant = $variantList->random();
                 $qty = rand(2, 8);
                 $costPrice = $variant->cost_price > 0 ? (float) $variant->cost_price : 120000.00;
-                $salePrice = $variant->sale_price > 0 ? (float) $variant->sale_price : $costPrice;
+                $salePrice = $variant->price > 0 ? (float) $variant->price : $costPrice;
 
                 $totalQty  += $qty;
                 $totalCost += $qty * $costPrice;
@@ -313,3 +313,4 @@ class InventorySeeder extends Seeder
         }
     }
 }
+

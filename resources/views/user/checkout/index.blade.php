@@ -990,31 +990,14 @@
                                 @enderror
                             </div>
                         </div>
-
-                        <!-- Quận/Huyện: mặc định khóa, chỉ mở khi đã chọn Tỉnh/Thành phố -->
-                        <div class="col-12">
-                            <div class="form-group mb-3">
-                                <label for="district" class="form-label">Quận/Huyện</label>
-                                <select id="district" name="district"
-                                    class="form-select @error('district') is-invalid @enderror" required disabled
-                                    data-selected="{{ old('district', $address->district ?? '') }}">
-                                    <option value="" selected disabled>Chọn quận/huyện</option>
-                                </select>
-                                @error('district')
-                                    <div class="invalid-feedback d-block">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
-
-                        <!-- Phường/Xã: mặc định khóa, chỉ mở khi đã chọn Quận/Huyện -->
+                        <!-- Phường/Xã -->
                         <div class="col-12">
                             <div class="form-group mb-3">
                                 <label for="ward" class="form-label">Phường/Xã</label>
-                                <select id="ward" name="ward"
-                                    class="form-select @error('ward') is-invalid @enderror" required disabled
-                                    data-selected="{{ old('ward', $address->ward ?? '') }}">
-                                    <option value="" selected disabled>Chọn phường/xã</option>
-                                </select>
+                                <input type="text" id="ward" name="ward"
+                                    class="form-control @error('ward') is-invalid @enderror"
+                                    value="{{ old('ward', $address->ward ?? '') }}"
+                                    placeholder="Nhập phường/xã" required>
                                 @error('ward')
                                     <div class="invalid-feedback d-block">{{ $message }}</div>
                                 @enderror
@@ -1141,8 +1124,8 @@
                             $variant  = $item->productVariant;
                             $product  = $variant->product;
                             $image    = $variant->image ?: $product->thumbnail;
-                            $original = $product->price * $item->quantity;
-                            $final    = $product->final_price * $item->quantity;
+                            $original = $variant->price * $item->quantity;
+                            $final    = $variant->final_price * $item->quantity;
                             $savings  = $original - $final;
                         @endphp
                         <div class="checkout-cart-item">
@@ -1171,10 +1154,10 @@
 
             <!-- Payment Summary Block -->
             @php
-                $totalOriginal = $cartItems->sum(fn($i) => $i->productVariant->product->price * $i->quantity);
+                $totalOriginal = $cartItems->sum(fn($i) => $i->productVariant->price * $i->quantity);
                 $totalSavings  = $totalOriginal - $subtotal;
             @endphp
-            <div class="checkout-block">
+            <div class="checkout-block" id="checkoutSummary" data-subtotal="{{ $subtotal }}" data-shipping="{{ $shippingFee }}">
                 <div class="checkout-block-title">
                     <span>Chi tiết thanh toán</span>
                 </div>
@@ -1190,10 +1173,25 @@
                     </div>
                 </div>
 
-                <!-- Voucher placeholder -->
-                <div class="checkout-summary-row">
+                <!-- Voucher input -->
+                <div style="display:flex; align-items:center; gap:12px; padding:10px 0;">
+                    <span class="checkout-summary-label" style="white-space:nowrap;">Mã Voucher</span>
+                    <div style="position:relative; flex:1; min-width:0;">
+                        <input type="text" id="voucherCodeInput" placeholder="Nhập mã voucher"
+                            style="width:100%; padding:9px 36px 9px 12px; border:1px solid #d1d5db; border-radius:8px; font-size:14px; text-transform:uppercase;">
+                        <button type="button" id="voucherClearBtn" aria-label="Xóa mã"
+                            style="display:none; position:absolute; right:8px; top:50%; transform:translateY(-50%); width:20px; height:20px; border:none; border-radius:50%; background:#9ca3af; color:#fff; font-size:12px; line-height:1; cursor:pointer; align-items:center; justify-content:center;">&times;</button>
+                    </div>
+                    <button type="button" id="voucherApplyBtn" class="btn btn-outline-dark"
+                        style="padding:9px 18px; font-size:14px; white-space:nowrap; border-radius:8px;">Áp dụng</button>
+                    <input type="hidden" id="voucherCodeHidden" name="voucher_code" form="checkoutForm" value="">
+                </div>
+                <div id="voucherMessage" style="font-size:12px; margin:-6px 0 4px;"></div>
+
+                <!-- Voucher discount (shown once applied) -->
+                <div class="checkout-summary-row" id="voucherDiscountRow" style="display:none;">
                     <span class="checkout-summary-label">Voucher giảm giá</span>
-                    <div class="checkout-summary-value">0đ</div>
+                    <div class="checkout-summary-value" id="voucherDiscountValue" style="color:#16a34a; font-weight:600;">0đ</div>
                 </div>
 
                 <!-- Shipping -->
@@ -1212,7 +1210,7 @@
                 <div class="checkout-total-row">
                     <span class="checkout-total-label">Thành tiền</span>
                     <div class="text-end">
-                        <div class="checkout-total-value">{{ number_format($total, 0, ',', '.') }}đ</div>
+                        <div class="checkout-total-value" id="checkoutTotalValue">{{ number_format($total, 0, ',', '.') }}đ</div>
                         @if($totalSavings > 0)
                             <div style="font-size:11px; color:#f97316; margin-top:2px;">Đã giảm {{ number_format($totalSavings, 0, ',', '.') }}đ trên giá gốc</div>
                         @endif
@@ -1403,25 +1401,114 @@
 </script>
 
 <script>
-/* ══ Cascading Dropdown: Tỉnh/Thành phố → Quận/Huyện → Phường/Xã ══ */
-/* Dữ liệu được lấy qua các route proxy của Laravel (LocationController) để tránh lỗi CORS. */
+/* ══ Voucher: nhập mã giảm giá tại checkout ══ */
 (function () {
-    const provinceSelect = document.getElementById('province');
-    const districtSelect = document.getElementById('district');
-    const wardSelect      = document.getElementById('ward');
+    const summaryEl    = document.getElementById('checkoutSummary');
+    const input        = document.getElementById('voucherCodeInput');
+    const applyBtn     = document.getElementById('voucherApplyBtn');
+    const clearBtn     = document.getElementById('voucherClearBtn');
+    const hidden       = document.getElementById('voucherCodeHidden');
+    const msgEl        = document.getElementById('voucherMessage');
+    const discountRow  = document.getElementById('voucherDiscountRow');
+    const discountVal  = document.getElementById('voucherDiscountValue');
+    const totalEl      = document.getElementById('checkoutTotalValue');
 
-    if (!provinceSelect || !districtSelect || !wardSelect) return;
+    if (!summaryEl || !input || !applyBtn) return;
 
-    /* Escape chuỗi trước khi chèn vào HTML để tránh lỗi hiển thị/XSS */
-    function escapeHtml(str) {
-        return String(str)
-            .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const subtotal    = parseFloat(summaryEl.dataset.subtotal) || 0;
+    const shippingFee = parseFloat(summaryEl.dataset.shipping) || 0;
+
+    function formatVnd(amount) {
+        return Math.round(amount).toLocaleString('vi-VN') + 'đ';
     }
 
-    /* Đổ danh sách item (tỉnh/quận/phường) vào 1 thẻ <select>.
-       value của <option> là TÊN tiếng Việt (để lưu DB hiển thị tường minh),
-       còn "code" (mã hành chính) được lưu ở data-code để dùng gọi API tầng kế tiếp. */
+    function setMessage(text, isError) {
+        msgEl.textContent = text || '';
+        msgEl.style.color = isError ? '#dc2626' : '#16a34a';
+    }
+
+    function syncClearBtn() {
+        clearBtn.style.display = input.value ? 'flex' : 'none';
+    }
+
+    function showApplied(code, discountAmount) {
+        hidden.value = code;
+        discountVal.textContent = '-' + formatVnd(discountAmount);
+        discountRow.style.display = 'flex';
+        input.disabled = true;
+        applyBtn.disabled = true;
+        totalEl.textContent = formatVnd(Math.max(subtotal - discountAmount, 0) + shippingFee);
+    }
+
+    function clearApplied() {
+        hidden.value = '';
+        input.value = '';
+        input.disabled = false;
+        applyBtn.disabled = false;
+        discountRow.style.display = 'none';
+        setMessage('');
+        syncClearBtn();
+        totalEl.textContent = formatVnd(subtotal + shippingFee);
+    }
+
+    input.addEventListener('input', syncClearBtn);
+    syncClearBtn();
+
+    applyBtn.addEventListener('click', async function () {
+        const code = input.value.trim();
+        if (!code) {
+            setMessage('Vui lòng nhập mã giảm giá.', true);
+            return;
+        }
+
+        applyBtn.disabled = true;
+        setMessage('Đang kiểm tra mã...', false);
+
+        try {
+            const res = await fetch('{{ route("api.vouchers.apply") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                },
+                body: JSON.stringify({ code: code, subtotal: subtotal }),
+            });
+            const data = await res.json();
+
+            if (!res.ok || !data.success) {
+                setMessage(data.message || 'Mã giảm giá không hợp lệ.', true);
+                applyBtn.disabled = false;
+                return;
+            }
+
+            showApplied(code, data.discount_amount);
+            setMessage('Áp dụng mã giảm giá thành công!', false);
+        } catch (e) {
+            setMessage('Có lỗi xảy ra, vui lòng thử lại.', true);
+            applyBtn.disabled = false;
+        }
+    });
+
+    clearBtn.addEventListener('click', clearApplied);
+})();
+</script>
+
+<script>
+(function () {
+    const provinceSelect = document.getElementById('province');
+    const wardInput = document.getElementById('ward');
+
+    if (!provinceSelect || !wardInput) return;
+
+    function escapeHtml(str) {
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
     function fillSelect(select, items, placeholder) {
         const options = items.map(item =>
             `<option value="${escapeHtml(item.name)}" data-code="${item.code}">${escapeHtml(item.name)}</option>`
@@ -1429,105 +1516,29 @@
         select.innerHTML = `<option value="" selected disabled>${escapeHtml(placeholder)}</option>` + options;
     }
 
-    /* Xóa sạch dữ liệu cũ của 1 select và khóa/mở khóa lại */
     function resetSelect(select, placeholder, disabled) {
         select.innerHTML = `<option value="" selected disabled>${escapeHtml(placeholder)}</option>`;
         select.disabled = disabled;
     }
 
-    /* Chọn 1 option theo đúng tên (dùng khi tự động điền lại địa chỉ đã lưu) */
     function selectByName(select, name) {
         const match = Array.from(select.options).find(opt => opt.value === name);
         if (match) select.value = name;
         return match;
     }
 
-    /* Gọi API lấy Quận/Huyện theo mã Tỉnh, có thể tự chọn sẵn 1 quận/huyện theo tên */
-    async function loadDistricts(provinceCode, autoSelectName = null) {
-        try {
-            const res  = await fetch(`/api/location/districts/${provinceCode}`, { headers: { 'Accept': 'application/json' } });
-            const data = await res.json();
-            fillSelect(districtSelect, data, 'Chọn quận/huyện');
-            districtSelect.disabled = false;
-
-            if (autoSelectName) {
-                selectByName(districtSelect, autoSelectName);
-            }
-        } catch {
-            resetSelect(districtSelect, 'Không thể tải danh sách', true);
+    window.applyCheckoutLocation = async function (cityName, wardName) {
+        if (cityName) {
+            selectByName(provinceSelect, cityName);
         }
-    }
-
-    /* Gọi API lấy Phường/Xã theo mã Quận/Huyện, có thể tự chọn sẵn 1 phường/xã theo tên */
-    async function loadWards(districtCode, autoSelectName = null) {
-        try {
-            const res  = await fetch(`/api/location/wards/${districtCode}`, { headers: { 'Accept': 'application/json' } });
-            const data = await res.json();
-            fillSelect(wardSelect, data, 'Chọn phường/xã');
-            wardSelect.disabled = false;
-
-            if (autoSelectName) {
-                selectByName(wardSelect, autoSelectName);
-            }
-        } catch {
-            resetSelect(wardSelect, 'Không thể tải danh sách', true);
+        if (wardName) {
+            wardInput.value = wardName;
         }
-    }
-
-    /* Chọn Tỉnh/Thành phố theo tên rồi tự động tải tiếp Quận/Huyện + Phường/Xã đã lưu (nếu có) */
-    async function selectProvinceByName(cityName, districtName, wardName) {
-        const matched = selectByName(provinceSelect, cityName);
-        const code     = matched?.dataset.code;
-        if (!code) return;
-
-        districtSelect.disabled = false;
-        await loadDistricts(code, districtName);
-
-        if (districtName) {
-            const districtOption = districtSelect.options[districtSelect.selectedIndex];
-            const districtCode   = districtOption?.dataset.code;
-            if (districtCode && wardName) {
-                wardSelect.disabled = false;
-                await loadWards(districtCode, wardName);
-            }
-        }
-    }
-
-    /* Khi người dùng chọn Tỉnh/Thành phố: mở khóa Quận/Huyện, xóa sạch Quận/Huyện + Phường/Xã cũ */
-    provinceSelect.addEventListener('change', async function () {
-        const option = provinceSelect.options[provinceSelect.selectedIndex];
-        const code    = option?.dataset.code;
-
-        resetSelect(districtSelect, 'Chọn quận/huyện', true);
-        resetSelect(wardSelect, 'Chọn phường/xã', true);
-
-        if (!code) return;
-        districtSelect.disabled = false;
-        await loadDistricts(code);
-    });
-
-    /* Khi người dùng chọn Quận/Huyện: mở khóa Phường/Xã, xóa sạch Phường/Xã cũ */
-    districtSelect.addEventListener('change', async function () {
-        const option = districtSelect.options[districtSelect.selectedIndex];
-        const code    = option?.dataset.code;
-
-        resetSelect(wardSelect, 'Chọn phường/xã', true);
-
-        if (!code) return;
-        wardSelect.disabled = false;
-        await loadWards(code);
-    });
-
-    /* Hàm dùng lại từ nơi khác (Sổ địa chỉ) để tự động điền 3 ô chọn từ dữ liệu địa chỉ đã lưu */
-    window.applyCheckoutLocation = async function (cityName, districtName, wardName) {
-        if (!cityName) return;
-        await selectProvinceByName(cityName, districtName, wardName);
     };
 
-    /* Ngay khi trang web vừa tải xong: tự động gọi API lấy danh sách Tỉnh/Thành phố */
     document.addEventListener('DOMContentLoaded', async function () {
         try {
-            const res  = await fetch('{{ route('location.provinces') }}', { headers: { 'Accept': 'application/json' } });
+            const res = await fetch('{{ route('location.provinces') }}', { headers: { 'Accept': 'application/json' } });
             const data = await res.json();
             fillSelect(provinceSelect, data, 'Chọn tỉnh/thành phố');
         } catch {
@@ -1535,18 +1546,9 @@
             return;
         }
 
-        // Nếu form có giá trị cũ (old() do validate lỗi, hoặc địa chỉ gần nhất của user) thì tự chọn lại.
-        // Đặt trong try/catch RIÊNG để nếu bước này lỗi (mất mạng khi tải Quận/Huyện...) thì
-        // KHÔNG làm mất danh sách Tỉnh/Thành phố vừa tải thành công ở trên.
-        try {
-            const oldCity     = provinceSelect.dataset.selected;
-            const oldDistrict = districtSelect.dataset.selected;
-            const oldWard      = wardSelect.dataset.selected;
-            if (oldCity) {
-                await selectProvinceByName(oldCity, oldDistrict, oldWard);
-            }
-        } catch (e) {
-            console.error('Không thể tự động điền lại địa chỉ đã lưu:', e);
+        const oldCity = provinceSelect.dataset.selected;
+        if (oldCity) {
+            selectByName(provinceSelect, oldCity);
         }
     });
 })();
@@ -1659,7 +1661,6 @@
             <div class="addr-list-item" tabindex="0"
                  data-addr-id="${addr.id}"
                  data-city="${esc(addr.city)}"
-                 data-district="${esc(addr.district || '')}"
                  data-ward="${esc(addr.ward)}"
                  data-apartment="${esc(addr.apartment_number)}">
 
@@ -1676,7 +1677,7 @@
                         </button>
                     </div>
                     <div class="addr-list-item-detail">
-                        ${[addr.ward, addr.district, addr.city].filter(Boolean).join(' · ')}
+                        ${[addr.ward, addr.city].filter(Boolean).join(' Â· ')}
                     </div>
                 </div>
             </div>
@@ -1747,8 +1748,8 @@
 
     async function applyAddress(item) {
         setVal('apartment_number', item.dataset.apartment);
-        await window.applyCheckoutLocation?.(item.dataset.city, item.dataset.district, item.dataset.ward);
-        ['apartment_number', 'ward', 'district', 'province'].forEach(flashField);
+        await window.applyCheckoutLocation?.(item.dataset.city, item.dataset.ward);
+        ['apartment_number', 'ward', 'province'].forEach(flashField);
         showToast('Đã áp dụng địa chỉ');
     }
 
@@ -1802,12 +1803,12 @@
 
             const addr = data.address;
             setVal('apartment_number', addr.apartment_number);
-            await window.applyCheckoutLocation?.(addr.city, addr.district, addr.ward);
+            await window.applyCheckoutLocation?.(addr.city, addr.ward);
 
             const phoneInput = document.getElementById('addrFormPhone');
             if (phoneInput?.value) setVal('phone', phoneInput.value);
 
-            ['apartment_number', 'ward', 'district', 'province'].forEach(flashField);
+            ['apartment_number', 'ward', 'province'].forEach(flashField);
             closeModal();
             showToast('Địa chỉ đã được lưu và áp dụng');
         } catch {

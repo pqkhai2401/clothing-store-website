@@ -14,6 +14,9 @@ use RuntimeException;
  */
 class PayosService
 {
+    /** Thời hạn hiệu lực của link/QR thanh toán (phút). */
+    public const EXPIRE_MINUTES = 30;
+
     private string $clientId;
     private string $apiKey;
     private string $checksumKey;
@@ -71,7 +74,7 @@ class PayosService
             'cancelUrl'   => $cancelUrl,
             'signature'   => $signature,
             'buyerName'   => (string) ($order->user->username ?? ''),
-            'expiredAt'   => now()->addMinutes(30)->timestamp,
+            'expiredAt'   => now()->addMinutes(self::EXPIRE_MINUTES)->timestamp,
         ]);
 
         $body = $response->json();

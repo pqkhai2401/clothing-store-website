@@ -215,39 +215,39 @@
                             @error('gender') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                         </div>
 
-                        {{-- Khung giá chung (ẩn hiện động bằng JS khi có biến thể) --}}
-                        <div id="generalPricingWrapper">
-                            {{-- Giá vốn (dùng cho phân tích tài chính) --}}
-                            <div class="edit-field">
-                                <label for="cost_price">Giá vốn (₫)</label>
-                                <input type="number" id="cost_price" name="cost_price" min="0" step="1000"
-                                    class="form-control @error('cost_price') is-invalid @enderror"
-                                    value="{{ old('cost_price', (int) $product->cost_price) }}">
-                                @error('cost_price') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                                <div class="form-text">Dùng làm giá vốn mặc định cho các biến thể &amp; phân tích lợi nhuận.</div>
-                            </div>
-
-                            {{-- Giá --}}
+                        <div class="edit-field mt-3">
+                            <label>Chương trình giảm giá</label>
                             <div class="row g-3">
-                                <div class="col-7">
-                                    <div class="edit-field mb-0">
-                                        <label for="price">Giá gốc (₫) <span class="text-danger">*</span></label>
-                                        <input type="number" id="price" name="price" min="0" step="1000"
-                                            class="form-control @error('price') is-invalid @enderror"
-                                            value="{{ old('price', (int) $product->price) }}" required>
-                                        @error('price') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                                    </div>
+                                <div class="col-md-6">
+                                    <select name="discount_type" class="form-select @error('discount_type') is-invalid @enderror">
+                                        <option value="">Không giảm</option>
+                                        <option value="percent" @selected(old('discount_type', $product->discount_type) === 'percent')>Giảm theo %</option>
+                                        <option value="fixed" @selected(old('discount_type', $product->discount_type) === 'fixed')>Giảm tiền cố định</option>
+                                    </select>
+                                    @error('discount_type') <div class="invalid-feedback">{{ $message }}</div> @enderror
                                 </div>
-                                <div class="col-5">
-                                    <div class="edit-field mb-0">
-                                        <label for="discount">Giảm giá (%)</label>
-                                        <input type="number" id="discount" name="discount" min="0" max="100"
-                                            class="form-control @error('discount') is-invalid @enderror"
-                                            value="{{ old('discount', $product->discount) }}" required>
-                                        @error('discount') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                                    </div>
+                                <div class="col-md-6">
+                                    <input type="number" name="discount_value" min="0" step="1000"
+                                        class="form-control @error('discount_value') is-invalid @enderror"
+                                        value="{{ old('discount_value', (int) $product->discount_value) }}" placeholder="Giá trị giảm">
+                                    @error('discount_value') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label small text-muted mb-1">Bắt đầu</label>
+                                    <input type="datetime-local" name="discount_start_at"
+                                        class="form-control @error('discount_start_at') is-invalid @enderror"
+                                        value="{{ old('discount_start_at', optional($product->discount_start_at)->format('Y-m-d\\TH:i')) }}">
+                                    @error('discount_start_at') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label small text-muted mb-1">Kết thúc</label>
+                                    <input type="datetime-local" name="discount_end_at"
+                                        class="form-control @error('discount_end_at') is-invalid @enderror"
+                                        value="{{ old('discount_end_at', optional($product->discount_end_at)->format('Y-m-d\\TH:i')) }}">
+                                    @error('discount_end_at') <div class="invalid-feedback">{{ $message }}</div> @enderror
                                 </div>
                             </div>
+                            <div class="form-text">Giảm giá cấp sản phẩm sẽ tính trên giá bán của từng biến thể.</div>
                         </div>
 
                     </div>

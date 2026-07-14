@@ -3,7 +3,7 @@
 
     $pageGroups = [
         'admin.products'   => 'Sản phẩm',
-        'admin.goods-receipts' => 'Nhập kho',
+        'admin.goods-receipts' => 'Kho hàng',
         'admin.categories' => 'Danh mục',
         'admin.suppliers'  => 'Nhà cung cấp',
         'admin.brands'     => 'Thương hiệu',
@@ -14,6 +14,8 @@
         'admin.customers'  => 'Quản lý khách hàng',
         'admin.staff'      => 'Quản lý nhân sự',
         'admin.vouchers'    => 'Khuyến mãi',
+        'admin.logs'        => 'Nhật ký hệ thống',
+        'admin.settings'    => 'Cài đặt hệ thống',
     ];
 
     $pageLabel = null;
@@ -26,7 +28,9 @@
 
     $actionLabel = match ($routeName) {
         'admin.staff.create'      => 'Thêm mới quản trị viên',
+        'admin.staff.edit'        => 'Chỉnh sửa quản trị viên',
         'admin.customers.create'  => 'Thêm mới khách hàng',
+        'admin.customers.edit'    => 'Chỉnh sửa khách hàng',
         'admin.users.create'      => 'Thêm mới tài khoản',
         'admin.products.create'   => 'Thêm mới sản phẩm',
         'admin.vouchers.create'   => 'Thêm mới voucher',
@@ -39,12 +43,15 @@
         'admin.reviews.trash'     => 'Thùng rác đánh giá',
         'admin.goods-receipts.trash' => 'Thùng rác nhập kho',
         'admin.vouchers.trash'    => 'Thùng rác voucher',
+        'admin.settings'          => 'Cài đặt hệ thống',
         default => null,
     };
 
     $pageUrl = match ($routeName) {
         'admin.staff.create'     => route('admin.staff.list'),
+        'admin.staff.edit'       => route('admin.staff.list'),
         'admin.customers.create' => route('admin.customers.list'),
+        'admin.customers.edit'   => route('admin.customers.list'),
         'admin.users.create'     => route('admin.users.list'),
         'admin.products.create'  => route('admin.products.list'),
         'admin.products.trash'   => route('admin.products.list'),
@@ -56,6 +63,7 @@
         'admin.orders.create'    => route('admin.orders.list'),
         'admin.vouchers.create'  => route('admin.vouchers.list'),
         'admin.vouchers.trash'   => route('admin.vouchers.list'),
+        'admin.settings'         => route('admin.settings'),
         default => null,
     };
 @endphp

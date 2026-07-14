@@ -19,14 +19,14 @@ class ProductVariant extends Model
         'image',
         'sku',
         'cost_price',
-        'sale_price',
+        'price',
         'status',
     ];
 
     protected $casts = [
         'stock'      => 'integer',
         'cost_price' => 'decimal:2',
-        'sale_price' => 'decimal:2',
+        'price'      => 'decimal:2',
     ];
 
     /**
@@ -67,5 +67,20 @@ class ProductVariant extends Model
     public function orderItems(): HasMany
     {
         return $this->hasMany(OrderItem::class);
+    }
+
+    /**
+     * Các lô hàng (batch/lot) của biến thể này — nguồn sự thật về tồn & giá vốn.
+     */
+    public function batches(): HasMany
+    {
+        return $this->hasMany(ProductBatch::class);
+    }
+
+    public function getFinalPriceAttribute(): float
+    {
+        return $this->product
+            ? $this->product->discountedPrice((float) $this->price)
+            : (float) $this->price;
     }
 }

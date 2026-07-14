@@ -209,12 +209,16 @@ class StocktakeController extends Controller
                 continue;
             }
 
-            $variant->update(['stock' => $item->actual_stock]);
+            $batchService = app(\App\Services\InventoryBatchService::class);
 
             if ($diff < 0) {
                 $quantity = abs($diff);
                 $costPrice = (float) $item->unit_cost;
-                $salePrice = (float) $variant->sale_price;
+                $salePrice = (float) $variant->price;
+
+                // Cân bằng GIẢM: trừ tồn theo FIFO qua các lô.
+                $batchService->consumeFifo($variant, $quantity, 'stocktake', $stocktake->id, Auth::id());
+
                 $negativeItems[] = [
                     'product_id'         => $variant->product_id,
                     'product_variant_id' => $item->product_variant_id,
@@ -225,6 +229,9 @@ class StocktakeController extends Controller
                     'total_sale'         => $quantity * $salePrice,
                 ];
             } else {
+                // Cân bằng TĂNG: tạo lô điều chỉnh mới với giá vốn kiểm kê.
+                $batchService->receive($variant, $diff, (float) $item->unit_cost, 'stocktake', $stocktake->id, null, Auth::id());
+
                 $positiveItems[] = [
                     'product_variant_id' => $item->product_variant_id,
                     'quantity'           => $diff,
@@ -239,7 +246,7 @@ class StocktakeController extends Controller
 
         if (! empty($negativeItems)) {
             $stockIssue = StockIssue::create([
-                'code'              => $this->generateStockIssueCode(),
+                'code'              => app(\App\Services\DocumentSequenceService::class)->generateStockIssueCode(),
                 'issue_type'        => StockIssue::ISSUE_TYPE_ADJUSTMENT,
                 'warehouse_id'      => $warehouseId,
                 'reason'            => "Cân bằng giảm tồn theo phiếu kiểm kê {$stocktake->code}",
@@ -261,7 +268,7 @@ class StocktakeController extends Controller
 
         if (! empty($positiveItems)) {
             $goodsReceipt = GoodsReceipt::create([
-                'code'           => $this->generateGoodsReceiptCode(),
+                'code'           => app(\App\Services\DocumentSequenceService::class)->generateGoodsReceiptCode(),
                 'receipt_type'   => GoodsReceipt::RECEIPT_TYPE_ADJUSTMENT,
                 'source_type'    => GoodsReceipt::SOURCE_TYPE_INTERNAL,
                 'receipt_reason' => "Cân bằng tăng tồn theo phiếu kiểm kê {$stocktake->code}",
@@ -300,21 +307,5 @@ class StocktakeController extends Controller
         return $prefix . str_pad((string) $sequence, 3, '0', STR_PAD_LEFT);
     }
 
-    private function generateStockIssueCode(): string
-    {
-        $prefix = 'PXK' . now()->format('Ymd');
-        $lastToday = StockIssue::withTrashed()->where('code', 'like', "{$prefix}%")->orderByDesc('code')->first();
-        $sequence = $lastToday ? ((int) substr($lastToday->code, -3)) + 1 : 1;
-
-        return $prefix . str_pad((string) $sequence, 3, '0', STR_PAD_LEFT);
-    }
-
-    private function generateGoodsReceiptCode(): string
-    {
-        $prefix = 'PN' . now()->format('Ymd');
-        $lastToday = GoodsReceipt::withTrashed()->where('code', 'like', "{$prefix}%")->orderByDesc('code')->first();
-        $sequence = $lastToday ? ((int) substr($lastToday->code, -3)) + 1 : 1;
-
-        return $prefix . str_pad((string) $sequence, 3, '0', STR_PAD_LEFT);
-    }
 }
+

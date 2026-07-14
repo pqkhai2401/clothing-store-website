@@ -16,6 +16,9 @@ Route::post('/vouchers/apply', [\App\Http\Controllers\Api\VoucherController::cla
 // Webhook PayOS (server-to-server, không CSRF vì nằm ở nhóm api)
 Route::post('/payos/webhook', [\App\Http\Controllers\User\PayosController::class, 'webhook'])->name('api.payos.webhook');
 
+// IPN MoMo (server-to-server, không CSRF). Khớp MOMO_IPN_URL trong .env.
+Route::post('/payment/momo/ipn', [\App\Http\Controllers\User\MomoController::class, 'ipn'])->name('api.momo.ipn');
+
 
 // Auth
 Route::prefix('auth')->group(function () {

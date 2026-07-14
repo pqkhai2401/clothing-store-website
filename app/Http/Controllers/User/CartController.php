@@ -47,6 +47,7 @@ class CartController extends Controller
 
         $variantQuery = ProductVariant::query()
             ->where('product_id', $product->id)
+            ->where('status', 'Active')
             ->where('stock', '>', 0);
 
         if (! empty($validated['color_id']) || ! empty($validated['size_id'])) {
@@ -131,6 +132,7 @@ class CartController extends Controller
         $newVariant = ProductVariant::with(['color', 'size'])->findOrFail($validated['product_variant_id']);
 
         abort_unless($newVariant->product_id === $cartItem->productVariant->product_id, 422, 'Variant không thuộc sản phẩm này.');
+        abort_unless($newVariant->status === 'Active', 422, 'Biến thể này đã ngừng bán.');
         abort_unless($newVariant->stock > 0, 422, 'Variant này đã hết hàng.');
 
         $existing = $cartItem->cart->cartItems()
@@ -156,7 +158,7 @@ class CartController extends Controller
         return response()->json([
             'item_id'          => $cartItem->id,
             'item_quantity'    => $cartItem->quantity,
-            'item_subtotal'    => $variant->product->final_price * $cartItem->quantity,
+            'item_subtotal'    => $variant->final_price * $cartItem->quantity,
             'variant_id'       => $variant->id,
             'color_id'         => $variant->color_id,
             'color_name'       => $variant->color?->name,
@@ -193,7 +195,7 @@ class CartController extends Controller
         return response()->json([
             'item_quantity' => $cartItem?->quantity,
             'item_subtotal' => $cartItem
-                ? $cartItem->productVariant->product->final_price * $cartItem->quantity
+                ? $cartItem->productVariant->final_price * $cartItem->quantity
                 : null,
             'subtotal'      => $subtotal,
             'shipping_fee'  => $shippingFee,

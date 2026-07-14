@@ -26,7 +26,11 @@ class OrderController extends Controller
         $status = $request->query('status', '');
 
         $query = Order::where('user_id', $request->user()->id)
+            // Ẩn đơn online (PayOS/MoMo) chưa thanh toán — đây là đơn "đang chờ thanh toán",
+            // trạng thái sống ở giỏ hàng; chỉ khi thanh toán/COD mới coi là đơn đã chốt.
+            ->excludingUnpaidOnline()
             ->with([
+                'paymentMethod',
                 'orderItems.productVariant.product',
                 'orderItems.productVariant.color',
                 'orderItems.productVariant.size',
@@ -147,10 +151,14 @@ class OrderController extends Controller
 
         // Khách chỉ được hủy khi pending + unpaid
         $canCancel = $order->status === 'pending' && $order->payment_status === 'unpaid';
+        // Cho phép tiếp tục thanh toán khi đơn cổng online (PayOS/MoMo) còn pending + chưa thanh toán
+        $canPay = $canCancel && (bool) $order->paymentMethod?->isOnlineGateway();
 
         return response()->json([
             'id'             => $order->id,
             'can_cancel'     => $canCancel,
+            'can_pay'        => $canPay,
+            'pay_url'        => $order->paymentResumeUrl(),
             'order_code'     => $order->order_code,
             'status'         => $order->status,
             'status_label'   => $statusLabels[$order->status] ?? $order->status,
@@ -162,7 +170,6 @@ class OrderController extends Controller
             'address'        => $order->address ? collect([
                 $order->address->apartment_number,
                 $order->address->ward,
-                $order->address->district,
                 $order->address->city,
             ])->filter()->join(', ') : null,
             'shipping_fee'   => $order->shipping_fee,

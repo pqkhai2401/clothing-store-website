@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\User;
 
+use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
@@ -30,27 +31,67 @@ class PayosController extends Controller
                 ->with('success', 'Đơn hàng đã được thanh toán.');
         }
 
-        // Sinh mã giao dịch PayOS mới cho lần hiển thị này (cho phép tạo lại QR nhiều lần).
-        $payosOrderCode = $this->generatePayosOrderCode($order);
+        // Tái sử dụng mã + QR PayOS đã sinh trước đó nếu link còn hiệu lực (PENDING/PROCESSING),
+        // thay vì sinh code mới mỗi lần mở trang (F5, mở lại tab...). Trước đây làm vậy khiến:
+        // (1) webhook/return tra theo code mới trong DB không thấy đơn nếu user thanh toán đúng QR cũ,
+        // (2) đồng hồ đếm ngược luôn bị reset về 30 phút dù link cũ chưa hết hạn.
+        // getPaymentInfo() (GET /v2/payment-requests/{id}) của PayOS không trả lại `qrCode`
+        // (trường này chỉ có ở response lúc tạo mới) nên phải tự cache lại vào payos_payload.
+        $payosOrderCode = $order->payos_order_code ? (int) $order->payos_order_code : null;
+        $payload = null;
 
-        try {
-            $data = $this->payos->createPaymentLink($order, $payosOrderCode);
-        } catch (\Throwable $e) {
-            Log::error('PayOS create link failed', ['order_id' => $order->id, 'error' => $e->getMessage()]);
+        if ($payosOrderCode && $order->payos_payload) {
+            $info   = $this->payos->getPaymentInfo($payosOrderCode);
+            $status = $info['status'] ?? null;
 
-            return redirect()->route('orders.show', $order->id)
-                ->with('error', 'Không tạo được mã thanh toán PayOS. Vui lòng thử lại hoặc chọn phương thức khác.');
+            if ($status === 'PAID') {
+                $this->markPaid($order);
+
+                return redirect()->route('orders.show', $order->id)
+                    ->with('success', 'Đơn hàng đã được thanh toán.');
+            }
+
+            if ($info && in_array($status, ['PENDING', 'PROCESSING'], true)) {
+                $payload = $order->payos_payload;
+            }
         }
 
-        $order->update(['payos_order_code' => $payosOrderCode]);
+        $isNewCode = $payload === null;
+
+        if ($isNewCode) {
+            $payosOrderCode = $this->generatePayosOrderCode($order);
+
+            try {
+                $data = $this->payos->createPaymentLink($order, $payosOrderCode);
+            } catch (\Throwable $e) {
+                Log::error('PayOS create link failed', ['order_id' => $order->id, 'error' => $e->getMessage()]);
+
+                return redirect()->route('orders.show', $order->id)
+                    ->with('error', 'Không tạo được mã thanh toán PayOS. Vui lòng thử lại hoặc chọn phương thức khác.');
+            }
+
+            $payload = $data;
+            $payload['_created_at'] = now()->timestamp;
+
+            $order->update([
+                'payos_order_code' => $payosOrderCode,
+                'payos_payload'    => $payload,
+            ]);
+        }
+
+        $createdAt = $payload['_created_at'] ?? now()->timestamp;
+        $expiresIn = max(0, PayosService::EXPIRE_MINUTES * 60 - (now()->timestamp - $createdAt));
 
         return view('user.checkout.payos', [
             'order'         => $order,
-            'qrCode'        => (string) ($data['qrCode'] ?? ''),
-            'checkoutUrl'   => (string) ($data['checkoutUrl'] ?? ''),
+            'qrCode'        => (string) ($payload['qrCode'] ?? ''),
+            'checkoutUrl'   => (string) ($payload['checkoutUrl'] ?? ''),
             'amount'        => (int) round((float) $order->total_money),
-            'accountName'   => $data['accountName'] ?? null,
-            'accountNumber' => $data['accountNumber'] ?? null,
+            'accountName'   => $payload['accountName'] ?? null,
+            'accountNumber' => $payload['accountNumber'] ?? null,
+            'bin'           => $payload['bin'] ?? null,
+            'bankName'      => $this->bankNameFromBin($payload['bin'] ?? null),
+            'expiresIn'     => $expiresIn,
         ]);
     }
 
@@ -155,8 +196,27 @@ class PayosController extends Controller
 
     private function markPaid(Order $order): void
     {
+        // Không đánh dấu đã thanh toán cho đơn đã hủy/hết hạn (tránh trạng thái mâu thuẫn
+        // cancelled + paid khi webhook/poll đến sau lệnh expire). Cũng bỏ qua nếu đã paid (idempotent).
+        if ($order->status === OrderStatus::CANCELLED->value) {
+            Log::warning('PayOS: bỏ qua markPaid cho đơn đã hủy/hết hạn.', [
+                'order_id'         => $order->id,
+                'payos_order_code' => $order->payos_order_code,
+            ]);
+
+            return;
+        }
+
+        if ($order->payment_status === PaymentStatus::PAID->value) {
+            return;
+        }
+
         // Chỉ cập nhật trạng thái thanh toán; việc xử lý đơn/tồn kho do admin thực hiện.
         $order->update(['payment_status' => PaymentStatus::PAID->value]);
+
+        // Thanh toán xong mới xóa sản phẩm khỏi giỏ (đơn online trước đó vẫn giữ giỏ để user
+        // có thể tiếp tục thanh toán / đặt lại nếu bỏ dở).
+        $order->clearPurchasedItemsFromCart();
     }
 
     private function authorizeOrder(Request $request, Order $order): void
@@ -186,5 +246,46 @@ class PayosController extends Controller
         // Duy nhất và <= giới hạn PayOS (9_007_199_254_740_991).
         // id đơn làm tiền tố + hậu tố ngẫu nhiên để tạo lại QR nhiều lần không bị trùng.
         return (int) ($order->id * 1_000_000 + random_int(0, 999_999));
+    }
+
+    /**
+     * Suy ra tên ngân hàng từ mã BIN (napas) mà PayOS trả về.
+     */
+    private function bankNameFromBin(?string $bin): ?string
+    {
+        if (! $bin) {
+            return null;
+        }
+
+        // Danh sách BIN → tên ngân hàng của các ngân hàng phổ biến tại VN.
+        $banks = [
+            '970422' => 'Ngân hàng TMCP Quân đội (MB)',
+            '970436' => 'Vietcombank',
+            '970415' => 'VietinBank',
+            '970418' => 'BIDV',
+            '970405' => 'Agribank',
+            '970407' => 'Techcombank',
+            '970416' => 'ACB',
+            '970432' => 'VPBank',
+            '970423' => 'TPBank',
+            '970403' => 'Sacombank',
+            '970443' => 'SHB',
+            '970437' => 'HDBank',
+            '970431' => 'Eximbank',
+            '970441' => 'VIB',
+            '970426' => 'MSB',
+            '970448' => 'OCB',
+            '970440' => 'SeABank',
+            '970419' => 'NCB',
+            '970412' => 'PVcomBank',
+            '970438' => 'BaoVietBank',
+            '970425' => 'ABBANK',
+            '970427' => 'VietABank',
+            '970429' => 'SCB',
+            '970424' => 'Shinhan Bank',
+            '970433' => 'VietBank',
+        ];
+
+        return $banks[$bin] ?? ('Ngân hàng (BIN '.$bin.')');
     }
 }

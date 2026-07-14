@@ -51,6 +51,19 @@ return [
         // Chỉ đặt false ở môi trường local nếu PHP chưa có CA bundle (lỗi cURL 60).
         'verify_ssl' => env('PAYOS_VERIFY_SSL', true),
     ],
+
+    'momo' => [
+        'partner_code' => env('MOMO_PARTNER_CODE'),
+        'access_key'   => env('MOMO_ACCESS_KEY'),
+        'secret_key'   => env('MOMO_SECRET_KEY'),
+        // MOMO_ENDPOINT trỏ tới .../api/create; URL query suy ra bằng cách đổi 'create' -> 'query'.
+        'endpoint'     => env('MOMO_ENDPOINT', 'https://test-payment.momo.vn/v2/gateway/api/create'),
+        'redirect_url' => env('MOMO_REDIRECT_URL', env('APP_URL').'/checkout/momo-return'),
+        'ipn_url'      => env('MOMO_IPN_URL', env('APP_URL').'/api/payment/momo/ipn'),
+        'request_type' => env('MOMO_REQUEST_TYPE', 'captureWallet'),
+        // Đặt false ở local nếu PHP chưa có CA bundle (lỗi cURL 60), như PayOS.
+        'verify_ssl'   => env('MOMO_VERIFY_SSL', false),
+    ],
     /*
     |--------------------------------------------------------------------------
     | Google Gemini API (Kiểm duyệt đánh giá bằng AI)

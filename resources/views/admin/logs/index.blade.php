@@ -96,7 +96,54 @@
                         </div>
                     </div>
 
-                    {{-- Khoảng ngày --}}
+                    {{-- Bộ chọn kỳ: Hôm nay / Hôm qua / Năm / Quý / Tháng --}}
+                    <div class="vk-period-wrap" id="logPeriodWrap">
+                        <button type="button" class="vk-period-trigger {{ ($dateFrom || $dateTo) ? 'is-active' : '' }}" id="logPeriodTrigger" aria-haspopup="true" aria-expanded="false">
+                            <i class="fa-regular fa-calendar me-1"></i>
+                            <span id="logPeriodLabel">Chọn kỳ</span>
+                            <i class="fa-solid fa-chevron-down vk-period-caret"></i>
+                        </button>
+
+                        <div class="vk-period-panel" id="logPeriodPanel" hidden>
+                            {{-- Quick actions --}}
+                            <div class="vk-quick-row">
+                                <button type="button" class="vk-quick-btn" id="logBtnToday">Hôm nay</button>
+                                <button type="button" class="vk-quick-btn" id="logBtnYesterday">Hôm qua</button>
+                                <button type="button" class="vk-quick-btn" id="logBtnThisYear">Năm nay</button>
+                                <button type="button" class="vk-quick-btn" id="logBtnLastYear">Năm ngoái</button>
+                                <button type="button" class="vk-quick-clear" id="logBtnClear">Xoá chọn</button>
+                            </div>
+
+                            {{-- Năm --}}
+                            <div class="vk-section-row">
+                                <span class="vk-section-label">Năm</span>
+                                <select class="vk-year-select" id="logYearSelect">
+                                    @for($y = now()->year + 1; $y >= now()->year - 4; $y--)
+                                        <option value="{{ $y }}" {{ $y == now()->year ? 'selected' : '' }}>{{ $y }}</option>
+                                    @endfor
+                                </select>
+                            </div>
+
+                            {{-- Quý --}}
+                            <div class="vk-section-label">QUÝ</div>
+                            <div class="vk-chip-row">
+                                <button type="button" class="vk-chip" data-quarter="1">Quý 1</button>
+                                <button type="button" class="vk-chip" data-quarter="2">Quý 2</button>
+                                <button type="button" class="vk-chip" data-quarter="3">Quý 3</button>
+                                <button type="button" class="vk-chip" data-quarter="4">Quý 4</button>
+                            </div>
+
+                            {{-- Tháng --}}
+                            <div class="vk-section-label">THÁNG</div>
+                            <div class="vk-chip-row vk-chip-row--months">
+                                @for($m = 1; $m <= 12; $m++)
+                                    <button type="button" class="vk-chip" data-month="{{ $m }}">Th {{ $m }}</button>
+                                @endfor
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- 2 ô ngày đặt cạnh nút Chọn kỳ --}}
                     <div class="vk-date-range">
                         <input type="date" name="date_from" id="logDateFrom" data-admin-filter class="form-control vk-date-range-input"
                             value="{{ $dateFrom }}" title="Từ ngày">
@@ -268,6 +315,86 @@
             document.addEventListener('keydown', function (e) {
                 if (e.key === 'Escape' && !modal.hidden) closeModal();
             });
+        }());
+
+        /* ── Bộ chọn kỳ (Hôm nay / Hôm qua / Năm / Quý / Tháng) ── */
+        (function () {
+            const trigger    = document.getElementById('logPeriodTrigger');
+            const panel      = document.getElementById('logPeriodPanel');
+            const label      = document.getElementById('logPeriodLabel');
+            const inputFrom  = document.getElementById('logDateFrom');
+            const inputTo    = document.getElementById('logDateTo');
+            const yearSelect = document.getElementById('logYearSelect');
+            const wrap       = document.getElementById('logPeriodWrap');
+            if (!trigger) return;
+
+            const pad2    = n => String(n).padStart(2, '0');
+            const iso     = (y, m, d) => y + '-' + pad2(m) + '-' + pad2(d);
+            const lastDay = (y, m) => new Date(y, m, 0).getDate();
+            const isoToday = () => { const d = new Date(); return iso(d.getFullYear(), d.getMonth() + 1, d.getDate()); };
+            function fmt(from, to) {
+                if (!from && !to) return 'Chọn kỳ';
+                const f = from ? from.split('-').reverse().join('/') : '?';
+                const t = to   ? to.split('-').reverse().join('/')   : '?';
+                return f === t ? f : (f + ' – ' + t);
+            }
+
+            function open()  { panel.hidden = false; trigger.classList.add('is-open'); trigger.setAttribute('aria-expanded', 'true'); }
+            function close() { panel.hidden = true;  trigger.classList.remove('is-open'); trigger.setAttribute('aria-expanded', 'false'); }
+            trigger.addEventListener('click', e => { e.stopPropagation(); panel.hidden ? open() : close(); });
+            document.addEventListener('click', e => { if (!panel.hidden && !wrap.contains(e.target)) close(); });
+
+            function applyDates(from, to, chipLabel) {
+                inputFrom.value = from;
+                inputTo.value   = to;
+                label.textContent = chipLabel || fmt(from, to);
+                trigger.classList.toggle('is-active', !!(from || to));
+                panel.querySelectorAll('.vk-chip').forEach(c => c.classList.remove('is-active'));
+                // Kích hoạt realtime-table (lắng nghe change trên [data-admin-filter])
+                inputFrom.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            const getYear = () => parseInt(yearSelect.value, 10);
+
+            document.getElementById('logBtnToday').addEventListener('click', () => {
+                const s = isoToday(); applyDates(s, s, 'Hôm nay'); close();
+            });
+            document.getElementById('logBtnYesterday').addEventListener('click', () => {
+                const d = new Date(); d.setDate(d.getDate() - 1);
+                const s = iso(d.getFullYear(), d.getMonth() + 1, d.getDate());
+                applyDates(s, s, 'Hôm qua'); close();
+            });
+            document.getElementById('logBtnThisYear').addEventListener('click', () => {
+                const y = new Date().getFullYear(); applyDates(y + '-01-01', y + '-12-31', 'Năm nay'); yearSelect.value = y; close();
+            });
+            document.getElementById('logBtnLastYear').addEventListener('click', () => {
+                const y = new Date().getFullYear() - 1; applyDates(y + '-01-01', y + '-12-31', 'Năm ngoái'); yearSelect.value = y; close();
+            });
+            document.getElementById('logBtnClear').addEventListener('click', () => {
+                applyDates('', '', 'Chọn kỳ'); close();
+            });
+
+            panel.querySelectorAll('.vk-chip[data-quarter]').forEach(btn => btn.addEventListener('click', function () {
+                const q = parseInt(this.dataset.quarter, 10), y = getYear();
+                const sm = (q - 1) * 3 + 1, em = q * 3;
+                applyDates(iso(y, sm, 1), iso(y, em, lastDay(y, em)), 'Quý ' + q + ' năm ' + y);
+                this.classList.add('is-active'); close();
+            }));
+            panel.querySelectorAll('.vk-chip[data-month]').forEach(btn => btn.addEventListener('click', function () {
+                const m = parseInt(this.dataset.month, 10), y = getYear();
+                applyDates(iso(y, m, 1), iso(y, m, lastDay(y, m)), 'Tháng ' + m + '/' + y);
+                this.classList.add('is-active'); close();
+            }));
+
+            // Đồng bộ nhãn khi user tự chỉnh 2 ô ngày
+            function syncManual() {
+                label.textContent = fmt(inputFrom.value, inputTo.value);
+                trigger.classList.toggle('is-active', !!(inputFrom.value || inputTo.value));
+            }
+            inputFrom.addEventListener('change', () => { if (document.activeElement === inputFrom) syncManual(); });
+            inputTo.addEventListener('change', () => { if (document.activeElement === inputTo) syncManual(); });
+
+            // Nhãn ban đầu theo giá trị có sẵn
+            if (inputFrom.value || inputTo.value) { label.textContent = fmt(inputFrom.value, inputTo.value); }
         }());
     }());
     </script>

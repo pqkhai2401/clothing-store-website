@@ -7,6 +7,8 @@ use App\Models\Address;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class ProfileController extends Controller
@@ -18,6 +20,7 @@ class ProfileController extends Controller
 
         return response()->json([
             'username'         => $user->username,
+            'avatar_url'       => $user->avatar_display_url,
             'email'            => $user->email,
             'phone_number'     => $user->phone_number ?? '',
             'role_label'       => $this->getRoleLabel($user),
@@ -47,6 +50,7 @@ class ProfileController extends Controller
             'apartment_number' => ['nullable', 'string', 'max:255'],
             'current_password' => ['nullable', 'required_with:password', 'current_password'],
             'password'         => ['nullable', 'string', 'min:8', 'confirmed'],
+            'avatar'           => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif', 'max:2048'],
         ], [
             'username.required'         => 'Vui lòng nhập họ và tên.',
             'email.required'            => 'Vui lòng nhập email.',
@@ -57,6 +61,9 @@ class ProfileController extends Controller
             'current_password.current_password' => 'Mật khẩu hiện tại không đúng.',
             'password.min'              => 'Mật khẩu mới phải có ít nhất 8 ký tự.',
             'password.confirmed'        => 'Xác nhận mật khẩu không khớp.',
+            'avatar.image'               => 'File tải lên phải là một hình ảnh.',
+            'avatar.mimes'               => 'Ảnh đại diện chỉ chấp nhận định dạng: jpeg, png, jpg, gif.',
+            'avatar.max'                 => 'Dung lượng ảnh đại diện không được vượt quá 2MB.',
         ]);
 
         $user->username     = $validated['username'];
@@ -67,15 +74,26 @@ class ProfileController extends Controller
 
         if (!empty($validated['password'])) {
             $user->password = Hash::make($validated['password']);
+            $user->must_change_password = false;
+        }
+
+        if ($request->hasFile('avatar')) {
+            // Chỉ xóa file cũ khi nó là ảnh tự upload (đường dẫn tương đối trong disk "public"),
+            // không xóa nếu avatar_url đang trỏ tới URL tuyệt đối (vd ảnh Google).
+            if ($user->avatar_url && ! Str::startsWith($user->avatar_url, ['http://', 'https://'])) {
+                Storage::disk('public')->delete($user->avatar_url);
+            }
+
+            $user->avatar_url = $request->file('avatar')->store('avatars', 'public');
         }
 
         $user->save();
 
         $address          = $user->addresses()->first() ?? new Address();
         $address->user_id = $user->id;
-        $address->city             = $validated['city'] ?? null;
-        $address->ward             = $validated['ward'] ?? null;
-        $address->apartment_number = $validated['apartment_number'] ?? null;
+        $address->city             = $validated['city'] ?? '';
+        $address->ward             = $validated['ward'] ?? '';
+        $address->apartment_number = $validated['apartment_number'] ?? '';
         $address->save();
 
         return response()->json([
@@ -87,6 +105,7 @@ class ProfileController extends Controller
                 'phone_number' => $user->phone_number,
                 'role'         => $this->getRoleLabel($user),
                 'status'       => $user->is_active ? 'Hoạt động' : 'Ngừng hoạt động',
+                'avatar_url'   => $user->avatar_display_url,
             ],
         ]);
     }

@@ -50,6 +50,55 @@
 #profileModal .modal-body::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 4px; }
 
 /* ── Section ────────────────────────────────────────────────── */
+.pm-avatar-wrap {
+    display: flex;
+    justify-content: center;
+    padding: 22px 28px 4px;
+}
+
+.pm-avatar-frame {
+    position: relative;
+    width: 92px;
+    height: 92px;
+}
+
+.pm-avatar {
+    width: 92px;
+    height: 92px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: #e2e8f0;
+    border: 3px solid #fff;
+    box-shadow: 0 2px 10px rgba(2, 6, 23, 0.12);
+}
+
+[data-theme="dark"] .pm-avatar {
+    background: #334155;
+    border-color: #1e293b;
+}
+
+.pm-avatar-edit {
+    position: absolute;
+    right: -2px;
+    bottom: -2px;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: #16A34A;
+    color: #ffffff;
+    border: 3px solid #fff;
+    cursor: pointer;
+    font-size: 12px;
+    transition: background 0.15s;
+}
+
+.pm-avatar-edit:hover { background: #15803D; }
+
+[data-theme="dark"] .pm-avatar-edit { border-color: #0F1B31; }
+
 .pm-section {
     padding: 24px 28px;
     border-bottom: 1px solid #F1F5F9;
@@ -335,10 +384,13 @@
     <span id="pmToastMsg"></span>
 </div>
 
+@php $mustChangePassword = (bool) (auth()->user()->must_change_password ?? false); @endphp
+
 {{-- ═══════════════════════════════════════════════════════════════
      Profile Modal HTML
      ═══════════════════════════════════════════════════════════════ --}}
-<div class="modal fade" id="profileModal" tabindex="-1" aria-labelledby="profileModalLabel" aria-hidden="true">
+<div class="modal fade" id="profileModal" tabindex="-1" aria-labelledby="profileModalLabel" aria-hidden="true"
+    @if($mustChangePassword) data-bs-backdrop="static" data-bs-keyboard="false" @endif>
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
 
@@ -346,15 +398,33 @@
             <div class="modal-header">
                 <div class="flex-grow-1">
                     <p class="pm-title" id="profileModalLabel">Hồ sơ của tôi</p>
-                    <p class="pm-subtitle">Quản lý thông tin tài khoản và địa chỉ liên hệ của bạn.</p>
+                    @if($mustChangePassword)
+                        <p class="pm-subtitle text-danger fw-semibold">Quản trị viên vừa đặt lại mật khẩu của bạn — vui lòng đổi mật khẩu mới để tiếp tục sử dụng hệ thống.</p>
+                    @else
+                        <p class="pm-subtitle">Quản lý thông tin tài khoản và địa chỉ liên hệ của bạn.</p>
+                    @endif
                 </div>
-                <button type="button" class="btn-close ms-3" data-bs-dismiss="modal" aria-label="Close"></button>
+                @unless($mustChangePassword)
+                    <button type="button" class="btn-close ms-3" data-bs-dismiss="modal" aria-label="Close"></button>
+                @endunless
             </div>
 
             {{-- Body --}}
             <div class="modal-body">
                 <form id="profileForm" novalidate>
                     @csrf
+
+                    {{-- ── Ảnh đại diện ── --}}
+                    <div class="pm-avatar-wrap">
+                        <div class="pm-avatar-frame">
+                            <img id="profile_avatar" class="pm-avatar" src="" alt="Ảnh đại diện">
+                            <label for="profile_avatar_input" class="pm-avatar-edit" title="Đổi ảnh đại diện">
+                                <i class="fa-solid fa-camera"></i>
+                            </label>
+                            <input type="file" class="d-none" id="profile_avatar_input" name="avatar" accept="image/*">
+                        </div>
+                    </div>
+                    <p class="pm-error text-center" id="err_avatar" style="margin: 6px 0 0;"></p>
 
                     {{-- ── 1. Thông tin tài khoản ── --}}
                     <div class="pm-section">
@@ -492,7 +562,9 @@
 
             {{-- Footer --}}
             <div class="modal-footer justify-content-end">
-                <button type="button" class="pm-btn-cancel" data-bs-dismiss="modal">Hủy</button>
+                @unless($mustChangePassword)
+                    <button type="button" class="pm-btn-cancel" data-bs-dismiss="modal">Hủy</button>
+                @endunless
                 <button type="button" class="pm-btn-save" id="profileSaveBtn">
                     <i class="fa-solid fa-floppy-disk"></i>
                     <span id="profileSaveTxt">Lưu thay đổi</span>
@@ -513,6 +585,7 @@
     const PROFILE_URL = '{{ route("admin.profile") }}';
     const UPDATE_URL  = '{{ route("admin.profile.update") }}';
     const CSRF_TOKEN  = '{{ csrf_token() }}';
+    const MUST_CHANGE_PASSWORD = @json($mustChangePassword);
 
     const modal        = document.getElementById('profileModal');
     const form         = document.getElementById('profileForm');
@@ -534,6 +607,8 @@
             if (input) input.classList.remove('is-invalid');
             if (err)   { err.textContent = ''; err.classList.remove('show'); }
         });
+        const avatarErr = document.getElementById('err_avatar');
+        if (avatarErr) { avatarErr.textContent = ''; avatarErr.classList.remove('show'); }
     }
 
     function showErrors(errors) {
@@ -568,6 +643,12 @@
 
     // ── Fill form from API data ───────────────────────────────────
     function fillForm(data) {
+        const avatarImg = document.getElementById('profile_avatar');
+        if (avatarImg) {
+            const fallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(data.username || 'User')}&background=random&color=fff`;
+            avatarImg.src = data.avatar_url || fallback;
+            avatarImg.onerror = function () { this.onerror = null; this.src = fallback; };
+        }
         document.getElementById('profile_username').value     = data.username     ?? '';
         document.getElementById('profile_email').value        = data.email        ?? '';
         document.getElementById('profile_phone_number').value = data.phone_number ?? '';
@@ -592,6 +673,10 @@
         // Clear password fields on open
         ['profile_current_password', 'profile_password', 'profile_password_confirmation']
             .forEach(id => { document.getElementById(id).value = ''; });
+
+        // Clear any previously chosen avatar file
+        const avatarInput = document.getElementById('profile_avatar_input');
+        if (avatarInput) avatarInput.value = '';
     }
 
     // ── Open modal: fetch data then show ─────────────────────────
@@ -627,6 +712,12 @@
     // ── Submit ────────────────────────────────────────────────────
     async function handleSubmit() {
         clearErrors();
+
+        if (MUST_CHANGE_PASSWORD && !document.getElementById('profile_password').value) {
+            showErrors({ password: ['Bạn phải đặt mật khẩu mới để tiếp tục.'] });
+            return;
+        }
+
         setSaving(true);
 
         const formData = new FormData(form);
@@ -637,9 +728,13 @@
             formData.delete('current_password');
         }
 
+        // PHP không tự parse được body multipart/form-data trên request PATCH thật sự,
+        // nên phải gửi bằng POST kèm _method=PATCH để Laravel spoof lại đúng route.
+        formData.append('_method', 'PATCH');
+
         try {
             const res  = await fetch(UPDATE_URL, {
-                method: 'PATCH',
+                method: 'POST',
                 body: formData,
                 headers: {
                     'Accept': 'application/json',
@@ -660,6 +755,12 @@
             }
 
             // Success
+            if (MUST_CHANGE_PASSWORD) {
+                showToast(data.message ?? 'Đổi mật khẩu thành công.');
+                setTimeout(() => window.location.reload(), 800);
+                return;
+            }
+
             bsModal?.hide();
             showToast(data.message ?? 'Cập nhật hồ sơ thành công.');
 
@@ -681,6 +782,34 @@
         }
     }
 
+    // ── Avatar upload preview ─────────────────────────────────────
+    const avatarInputEl = document.getElementById('profile_avatar_input');
+    const avatarImgEl   = document.getElementById('profile_avatar');
+    const avatarErrEl   = document.getElementById('err_avatar');
+
+    if (avatarInputEl) {
+        avatarInputEl.addEventListener('change', function () {
+            if (avatarErrEl) { avatarErrEl.textContent = ''; avatarErrEl.classList.remove('show'); }
+
+            const file = this.files && this.files[0];
+            if (!file) return;
+
+            const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
+            if (!allowedTypes.includes(file.type)) {
+                this.value = '';
+                if (avatarErrEl) { avatarErrEl.textContent = 'Ảnh đại diện chỉ chấp nhận định dạng: jpeg, png, jpg, gif.'; avatarErrEl.classList.add('show'); }
+                return;
+            }
+            if (file.size > 2 * 1024 * 1024) {
+                this.value = '';
+                if (avatarErrEl) { avatarErrEl.textContent = 'Dung lượng ảnh đại diện không được vượt quá 2MB.'; avatarErrEl.classList.add('show'); }
+                return;
+            }
+
+            avatarImgEl.src = URL.createObjectURL(file);
+        });
+    }
+
     // ── Password eye toggle ───────────────────────────────────────
     document.querySelectorAll('[data-pw-toggle]').forEach(btn => {
         btn.addEventListener('click', function () {
@@ -697,6 +826,11 @@
     document.querySelectorAll('[data-profile-open]').forEach(el => {
         el.addEventListener('click', openProfile);
     });
+
+    // Admin vừa bị reset mật khẩu — bắt buộc mở modal đổi mật khẩu ngay khi vào trang.
+    if (MUST_CHANGE_PASSWORD) {
+        openProfile();
+    }
 
     if (saveBtn) saveBtn.addEventListener('click', handleSubmit);
 

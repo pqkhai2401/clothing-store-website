@@ -6,6 +6,10 @@
         'customer' => 'Khách hàng',
     ];
     $currentUserId = auth()->id();
+    $currentUser = auth()->user();
+    // Admin thường (không bảo vệ) không được đặt lại mật khẩu cho quản trị viên khác
+    // — chỉ admin hệ thống (bảo vệ) mới có quyền đó. Tính sẵn để ẩn/hiện nút reset.
+    $currentUserIsNormalAdmin = $currentUser?->isAdmin() && ! (bool) $currentUser?->is_protected;
     $isStaffPage = ($type ?? 'all') === 'staff';
     $isCustomerPage = ($type ?? 'all') === 'customer';
     $showBulkCheckbox = $isCustomerPage;
@@ -72,8 +76,11 @@
                                     @endif
                                     <td data-cell="id" data-sort-value="{{ $user->id }}">{{ $user->id }}</td>
                                     <td data-cell="username" data-sort-value="{{ $user->username }}">
-                                        <div class="fw-bold text-dark d-flex align-items-center gap-2 flex-wrap">
-                                            <span>{{ $user->username }}</span>
+                                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                                            <img src="{{ $user->avatar_display_url ?: 'https://ui-avatars.com/api/?name='.urlencode($user->username).'&background=random&color=fff' }}" alt="{{ $user->username }}"
+                                                class="account-row-avatar" loading="lazy"
+                                                onerror="this.onerror=null;this.src='https://ui-avatars.com/api/?name={{ urlencode($user->username) }}&background=random&color=fff';">
+                                            <span class="fw-bold text-dark">{{ $user->username }}</span>
                                             @if($isStaffPage && $user->is_protected)
                                                 <span class="system-admin-chip">Admin hệ thống</span>
                                             @endif
@@ -105,11 +112,17 @@
                                                     data-show-url="{{ route(($routePrefix ?? 'admin.users') . '.show', $user->id) }}">
                                                     <i class="fa-regular fa-eye"></i> Xem
                                                 </button>
-                                                <button type="button" class="dropdown-item js-edit-user"
-                                                    data-show-url="{{ route(($routePrefix ?? 'admin.users') . '.show', $user->id) }}"
-                                                    data-update-url="{{ route(($routePrefix ?? 'admin.users') . '.update', $user->id) }}">
+                                                <a class="dropdown-item" href="{{ route(($routePrefix ?? 'admin.users') . '.edit', $user->id) }}">
                                                     <i class="fa-regular fa-pen-to-square"></i> Sửa
-                                                </button>
+                                                </a>
+                                                @if ($user->id !== $currentUserId && ! $user->is_protected
+                                                    && ! ($currentUserIsNormalAdmin && $roleName === 'admin'))
+                                                    <button type="button" class="dropdown-item js-reset-password"
+                                                        data-reset-url="{{ route(($routePrefix ?? 'admin.users') . '.resetPassword', $user->id) }}"
+                                                        data-username="{{ $user->username }}">
+                                                        <i class="fa-solid fa-key"></i> Đặt lại mật khẩu
+                                                    </button>
+                                                @endif
                                                 @if (!$isStaffPage && $user->id !== $currentUserId && ! $user->is_protected)
                                                     <button type="button" class="dropdown-item text-danger"
                                                         data-delete-url="{{ route(($routePrefix ?? 'admin.users') . '.destroy', $user->id) }}"

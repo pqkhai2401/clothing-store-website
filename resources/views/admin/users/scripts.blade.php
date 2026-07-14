@@ -8,10 +8,13 @@
         const currentUserIsProtectedAdmin = @json($currentUserIsProtectedAdmin ?? false);
         const detailModalEl = document.getElementById('userDetailModal');
         const editModalEl = document.getElementById('userEditModal');
+        const resetPasswordModalEl = document.getElementById('userResetPasswordModal');
         const detailModal = bootstrap.Modal.getOrCreateInstance(detailModalEl);
         const editModal = bootstrap.Modal.getOrCreateInstance(editModalEl);
+        const resetPasswordModal = resetPasswordModalEl ? bootstrap.Modal.getOrCreateInstance(resetPasswordModalEl) : null;
         const detailBody = document.getElementById('userDetailModalBody');
         const editForm = document.getElementById('userEditForm');
+        const resetPasswordForm = document.getElementById('userResetPasswordForm');
         const statusSelect = document.getElementById('modal_is_active');
         const lockReasonRow = document.querySelector('[data-modal-lock-reason-row]');
         const lockReasonInput = document.getElementById('modal_lock_reason');
@@ -119,55 +122,93 @@
             return labels[value] || value;
         }
 
-        function readonlyRow(label, value, muted = false) {
-            const style = muted ? ' style="opacity:0.45"' : '';
+        function detailField(label, value, opts = {}) {
+            const colClass = opts.full ? 'col-12' : 'col-md-6';
             return `
-                <div class="account-modal-readonly"${style}>
-                    <div class="account-modal-readonly-label">${escapeHtml(label)}</div>
-                    <div class="account-modal-readonly-value">${escapeHtml(text(value))}</div>
+                <div class="${colClass}">
+                    <label class="form-label">${escapeHtml(label)}</label>
+                    <div class="account-detail-value">${escapeHtml(text(value))}</div>
                 </div>
             `;
         }
 
         function renderDetail(user) {
-            const rows = [
-                readonlyRow('ID', user.id, true),
-                readonlyRow('Họ và tên', user.username),
-                readonlyRow('Email', user.email),
-                readonlyRow('Số điện thoại', user.phone_number),
+            const fields = [
+                detailField('Email', user.email),
+                detailField('Số điện thoại', user.phone_number),
             ];
 
-            if (showRoleColumn) {
-                rows.push(readonlyRow('Vai trò', roleLabel(user.role_name)));
-            }
-
-            if (user.is_protected) {
-                rows.push(readonlyRow('Bảo vệ', 'Admin hệ thống'));
-            }
-
-            rows.push(readonlyRow('Trạng thái', user.status_label));
+            fields.push(detailField('Trạng thái', user.status_label));
 
             if (!user.is_active) {
-                rows.push(readonlyRow('Lý do ngưng hoạt động', user.lock_reason || 'Chưa nhập lý do'));
+                fields.push(detailField('Lý do ngưng hoạt động', user.lock_reason || 'Chưa nhập lý do'));
             }
 
             if (showAddressFields) {
-                rows.push(readonlyRow('Tỉnh, Thành phố', user.city));
-                rows.push(readonlyRow('Phường, Xã', user.ward));
-                rows.push(readonlyRow('Số nhà', user.apartment_number));
+                fields.push(detailField('Tỉnh, Thành phố', user.city));
+                fields.push(detailField('Phường, Xã', user.ward));
+                fields.push(detailField('Số nhà', user.apartment_number));
             }
 
-            rows.push(readonlyRow('Ngày tạo', user.created_at));
-            rows.push(readonlyRow('Cập nhật lần cuối', user.updated_at));
+            fields.push(detailField('Ngày tạo', user.created_at));
+            fields.push(detailField('Cập nhật lần cuối', user.updated_at));
 
-            detailBody.innerHTML = rows.join('');
+            const avatar = user.avatar_url
+                || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.username || 'User')}&background=random&color=fff`;
+            const fallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.username || 'User')}&background=random&color=fff`;
+
+            const roleLine = showRoleColumn
+                ? `<div class="account-detail-role"><span class="role-badge" data-role="${escapeHtml(user.role_name || '')}">${escapeHtml(roleLabel(user.role_name))}</span></div>`
+                : '';
+            const protectedChip = user.is_protected
+                ? '<span class="system-admin-chip mt-1">Admin hệ thống</span>'
+                : '';
+
+            const header = `
+                <div class="account-detail-head">
+                    <img src="${escapeHtml(avatar)}" alt="${escapeHtml(user.username)}" class="account-detail-avatar"
+                        onerror="this.onerror=null;this.src='${fallback}';">
+                    <div class="account-detail-name">${escapeHtml(user.username)}</div>
+                    ${roleLine}
+                    ${protectedChip}
+                </div>`;
+
+            detailBody.innerHTML = header + `<div class="row g-3">${fields.join('')}</div>`;
         }
 
         function setField(name, value) {
             const field = editForm.elements[name];
-            if (field) {
-                field.value = value ?? '';
+            if (!field) return;
+            const v = value ?? '';
+            // Với <select> (vd Tỉnh/Thành phố nạp từ API): nếu giá trị đã lưu chưa
+            // có trong danh sách option thì thêm vào để không mất dữ liệu cũ.
+            if (field.tagName === 'SELECT' && v !== ''
+                && ! Array.from(field.options).some(opt => opt.value === v)) {
+                field.insertAdjacentHTML('beforeend', `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`);
             }
+            field.value = v;
+        }
+
+        // Nạp danh sách Tỉnh/Thành phố từ API địa giới hành chính vào select (giống
+        // trang khách hàng), thay cho danh sách cứng. Chỉ nạp 1 lần rồi đánh dấu.
+        async function loadProvincesInto(select) {
+            if (!select || select.dataset.provincesLoaded === '1') return;
+            try {
+                const res = await fetch('{{ route('location.provinces') }}', { headers: { 'Accept': 'application/json' } });
+                const data = await res.json();
+                const existing = new Set(Array.from(select.options).map(opt => opt.value));
+                select.insertAdjacentHTML('beforeend', data
+                    .filter(item => ! existing.has(item.name))
+                    .map(item => `<option value="${escapeHtml(item.name)}" data-code="${item.code}">${escapeHtml(item.name)}</option>`)
+                    .join(''));
+                select.dataset.provincesLoaded = '1';
+            } catch {
+                // API lỗi: giữ nguyên; setField vẫn tự thêm option cho giá trị đã lưu.
+            }
+        }
+
+        if (showAddressFields) {
+            loadProvincesInto(document.getElementById('modal_city'));
         }
 
         function resetErrors() {
@@ -201,6 +242,66 @@
             });
 
             firstInvalidField?.focus();
+        }
+
+        function validateEditForm() {
+            const errors = {};
+            const get = (name) => {
+                const field = editForm.elements[name];
+                return field ? String(field.value ?? '').trim() : '';
+            };
+
+            // Họ và tên: bắt buộc, tối đa 255 ký tự
+            const username = get('username');
+            if (username === '') {
+                errors.username = 'Vui lòng nhập họ và tên';
+            } else if (username.length > 255) {
+                errors.username = 'Họ và tên không được vượt quá 255 ký tự';
+            }
+
+            // Email: bắt buộc, đúng định dạng, tối đa 255 ký tự
+            const email = get('email');
+            if (email === '') {
+                errors.email = 'Vui lòng nhập email';
+            } else if (email.length > 255) {
+                errors.email = 'Email không được vượt quá 255 ký tự';
+            } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                errors.email = 'Email không đúng định dạng';
+            }
+
+            // Số điện thoại: không bắt buộc, tối đa 10 ký tự
+            const phone = get('phone_number');
+            if (phone !== '') {
+                if (phone.length > 10) {
+                    errors.phone_number = 'Số điện thoại không được vượt quá 10 ký tự';
+                } else if (!/^[0-9+\-\s().]+$/.test(phone)) {
+                    errors.phone_number = 'Số điện thoại không hợp lệ';
+                }
+            }
+
+            // Vai trò: bắt buộc khi trang có cột vai trò và select đang mở
+            const roleSelect = editForm.elements['role_id'];
+            if (showRoleColumn && roleSelect && !roleSelect.disabled && String(roleSelect.value ?? '').trim() === '') {
+                errors.role_id = 'Vui lòng chọn vai trò';
+            }
+
+            // Lý do ngưng hoạt động: không bắt buộc, tối đa 255 ký tự
+            if (get('lock_reason').length > 255) {
+                errors.lock_reason = 'Lý do ngưng hoạt động không được vượt quá 255 ký tự';
+            }
+
+            // Địa chỉ: không bắt buộc, tối đa 255 ký tự
+            [
+                ['city', 'Tỉnh, thành phố không được vượt quá 255 ký tự'],
+                ['ward', 'Phường, xã không được vượt quá 255 ký tự'],
+                ['apartment_number', 'Số nhà không được vượt quá 255 ký tự'],
+            ].forEach(function ([name, message]) {
+                if (editForm.elements[name] && get(name).length > 255) {
+                    errors[name] = message;
+                }
+            });
+
+            return errors;
         }
 
         function syncLockReason() {
@@ -257,10 +358,15 @@
             setField('city', user.city);
             setField('ward', user.ward);
             setField('apartment_number', user.apartment_number);
-            setField('password', '');
-            setField('password_confirmation', '');
             fillRoleOptions(data.roles, user.role_id);
             syncLockReason();
+
+            // --- Personal info / address fields ---
+            // Nobody except self may edit a protected admin's basic info/address.
+            ['username', 'email', 'phone_number', 'city', 'ward', 'apartment_number'].forEach(name => {
+                const el = editForm.elements[name];
+                if (el) el.disabled = targetProtectedNotSelf;
+            });
 
             // --- Status field ---
             const statusSel = editForm.elements['is_active'];
@@ -309,16 +415,6 @@
                 }
             }
 
-            // --- Password fields ---
-            const pwLocked = blockAll || blockSensitive;
-            ['password', 'password_confirmation'].forEach(function (fieldName) {
-                const field = editForm.elements[fieldName];
-                if (field) {
-                    field.disabled = pwLocked;
-                    if (pwLocked) field.value = '';
-                }
-            });
-
             // --- is_protected checkbox (only rendered for protected admin) ---
             const protectedRow      = editForm.querySelector('[data-protected-row]');
             const protectedCheckbox = document.getElementById('modal_is_protected');
@@ -351,6 +447,13 @@
                     hint.classList.remove('d-none');
                     const permErr = hint.querySelector('[data-error-for="permission"]');
                     if (permErr) permErr.textContent = 'Admin hệ thống được bảo vệ — bạn chỉ có thể chỉnh sửa thông tin cơ bản (tên, email, SĐT).';
+                }
+            } else if (targetProtectedNotSelf) {
+                const hint = editForm.querySelector('[data-permission-error-row]');
+                if (hint) {
+                    hint.classList.remove('d-none');
+                    const permErr = hint.querySelector('[data-error-for="permission"]');
+                    if (permErr) permErr.textContent = 'Chỉ chính admin hệ thống mới có thể sửa thông tin cá nhân của tài khoản này.';
                 }
             }
         }
@@ -458,6 +561,14 @@
             event.preventDefault();
             resetErrors();
 
+            // Kiểm tra hợp lệ phía client trước khi gửi để lưu vào DB
+            const clientErrors = validateEditForm();
+            if (Object.keys(clientErrors).length > 0) {
+                showErrors(clientErrors);
+                showAlert('Vui lòng kiểm tra lại thông tin đã nhập', 'warning');
+                return;
+            }
+
             const submitButton = editForm.querySelector('button[type="submit"]');
             const originalText = submitButton.innerHTML;
             submitButton.disabled = true;
@@ -503,5 +614,110 @@
                 submitButton.innerHTML = originalText;
             }
         });
+
+        if (resetPasswordForm && resetPasswordModal) {
+            function resetPasswordErrors() {
+                resetPasswordForm.querySelectorAll('.is-invalid').forEach(input => input.classList.remove('is-invalid'));
+                resetPasswordForm.querySelectorAll('[data-error-for]').forEach(error => { error.textContent = ''; });
+                resetPasswordForm.querySelector('[data-reset-permission-error-row]')?.classList.add('d-none');
+            }
+
+            function showResetPasswordErrors(errors) {
+                resetPasswordErrors();
+                let firstInvalidField = null;
+
+                Object.entries(errors || {}).forEach(([name, messages]) => {
+                    const field = resetPasswordForm.elements[name];
+                    const error = resetPasswordForm.querySelector(`[data-error-for="${name}"]`);
+
+                    if (field) {
+                        field.classList.add('is-invalid');
+                        firstInvalidField = firstInvalidField || field;
+                    }
+
+                    if (error) {
+                        const msg = Array.isArray(messages) ? messages[0] : messages;
+                        error.textContent = msg;
+                        const permRow = error.closest('[data-reset-permission-error-row]');
+                        if (permRow) permRow.classList.remove('d-none');
+                    }
+                });
+
+                firstInvalidField?.focus();
+            }
+
+            document.addEventListener('click', function (event) {
+                const resetButton = event.target.closest('.js-reset-password');
+                if (!resetButton) return;
+
+                event.preventDefault();
+                resetPasswordErrors();
+                resetPasswordForm.reset();
+                resetPasswordForm.action = resetButton.dataset.resetUrl;
+                const usernameEl = resetPasswordForm.querySelector('[data-reset-username]');
+                if (usernameEl) usernameEl.textContent = resetButton.dataset.username || '';
+                resetPasswordModal.show();
+            });
+
+            resetPasswordModalEl.addEventListener('hidden.bs.modal', function () {
+                resetPasswordErrors();
+                resetPasswordForm.reset();
+            });
+
+            resetPasswordForm.addEventListener('submit', async function (event) {
+                event.preventDefault();
+                resetPasswordErrors();
+
+                const password = resetPasswordForm.elements['password']?.value ?? '';
+                const confirmation = resetPasswordForm.elements['password_confirmation']?.value ?? '';
+                const clientErrors = {};
+                if (password.length < 8) {
+                    clientErrors.password = 'Mật khẩu phải có ít nhất 8 ký tự';
+                } else if (password !== confirmation) {
+                    clientErrors.password = 'Mật khẩu xác nhận không khớp';
+                }
+
+                if (Object.keys(clientErrors).length > 0) {
+                    showResetPasswordErrors(clientErrors);
+                    return;
+                }
+
+                const submitButton = resetPasswordForm.querySelector('button[type="submit"]');
+                const originalText = submitButton.innerHTML;
+                submitButton.disabled = true;
+                submitButton.innerHTML = 'Đang lưu...';
+
+                try {
+                    const response = await fetch(resetPasswordForm.action, {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'X-CSRF-TOKEN': csrfToken,
+                        },
+                        body: new FormData(resetPasswordForm),
+                    });
+
+                    const data = await parseJsonResponse(response, 'Không thể đặt lại mật khẩu.');
+
+                    if (response.status === 422) {
+                        showResetPasswordErrors(data.errors || {});
+                        return;
+                    }
+
+                    if (!response.ok) {
+                        throw new Error(data.message || 'Không thể đặt lại mật khẩu.');
+                    }
+
+                    resetPasswordModal.hide();
+                    showAlert(data.message || 'Đặt lại mật khẩu thành công');
+                } catch (error) {
+                    showAlert(error.message, 'danger');
+                } finally {
+                    submitButton.disabled = false;
+                    submitButton.innerHTML = originalText;
+                }
+            });
+        }
     });
 </script>

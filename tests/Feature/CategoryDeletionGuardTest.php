@@ -84,11 +84,7 @@ class CategoryDeletionGuardTest extends TestCase
         return Product::create([
             'name' => 'Test Product',
             'slug' => 'test-product-' . $category->id,
-            'description' => 'Test description',
-            'price' => 100000,
-            'cost_price' => 50000,
-            'discount' => 0,
-            'thumbnail' => 'test.jpg',
+            'description' => 'Test description',            'thumbnail' => 'test.jpg',
             'category_id' => $category->id,
             'brand_id' => $brand->id,
             'gender' => Gender::UNISEX->value,
@@ -98,3 +94,4 @@ class CategoryDeletionGuardTest extends TestCase
         ]);
     }
 }
+

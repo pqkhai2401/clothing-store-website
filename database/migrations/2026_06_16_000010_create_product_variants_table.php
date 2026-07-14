@@ -21,7 +21,7 @@ return new class extends Migration
             $table->string('image')->nullable();
             $table->string('sku')->unique();
             $table->decimal('cost_price', 18, 2)->default(0);
-            $table->decimal('sale_price', 18, 2)->default(0);
+            $table->decimal('price', 18, 2)->default(0);
             $table->timestamps();
 
             $table->unique(['product_id', 'color_id', 'size_id']);

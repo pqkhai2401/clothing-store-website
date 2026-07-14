@@ -3,7 +3,7 @@
     <div class="container-fluid px-lg-5">
         <div class="row">
             <div class="col-md-3 mb-4 mb-md-0">
-                <h5 class="footer-title">HK Store</h5>
+                <h5 class="footer-title">{{ $siteSettings->site_name }}</h5>
                 <p class="text-muted pe-md-4">
                 Thương hiệu thời trang cao cấp chuyên cung cấp các sản phẩm may mặc chất lượng cao, theo phong cách tối giản, được thiết kế phù hợp với lối sống hiện đại.                </p>
             </div>
@@ -28,12 +28,9 @@
             <div class="col-md-3">
                 <h5 class="footer-title">Thông tin liên hệ</h5>
                 <ul class="footer-links">
-                    <li class="text-muted"><i class="bi bi-geo-alt me-2"></i> 65 Huỳnh Thúc Kháng, Sài Gòn, Hồ Chí Minh 50000, Việt Nam</li>
-                    <li class="text-muted"><i class="bi bi-telephone me-2"></i> 02838212360</li>
-                    <li class="text-muted">
-                        <i class="bi bi-envelope me-2"></i> 
-                        <a href="mailto:pqkhai2401@gmail.com" class="text-reset text-decoration-none">pqkhai2401@gmail.com</a>
-                    </li>
+                    <li class="text-muted"><i class="bi bi-geo-alt me-2"></i> {{ $siteSettings->address ?: '—' }}</li>
+                    <li class="text-muted"><i class="bi bi-telephone me-2"></i> {{ $siteSettings->hotline ?: '—' }}</li>
+                    <li class="text-muted"><i class="bi bi-envelope me-2"></i> {{ $siteSettings->email ?: '—' }}</li>
                 </ul>
                 <div class="footer-socials mt-4">
                     <a href="https://www.facebook.com/kha.rea.19" target="_blank" rel="noopener noreferrer" aria-label="Facebook">
@@ -49,8 +46,8 @@
             </div>
         </div>
         <div class="row footer-bottom">
-            <div class="col-12 text-center">
-                &copy; HK Store. All rights reserved.
+            <div class="col-md-6 text-center text-md-start mb-3 mb-md-0">
+                &copy; {{ $siteSettings->site_name }}. All rights reserved.
             </div>
         </div>
     </div>

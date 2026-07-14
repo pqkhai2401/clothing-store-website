@@ -64,7 +64,9 @@
                         @if($showAddressFields)
                             <div class="col-md-6">
                                 <label for="modal_city" class="form-label">Tỉnh, Thành phố</label>
-                                <input type="text" name="city" id="modal_city" class="form-control">
+                                <select name="city" id="modal_city" class="form-select">
+                                    <option value="">Chọn tỉnh / thành phố</option>
+                                </select>
                                 <div class="invalid-feedback d-block" data-error-for="city"></div>
                             </div>
 
@@ -81,17 +83,6 @@
                                 <div class="invalid-feedback d-block" data-error-for="apartment_number"></div>
                             </div>
                         @endif
-
-                        <div class="col-md-6">
-                            <label for="modal_password" class="form-label">Mật khẩu mới</label>
-                            <input type="password" name="password" id="modal_password" class="form-control" autocomplete="new-password">
-                            <div class="invalid-feedback d-block" data-error-for="password"></div>
-                        </div>
-
-                        <div class="col-md-6">
-                            <label for="modal_password_confirmation" class="form-label">Xác nhận mật khẩu mới</label>
-                            <input type="password" name="password_confirmation" id="modal_password_confirmation" class="form-control" autocomplete="new-password">
-                        </div>
 
                         @if(auth()->user()?->isAdmin() && (bool) auth()->user()?->is_protected)
                         <div class="col-12 d-none" data-protected-row>

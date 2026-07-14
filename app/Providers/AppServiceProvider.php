@@ -75,6 +75,18 @@ class AppServiceProvider extends ServiceProvider
             $view->with('navCollections', $navCollections);
         });
 
+        // Cấu hình website (tên, logo, hotline...) dùng ở header/footer storefront,
+        // sidebar admin và các phiếu in kho. Chia sẻ chung cho mọi view cần.
+        View::composer([
+            'partials.header',
+            'partials.footer',
+            'layouts.partial.sidebar',
+            'admin.goods-receipts.partials.show-content',
+            'admin.stock-issues.partials.show-content',
+        ], function ($view): void {
+            $view->with('siteSettings', \App\Models\Setting::current());
+        });
+
         View::composer([
             'layouts.partial.sidebar',
         ], function ($view): void {
@@ -130,6 +142,14 @@ class AppServiceProvider extends ServiceProvider
                         'url'            => $r('admin.goods-receipts.list', '/admin/goods-receipts'),
                         'active_pattern' => 'admin/goods-receipts*',
                         'icon'           => 'fa-solid fa-box-open',
+                        'parent'         => [],
+                    ],
+                    [
+                        'permission'     => 'manage-goods-receipts',
+                        'title'          => 'Báo cáo lãi gộp (FIFO)',
+                        'url'            => $r('admin.goods-receipts.reports.profit', '/admin/goods-receipts/reports/profit'),
+                        'active_pattern' => 'admin/goods-receipts/reports*',
+                        'icon'           => 'fa-solid fa-chart-line',
                         'parent'         => [],
                     ],
                     [
@@ -218,6 +238,14 @@ class AppServiceProvider extends ServiceProvider
                         'url'            => $r('admin.logs.list', '/admin/logs'),
                         'active_pattern' => 'admin/logs*',
                         'icon'           => 'fa-solid fa-clock-rotate-left',
+                        'parent'         => [],
+                    ],
+                    [
+                        'permission'     => 'manage-settings',
+                        'title'          => 'Cài đặt website',
+                        'url'            => $r('admin.settings.edit', '/admin/settings'),
+                        'active_pattern' => 'admin/settings*',
+                        'icon'           => 'fa-solid fa-gear',
                         'parent'         => [],
                     ],
                 ];

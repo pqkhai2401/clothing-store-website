@@ -13,6 +13,9 @@
     .gr-badge--out-of-stock { background: #fee2e2; color: #991b1b; }
     .gr-badge--cancelled { background: #e2e8f0; color: #475569; }
 
+    /* Offcanvas chỉnh sửa (nhập & xuất) luôn đủ rộng trên mọi tab — tránh bị hẹp/dồn khi CSS của create-modal không có mặt */
+    .gr-offcanvas { width: min(900px, 92vw) !important; border-top-left-radius: 18px; border-bottom-left-radius: 18px; }
+
     /* ── Chi tiết phiếu xuất kho / nhập kho ── */
     .si-show-table { width: 100%; border-collapse: collapse; font-size: 13px; }
     .si-show-table thead th {
@@ -519,24 +522,7 @@
                     </div>
                 </div>
 
-                <!-- Offcanvas chỉnh sửa phiếu xuất kho (nháp) -->
-                <div class="offcanvas offcanvas-end gr-offcanvas" tabindex="-1" id="stockIssueEditOffcanvas" aria-labelledby="stockIssueEditOffcanvasLabel">
-                    <div class="offcanvas-header border-bottom">
-                        <div>
-                            <div class="d-flex align-items-center gap-2">
-                                <h2 class="offcanvas-title mb-0" id="stockIssueEditOffcanvasLabel" style="font-size: 18px; font-weight: 800; color: #0F172A;">Chỉnh sửa phiếu xuất kho</h2>
-                                <span class="gr-badge gr-badge--draft">Nháp</span>
-                            </div>
-                            <p class="mb-0 text-muted" style="font-size:13px;">Chỉnh sửa loại xuất, kho xuất và danh sách mặt hàng của phiếu nháp.</p>
-                        </div>
-                        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Đóng"></button>
-                    </div>
-                    <div class="offcanvas-body flex-grow-1 overflow-auto p-0" id="stockIssueEditBody">
-                        <div class="text-center py-5">
-                            <div class="spinner-border text-secondary" role="status"></div>
-                        </div>
-                    </div>
-                </div>
+
 
                 <div class="hk-cat-panel gr-row-status-shared-panel" id="grRowStatusPanel" hidden style="width:160px;">
                     <div class="hk-cat-list">
@@ -594,6 +580,25 @@
                             <div class="modal-body si-show-modal-body" id="stockIssueShowBody">
                                 <div class="text-center py-5"><div class="spinner-border text-secondary" role="status"></div></div>
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Offcanvas chỉnh sửa phiếu xuất kho (nháp) -->
+                <div class="offcanvas offcanvas-end gr-offcanvas" tabindex="-1" id="stockIssueEditOffcanvas" aria-labelledby="stockIssueEditOffcanvasLabel">
+                    <div class="offcanvas-header border-bottom">
+                        <div>
+                            <div class="d-flex align-items-center gap-2">
+                                <h2 class="offcanvas-title mb-0" id="stockIssueEditOffcanvasLabel" style="font-size: 18px; font-weight: 800; color: #0F172A;">Chỉnh sửa phiếu xuất kho</h2>
+                                <span class="gr-badge gr-badge--draft">Nháp</span>
+                            </div>
+                            <p class="mb-0 text-muted" style="font-size:13px;">Chỉnh sửa loại xuất, kho xuất và danh sách mặt hàng của phiếu xuất.</p>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Đóng"></button>
+                    </div>
+                    <div class="offcanvas-body flex-grow-1 overflow-auto p-0" id="stockIssueEditBody">
+                        <div class="text-center py-5">
+                            <div class="spinner-border text-secondary" role="status"></div>
                         </div>
                     </div>
                 </div>

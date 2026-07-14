@@ -24,7 +24,9 @@ class ProductsExport implements FromQuery, WithHeadings, WithMapping, WithStyles
     {
         $query = Product::query()
             ->with(['category', 'brand'])
-            ->withSum('productVariants', 'stock');
+            ->withSum('productVariants', 'stock')
+            ->withMin('productVariants as min_price', 'price')
+            ->withMax('productVariants as max_price', 'price');
 
         // Ưu tiên tuyệt đối: nếu có danh sách ID được chọn sẵn trên bảng (chọn nhiều bằng checkbox),
         // chỉ xuất đúng các sản phẩm đó, bỏ qua toàn bộ bộ lọc khác.
@@ -92,8 +94,8 @@ class ProductsExport implements FromQuery, WithHeadings, WithMapping, WithStyles
             'Tên sản phẩm',
             'Danh mục',
             'Thương hiệu',
-            'Giá bán',
-            'Giảm giá (%)',
+            'Giá bán biến thể',
+            'Chương trình giảm',
             'Tổng tồn kho',
             'Trạng thái',
         ];
@@ -101,18 +103,29 @@ class ProductsExport implements FromQuery, WithHeadings, WithMapping, WithStyles
 
     public function map($product): array
     {
+        $priceRange = $product->min_price === null
+            ? ''
+            : ($product->min_price == $product->max_price
+                ? number_format((float) $product->min_price, 0, ',', '.')
+                : number_format((float) $product->min_price, 0, ',', '.') . ' - ' . number_format((float) $product->max_price, 0, ',', '.'));
+
+        $discount = $product->hasActiveDiscount()
+            ? ($product->discount_type === 'percent'
+                ? (float) $product->discount_value . '%'
+                : number_format((float) $product->discount_value, 0, ',', '.') . 'đ')
+            : '';
+
         return [
             $product->id,
             $product->name,
             $product->category?->name ?? '—',
             $product->brand?->name ?? '—',
-            (float) $product->price,
-            (int) $product->discount,
+            $priceRange,
+            $discount,
             (int) ($product->product_variants_sum_stock ?? 0),
             $product->status ? 'Đang bán' : 'Ẩn',
         ];
     }
-
     public function styles(Worksheet $sheet)
     {
         $highestRow = $sheet->getHighestRow();
@@ -137,3 +150,4 @@ class ProductsExport implements FromQuery, WithHeadings, WithMapping, WithStyles
         ];
     }
 }
+

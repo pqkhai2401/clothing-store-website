@@ -5,8 +5,9 @@
            để cột "Khách hàng" không bị kéo dãn ra khoảng trắng thừa không cần thiết */
         #orderTable { min-width: 1260px; }
 
-        /* ── Order status chips ────────────────────────────────── */
-        .order-badge {
+        /* ── Order status chips (đơn hàng + thanh toán dùng chung khung, khác màu variant) ── */
+        .order-badge,
+        .payment-badge {
             display: inline-flex;
             align-items: center;
             border-radius: 999px;
@@ -24,18 +25,6 @@
         .order-badge--completed { background: #ECFDF5; border: 1.5px solid #86EFAC; color: #16A34A; }
         .order-badge--cancelled { background: #FEF2F2; border: 1.5px solid #FECACA; color: #DC2626; }
 
-        .payment-badge {
-            display: inline-flex;
-            align-items: center;
-            border-radius: 999px;
-            font-size: 12px;
-            font-weight: 700;
-            padding: 5px 13px;
-            min-height: 28px;
-            line-height: 1;
-            white-space: nowrap;
-        }
-
         .payment-badge--paid   { background: #ECFDF5; border: 1.5px solid #86EFAC; color: #16A34A; }
         .payment-badge--unpaid { background: #FEF2F2; border: 1.5px solid #FECACA; color: #DC2626; }
 
@@ -51,37 +40,7 @@
             white-space: nowrap;
         }
 
-        /* ── Sổ xuống chọn nhanh trạng thái đơn/thanh toán ngay trong bảng ── */
-        .oc-row-dropdown { position: relative; display: inline-block; width: auto; }
-        .oc-row-trigger {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            border-width: 1.5px;
-            border-style: solid;
-            cursor: pointer;
-        }
-        .oc-row-trigger:hover { filter: brightness(0.97); }
-        .oc-row-trigger:focus {
-            outline: none;
-            box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.15);
-        }
-        .oc-row-caret {
-            font-size: 9px;
-            opacity: .65;
-            transition: transform .15s;
-        }
-        .oc-row-trigger.is-open .oc-row-caret { transform: rotate(180deg); }
-
-        /* Mở từ trái qua phải, rộng vừa nội dung thay vì lệch phải/quá cứng như select mặc định */
-        .oc-row-dropdown .hk-cat-panel {
-            left: 0;
-            right: auto;
-            width: 190px;
-        }
-        .oc-row-panel .hk-cat-list .hk-cat-item { font-size: 13px; }
-
-        /* ── Nút Xem/Cập nhật hiển thị trực tiếp, không cần mở menu "..." ── */
+        /* ── Nút Xem/Sửa hiển thị trực tiếp, không cần mở menu "..." ── */
         .order-row-action-btn {
             display: inline-flex;
             align-items: center;
@@ -231,16 +190,6 @@
             background: #162843 !important;
             color: #CBD5E1 !important;
         }
-        [data-theme="dark"] .oc-row-panel {
-            background: #101C33 !important;
-            border-color: #2A3B59 !important;
-        }
-        [data-theme="dark"] .oc-row-panel .hk-cat-item {
-            color: #E2E8F0 !important;
-        }
-        [data-theme="dark"] .oc-row-panel .hk-cat-item:hover {
-            background: #162843 !important;
-        }
         [data-theme="dark"] .order-row-action-btn {
             background: #101C33 !important;
             color: #CBD5E1 !important;
@@ -314,12 +263,8 @@
 <style>
         .info-label { font-weight: 700; font-size: 13px; color: #6b7280; min-width: 150px; }
         .info-value { font-size: 13px; color: #111827; font-weight: 600; }
-        .section-title { font-size: 13px; font-weight: 800; color: #174761; text-transform: uppercase; letter-spacing: .04em; }
+        .section-title { font-size: 13px; font-weight: 800; color: #000; text-transform: uppercase; letter-spacing: .04em; }
         .item-table thead th { font-size: 12px; font-weight: 800; background: #f9fafb; }
-        .update-card .form-select,
-        .update-card .form-control { font-size: 13px; }
-        .update-card label { font-size: 13px; font-weight: 700; color: #374151; }
         .item-table tbody td { font-size: 13px; }
-        .status-badge { border-radius: 2px; font-size: 11px; font-weight: 800; padding: 4px 8px; }
         .product-thumb { width: 44px; height: 44px; object-fit: cover; border-radius: 4px; border: 1px solid #e5e7eb; }
     </style>

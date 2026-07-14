@@ -6,14 +6,29 @@ use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 use OwenIt\Auditing\Events\AuditCustom;
 use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
 {
+    /**
+     * Số lượng admin hệ thống (is_protected) tối đa được phép tồn tại cùng lúc.
+     * Muốn đổi người, phải gỡ protected của người cũ trước rồi mới bật cho người mới.
+     */
+    private const MAX_PROTECTED_ADMINS = 5;
+
+    /**
+     * Sàn tuyệt đối — không bao giờ được để 0 admin protected, nếu không sẽ
+     * không còn ai đủ quyền bật lại is_protected cho người khác (bế tắc vĩnh viễn).
+     */
+    private const MIN_PROTECTED_ADMINS = 2;
+
     /**
      * Display a listing of users.
      */
@@ -90,8 +105,7 @@ class UserController extends Controller
         }
 
         return view('admin.users.create', [
-            'roles'                       => $roles,
-            'currentUserIsProtectedAdmin' => $currentIsProtectedAdmin,
+            'roles' => $roles,
             ...$context,
         ]);
     }
@@ -110,16 +124,17 @@ class UserController extends Controller
             'phone_number' => ['nullable', 'string', 'max:20'],
             'role_id' => [$context['type'] === 'customer' ? 'nullable' : 'required', 'integer', 'exists:roles,id'],
             'is_active' => ['required', 'boolean'],
-            'password' => ['required', 'string', 'min:6', 'max:255'],
+            'password' => ['required', 'string', 'min:8', 'max:255'],
+            'gender' => ['nullable', 'in:nam,nu,khac'],
+            'avatar' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
             'city' => ['nullable', 'string', 'max:255'],
             'ward' => ['nullable', 'string', 'max:255'],
             'apartment_number' => ['nullable', 'string', 'max:255'],
             'lock_reason' => ['nullable', 'string', 'max:255'],
         ], $this->validationMessages());
 
-        $currentUser             = $request->user();
-        $currentIsProtectedAdmin = $currentUser->isAdmin() && (bool) $currentUser->is_protected;
-        $currentIsNormalAdmin    = $currentUser->isAdmin() && ! (bool) $currentUser->is_protected;
+        $currentUser          = $request->user();
+        $currentIsNormalAdmin = $currentUser->isAdmin() && ! (bool) $currentUser->is_protected;
 
         $roleForUser = $this->roleForContext($context['type'], $validated['role_id'] ?? null);
 
@@ -127,21 +142,22 @@ class UserController extends Controller
             return back()->withErrors(['role_id' => 'Quản trị viên thường chỉ được tạo tài khoản nhân viên.'])->withInput();
         }
 
-        if ($request->boolean('is_protected') && ! $currentIsProtectedAdmin) {
-            return back()->withErrors(['is_protected' => 'Chỉ admin hệ thống mới có quyền tạo admin hệ thống được bảo vệ.'])->withInput();
+        // Upload ảnh đại diện (nếu có) — tái dùng pattern ở User/ProfileController:
+        // lưu vào disk "public", thư mục "avatars", store() tự sinh tên file duy nhất.
+        $avatarPath = null;
+        if ($request->hasFile('avatar')) {
+            $avatarPath = $request->file('avatar')->store('avatars', 'public');
         }
-
-        $isProtected = $currentIsProtectedAdmin
-            && $request->boolean('is_protected')
-            && $roleForUser?->name === UserRole::ADMIN->value;
 
         $user = User::create([
             'username'     => $validated['username'],
             'email'        => $validated['email'],
             'phone_number' => $validated['phone_number'] ?? null,
+            'gender'       => $validated['gender'] ?? null,
+            'avatar_url'   => $avatarPath,
             'is_active'    => (bool) $validated['is_active'],
             'password'     => Hash::make($validated['password']),
-            'is_protected' => $isProtected,
+            'is_protected' => false,
         ]);
 
         if ($roleForUser) {
@@ -190,6 +206,35 @@ class UserController extends Controller
     }
 
     /**
+     * Hiển thị trang chỉnh sửa (bố cục giống trang Thêm) — thay cho modal cũ.
+     */
+    public function edit(string $id)
+    {
+        $request = request();
+        $user = User::with([
+            'roles',
+            'addresses' => fn ($query) => $query->latest('id'),
+        ])->findOrFail($id);
+        $context = $this->resolveContext($request, $user);
+        $this->authorizeContext($request, $context['type'], $user);
+
+        $currentUser             = $request->user();
+        $currentIsProtectedAdmin = $currentUser->isAdmin() && (bool) $currentUser->is_protected;
+
+        $roles = $this->rolesForContext($context['type']);
+        if (! $currentIsProtectedAdmin) {
+            $roles = $roles->filter(fn ($role) => $role->name !== UserRole::ADMIN->value)->values();
+        }
+
+        return view('admin.users.edit-page', [
+            'user'    => $user,
+            'address' => $user->addresses->first(),
+            'roles'   => $roles,
+            ...$context,
+        ]);
+    }
+
+    /**
      * Update the specified user.
      */
     public function update(Request $request, string $id)
@@ -197,8 +242,6 @@ class UserController extends Controller
         $user = User::findOrFail($id);
         $context = $this->resolveContext($request, $user);
         $this->authorizeContext($request, $context['type'], $user);
-
-        $passwordRules = ['nullable', 'string', 'min:6', 'max:255', 'confirmed'];
 
         $validated = $request->validate([
             'username' => [
@@ -216,7 +259,8 @@ class UserController extends Controller
             'phone_number' => ['nullable', 'string', 'max:20'],
             'role_id' => [$context['type'] === 'all' ? 'required' : 'nullable', 'integer', 'exists:roles,id'],
             'is_active' => ['required', 'boolean'],
-            'password' => $passwordRules,
+            'gender' => ['nullable', 'in:nam,nu,khac'],
+            'avatar' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
             'city' => ['nullable', 'string', 'max:255'],
             'ward' => ['nullable', 'string', 'max:255'],
             'apartment_number' => ['nullable', 'string', 'max:255'],
@@ -237,9 +281,21 @@ class UserController extends Controller
         $currentRoleId   = $targetUser->roles()->first()?->id;
         $statusChanged   = (bool) $validated['is_active'] !== (bool) $targetUser->is_active;
         $roleChanged     = ! empty($validated['role_id']) && (int) $validated['role_id'] !== (int) $currentRoleId;
-        $passwordChanged = filled($validated['password'] ?? null);
         $protectedChanged = $request->has('is_protected')
             && (bool) $request->boolean('is_protected') !== (bool) $targetUser->is_protected;
+
+        $infoChanged = $validated['username'] !== $targetUser->username
+            || $validated['email'] !== $targetUser->email
+            || ($validated['phone_number'] ?? null) !== $targetUser->phone_number
+            || (array_key_exists('gender', $validated) && ($validated['gender'] ?? null) !== $targetUser->gender)
+            || $request->hasFile('avatar');
+
+        $currentAddress = $targetUser->addresses()->latest('id')->first();
+        $addressChanged = $this->hasAddressInput($validated) && (
+            ($validated['city'] ?? '') !== ($currentAddress->city ?? '')
+            || ($validated['ward'] ?? '') !== ($currentAddress->ward ?? '')
+            || ($validated['apartment_number'] ?? '') !== ($currentAddress->apartment_number ?? '')
+        );
 
         // 1. Block self-lock
         if ($isSelf && $statusChanged && ! (bool) $validated['is_active']) {
@@ -261,13 +317,23 @@ class UserController extends Controller
             return $this->validationErrorResponse($request, 'is_protected', 'Bạn không thể tự tắt quyền bảo vệ của chính mình.');
         }
 
-        // 5. Cannot remove last protected admin
+        // 5. Cannot reduce protected admins below the minimum threshold
         if ($protectedChanged && ! $request->boolean('is_protected') && (bool) $targetUser->is_protected) {
-            $remainingCount = User::role(UserRole::ADMIN->value)
+            $remainingAfterChange = User::role(UserRole::ADMIN->value)
+                ->where('is_protected', true)
+                ->count() - 1;
+            if ($remainingAfterChange < self::MIN_PROTECTED_ADMINS) {
+                return $this->validationErrorResponse($request, 'is_protected', 'Không thể tắt quyền bảo vệ vì hệ thống cần tối thiểu '.self::MIN_PROTECTED_ADMINS.' admin hệ thống được bảo vệ.');
+            }
+        }
+
+        // 5b. Cannot exceed the maximum number of protected admins
+        if ($protectedChanged && $request->boolean('is_protected') && ! (bool) $targetUser->is_protected) {
+            $currentProtectedCount = User::role(UserRole::ADMIN->value)
                 ->where('is_protected', true)
                 ->count();
-            if ($remainingCount <= 1) {
-                return $this->validationErrorResponse($request, 'is_protected', 'Không thể tắt quyền bảo vệ vì đây là admin hệ thống cuối cùng.');
+            if ($currentProtectedCount >= self::MAX_PROTECTED_ADMINS) {
+                return $this->validationErrorResponse($request, 'is_protected', 'Hệ thống đã có đủ '.self::MAX_PROTECTED_ADMINS.' admin hệ thống được bảo vệ. Hãy gỡ bảo vệ 1 người trước khi thêm người mới.');
             }
         }
 
@@ -291,10 +357,17 @@ class UserController extends Controller
             return $this->validationErrorResponse($request, 'permission', 'Quản trị viên thường không có quyền chỉnh sửa admin hệ thống.');
         }
 
-        // 9. Normal admin cannot change sensitive data of another normal admin
+        // 9. Normal admin cannot change any data of another normal admin
         if ($currentIsNormalAdmin && $targetIsNormalAdmin && ! $isSelf
-            && ($statusChanged || $roleChanged || $passwordChanged || $protectedChanged)) {
-            return $this->validationErrorResponse($request, 'permission', 'Quản trị viên thường không có quyền thay đổi vai trò, trạng thái hoặc mật khẩu của quản trị viên khác.');
+            && ($statusChanged || $roleChanged || $protectedChanged || $infoChanged || $addressChanged)) {
+            return $this->validationErrorResponse($request, 'permission', 'Quản trị viên thường không có quyền chỉnh sửa thông tin của quản trị viên khác.');
+        }
+
+        // 8b. Nobody except self may edit personal info/address of a protected
+        // admin — not even another protected admin. is_protected/role/status
+        // keep their own rules (3, 5, 5b, 6, 7) to preserve the handover flow.
+        if ($targetIsProtectedAdmin && ! $isSelf && ($infoChanged || $addressChanged)) {
+            return $this->validationErrorResponse($request, 'permission', 'Chỉ chính admin hệ thống mới có thể sửa thông tin cá nhân của tài khoản này.');
         }
 
         // 10. Normal admin cannot promote anyone to admin role
@@ -306,16 +379,32 @@ class UserController extends Controller
         }
 
         // --- Build update data ---
+        $willBeActive = (bool) $validated['is_active'];
+
         $updateData = [
             'username'     => $validated['username'],
             'email'        => $validated['email'],
             'phone_number' => $validated['phone_number'] ?? null,
-            'is_active'    => (bool) $validated['is_active'],
-            'lock_reason'  => (bool) $validated['is_active'] ? null : ($validated['lock_reason'] ?? null),
+            'gender'       => $validated['gender'] ?? null,
+            'is_active'    => $willBeActive,
+            'lock_reason'  => $willBeActive ? null : ($validated['lock_reason'] ?? null),
         ];
 
-        if ($passwordChanged) {
-            $updateData['password'] = Hash::make($validated['password']);
+        // Ảnh đại diện mới (nếu có): lưu file mới, xóa file cũ nếu là ảnh tự upload
+        // (đường dẫn tương đối trong disk public — không xóa URL ngoài như ảnh Google).
+        if ($request->hasFile('avatar')) {
+            $newAvatar = $request->file('avatar')->store('avatars', 'public');
+            $oldAvatar = $targetUser->avatar_url;
+            if ($oldAvatar && ! \Illuminate\Support\Str::startsWith($oldAvatar, ['http://', 'https://'])) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($oldAvatar);
+            }
+            $updateData['avatar_url'] = $newAvatar;
+        }
+
+        // Audit khóa tài khoản: chỉ ghi ai/lúc nào khi chuyển sang khóa; xóa dấu vết khi mở lại.
+        if ($statusChanged) {
+            $updateData['locked_by'] = $willBeActive ? null : Auth::id();
+            $updateData['locked_at'] = $willBeActive ? null : now();
         }
 
         if ($currentIsProtectedAdmin && $request->has('is_protected') && $targetUser->isAdmin()) {
@@ -323,6 +412,10 @@ class UserController extends Controller
         }
 
         $user->update($updateData);
+
+        if ($statusChanged && ! (bool) $validated['is_active']) {
+            $this->revokeUserAccess($user);
+        }
 
         $canChangeRole = ! $targetIsProtectedAdmin && ! $isSelf;
         if ($canChangeRole) {
@@ -369,6 +462,70 @@ class UserController extends Controller
         }
 
         return redirect()->route($context['routePrefix'].'.list')->with('success', 'Cập nhật '.$context['itemLabelLower'].' thành công');
+    }
+
+    /**
+     * Admin đặt lại mật khẩu cho người dùng khác — tách riêng khỏi update()
+     * để không cần biết mật khẩu cũ nhưng vẫn ràng buộc: không tự reset cho
+     * chính mình (dùng trang Hồ sơ cá nhân), và giữ nguyên các rule chống
+     * leo thang đặc quyền giữa admin thường/protected. Sau khi reset, tài
+     * khoản bị buộc đổi mật khẩu ở lần đăng nhập kế tiếp và được báo qua email.
+     */
+    public function resetPassword(Request $request, string $id)
+    {
+        $user = User::findOrFail($id);
+        $context = $this->resolveContext($request, $user);
+        $this->authorizeContext($request, $context['type'], $user);
+
+        $validated = $request->validate([
+            'password' => ['required', 'string', 'min:8', 'max:255', 'confirmed'],
+        ], $this->validationMessages());
+
+        $currentUser = $request->user();
+        $targetUser  = $user;
+        $isSelf = (int) $currentUser->id === (int) $targetUser->id;
+
+        if ($isSelf) {
+            return $this->validationErrorResponse($request, 'password', 'Vui lòng dùng trang Hồ sơ cá nhân để tự đổi mật khẩu.');
+        }
+
+        $currentIsNormalAdmin   = $currentUser->isAdmin() && ! (bool) $currentUser->is_protected;
+        $targetIsProtectedAdmin = $targetUser->isAdmin() && (bool) $targetUser->is_protected;
+        $targetIsNormalAdmin    = $targetUser->isAdmin() && ! (bool) $targetUser->is_protected;
+
+        if ($targetIsProtectedAdmin && ! $isSelf) {
+            return $this->validationErrorResponse($request, 'permission', 'Chỉ chính admin hệ thống mới có thể đặt lại mật khẩu của tài khoản này.');
+        }
+
+        if ($currentIsNormalAdmin && $targetIsNormalAdmin) {
+            return $this->validationErrorResponse($request, 'permission', 'Quản trị viên thường không có quyền reset mật khẩu của quản trị viên khác.');
+        }
+
+        // Khách hàng đăng nhập ở storefront — nơi không có middleware buộc đổi
+        // mật khẩu — nên không set must_change_password (sẽ chẳng bao giờ được
+        // thực thi). Cờ này chỉ có ý nghĩa với admin/nhân viên trong khu vực admin.
+        $targetIsCustomer = $targetUser->isCustomer();
+
+        $targetUser->update([
+            'password' => Hash::make($validated['password']),
+            'must_change_password' => ! $targetIsCustomer,
+        ]);
+
+        $this->recordPasswordResetAudit($targetUser);
+        $targetUser->notify(new \App\Notifications\PasswordResetByAdmin($currentUser->username));
+        $this->revokeUserAccess($targetUser);
+
+        $successMessage = $targetIsCustomer
+            ? 'Đặt lại mật khẩu thành công. Hãy thông báo mật khẩu mới cho khách hàng.'
+            : 'Đặt lại mật khẩu thành công. Tài khoản sẽ phải đổi mật khẩu ở lần đăng nhập kế tiếp.';
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'message' => $successMessage,
+            ]);
+        }
+
+        return redirect()->route($context['routePrefix'].'.list')->with('success', $successMessage);
     }
 
     /**
@@ -548,6 +705,39 @@ class UserController extends Controller
         $user->auditCustomNew = ['role' => $labels[$newRole] ?? $newRole];
 
         Event::dispatch(new AuditCustom($user));
+    }
+
+    /**
+     * Ghi một bản ghi nhật ký "Reset mật khẩu" riêng biệt khỏi event "updated"
+     * mặc định — giúp phân biệt rõ trong audit trail và luôn được bảo vệ
+     * khỏi bulk-delete/prune (xem ActivityLogController::isProtectedAudit()).
+     */
+    private function recordPasswordResetAudit(User $user): void
+    {
+        $user->auditEvent = 'password_reset';
+        $user->isCustomEvent = true;
+        $user->auditCustomOld = [];
+        $user->auditCustomNew = ['password' => 'Đã được quản trị viên đặt lại'];
+
+        Event::dispatch(new AuditCustom($user));
+    }
+
+    /**
+     * Thu hồi quyền truy cập của user vừa bị khóa: xóa mọi session đang sống (driver=database)
+     * để user bị đăng xuất ngay ở request kế tiếp, không phải đợi hết hạn session.
+     * Kết hợp với middleware EnsureActiveAccount (chặn is_active=false ở mọi route cần auth).
+     */
+    private function revokeUserAccess(User $user): void
+    {
+        if (Schema::hasTable('sessions')) {
+            DB::table('sessions')->where('user_id', $user->id)->delete();
+        }
+
+        // Khách hàng đăng nhập storefront bằng OAuth token (Passport) chứ không
+        // chỉ qua session — phải thu hồi token để thực sự đăng xuất họ ngay.
+        if (Schema::hasTable('oauth_access_tokens')) {
+            DB::table('oauth_access_tokens')->where('user_id', $user->id)->update(['revoked' => true]);
+        }
     }
 
     private function validationErrorResponse(Request $request, string $field, string $message)
@@ -735,6 +925,7 @@ class UserController extends Controller
         return [
             'id' => $user->id,
             'username' => $user->username,
+            'avatar_url' => $user->avatar_display_url,
             'email' => $user->email,
             'phone_number' => $user->phone_number,
             'role_id' => $role?->id,
@@ -767,6 +958,10 @@ class UserController extends Controller
             'password.required' => 'Vui lòng nhập mật khẩu',
             'password.min' => 'Mật khẩu phải có ít nhất 6 ký tự',
             'password.confirmed' => 'Mật khẩu xác nhận không khớp',
+            'gender.in' => 'Giới tính không hợp lệ',
+            'avatar.image' => 'File tải lên phải là một hình ảnh',
+            'avatar.mimes' => 'Ảnh đại diện chỉ chấp nhận: jpeg, png, jpg, webp',
+            'avatar.max' => 'Dung lượng ảnh đại diện không được vượt quá 2MB',
             'city.max' => 'Tỉnh, thành phố không được vượt quá 255 ký tự',
            
             'ward.max' => 'Phường, xã không được vượt quá 255 ký tự',

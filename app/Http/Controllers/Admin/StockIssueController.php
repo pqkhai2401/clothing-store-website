@@ -65,7 +65,7 @@ class StockIssueController extends Controller
         $normalizedItems = collect($validated['items'])->map(function (array $item) use ($allowsPriceEdit) {
             $variant = ProductVariant::findOrFail($item['product_variant_id']);
             $costPrice = (float) $variant->cost_price;
-            $salePrice = (float) $variant->sale_price;
+            $salePrice = (float) $variant->price;
 
             if ($allowsPriceEdit && isset($item['sale_price'])) {
                 $salePrice = (float) $item['sale_price'];
@@ -88,7 +88,7 @@ class StockIssueController extends Controller
             $totalSale = collect($normalizedItems)->sum('total_sale');
 
             $stockIssue = StockIssue::create([
-                'code' => $this->generateCode(),
+                'code' => app(\App\Services\DocumentSequenceService::class)->generateStockIssueCode(),
                 'issue_type' => $validated['issue_type'],
                 'warehouse_id' => $validated['warehouse_id'],
                 'order_id' => $validated['order_id'] ?? null,
@@ -264,7 +264,7 @@ class StockIssueController extends Controller
         $normalizedItems = collect($validated['items'])->map(function (array $item) use ($allowsPriceEdit) {
             $variant = ProductVariant::findOrFail($item['product_variant_id']);
             $costPrice = (float) $variant->cost_price;
-            $salePrice = (float) $variant->sale_price;
+            $salePrice = (float) $variant->price;
 
             if ($allowsPriceEdit && isset($item['sale_price'])) {
                 $salePrice = (float) $item['sale_price'];
@@ -493,7 +493,7 @@ class StockIssueController extends Controller
                 'size_name' => $v->size?->name,
                 'stock' => $v->stock,
                 'cost_price' => (float) $v->cost_price,
-                'sale_price' => (float) $v->sale_price,
+                'sale_price' => (float) $v->price,
             ])
             ->values();
     }
@@ -534,21 +534,14 @@ class StockIssueController extends Controller
                 ]);
             }
 
-            $beforeQty = $variant->stock;
-            $afterQty = max(0, $beforeQty - $item->quantity);
-
-            $variant->update(['stock' => $afterQty]);
-
-            StockMovement::create([
-                'product_variant_id' => $variant->id,
-                'reference_type' => 'stock_issue',
-                'reference_id' => $stockIssue->id,
-                'movement_type' => 'export',
-                'quantity' => $item->quantity,
-                'before_quantity' => $beforeQty,
-                'after_quantity' => $afterQty,
-                'created_by' => Auth::id(),
-            ]);
+            // Trừ tồn theo FIFO qua các lô — service ghi sổ cái + đồng bộ cache tồn.
+            app(\App\Services\InventoryBatchService::class)->consumeFifo(
+                $variant,
+                (int) $item->quantity,
+                'stock_issue',
+                $stockIssue->id,
+                Auth::id()
+            );
         }
 
         $stockIssue->update([
@@ -566,15 +559,5 @@ class StockIssueController extends Controller
         ]);
     }
 
-    private function generateCode(): string
-    {
-        $prefix = 'PXK' . now()->format('Ymd');
-        $lastToday = StockIssue::withTrashed()->where('code', 'like', "{$prefix}%")
-            ->orderByDesc('code')
-            ->first();
-
-        $sequence = $lastToday ? ((int) substr($lastToday->code, -3)) + 1 : 1;
-
-        return $prefix . str_pad((string) $sequence, 3, '0', STR_PAD_LEFT);
-    }
 }
+

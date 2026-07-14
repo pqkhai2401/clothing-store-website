@@ -3,13 +3,16 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Brand;
 use App\Models\Category;
+use App\Models\Color;
 use App\Models\GoodsReceipt;
 use App\Models\GoodsReceiptItem;
 use App\Models\GoodsReceiptLog;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\ProductVariant;
+use App\Models\Size;
 use App\Models\StockIssue;
 use App\Models\StockIssueItem;
 use App\Models\StockMovement;
@@ -239,6 +242,7 @@ class GoodsReceiptController extends Controller
         $suppliers = $this->activeSuppliers();
         $goodsReceiptVariants = $this->goodsReceiptVariants();
         $warehouses = Warehouse::where('status', true)->orderBy('is_default', 'desc')->orderBy('name')->get();
+        $quickCreateData = $this->quickCreateFormData();
 
         return view('admin.goods-receipts.index', compact(
             'goodsReceipts',
@@ -248,7 +252,7 @@ class GoodsReceiptController extends Controller
             'suppliers',
             'goodsReceiptVariants',
             'warehouses'
-        ) + ['tab' => 'inbound']);
+        ) + $quickCreateData + ['tab' => 'inbound']);
     }
 
     public function create()
@@ -257,7 +261,22 @@ class GoodsReceiptController extends Controller
         $variants   = $this->goodsReceiptVariants();
         $warehouses = Warehouse::where('status', true)->orderBy('is_default', 'desc')->orderBy('name')->get();
 
-        return view('admin.goods-receipts.create', compact('suppliers', 'variants', 'warehouses'));
+        return view('admin.goods-receipts.create', compact('suppliers', 'variants', 'warehouses')
+            + $this->quickCreateFormData());
+    }
+
+    /**
+     * Dữ liệu cho modal "Thêm nhanh sản phẩm" (Quick Create) — dùng chung cho màn tạo phiếu
+     * nhập kho (offcanvas ở trang danh sách) và trang tạo phiếu dạng toàn màn hình.
+     */
+    private function quickCreateFormData(): array
+    {
+        return [
+            'quickCreateCategories' => Category::whereNull('parent_id')->with('childrenCategories')->orderBy('name')->get(),
+            'quickCreateBrands'     => Brand::orderBy('name')->get(),
+            'quickCreateColors'     => Color::orderBy('name')->get(),
+            'quickCreateSizes'      => Size::where('status', 1)->orderBy('sort_weight')->orderBy('name')->get(),
+        ];
     }
 
     public function stockCard(ProductVariant $variant)
@@ -366,8 +385,15 @@ class GoodsReceiptController extends Controller
                 return $transaction;
             });
 
+        // Tồn theo LÔ (batch) — nguồn sự thật: lô còn hàng lên trước (FIFO), lô đã hết xuống dưới.
+        $batches = \App\Models\ProductBatch::where('product_variant_id', $variant->id)
+            ->orderByRaw("CASE WHEN status = 'active' AND quantity_remaining > 0 THEN 0 ELSE 1 END")
+            ->orderBy('received_at')
+            ->orderBy('id')
+            ->get();
+
         return response()->json([
-            'html' => view('admin.goods-receipts.partials.stock-card', compact('variant', 'transactions'))->render(),
+            'html' => view('admin.goods-receipts.partials.stock-card', compact('variant', 'transactions', 'batches'))->render(),
         ]);
     }
 
@@ -413,7 +439,7 @@ class GoodsReceiptController extends Controller
                 'size_name'    => $v->size?->name,
                 'stock'        => $v->stock,
                 'cost_price'   => (float) $v->cost_price,
-                'sale_price'   => (float) $v->sale_price,
+                'sale_price'   => (float) $v->price,
             ])
             ->values();
     }
@@ -498,7 +524,7 @@ class GoodsReceiptController extends Controller
             $totalQuantity = collect($groupedItems)->sum(fn ($item) => $item['quantity']);
 
             $goodsReceipt = GoodsReceipt::create([
-                'code'           => $this->generateCode(),
+                'code'           => app(\App\Services\DocumentSequenceService::class)->generateGoodsReceiptCode(),
                 'receipt_type'   => $validated['receipt_type'],
                 'source_type'    => $validated['source_type'],
                 'receipt_reason' => $validated['receipt_reason'] ?? null,
@@ -893,28 +919,22 @@ class GoodsReceiptController extends Controller
 
         $this->assertValidReceiptItems($goodsReceipt);
 
+        // Mỗi dòng phiếu nhập => tạo 1 LÔ mới (giữ giá vốn riêng), ghi sổ cái + đồng bộ cache tồn.
+        $batchService = app(\App\Services\InventoryBatchService::class);
         foreach ($goodsReceipt->items as $item) {
             $variant = ProductVariant::lockForUpdate()->find($item->product_variant_id);
             if (!$variant) continue;
 
-            $beforeQuantity = (int) $variant->stock;
-            $afterQuantity = $beforeQuantity + (int) $item->quantity;
-
-            $variant->update([
-                'stock'      => $afterQuantity,
-                'cost_price' => $item->cost_price,
-            ]);
-
-            StockMovement::create([
-                'product_variant_id' => $variant->id,
-                'reference_type' => 'goods_receipt',
-                'reference_id' => $goodsReceipt->id,
-                'movement_type' => 'import',
-                'quantity' => (int) $item->quantity,
-                'before_quantity' => $beforeQuantity,
-                'after_quantity' => $afterQuantity,
-                'created_by' => Auth::id(),
-            ]);
+            $batchService->receive(
+                $variant,
+                (int) $item->quantity,
+                (float) $item->cost_price,
+                'goods_receipt',
+                $goodsReceipt->id,
+                $item->id,
+                Auth::id(),
+                $goodsReceipt->received_at ?? now()
+            );
         }
 
         $now = now();
@@ -994,27 +1014,5 @@ class GoodsReceiptController extends Controller
         }
     }
 
-    private function generateStockIssueCode(): string
-    {
-        $prefix = 'PXK' . now()->format('Ymd');
-        $lastToday = StockIssue::withTrashed()->where('code', 'like', "{$prefix}%")
-            ->orderByDesc('code')
-            ->first();
-
-        $sequence = $lastToday ? ((int) substr($lastToday->code, -3)) + 1 : 1;
-
-        return $prefix . str_pad((string) $sequence, 3, '0', STR_PAD_LEFT);
-    }
-
-    private function generateCode(): string
-    {
-        $prefix = 'PN' . now()->format('Ymd');
-        $lastToday = GoodsReceipt::withTrashed()->where('code', 'like', "{$prefix}%")
-            ->orderByDesc('code')
-            ->first();
-
-        $sequence = $lastToday ? ((int) substr($lastToday->code, -3)) + 1 : 1;
-
-        return $prefix . str_pad((string) $sequence, 3, '0', STR_PAD_LEFT);
-    }
 }
+

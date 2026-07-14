@@ -9,6 +9,7 @@ use App\Models\SearchHistory;
 use App\Models\Wishlist;
 use App\Models\Cart;
 use App\Models\Order;
+use App\Enums\OrderStatus;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -29,13 +30,14 @@ class RecommendationService
         $targetParentId = $product->category->parent_id ?? null;
         $targetBrandId = $product->brand_id;
         $targetGender = $product->gender;
-        $targetPrice = (float) $product->price;
+        $product->loadMissing('productVariants');
+        $targetPrice = (float) ($product->min_variant_price ?? 0);
         $targetTagIds = $product->tags->pluck('id')->toArray();
 
         // Lấy tất cả các sản phẩm đang bán (trừ sản phẩm hiện tại)
         $candidates = Product::where('status', true)
             ->where('id', '!=', $targetProductId)
-            ->with(['category', 'brand', 'tags'])
+            ->with(['category', 'brand', 'tags', 'productVariants'])
             ->get();
 
         return $candidates->map(function ($candidate) use (
@@ -68,15 +70,15 @@ class RecommendationService
                 $score += 2.0;
             }
 
-            // 4. Trọng số giao thoa Thẻ từ khóa (Tags Similarity)
-            if (!empty($targetTagIds)) {
-                $candidateTagIds = $candidate->tags->pluck('id')->toArray();
-                $sharedTagsCount = count(array_intersect($targetTagIds, $candidateTagIds));
-                $score += $sharedTagsCount * 1.5;
-            }
+            // // 4. Trọng số giao thoa Thẻ từ khóa (Tags Similarity)
+            // if (!empty($targetTagIds)) {
+            //     $candidateTagIds = $candidate->tags->pluck('id')->toArray();
+            //     $sharedTagsCount = count(array_intersect($targetTagIds, $candidateTagIds));
+            //     $score += $sharedTagsCount * 1.5;
+            // }
 
             // 5. Trọng số khoảng cách Giá (Price Proximity)
-            $candidatePrice = (float) $candidate->price;
+            $candidatePrice = (float) ($candidate->min_variant_price ?? 0);
             $priceDiff = abs($targetPrice - $candidatePrice);
             $priceSum = $targetPrice + $candidatePrice + 1; // +1 để tránh chia cho 0
             $priceProximity = 1.0 - ($priceDiff / $priceSum);
@@ -115,7 +117,7 @@ class RecommendationService
         $purchasedGenders = collect();
 
         $orders = Order::where('user_id', $userId)
-            ->where('status', 'Completed') // chỉ tính đơn hoàn thành
+            ->where('status', OrderStatus::COMPLETED->value) // chỉ tính đơn hoàn thành (enum lowercase 'completed')
             ->with('orderItems.productVariant.product')
             ->get();
 

@@ -18,6 +18,14 @@ class ActivityLogController extends Controller
     private const PRUNE_OPTIONS = [30, 90, 180, 365];
 
     /**
+     * Các trường nhạy cảm trên User mà nếu bị đổi thì bản ghi audit liên quan
+     * không được phép xóa (dù bulk-delete hay prune) — phục vụ điều tra sự cố
+     * (đổi mật khẩu, khóa/mở khóa, gỡ bảo vệ admin) ngay cả khi chính admin
+     * thực hiện thao tác đó cố tình xóa dấu vết.
+     */
+    private const PROTECTED_USER_FIELDS = ['password', 'is_active', 'is_protected', 'must_change_password', 'locked_by', 'locked_at'];
+
+    /**
      * Hiển thị danh sách nhật ký hoạt động.
      */
     public function index(Request $request)
@@ -86,9 +94,22 @@ class ActivityLogController extends Controller
             return back()->with('error', 'Vui lòng chọn ít nhất một bản ghi để xóa.');
         }
 
-        $deleted = ActivityLog::whereIn('id', $ids)->delete();
+        $candidates = ActivityLog::whereIn('id', $ids)->get();
+        $deletableIds = $candidates->reject(fn (ActivityLog $log) => $this->isProtectedAudit($log))->pluck('id');
 
-        return back()->with('success', "Đã xóa {$deleted} bản ghi nhật ký.");
+        if ($deletableIds->isEmpty()) {
+            return back()->with('error', 'Các bản ghi đã chọn thuộc nhóm nhật ký bảo mật (đổi vai trò, khóa tài khoản, đổi mật khẩu, gỡ bảo vệ admin) nên không thể xóa.');
+        }
+
+        $deleted = ActivityLog::whereIn('id', $deletableIds)->delete();
+        $skipped = $candidates->count() - $deletableIds->count();
+
+        $message = "Đã xóa {$deleted} bản ghi nhật ký.";
+        if ($skipped > 0) {
+            $message .= " {$skipped} bản ghi nhạy cảm liên quan tài khoản được giữ lại để phục vụ audit.";
+        }
+
+        return back()->with('success', $message);
     }
 
     /**
@@ -104,9 +125,46 @@ class ActivityLogController extends Controller
         ]);
 
         $threshold = now()->subDays((int) $validated['older_than_days']);
-        $deleted = ActivityLog::where('created_at', '<', $threshold)->delete();
 
-        return back()->with('success', "Đã dọn {$deleted} bản ghi nhật ký cũ hơn {$validated['older_than_days']} ngày.");
+        $deleted = 0;
+        ActivityLog::where('created_at', '<', $threshold)
+            ->orderBy('id')
+            ->chunkById(500, function ($logs) use (&$deleted) {
+                $deletableIds = $logs->reject(fn (ActivityLog $log) => $this->isProtectedAudit($log))->pluck('id');
+
+                if ($deletableIds->isNotEmpty()) {
+                    $deleted += ActivityLog::whereIn('id', $deletableIds)->delete();
+                }
+            });
+
+        return back()->with('success', "Đã dọn {$deleted} bản ghi nhật ký cũ hơn {$validated['older_than_days']} ngày (bản ghi nhạy cảm liên quan tài khoản được giữ lại).");
+    }
+
+    /**
+     * Bản ghi audit liên quan tới User mà chạm vào trường nhạy cảm (mật khẩu,
+     * trạng thái hoạt động, cờ bảo vệ) hoặc sự kiện đổi vai trò — không được
+     * phép xóa qua bulk-delete/prune để giữ tính bất biến của audit trail.
+     */
+    private function isProtectedAudit(ActivityLog $log): bool
+    {
+        if ($log->auditable_type !== User::class) {
+            return false;
+        }
+
+        if (in_array($log->event, ['role_updated', 'password_reset'], true)) {
+            return true;
+        }
+
+        if ($log->event === 'updated') {
+            $touchedFields = array_unique(array_merge(
+                array_keys((array) $log->old_values),
+                array_keys((array) $log->new_values)
+            ));
+
+            return (bool) array_intersect($touchedFields, self::PROTECTED_USER_FIELDS);
+        }
+
+        return false;
     }
 
     /**
