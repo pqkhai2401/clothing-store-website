@@ -13,6 +13,10 @@
     $pFinalPrice = is_object($product) && $pHasDiscount && $pPrice
         ? $product->discountedPrice((float) $pPrice)
         : null;
+    $pMaxFinalPrice = is_object($product) && $pHasDiscount && $pMaxPrice
+        ? $product->discountedPrice((float) $pMaxPrice)
+        : null;
+    $pIsRange = $pMaxPrice && $pMaxPrice != $pPrice;
 
     // Resolve URL
     $pUrl = $pSlug !== '#' ? url('/san-pham/' . $pSlug) : '#';
@@ -55,11 +59,15 @@
         <h3 class="product-name"><a href="{{ $pUrl }}">{{ $pName }}</a></h3>
         <div class="product-price">
             @if($pFinalPrice)
-                <span class="original-price">Từ {{ number_format($pPrice, 0, ',', '.') }}đ</span>
-                <span class="sale-price">Từ {{ number_format($pFinalPrice, 0, ',', '.') }}đ</span>
+                <span class="original-price">
+                    {{ number_format($pPrice, 0, ',', '.') }}đ@if($pIsRange) - {{ number_format($pMaxPrice, 0, ',', '.') }}đ@endif
+                </span>
+                <span class="sale-price">
+                    {{ number_format($pFinalPrice, 0, ',', '.') }}đ@if($pIsRange) - {{ number_format($pMaxFinalPrice, 0, ',', '.') }}đ@endif
+                </span>
             @elseif($pPrice)
-                @if($pMaxPrice && $pMaxPrice != $pPrice)
-                    <span>Từ {{ number_format($pPrice, 0, ',', '.') }}đ</span>
+                @if($pIsRange)
+                    <span>{{ number_format($pPrice, 0, ',', '.') }}đ - {{ number_format($pMaxPrice, 0, ',', '.') }}đ</span>
                 @else
                     <span>{{ number_format($pPrice, 0, ',', '.') }}đ</span>
                 @endif
