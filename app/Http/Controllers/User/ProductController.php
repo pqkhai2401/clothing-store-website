@@ -251,7 +251,8 @@ class ProductController extends Controller
 
         return view('user.products.index', array_merge(
             compact('products', 'pageTitle'),
-            $this->filterViewData($request)
+            $this->filterViewData($request),
+            ['currentSort' => $sort]
         ));
     }
 

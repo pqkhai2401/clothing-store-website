@@ -1180,7 +1180,7 @@
 
             btn.disabled = true;
 
-            fetch('/wishlist/toggle/' + productId, {
+            fetch('/yeu-thich/bat-tat/' + productId, {
                 method: 'POST',
                 headers: {
                     'Accept': 'application/json',

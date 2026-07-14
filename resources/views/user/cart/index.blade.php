@@ -499,7 +499,7 @@
     <div class="d-flex align-items-center justify-content-between mb-4">
         <h1 class="cart-page-title">Giỏ hàng</h1>
         @if($cartItems->isNotEmpty())
-            <a href="{{ url('/products') }}" class="continue-shopping-link">
+            <a href="{{ url('/san-pham') }}" class="continue-shopping-link">
                 <i class="bi bi-arrow-left me-1"></i> Tiếp tục mua sắm
             </a>
         @endif
@@ -684,7 +684,7 @@
         <i class="bi bi-bag-x text-muted" style="font-size: 4rem; opacity:.4;"></i>
         <h3 class="text-uppercase mt-4 mb-3" style="font-size:18px; letter-spacing:1px;">Giỏ hàng của bạn đang trống</h3>
         <p class="text-muted mb-4" style="max-width:420px; margin:0 auto 20px;">Bạn chưa có sản phẩm nào trong giỏ hàng. Hãy khám phá các bộ sưu tập của chúng tôi.</p>
-        <a href="{{ url('/products') }}" class="btn btn-black text-uppercase py-3 px-5" style="font-size:12px; letter-spacing:1.5px; font-weight:700;">
+        <a href="{{ url('/san-pham') }}" class="btn btn-black text-uppercase py-3 px-5" style="font-size:12px; letter-spacing:1.5px; font-weight:700;">
             Khám phá sản phẩm
         </a>
     </div>
@@ -881,7 +881,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     /* ── API calls ── */
     async function apiPatch(itemId, quantity) {
-        const r = await fetch(`/cart/${itemId}`, {
+        const r = await fetch(`/gio-hang/${itemId}`, {
             method: 'PATCH',
             headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
             body: JSON.stringify({ quantity }),
@@ -891,7 +891,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     async function apiDelete(itemId) {
-        const r = await fetch(`/cart/${itemId}`, {
+        const r = await fetch(`/gio-hang/${itemId}`, {
             method: 'DELETE',
             headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken },
         });
@@ -910,7 +910,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 <div class="text-center py-5 my-4">
                     <i class="bi bi-bag-x text-muted" style="font-size:3.5rem;opacity:.4;"></i>
                     <h3 class="text-uppercase mt-4 mb-3" style="font-size:17px;">Giỏ hàng của bạn đang trống</h3>
-                    <a href="/products" class="btn btn-black py-3 px-5 text-uppercase" style="font-size:12px;letter-spacing:1.5px;">Khám phá sản phẩm</a>
+                    <a href="/san-pham" class="btn btn-black py-3 px-5 text-uppercase" style="font-size:12px;letter-spacing:1.5px;">Khám phá sản phẩm</a>
                 </div>`;
         }
     }
@@ -990,7 +990,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     /* ── Bar: save selected items to wishlist ── */
     async function apiWishlistAdd(productId) {
-        const r = await fetch(`/wishlist/add/${productId}`, {
+        const r = await fetch(`/yeu-thich/them/${productId}`, {
             method: 'POST',
             headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken },
         });
@@ -1143,7 +1143,7 @@ document.addEventListener('DOMContentLoaded', function () {
             closeAllDropdowns();
             btn.classList.add('is-loading');
 
-            fetch(`/cart/${itemId}/variant`, {
+            fetch(`/gio-hang/${itemId}/variant`, {
                 method: 'PATCH',
                 headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
                 body: JSON.stringify({ product_variant_id: newVariantId }),

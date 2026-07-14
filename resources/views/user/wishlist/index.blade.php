@@ -920,7 +920,7 @@
                     Hãy khám phá các sản phẩm của chúng tôi và lưu lại
                     những sản phẩm bạn yêu thích!
                 </p>
-                <a href="{{ url('/products') }}" class="btn-continue-shopping">
+                <a href="{{ url('/san-pham') }}" class="btn-continue-shopping">
                     <i class="bi bi-arrow-left"></i> Tiếp tục mua sắm
                 </a>
             </div>
@@ -940,7 +940,7 @@
                         Dựa trên những sản phẩm bạn đã yêu thích — được phân tích và gợi ý bởi hệ thống AI của HK Store
                     </p>
                 </div>
-                <a href="{{ url('/products') }}" class="btn-view-all-ai">
+                <a href="{{ url('/san-pham') }}" class="btn-view-all-ai">
                     Xem tất cả <i class="bi bi-arrow-right ms-1"></i>
                 </a>
             </div>
@@ -1143,7 +1143,7 @@
 
         btnEl.disabled = true;
 
-        fetch('/wishlist/remove/' + productId, {
+        fetch('/yeu-thich/xoa/' + productId, {
             method: 'DELETE',
             headers: {
                 'Accept': 'application/json',
@@ -1173,8 +1173,8 @@
                     setTimeout(() => {
                         const params = new URLSearchParams(window.location.search);
                         params.set('page', currentPage - 1);
-                        window.location.href = '/wishlist?' + params.toString();
-                    }, 400);
+                        window.location.href = '/yeu-thich?' + params.toString();
+}, 400);
                     return;
                 }
 
@@ -1189,7 +1189,7 @@
                         const params = new URLSearchParams(window.location.search);
                         params.delete('page');
                         const qs = params.toString();
-                        window.location.href = '/wishlist' + (qs ? '?' + qs : '');
+                        window.location.href = '/yeu-thich' + (qs ? '?' + qs : '');
                     }, 400);
                     return;
                 }
@@ -1224,7 +1224,7 @@
         btnClearAll.addEventListener('click', function () {
             if (!confirm('Bạn có chắc muốn xóa toàn bộ danh sách yêu thích không?')) return;
 
-            fetch('/wishlist/clear', {
+            fetch('/yeu-thich/xoa-tat-ca', {
                 method: 'DELETE',
                 headers: {
                     'Accept': 'application/json',
@@ -1334,7 +1334,7 @@
 
         btnEl.disabled = true;
 
-        fetch('/wishlist/toggle/' + productId, {
+        fetch('/yeu-thich/bat-tat/' + productId, {
             method: 'POST',
             headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': getCsrf() }
         })
@@ -1366,7 +1366,7 @@
                     const params = new URLSearchParams(window.location.search);
                     const currentPage = getCurrentPage();
                     params.set('page', currentPage + 1);
-                    window.location.href = '/wishlist?' + params.toString();
+                    window.location.href = '/yeu-thich?' + params.toString();
                 }, 600);
             } else if (recCard) {
                 const d = recCard.dataset;

@@ -235,7 +235,7 @@
             <div class="container hero-content">
                 <h1 class="animate__animated animate__fadeInUp">PHONG CÁCH TỐI GIẢN</h1>
                 <p class="animate__animated animate__fadeInUp animate__delay-1s">Nâng tầm phong cách hàng ngày với bộ sưu tập được chọn lọc kỹ càng</p>
-                <a href="{{ url('/products') }}" class="btn btn-black animate__animated animate__fadeInUp animate__delay-2s">Khám Phá Hàng Mới</a>
+                <a href="{{ url('/san-pham') }}" class="btn btn-black animate__animated animate__fadeInUp animate__delay-2s">Khám Phá Hàng Mới</a>
             </div>
         </section>
     @endif

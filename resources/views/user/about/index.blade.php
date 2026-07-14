@@ -377,7 +377,7 @@
         <div class="container-fluid px-lg-5">
             <h2 class="about-cta-title">Sẵn sàng làm mới tủ đồ của bạn?</h2>
             <p class="about-cta-text">Khám phá những thiết kế tối giản, tinh tế được chọn lọc dành riêng cho bạn.</p>
-            <a href="{{ url('/products') }}" class="btn btn-black">Khám Phá Bộ Sưu Tập</a>
+            <a href="{{ url('/san-pham') }}" class="btn btn-black">Khám Phá Bộ Sưu Tập</a>
         </div>
     </section>
 

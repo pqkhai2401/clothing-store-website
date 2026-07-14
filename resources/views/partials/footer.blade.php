@@ -10,7 +10,7 @@
             <div class="col-md-3 mb-4 mb-md-0">
                 <h5 class="footer-title">Về chúng tôi</h5>
                 <ul class="footer-links">
-                    <li><a href="{{ url('/about') }}">Về chúng tôi</a></li>
+                    <li><a href="{{ url('/gioi-thieu') }}">Về chúng tôi</a></li>
                     {{-- <li><a href="{{ url('/sustainability') }}">Bền vững</a></li>
                     <li><a href="{{ url('/careers') }}">Cơ hội nghề nghiệp</a></li>
                     <li><a href="{{ url('/press') }}">Phóng viên</a></li> --}}

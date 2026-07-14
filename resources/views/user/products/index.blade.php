@@ -423,7 +423,7 @@
                                 @else
                                     Thử điều chỉnh lại bộ lọc hoặc
                                 @endif
-                                <a href="{{ url('/products') }}">xem tất cả sản phẩm</a>
+                                <a href="{{ url('/san-pham') }}">xem tất cả sản phẩm</a>
                             </p>
                         </div>
                     @else

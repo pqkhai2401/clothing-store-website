@@ -61,7 +61,7 @@
                                 <label for="button_link" class="form-label fw-bold">Đường dẫn khi bấm nút</label>
                                 <input type="text" id="button_link" name="button_link"
                                        class="form-control @error('button_link') is-invalid @enderror"
-                                       value="{{ old('button_link') }}" placeholder="/products">
+                                       value="{{ old('button_link') }}" placeholder="/san-pham">
                                 @error('button_link')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
