@@ -5,6 +5,11 @@
            để cột "Khách hàng" không bị kéo dãn ra khoảng trắng thừa không cần thiết */
         #orderTable { min-width: 1260px; }
 
+        /* .hk-cat-filter mặc định rộng cố định 220px (dùng cho filter trên toolbar) — trong form
+           Sửa đơn hàng/Thêm đơn hàng nó nằm trong 1 cột của .row nên phải giãn hết cỡ theo cột đó,
+           không được giữ 220px cố định (làm ô "Địa chỉ đã lưu" bị cắt ngắn, trông rất hẹp). */
+        .edit-field .oc-dropdown.hk-cat-filter { width: 100%; flex: none; }
+
         /* ── Order status chips (đơn hàng + thanh toán dùng chung khung, khác màu variant) ── */
         .order-badge,
         .payment-badge {
