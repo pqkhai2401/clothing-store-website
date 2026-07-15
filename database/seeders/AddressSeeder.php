@@ -19,7 +19,7 @@ class AddressSeeder extends Seeder
                     'apartment_number' => '45 Lê Duẩn',
                 ],
             ],
-            'Admin1@gmail.com' => [
+            'hiep29042021@gmail.com' => [
                 [
                     'city' => 'TP. Hồ Chí Minh',
                     'ward' => 'Phường Sài Gòn',
@@ -27,7 +27,7 @@ class AddressSeeder extends Seeder
                 ],
             ],
 
-            'QuangKhai@gmail.com' => [
+            '0306231295@caothang.edu.vn' => [
                 [
                     'city' => 'TP. Hồ Chí Minh',
                     'ward' => 'Phường Tăng Nhơn Phú',

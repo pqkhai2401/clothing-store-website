@@ -105,7 +105,7 @@ class OrderSeeder extends Seeder
             ],
             [
                 'user' => 'nguyentrungtam@gmail.com',
-                'payment_method' => 'COD',
+                'payment_method' => 'Thanh toán khi nhận hàng (COD)',
                 'order_code' => 'ORD-20260602-0002',
                 'phone' => '0885173946',
                 'note' => null,
@@ -119,7 +119,7 @@ class OrderSeeder extends Seeder
             ],
             [
                 'user' => 'nguyenthilan@gmail.com',
-                'payment_method' => 'Momo',
+                'payment_method' => 'MoMo - Ví điện tử',
                 'order_code' => 'ORD-20260603-0003',
                 'phone' => '0773948261',
                 'note' => 'Khách cần giao trong buổi sáng.',
@@ -160,7 +160,7 @@ class OrderSeeder extends Seeder
             ],
             [
                 'user' => 'leminhkhanh@gmail.com',
-                'payment_method' => 'PayOS',
+                'payment_method' => 'PayOS - Quét mã QR',
                 'order_code' => 'ORD-20260606-0006',
                 'phone' => '0358724619',
                 'note' => null,
@@ -202,7 +202,7 @@ class OrderSeeder extends Seeder
             ],
             [
                 'user' => 'dangthuylinh@gmail.com',
-                'payment_method' => 'PayOS',
+                'payment_method' => 'PayOS - Quét mã QR',
                 'order_code' => 'ORD-20260609-0009',
                 'phone' => '0378165924',
                 'note' => 'Tặng sinh nhật, giao sau 18h.',

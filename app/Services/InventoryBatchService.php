@@ -93,6 +93,47 @@ class InventoryBatchService
 
         $available = (int) $batches->sum('quantity_remaining');
         if ($available < $quantity) {
+            // Self-healing: Nếu tồn kho hiển thị (cached stock) lớn hơn tổng tồn kho thực tế của các lô,
+            // nghĩa là có sự lệch dữ liệu do thao tác database trực tiếp (seeder/phpMyAdmin/thao tác ngoài).
+            // Ta tự động tạo một lô bù đắp (backfill batch) để giao dịch mua hàng/xuất kho diễn ra bình thường.
+            $mismatchQty = (int) $variant->stock - $available;
+            if ($mismatchQty > 0) {
+                $backfillBatch = ProductBatch::create([
+                    'batch_code'            => 'AUTO-BACKFILL-' . $variant->id . '-' . now()->format('YmdHis'),
+                    'product_variant_id'    => $variant->id,
+                    'goods_receipt_item_id' => null,
+                    'quantity_import'       => $mismatchQty,
+                    'quantity_remaining'    => $mismatchQty,
+                    'cost_price'            => (float) $variant->cost_price,
+                    'received_at'           => now(),
+                    'status'                => ProductBatch::STATUS_ACTIVE,
+                ]);
+
+                StockMovement::create([
+                    'product_variant_id' => $variant->id,
+                    'product_batch_id'   => $backfillBatch->id,
+                    'reference_type'     => 'auto_backfill',
+                    'reference_id'       => $variant->id,
+                    'movement_type'      => 'import',
+                    'quantity'           => $mismatchQty,
+                    'unit_cost'          => (float) $variant->cost_price,
+                    'before_quantity'    => $available,
+                    'after_quantity'     => $available + $mismatchQty,
+                    'created_by'         => $userId,
+                ]);
+
+                // Truy vấn lại danh sách lô hàng sau khi đã tự động bù đắp
+                $batches = ProductBatch::query()
+                    ->where('product_variant_id', $variant->id)
+                    ->sellable()
+                    ->fifo()
+                    ->lockForUpdate()
+                    ->get();
+                $available = (int) $batches->sum('quantity_remaining');
+            }
+        }
+
+        if ($available < $quantity) {
             throw ValidationException::withMessages([
                 'stock' => ["Không đủ tồn kho theo lô cho SKU \"{$variant->sku}\" (còn {$available}, cần {$quantity})."],
             ]);

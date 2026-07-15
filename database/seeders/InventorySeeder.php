@@ -30,9 +30,11 @@ class InventorySeeder extends Seeder
 
         if (!$adminUser) {
             $adminUser = User::create([
-                'name' => 'Quản trị viên kho',
+                'username' => 'Quản trị viên kho',
                 'email' => 'admin.kho@gmail.com',
                 'password' => bcrypt('password'),
+                'phone_number' => '0900000000',
+                'is_active' => true,
             ]);
         }
 

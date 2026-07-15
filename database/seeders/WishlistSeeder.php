@@ -12,19 +12,19 @@ class WishlistSeeder extends Seeder
     public function run(): void
     {
         $data = [
-            'customer1@example.com' => [
+            'nguyenvanhien@gmail.com' => [
                 'ao-khoac-gio-chong-nuoc-tnf',
                 'quan-tay-nam-slim-zara',
                 'ao-blazer-nam-slim-zara',
                 'quan-jogger-tech-fleece-nike',
             ],
-            'customer2@example.com' => [
+            'nguyentrungtam@gmail.com' => [
                 'dam-body-midi-nu-zara',
                 'ao-len-co-lo-nu-uniqlo',
                 'ao-so-mi-nu-linen-zara',
                 'ao-phao-nu-ultra-light-uniqlo',
             ],
-            'customer3@example.com' => [
+            'nguyenthilan@gmail.com' => [
                 'ao-hoodie-classic-champion',
                 'quan-jogger-tech-fleece-nike',
                 'ao-thun-tron-unisex-uniqlo',
