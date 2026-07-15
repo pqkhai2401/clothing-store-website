@@ -30,6 +30,10 @@ $accountRoutes = function (string $accountType): void {
     Route::post('/', [UserController::class, 'store'])->name('store')->defaults('account_type', $accountType);
     if ($accountType === 'customer') {
         Route::patch('/bulk-update-status', [UserController::class, 'bulkUpdateStatus'])->name('bulkUpdateStatus')->defaults('account_type', $accountType);
+        // Thùng rác khách hàng: xem tài khoản đã xóa mềm, khôi phục hoặc xóa vĩnh viễn.
+        Route::get('/trash', [UserController::class, 'trash'])->name('trash')->defaults('account_type', $accountType);
+        Route::patch('/{id}/restore', [UserController::class, 'restore'])->name('restore')->defaults('account_type', $accountType);
+        Route::delete('/{id}/force-delete', [UserController::class, 'forceDelete'])->name('forceDelete')->defaults('account_type', $accountType);
     } elseif ($accountType === 'all') {
         Route::get('/trash', [UserController::class, 'trash'])->name('trash')->defaults('account_type', $accountType);
         Route::post('/bulk-delete', [UserController::class, 'bulkDelete'])->name('bulkDelete')->defaults('account_type', $accountType);

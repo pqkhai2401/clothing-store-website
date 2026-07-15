@@ -276,10 +276,24 @@
         </div>
     </section>
 
-    <!-- 4. Recommended Products (AI Integrated) -->
+    <!-- 4. Trending Now (Sản phẩm nổi bật) -->
+    @if($trendingNow->isNotEmpty())
+        <section class="py-5 bg-light my-5">
+            <div class="container-fluid px-lg-5">
+                <div class="section-header text-center">
+                    <h2 class="section-title">Sản Phẩm Nổi Bật</h2>
+                    <div class="section-subtitle">Những thiết kế nổi bật được yêu thích nhất</div>
+                </div>
+                
+                @include('partials.product-grid', ['products' => $trendingNow, 'cols' => 'col-6 col-md-3'])
+            </div>
+        </section>
+    @endif
+
+    <!-- 5. Recommended Products (AI Integrated) -->
     @include('partials.recommended-products', ['products' => $recommendedProducts->all()])
 
-    <!-- 5. Best Sellers -->
+    <!-- 6. Best Sellers -->
     <section class="py-5 my-5">
         <div class="container-fluid px-lg-5">
             <div class="section-header text-center">

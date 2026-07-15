@@ -20,7 +20,8 @@
                             <p style="margin:0 0 16px; color:#444444; font-size:15px; line-height:1.6;">
                                 Xin chào <strong>{{ $user->username }}</strong>,<br>
                                 Tài khoản của bạn tại HK STORE đã được tạo thành công với email <strong>{{ $user->email }}</strong>.
-                                Bạn có thể đăng nhập ngay để bắt đầu mua sắm.
+                                Bạn có thể đăng nhập ngay để bắt đầu mua sắm.  Đường dẫn tới trang đăng nhập: https://cloth-app-5cmsj.ondigitalocean.app/login
+                               
                             </p>
                             <p style="margin:0; color:#888888; font-size:13px; line-height:1.6;">
                                 Nếu bạn không thực hiện đăng ký này, vui lòng bỏ qua email này hoặc liên hệ với chúng tôi để được hỗ trợ.

@@ -565,7 +565,7 @@ class UserController extends Controller
         $context = $this->resolveContext($request);
         $this->authorizeContext($request, $context['type']);
 
-        if (in_array($context['type'], ['staff', 'customer'], true)) {
+        if ($context['type'] === 'staff') {
             return redirect()->route($context['routePrefix'].'.list')
                 ->with('error', 'Chức năng thùng rác không áp dụng cho khu vực này.');
         }
@@ -663,7 +663,7 @@ class UserController extends Controller
         $user = User::onlyTrashed()->findOrFail($id);
         $context = $this->resolveContext(request(), $user);
         $this->authorizeContext(request(), $context['type'], $user);
-        if (in_array($context['type'], ['staff', 'customer'], true)) {
+        if ($context['type'] === 'staff') {
             return redirect()->route($context['routePrefix'].'.list')
                 ->with('error', 'Chức năng thùng rác không áp dụng cho khu vực này.');
         }
@@ -680,10 +680,18 @@ class UserController extends Controller
         $user = User::onlyTrashed()->findOrFail($id);
         $context = $this->resolveContext(request(), $user);
         $this->authorizeContext(request(), $context['type'], $user);
-        if (in_array($context['type'], ['staff', 'customer'], true) || $user->is_protected) {
+        if ($context['type'] === 'staff' || $user->is_protected) {
             return redirect()->route($context['routePrefix'].'.list')
                 ->with('error', 'Không thể xóa vĩnh viễn tài khoản này.');
         }
+
+        // Đơn hàng (orders.user_id) là FK RESTRICT — xóa cứng khách còn đơn sẽ lỗi CSDL.
+        // Giữ tài khoản trong thùng rác để bảo toàn lịch sử đơn hàng.
+        if ($user->orders()->exists()) {
+            return redirect()->route($context['routePrefix'].'.trash')
+                ->with('error', 'Không thể xóa vĩnh viễn khách hàng này vì vẫn còn đơn hàng liên kết. Tài khoản được giữ trong thùng rác.');
+        }
+
         $user->forceDelete();
 
         return redirect()->route($context['routePrefix'].'.trash')->with('success', 'Xóa vĩnh viễn '.$context['itemLabelLower'].' thành công');
