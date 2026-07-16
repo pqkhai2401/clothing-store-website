@@ -228,9 +228,36 @@
                 document.querySelectorAll('.oc-row-panel').forEach(function (p) {
                     if (p === except) return;
                     p.hidden = true;
+                    // Bỏ toạ độ fixed đã gán để lần mở sau tính lại từ đầu.
+                    p.style.position = p.style.top = p.style.left = p.style.right = '';
                     p.closest('.oc-row-dropdown')?.querySelector('.oc-row-trigger')?.classList.remove('is-open');
                 });
             }
+
+            /* Panel nằm trong .table-responsive (overflow) nên position:absolute sẽ bị cắt ở đáy bảng.
+               Đưa panel ra ngoài bằng position:fixed tính theo nút trigger, tự lật lên nếu thiếu chỗ dưới. */
+            function positionRowPanel(trigger, panel) {
+                const rect = trigger.getBoundingClientRect();
+                panel.style.position = 'fixed';
+                panel.style.right = 'auto';
+                panel.style.top = (rect.bottom + 6) + 'px';
+                panel.style.left = rect.left + 'px';
+
+                const panelH = panel.offsetHeight;
+                const panelW = panel.offsetWidth;
+                const spaceBelow = window.innerHeight - rect.bottom;
+                if (spaceBelow < panelH + 12 && rect.top > panelH + 12) {
+                    panel.style.top = (rect.top - panelH - 6) + 'px'; // lật lên
+                }
+                let left = rect.left;
+                if (left + panelW > window.innerWidth - 8) left = window.innerWidth - panelW - 8;
+                panel.style.left = Math.max(8, left) + 'px';
+            }
+
+            // Panel fixed không cuộn theo bảng → đóng lại khi cuộn/đổi kích thước để không bị lệch.
+            ['scroll', 'resize'].forEach(function (ev) {
+                window.addEventListener(ev, function () { closeAllPanels(); }, true);
+            });
 
             document.addEventListener('click', async function (e) {
                 const trigger = e.target.closest('.oc-row-trigger');
@@ -239,7 +266,10 @@
                     const panel = dropdown.querySelector('.oc-row-panel');
                     const willOpen = panel.hidden;
                     closeAllPanels();
-                    panel.hidden = !willOpen;
+                    if (willOpen) {
+                        panel.hidden = false;
+                        positionRowPanel(trigger, panel);
+                    }
                     trigger.classList.toggle('is-open', willOpen);
                     return;
                 }

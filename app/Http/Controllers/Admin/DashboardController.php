@@ -14,6 +14,7 @@ use App\Models\Review;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
@@ -211,10 +212,30 @@ class DashboardController extends Controller
     }
 
     /**
+     * Query doanh thu trong khoảng [from, to] — cùng nguyên tắc ghi nhận doanh thu với trang
+     * Thống kê doanh thu (RevenueController): chỉ đơn đã "completed" (Pending/Processing/Shipping
+     * chưa chuyển giao rủi ro/lợi ích, dù đã payment_status=paid do thanh toán trước qua PayOS/MoMo),
+     * mốc thời gian là completed_at (fallback updated_at cho dữ liệu cũ). Tránh 2 định nghĩa doanh
+     * thu khác nhau giữa Dashboard và trang Thống kê doanh thu.
+     */
+    private function revenueQuery(Carbon $from, Carbon $to, array $filters)
+    {
+        return Order::where('status', 'completed')
+            ->whereBetween(DB::raw('COALESCE(completed_at, updated_at)'), [$from, $to])
+            ->when($filters['status'] ?? null, fn ($q, $v) => $q->where('status', $v))
+            ->when($filters['payment_status'] ?? null, fn ($q, $v) => $q->where('payment_status', $v))
+            ->when($filters['payment_method_id'] ?? null, fn ($q, $v) => $q->where('payment_method_id', $v));
+    }
+
+    /**
      * Giá trị 1 chỉ số trong khoảng [from, to], áp dụng bộ lọc nâng cao.
      */
     private function metricValue(string $metric, Carbon $from, Carbon $to, array $filters): float
     {
+        if ($metric === 'revenue') {
+            return (float) $this->revenueQuery($from, $to, $filters)->sum('total_money');
+        }
+
         if ($metric === 'sold') {
             return (float) OrderItem::query()
                 ->join('orders', 'orders.id', '=', 'order_items.order_id')
@@ -235,15 +256,8 @@ class DashboardController extends Controller
             return (float) $this->orderFilterQuery($from, $to, $filters)->where('status', 'cancelled')->count();
         }
 
-        if ($metric === 'orders') {
-            return (float) $this->orderFilterQuery($from, $to, $filters)->count();
-        }
-
-        // revenue (mặc định) — loại đơn đã hủy, chỉ tính đơn đã hoàn thành hoặc đã thanh toán
-        return (float) $this->orderFilterQuery($from, $to, $filters)
-            ->where('status', '!=', 'cancelled')
-            ->where(fn ($q) => $q->where('status', 'completed')->orWhere('payment_status', 'paid'))
-            ->sum('total_money');
+        // orders (mặc định)
+        return (float) $this->orderFilterQuery($from, $to, $filters)->count();
     }
 
     /**
@@ -289,6 +303,14 @@ class DashboardController extends Controller
             default => '%Y-%m-%d',
         };
 
+        if ($metric === 'revenue') {
+            return $this->revenueQuery($from, $to, $filters)
+                ->selectRaw("DATE_FORMAT(COALESCE(completed_at, updated_at), '{$dateFormat}') as period_key, SUM(total_money) as val")
+                ->groupBy('period_key')
+                ->pluck('val', 'period_key')
+                ->toArray();
+        }
+
         if ($metric === 'sold') {
             return OrderItem::query()
                 ->join('orders', 'orders.id', '=', 'order_items.order_id')
@@ -315,15 +337,10 @@ class DashboardController extends Controller
 
         if ($metric === 'cancelled') {
             $query->where('status', 'cancelled');
-        } elseif ($metric === 'revenue') {
-            $query->where('status', '!=', 'cancelled')
-                ->where(fn ($q) => $q->where('status', 'completed')->orWhere('payment_status', 'paid'));
         }
 
-        $valueExpr = $metric === 'revenue' ? 'SUM(total_money)' : 'COUNT(*)';
-
         return $query
-            ->selectRaw("DATE_FORMAT(created_at, '{$dateFormat}') as period_key, {$valueExpr} as val")
+            ->selectRaw("DATE_FORMAT(created_at, '{$dateFormat}') as period_key, COUNT(*) as val")
             ->groupBy('period_key')
             ->pluck('val', 'period_key')
             ->toArray();

@@ -42,7 +42,10 @@
 
     /* ── Primary KPI (6 thẻ, 3/hàng) ── */
     .dash-kpi { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:14px; }
-    .dash-kpi-card { padding:14px 16px; }
+    .dash-kpi-card { padding:14px 16px; display:block; text-decoration:none; color:inherit; cursor:pointer;
+        transition: box-shadow .15s ease, transform .15s ease; }
+    .dash-kpi-card:hover { box-shadow:0 10px 24px rgba(15,23,42,.1); transform:translateY(-2px); color:inherit; }
+    [data-theme="dark"] .dash-kpi-card:hover { box-shadow:0 10px 24px rgba(0,0,0,.35); }
     .dash-kpi-card.is-warn { border-left:3px solid #D97706 !important; }
     .dash-kpi-card.is-danger { border-left:3px solid #DC2626 !important; }
     [data-theme="dark"] .dash-kpi-card.is-warn { border-left-color:#FBBF24 !important; }
@@ -274,7 +277,7 @@
 
     {{-- PRIMARY KPI — 6 thẻ quan trọng nhất --}}
     <div class="dash-kpi">
-        <div class="card dash-kpi-card">
+        <a href="{{ route('admin.revenue.index') }}" class="card dash-kpi-card">
             <div class="dash-kpi-main">
                 <div class="dash-chip g"><i class="fa-solid fa-money-bill-wave"></i></div>
                 <div class="dash-kpi-body">
@@ -283,9 +286,9 @@
                 </div>
                 <div class="dash-delta"><span class="dash-pct {{ $stats['revenueDelta'] >= 0 ? 'up' : 'down' }}">{{ $stats['revenueDelta'] >= 0 ? '+' : '' }}{{ $stats['revenueDelta'] }}%</span><small>vs kỳ trước</small></div>
             </div>
-            <p class="dash-kpi-sub">Chỉ tính đơn đã thanh toán, không gồm đơn đã hủy.</p>
-        </div>
-        <div class="card dash-kpi-card">
+            <p class="dash-kpi-sub">Chỉ tính đơn đã hoàn thành, không gồm đơn đã hủy.</p>
+        </a>
+        <a href="{{ route('admin.orders.list') }}" class="card dash-kpi-card">
             <div class="dash-kpi-main">
                 <div class="dash-chip b"><i class="fa-solid fa-cart-shopping"></i></div>
                 <div class="dash-kpi-body">
@@ -295,8 +298,8 @@
                 <div class="dash-delta"><span class="dash-pct {{ $stats['ordersDelta'] >= 0 ? 'info' : 'down' }}">{{ $stats['ordersDelta'] >= 0 ? '+' : '' }}{{ $stats['ordersDelta'] }}%</span><small>vs kỳ trước</small></div>
             </div>
             <p class="dash-kpi-sub">Tất cả đơn hàng trong kỳ đang chọn</p>
-        </div>
-        <div class="card dash-kpi-card is-warn">
+        </a>
+        <a href="{{ route('admin.orders.list', ['status' => 'pending']) }}" class="card dash-kpi-card is-warn">
             <div class="dash-kpi-main">
                 <div class="dash-chip a"><i class="fa-solid fa-clock"></i></div>
                 <div class="dash-kpi-body">
@@ -306,8 +309,8 @@
                 <div class="dash-delta"><span class="dash-pct {{ $stats['pendingDelta'] >= 0 ? 'up' : 'down' }}">{{ $stats['pendingDelta'] >= 0 ? '+' : '' }}{{ $stats['pendingDelta'] }}%</span><small>vs kỳ trước</small></div>
             </div>
             <p class="dash-kpi-sub warns">Cần xử lý ngay</p>
-        </div>
-        <div class="card dash-kpi-card">
+        </a>
+        <a href="{{ route('admin.orders.list', ['status' => 'shipping']) }}" class="card dash-kpi-card">
             <div class="dash-kpi-main">
                 <div class="dash-chip p"><i class="fa-solid fa-truck"></i></div>
                 <div class="dash-kpi-body">
@@ -316,8 +319,8 @@
                 </div>
             </div>
             <p class="dash-kpi-sub">Đơn đang được vận chuyển</p>
-        </div>
-        <div class="card dash-kpi-card is-danger">
+        </a>
+        <a href="{{ route('admin.goods-receipts.list', ['stock_status' => 'low_stock']) }}" class="card dash-kpi-card is-danger">
             <div class="dash-kpi-main">
                 <div class="dash-chip r"><i class="fa-solid fa-triangle-exclamation"></i></div>
                 <div class="dash-kpi-body">
@@ -326,8 +329,8 @@
                 </div>
             </div>
             <p class="dash-kpi-sub dangers">Tồn kho thấp, cần nhập thêm</p>
-        </div>
-        <div class="card dash-kpi-card">
+        </a>
+        <a href="{{ route('admin.customers.list') }}" class="card dash-kpi-card">
             <div class="dash-kpi-main">
                 <div class="dash-chip g"><i class="fa-solid fa-user-plus"></i></div>
                 <div class="dash-kpi-body">
@@ -336,7 +339,7 @@
                 </div>
             </div>
             <p class="dash-kpi-sub">Khách mới trong kỳ đang chọn</p>
-        </div>
+        </a>
     </div>
 
     {{-- Thống kê phụ — thu gọn, mặc định đóng --}}
