@@ -70,6 +70,11 @@
                         </td>
                         <td data-sort-value="{{ $order->order_code ?? '' }}">
                             <span class="order-code">{{ $order->order_code ?? '—' }}</span>
+                            @if($order->source === 'admin')
+                                <div class="mt-1">
+                                    <span class="order-badge order-badge--manual" title="Đơn được nhân sự tạo thủ công, không phải khách tự đặt trên website">Tạo thủ công</span>
+                                </div>
+                            @endif
                         </td>
                         <td>
                             <div class="fw-bold text-dark">{{ $order->user?->username ?? 'Khách vãng lai' }}</div>

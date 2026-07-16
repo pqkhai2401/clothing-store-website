@@ -30,6 +30,19 @@
                         <td class="info-value">{{ $order->created_at?->format('d/m/Y H:i') ?? '—' }}</td>
                     </tr>
                     <tr>
+                        <td class="info-label ps-0">Nguồn đơn</td>
+                        <td class="info-value">
+                            @if($order->source === 'admin')
+                                <span class="order-badge order-badge--manual">Tạo thủ công</span>
+                                @if($order->createdBy)
+                                    <span class="text-muted" style="font-size:12px;">bởi {{ $order->createdBy->username }}</span>
+                                @endif
+                            @else
+                                Khách đặt trên website
+                            @endif
+                        </td>
+                    </tr>
+                    <tr>
                         <td class="info-label ps-0">Trạng thái</td>
                         <td>
                             <span class="order-badge {{ $orderBadgeCss[$order->status] ?? '' }}">

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\OrderSource;
 use App\Enums\UserRole;
 use App\Exports\OrdersExport;
 use App\Http\Controllers\Controller;
@@ -11,6 +12,7 @@ use App\Models\OrderItem;
 use App\Models\PaymentMethod;
 use App\Models\ProductVariant;
 use App\Models\User;
+use App\Services\VoucherService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -51,7 +53,7 @@ class OrderController extends Controller
     public const STATUS_TRANSITIONS = [
         'pending'    => ['processing', 'cancelled'],
         'processing' => ['shipping', 'cancelled'],
-        'shipping'   => ['completed'],
+        'shipping'   => ['completed', 'cancelled'],
         'completed'  => [],
         'cancelled'  => [],
     ];
@@ -331,6 +333,7 @@ class OrderController extends Controller
                         $this->autoGenerateStockIssueForOrder($order);
                     } elseif ($validated['status'] === 'cancelled') {
                         $this->restoreStockForCancelledOrder($order);
+                        \App\Services\VoucherService::releaseUsage($order->id);
                     }
                 });
                 $updated++;
@@ -364,7 +367,54 @@ class OrderController extends Controller
             'paymentMethods' => PaymentMethod::where('status', true)->orderBy('name')->get(),
             'statusLabels'   => self::STATUS_LABELS,
             'paymentStatusLabels' => self::PAYMENT_STATUS_LABELS,
+            // Khi validate() ở store() thất bại (vd. trùng SĐT), Laravel redirect back() +
+            // withInput() về chính trang này — nhưng danh sách sản phẩm đã thêm chỉ tồn tại
+            // trong biến JS `items` phía client, KHÔNG có input <select multiple> nào giữ lại
+            // nên reload xong sẽ mất trắng. Dựng lại đầy đủ dữ liệu hiển thị (tên, ảnh, giá...)
+            // từ old('items') (chỉ có product_variant_id + quantity) để JS bootstrap lại bảng.
+            'oldItems'       => $this->buildOldItemsForDisplay(old('items', [])),
         ]);
+    }
+
+    /**
+     * Dựng lại dữ liệu hiển thị đầy đủ (tên, ảnh, màu, size, giá, tồn) cho các sản phẩm đã
+     * chọn trước đó từ old('items') (chỉ có product_variant_id + quantity) — dùng khi trang
+     * "Thêm đơn hàng" reload lại sau một lần submit thất bại, để bảng sản phẩm không bị mất.
+     */
+    private function buildOldItemsForDisplay(array $oldItemsRaw): array
+    {
+        if (empty($oldItemsRaw)) {
+            return [];
+        }
+
+        $variantIds = collect($oldItemsRaw)->pluck('product_variant_id')->filter()->all();
+        $variants = ProductVariant::with(['product:id,name,thumbnail', 'color:id,name,hex_code', 'size:id,name'])
+            ->whereIn('id', $variantIds)
+            ->get()
+            ->keyBy('id');
+
+        return collect($oldItemsRaw)
+            ->map(function ($item) use ($variants) {
+                $variant = $variants[$item['product_variant_id'] ?? null] ?? null;
+                if (! $variant) {
+                    return null;
+                }
+
+                return [
+                    'id'         => $variant->id,
+                    'name'       => $variant->product->name ?? '',
+                    'thumbnail'  => $variant->product->thumbnail ?? null,
+                    'color'      => $variant->color->name ?? '',
+                    'color_hex'  => $variant->color?->display_hex_code ?? '#ccc',
+                    'size'       => $variant->size->name ?? '',
+                    'unit_price' => (float) $variant->final_price,
+                    'stock'      => $variant->stock,
+                    'quantity'   => (int) ($item['quantity'] ?? 1),
+                ];
+            })
+            ->filter()
+            ->values()
+            ->all();
     }
 
     public function searchCustomers(Request $request)
@@ -425,21 +475,72 @@ class OrderController extends Controller
         return response()->json(['variants' => $variants]);
     }
 
+    /**
+     * Xem trước mã giảm giá khi admin đang nhập ở trang Thêm đơn hàng — chỉ để hiển thị số
+     * tiền được giảm ngay lúc gõ, KHÔNG khóa dòng/ghi lượt dùng (việc đó chỉ xảy ra thật sự
+     * lúc store() tạo đơn, xem VoucherService::lockAndRecordUsage()).
+     */
+    public function checkVoucher(Request $request)
+    {
+        $request->validate([
+            'code'     => ['required', 'string', 'max:255'],
+            'subtotal' => ['required', 'numeric', 'min:0'],
+            'user_id'  => ['nullable', 'integer'],
+        ]);
+
+        $subtotal = (float) $request->input('subtotal');
+
+        try {
+            $voucher = VoucherService::validate(
+                $request->input('code'),
+                $subtotal,
+                $request->input('user_id') ? (int) $request->input('user_id') : null
+            );
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->errors()['voucher_code'][0] ?? 'Mã giảm giá không hợp lệ.',
+            ], 422);
+        }
+
+        $discountAmount = VoucherService::calculateDiscount($voucher, $subtotal);
+
+        return response()->json([
+            'success'         => true,
+            'discount_amount' => round($discountAmount, 2),
+        ]);
+    }
+
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'user_id'           => ['nullable', 'integer', Rule::exists('users', 'id')],
+        $validator = Validator::make($request->all(), [
+            // Chỉ kiểm tra user_id tồn tại VÀ có role customer — tránh gán nhầm đơn cho một
+            // tài khoản nhân sự/admin nếu request bị chỉnh sửa tay (id đó vẫn "tồn tại" nhưng
+            // không phải khách hàng). Dùng closure vì scope role() cần Eloquent builder, không
+            // gọi được qua Rule::exists() (chỉ có query builder thô).
+            'user_id'           => ['nullable', 'integer', function ($attribute, $value, $fail) {
+                if ($value && ! User::role(UserRole::CUSTOMER->value)->where('id', $value)->exists()) {
+                    $fail('Khách hàng đã chọn không hợp lệ.');
+                }
+            }],
             'customer_name'     => ['required_without:user_id', 'nullable', 'string', 'max:255'],
+            // Không tự ràng buộc address_id thuộc đúng user_id ở đây được (Rule::exists không so
+            // sánh chéo cột từ input khác) — việc đó nằm ở closure after() bên dưới, để trả lỗi rõ
+            // ràng thay vì để Address::firstOrFail() trong transaction ném 404 xấu.
             'address_id'        => ['nullable', 'integer', Rule::exists('addresses', 'id')],
             'new_address.city'              => ['required_without:address_id', 'nullable', 'string', 'max:255'],
-            'new_address.district'          => ['nullable', 'string', 'max:255'],
             'new_address.ward'              => ['required_without:address_id', 'nullable', 'string', 'max:255'],
             'new_address.apartment_number'  => ['required_without:address_id', 'nullable', 'string', 'max:255'],
-            'phone'              => ['required', 'string', 'max:20'],
+            // Khi tạo khách hàng mới (user_id trống), SĐT sẽ được dùng làm phone_number của tài
+            // khoản mới → phải duy nhất, nếu không sẽ vỡ unique constraint ở tầng DB (500 lỗi xấu
+            // thay vì thông báo rõ ràng cho admin). ignore(user_id) để khi ĐÃ chọn khách có sẵn thì
+            // không tự chặn nhầm chính SĐT của họ.
+            'phone'              => ['required', 'string', 'max:20', Rule::unique('users', 'phone_number')->ignore($request->input('user_id'))],
             'payment_method_id' => ['required', 'integer', Rule::exists('payment_methods', 'id')],
             'status'             => ['required', Rule::in(array_keys(self::STATUS_LABELS))],
             'payment_status'     => ['required', Rule::in(array_keys(self::PAYMENT_STATUS_LABELS))],
             'shipping_fee'       => ['required', 'numeric', 'min:0'],
+            'voucher_code'       => ['nullable', 'string', 'max:255'],
             'note'               => ['nullable', 'string', 'max:1000'],
             'items'              => ['required', 'array', 'min:1'],
             'items.*.product_variant_id' => ['required', 'integer', Rule::exists('product_variants', 'id')],
@@ -450,10 +551,54 @@ class OrderController extends Controller
             'new_address.ward.required_without' => 'Vui lòng nhập phường/xã cho địa chỉ mới.',
             'new_address.apartment_number.required_without' => 'Vui lòng nhập địa chỉ cụ thể cho địa chỉ mới.',
             'phone.required' => 'Vui lòng nhập số điện thoại.',
+            'phone.unique' => 'Số điện thoại này đã được dùng bởi một khách hàng khác — vui lòng tìm và chọn khách hàng đó thay vì tạo mới.',
             'payment_method_id.required' => 'Vui lòng chọn phương thức thanh toán.',
             'items.required' => 'Vui lòng thêm ít nhất một sản phẩm vào đơn hàng.',
             'items.*.quantity.min' => 'Số lượng sản phẩm phải lớn hơn 0.',
         ]);
+
+        $validator->after(function ($validator) use ($request) {
+            $userId    = $request->input('user_id');
+            $addressId = $request->input('address_id');
+
+            // address_id phải thuộc đúng khách hàng đã chọn — nếu không, đó là dữ liệu bị
+            // lệch (customer đã đổi mà address cũ chưa được reset) chứ không phải lỗi hệ thống.
+            if ($addressId) {
+                if (! $userId) {
+                    $validator->errors()->add('address_id', 'Không thể chọn địa chỉ đã lưu khi chưa chọn khách hàng có sẵn.');
+                } elseif (! Address::where('id', $addressId)->where('user_id', $userId)->exists()) {
+                    $validator->errors()->add('address_id', 'Địa chỉ đã chọn không thuộc về khách hàng này.');
+                }
+            }
+
+            // Chặn đặt số lượng vượt tồn kho ngay lúc tạo đơn — trước đây chỉ được kiểm ở
+            // autoGenerateStockIssueForOrder() nên đơn "Chờ xác nhận"/"Đã hủy" vẫn lưu được số
+            // lượng vô lý (vượt tồn thực tế), chỉ vỡ ra khi ai đó chuyển đơn sang "Đang xử lý".
+            // Giới hạn max=stock trên input chỉ ở phía client, dễ bị qua mặt nếu gửi thẳng request.
+            $items = $request->input('items', []);
+            if (is_array($items)) {
+                $variantIds = collect($items)->pluck('product_variant_id')->filter()->all();
+                $variants = ProductVariant::with('product:id,name')->whereIn('id', $variantIds)->get()->keyBy('id');
+
+                foreach ($items as $idx => $item) {
+                    $variant = $variants[$item['product_variant_id'] ?? null] ?? null;
+                    if (! $variant) continue;
+
+                    if ((int) ($item['quantity'] ?? 0) > $variant->stock) {
+                        $productName = $variant->product->name ?? 'Sản phẩm';
+                        // Bảng sản phẩm ở giao diện được JS dựng lại từ mảng rỗng mỗi lần tải trang
+                        // (không phục hồi lại danh sách cũ khi validate lỗi), nên nêu rõ tên sản
+                        // phẩm trong lỗi — nếu không admin sẽ không biết items.{idx} nào bị sai.
+                        $validator->errors()->add(
+                            "items.{$idx}.quantity",
+                            "Số lượng sản phẩm \"{$productName}\" ({$item['quantity']}) vượt quá tồn kho hiện có ({$variant->stock})."
+                        );
+                    }
+                }
+            }
+        });
+
+        $validated = $validator->validate();
 
         $order = DB::transaction(function () use ($validated) {
             // Không chọn khách có sẵn (user_id trống) → tự tạo khách hàng mới từ Tên + SĐT đã nhập.
@@ -477,7 +622,6 @@ class OrderController extends Controller
                 : Address::create([
                     'user_id'          => $userId,
                     'city'             => $validated['new_address']['city'],
-                    'district'         => $validated['new_address']['district'] ?? null,
                     'ward'             => $validated['new_address']['ward'],
                     'apartment_number' => $validated['new_address']['apartment_number'],
                 ]);
@@ -489,22 +633,41 @@ class OrderController extends Controller
                 ->get()
                 ->keyBy('id');
 
-            $totalMoney = 0;
+            $subtotal = 0;
             foreach ($validated['items'] as $item) {
                 $variant = $variants[$item['product_variant_id']];
-                $totalMoney += $variant->final_price * $item['quantity'];
+                $subtotal += $variant->final_price * $item['quantity'];
             }
-            $totalMoney += (float) $validated['shipping_fee'];
+
+            // Voucher: validate lại đúng luật dùng chung với checkout khách hàng (VoucherService) —
+            // không tin discount từ client. $userId ở đây có thể là khách vừa tạo mới trong chính
+            // transaction này nên không thể pre-check trước transaction như checkout (nơi user đã
+            // đăng nhập sẵn) — validate ngay tại đây, và lockAndRecordUsage() bên dưới mới là bước
+            // chống race-condition thật sự (2 request cùng dùng 1 mã cùng lúc).
+            $voucher = null;
+            $discountAmount = 0.0;
+            if (! empty($validated['voucher_code'])) {
+                $voucher = VoucherService::validate($validated['voucher_code'], $subtotal, $userId);
+                $discountAmount = VoucherService::calculateDiscount($voucher, $subtotal);
+            }
+
+            $totalMoney = $subtotal - $discountAmount + (float) $validated['shipping_fee'];
 
             $order = Order::create([
                 'user_id'           => $userId,
                 'address_id'        => $address->id,
                 'payment_method_id' => $validated['payment_method_id'],
+                // Phân biệt với đơn khách tự đặt qua website (mặc định 'online' theo cột DB) —
+                // ghi lại luôn nhân sự đã tạo để tra soát khi cần.
+                'source'            => OrderSource::ADMIN->value,
+                'created_by'        => Auth::id(),
                 'order_code'        => $orderCode,
                 'phone'             => $validated['phone'],
                 'note'              => $validated['note'] ?? null,
                 'total_money'       => $totalMoney,
                 'shipping_fee'      => $validated['shipping_fee'],
+                'voucher_id'        => $voucher?->id,
+                'discount_amount'   => $discountAmount,
                 'status'            => $validated['status'],
                 // Đơn tạo thẳng ở trạng thái "Hoàn thành" coi như đã thu tiền → tự đánh dấu đã thanh toán.
                 'payment_status'    => $validated['status'] === 'completed' ? 'paid' : $validated['payment_status'],
@@ -512,6 +675,14 @@ class OrderController extends Controller
                 // sự hoàn tất ngay từ lúc tạo, không set cho các trạng thái khác.
                 'completed_at'      => $validated['status'] === 'completed' ? now() : null,
             ]);
+
+            // "status" cho phép tạo thẳng đơn ở trạng thái "Đã hủy" ngay từ đầu — đơn này chưa từng
+            // thật sự tồn tại/giao dịch nên KHÔNG được tính là một lượt dùng mã (nếu không, huỷ nó
+            // sau đó không giải phóng được lượt dùng vì không có bước chuyển trạng thái nào chạy
+            // qua releaseUsage(), khiến voucher bị "mất" một lượt vĩnh viễn oan uổng).
+            if ($voucher && $validated['status'] !== 'cancelled') {
+                VoucherService::lockAndRecordUsage($voucher->id, $userId, $order->id);
+            }
 
             foreach ($validated['items'] as $item) {
                 $variant = $variants[$item['product_variant_id']];
@@ -563,6 +734,7 @@ class OrderController extends Controller
             'user',
             'address',
             'paymentMethod',
+            'createdBy',
             'orderItems.productVariant.product',
             'orderItems.productVariant.color',
             'orderItems.productVariant.size',
@@ -687,7 +859,6 @@ class OrderController extends Controller
         if ($scope !== 'none') {
             $rules['address_id']                   = ['nullable', 'integer', Rule::exists('addresses', 'id')];
             $rules['new_address.city']              = ['required_without:address_id', 'nullable', 'string', 'max:255'];
-            $rules['new_address.district']          = ['nullable', 'string', 'max:255'];
             $rules['new_address.ward']              = ['required_without:address_id', 'nullable', 'string', 'max:255'];
             $rules['new_address.apartment_number']  = ['required_without:address_id', 'nullable', 'string', 'max:255'];
             $rules['phone']                         = ['required', 'string', 'max:20'];
@@ -765,7 +936,6 @@ class OrderController extends Controller
                     : Address::create([
                         'user_id'          => $order->user_id,
                         'city'             => $validated['new_address']['city'],
-                        'district'         => $validated['new_address']['district'] ?? null,
                         'ward'             => $validated['new_address']['ward'],
                         'apartment_number' => $validated['new_address']['apartment_number'],
                     ]);
@@ -880,6 +1050,7 @@ class OrderController extends Controller
             $this->autoGenerateStockIssueForOrder($order);
         } elseif ($newStatus === 'cancelled') {
             $this->restoreStockForCancelledOrder($order);
+            \App\Services\VoucherService::releaseUsage($order->id);
         }
     }
 

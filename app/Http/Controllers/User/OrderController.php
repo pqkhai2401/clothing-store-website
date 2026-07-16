@@ -96,6 +96,9 @@ class OrderController extends Controller
             // cộng lại sẽ tạo tồn kho ảo.
             $order->update(['status' => 'cancelled']);
 
+            // Giải phóng voucher để khách hàng có thể sử dụng lại mã
+            \App\Services\VoucherService::releaseUsage($order->id);
+
             DB::commit();
 
             return response()->json([

@@ -18,10 +18,15 @@
         .oc-search-item:last-child { border-bottom: none; }
         .oc-search-item:hover { background: #f0fdf4; }
         .oc-search-item .oc-item-sub { color: #6b7280; font-size: 12px; }
+        .oc-search-item--warn { cursor: default; background: #FEF3C7; color: #92400E; font-weight: 600; border-bottom: 1px solid #FDE68A; }
+        .oc-search-item--warn:hover { background: #FEF3C7; }
+        .oc-search-item--match { background: #FFFBEB; }
 
         .oc-items-table th, .oc-items-table td { font-size: 13px; vertical-align: middle; }
         .oc-items-table .oc-qty-input { width: 70px; }
         .oc-empty-items { padding: 24px; text-align: center; color: #94A3B8; font-size: 13px; }
+        .oc-row-thumb { width: 40px; height: 40px; border-radius: 6px; object-fit: cover; background: #f3f4f6; flex-shrink: 0; }
+        .oc-row-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; border: 1px solid rgba(0,0,0,.08); margin-right: 4px; vertical-align: middle; }
 
         .oc-summary-row { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; font-size: 13px; }
         .oc-summary-row.total { font-weight: 800; font-size: 15px; border-top: 1px solid #e5e7eb; margin-top: 6px; padding-top: 10px; }
@@ -59,6 +64,10 @@
         [data-theme="dark"] .oc-summary-row.total { border-color: #2A3B59 !important; }
         [data-theme="dark"] .oc-card-divider { border-color: #2A3B59 !important; }
         [data-theme="dark"] .oc-subsection-title { color: #E2E8F0 !important; }
+        [data-theme="dark"] .oc-row-thumb { background: #1E293B !important; }
+        [data-theme="dark"] .oc-search-item--warn { background: #3F2D0E !important; color: #FCD34D !important; border-color: #57430F !important; }
+        [data-theme="dark"] .oc-search-item--warn:hover { background: #3F2D0E !important; }
+        [data-theme="dark"] .oc-search-item--match { background: #241C0A !important; }
     </style>
 @endpush
 
@@ -90,20 +99,23 @@
 
                         <div class="section-title mb-3">Khách hàng</div>
                         <div class="row g-3 mb-3">
-                            <div class="col-md-7 edit-field oc-search-wrap mb-0">
+                            <div class="col-md-5 edit-field oc-search-wrap mb-0">
+                                <label>Số điện thoại <span class="text-danger">*</span></label>
+                                <input type="text" name="phone" id="ocPhone"
+                                    class="form-control @error('phone') is-invalid @enderror"
+                                    value="{{ old('phone') }}"
+                                    placeholder="Nhập SĐT hoặc email để tìm khách hàng..." autocomplete="off">
+                                <div class="oc-search-results d-none" id="ocCustomerResults"></div>
+                                @error('phone') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                            </div>
+                            <div class="col-md-7 edit-field mb-0">
                                 <label>Tên khách hàng <span class="text-danger">*</span></label>
-                                <input type="text" id="ocCustomerSearch" name="customer_name"
+                                <input type="text" id="ocCustomerName" name="customer_name"
                                     class="form-control @error('user_id') is-invalid @enderror @error('customer_name') is-invalid @enderror"
                                     value="{{ old('customer_name') }}"
-                                    placeholder="Nhập tên, email hoặc SĐT khách hàng..." autocomplete="off">
-                                <div class="oc-search-results d-none" id="ocCustomerResults"></div>
+                                    placeholder="Nhập tên khách hàng...">
                                 @error('user_id') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                                 @error('customer_name') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
-                            </div>
-                            <div class="col-md-5 edit-field mb-0">
-                                <label>Số điện thoại <span class="text-danger">*</span></label>
-                                <input type="text" name="phone" id="ocPhone" class="form-control @error('phone') is-invalid @enderror" value="{{ old('phone') }}">
-                                @error('phone') <div class="invalid-feedback">{{ $message }}</div> @enderror
                             </div>
                         </div>
 
@@ -128,19 +140,33 @@
                             <div class="row g-3">
                                 <div class="col-md-6 edit-field mb-0">
                                     <label>Tỉnh/Thành phố <span class="text-danger">*</span></label>
-                                    <input type="text" name="new_address[city]" class="form-control @error('new_address.city') is-invalid @enderror" value="{{ old('new_address.city') }}">
-                                    @error('new_address.city') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                                </div>
-                                <div class="col-md-6 edit-field mb-0">
-                                    <label>Quận/Huyện</label>
-                                    <input type="text" name="new_address[district]" class="form-control" value="{{ old('new_address.district') }}">
+                                    <input type="hidden" name="new_address[city]" id="ocProvinceHidden" value="{{ old('new_address.city') }}">
+                                    <div class="hk-cat-filter oc-dropdown @error('new_address.city') is-invalid @enderror" id="ocProvinceDrop">
+                                        <button type="button" class="hk-cat-trigger" id="ocProvinceTrigger" aria-haspopup="listbox" aria-expanded="false">
+                                            <span class="hk-cat-trigger-label" id="ocProvinceLabel">{{ old('new_address.city') ?: '— Chọn tỉnh/thành phố —' }}</span>
+                                            <i class="fa-solid fa-chevron-down hk-cat-arrow"></i>
+                                        </button>
+                                        <div class="hk-cat-panel" id="ocProvincePanel" hidden>
+                                            <div class="hk-cat-list" id="ocProvinceList" role="listbox"></div>
+                                        </div>
+                                    </div>
+                                    @error('new_address.city') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                                 </div>
                                 <div class="col-md-6 edit-field mb-0">
                                     <label>Phường/Xã <span class="text-danger">*</span></label>
-                                    <input type="text" name="new_address[ward]" class="form-control @error('new_address.ward') is-invalid @enderror" value="{{ old('new_address.ward') }}">
-                                    @error('new_address.ward') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                    <input type="hidden" name="new_address[ward]" id="ocWardHidden" value="{{ old('new_address.ward') }}">
+                                    <div class="hk-cat-filter oc-dropdown @error('new_address.ward') is-invalid @enderror" id="ocWardDrop">
+                                        <button type="button" class="hk-cat-trigger" id="ocWardTrigger" aria-haspopup="listbox" aria-expanded="false" disabled>
+                                            <span class="hk-cat-trigger-label" id="ocWardLabel">— Chọn tỉnh/thành trước —</span>
+                                            <i class="fa-solid fa-chevron-down hk-cat-arrow"></i>
+                                        </button>
+                                        <div class="hk-cat-panel" id="ocWardPanel" hidden>
+                                            <div class="hk-cat-list" id="ocWardList" role="listbox"></div>
+                                        </div>
+                                    </div>
+                                    @error('new_address.ward') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                                 </div>
-                                <div class="col-md-6 edit-field mb-0">
+                                <div class="col-md-12 edit-field mb-0">
                                     <label>Địa chỉ cụ thể <span class="text-danger">*</span></label>
                                     <input type="text" name="new_address[apartment_number]" class="form-control @error('new_address.apartment_number') is-invalid @enderror" value="{{ old('new_address.apartment_number') }}">
                                     @error('new_address.apartment_number') <div class="invalid-feedback">{{ $message }}</div> @enderror
@@ -158,21 +184,41 @@
                         </div>
 
                         @error('items') <div class="text-danger mb-2" style="font-size:13px;">{{ $message }}</div> @enderror
+                        {{-- Bảng sản phẩm bên dưới do JS dựng lại từ đầu (rỗng) mỗi lần tải trang,
+                             không phục hồi được danh sách cũ khi validate lỗi — nên các lỗi
+                             items.*.quantity (vd. vượt tồn kho) phải hiện riêng ở đây, nếu không
+                             admin sẽ không thấy được lý do đơn bị từ chối. --}}
+                        @php
+                            $itemQuantityErrors = collect($errors->keys())
+                                ->filter(fn ($key) => preg_match('/^items\.\d+\.quantity$/', $key))
+                                ->map(fn ($key) => $errors->first($key));
+                        @endphp
+                        @if($itemQuantityErrors->isNotEmpty())
+                            <div class="text-danger mb-2" style="font-size:13px;">
+                                @foreach($itemQuantityErrors as $message)
+                                    <div>{{ $message }}</div>
+                                @endforeach
+                            </div>
+                        @endif
 
                         <div class="table-responsive">
                             <table class="table oc-items-table mb-0">
                                 <thead>
                                     <tr>
+                                        <th style="width:36px;">#</th>
+                                        <th style="width:56px;">Ảnh</th>
                                         <th>Sản phẩm</th>
-                                        <th>Đơn giá</th>
-                                        <th style="width:90px;">Số lượng</th>
-                                        <th>Thành tiền</th>
+                                        <th style="width:110px;">Màu</th>
+                                        <th style="width:70px;">Size</th>
+                                        <th style="width:100px;">Đơn giá</th>
+                                        <th style="width:90px;">SL</th>
+                                        <th style="width:110px;">Thành tiền</th>
                                         <th style="width:40px;"></th>
                                     </tr>
                                 </thead>
                                 <tbody id="ocItemsBody">
                                     <tr id="ocEmptyItemsRow">
-                                        <td colspan="5" class="oc-empty-items">Chưa có sản phẩm nào. Tìm và thêm sản phẩm ở trên.</td>
+                                        <td colspan="9" class="oc-empty-items">Chưa có sản phẩm nào. Tìm và thêm sản phẩm ở trên.</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -271,9 +317,25 @@
                 <div class="card edit-card shadow-sm mb-4">
                     <div class="card-header"><span class="fw-bold" style="font-size:14px;">Tổng cộng</span></div>
                     <div class="card-body p-4">
+                        <div class="edit-field mb-3">
+                            <label>Mã giảm giá</label>
+                            <div class="d-flex gap-2">
+                                <input type="text" id="ocVoucherInput" class="form-control text-uppercase"
+                                    placeholder="Nhập mã giảm giá..." autocomplete="off" value="{{ old('voucher_code') }}">
+                                <button type="button" id="ocVoucherApplyBtn" class="btn btn-outline-dark fw-bold" style="white-space:nowrap;">Áp dụng</button>
+                            </div>
+                            <input type="hidden" name="voucher_code" id="ocVoucherHidden" value="">
+                            <div id="ocVoucherMessage" style="font-size:12px;margin-top:4px;"></div>
+                            @error('voucher_code') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                        </div>
+
                         <div class="oc-summary-row">
                             <span>Tạm tính</span>
                             <span id="ocSubtotal">0đ</span>
+                        </div>
+                        <div class="oc-summary-row" id="ocDiscountRow" style="display:none;">
+                            <span>Giảm giá</span>
+                            <span id="ocDiscountValue" class="fw-bold" style="color:#16A34A;">-0đ</span>
                         </div>
                         <div class="oc-summary-row">
                             <span>Phí vận chuyển</span>
@@ -313,29 +375,38 @@
     const csrf = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
     const money = (n) => Number(n || 0).toLocaleString('vi-VN') + 'đ';
 
-    /* ── Tìm & chọn khách hàng (gõ tên khách chưa có sẵn = tạo khách hàng mới khi lưu đơn) ── */
+    /* ── Tìm & chọn khách hàng theo SĐT/email (gõ tên trùng nhau rất dễ chọn nhầm người —
+       SĐT/email mới là định danh đáng tin để phân biệt khách; gõ số/email chưa có sẵn = tạo
+       khách hàng mới khi lưu đơn). ── */
     (function () {
-        const input   = document.getElementById('ocCustomerSearch');
+        const input   = document.getElementById('ocPhone');
         const results = document.getElementById('ocCustomerResults');
         const userIdField = document.getElementById('ocUserId');
-        const phoneField   = document.getElementById('ocPhone');
+        const nameField    = document.getElementById('ocCustomerName');
         let timer = null;
-        let selectedName = null;
+        let selectedPhone = null;
 
         function search(q) {
             fetch(`{{ route('admin.orders.searchCustomers') }}?q=${encodeURIComponent(q)}`, {
                 headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
             })
                 .then(r => r.json())
-                .then(data => renderResults(data.customers || []));
+                .then(data => renderResults(data.customers || [], q));
         }
 
-        function renderResults(customers) {
+        function renderResults(customers, typedValue) {
             if (!customers.length) {
-                results.innerHTML = '<div class="oc-search-item text-muted">Không tìm thấy khách hàng — sẽ tạo khách hàng mới khi lưu đơn.</div>';
+                results.innerHTML = '<div class="oc-search-item text-muted">Không tìm thấy khách hàng theo SĐT/email này — sẽ tạo khách hàng mới khi lưu đơn.</div>';
             } else {
-                results.innerHTML = customers.map(c => `
-                    <div class="oc-search-item" data-id="${c.id}" data-name="${c.username}" data-phone="${c.phone_number ?? ''}">
+                // Kiểm tra trùng khớp ngay khi gõ (realtime) — nếu SĐT gõ trùng khớp tuyệt đối với
+                // một khách đã có, cảnh báo rõ ràng để admin bấm chọn thay vì lỡ submit rồi mới
+                // biết (lúc đó bảng sản phẩm đã thêm có nguy cơ bị mất khi trang reload).
+                const exactMatch = customers.find(c => c.phone_number === typedValue);
+                const warningHtml = exactMatch
+                    ? `<div class="oc-search-item oc-search-item--warn text-muted">⚠ SĐT này đã thuộc khách hàng <strong>${exactMatch.username}</strong> — bấm chọn bên dưới để dùng, không tạo trùng.</div>`
+                    : '';
+                results.innerHTML = warningHtml + customers.map(c => `
+                    <div class="oc-search-item ${c.phone_number === typedValue ? 'oc-search-item--match' : ''}" data-id="${c.id}" data-name="${c.username}" data-phone="${c.phone_number ?? ''}">
                         <div>${c.username}</div>
                         <div class="oc-item-sub">${c.email ?? ''} ${c.phone_number ? '· ' + c.phone_number : ''}</div>
                     </div>
@@ -345,11 +416,14 @@
         }
 
         input.addEventListener('input', function () {
-            // Sửa lại tên sau khi đã chọn 1 khách (hoặc gõ tên hoàn toàn mới chưa từng chọn) →
+            // Sửa lại SĐT sau khi đã chọn 1 khách (hoặc gõ số hoàn toàn mới chưa từng chọn) →
             // bỏ liên kết tới khách đã chọn, coi như đang nhập khách hàng mới.
-            if (userIdField.value !== '' && input.value !== selectedName) {
+            if (userIdField.value !== '' && input.value !== selectedPhone) {
                 userIdField.value = '';
-                selectedName = null;
+                selectedPhone = null;
+                // Đổi khách hàng → mã giảm giá đã áp (nếu có) được kiểm tra theo khách CŨ,
+                // không còn đúng cho khách MỚI (giới hạn 1 lượt/khách áp dụng khác nhau).
+                clearVoucher?.('Đã đổi khách hàng — vui lòng áp dụng lại mã giảm giá.');
             }
             if (!userIdField.value) {
                 resetAddressForNewCustomer();
@@ -368,17 +442,21 @@
             const item = e.target.closest('.oc-search-item[data-id]');
             if (!item) return;
 
+            if (userIdField.value !== '' && userIdField.value !== item.dataset.id) {
+                clearVoucher?.('Đã đổi khách hàng — vui lòng áp dụng lại mã giảm giá.');
+            }
+
             userIdField.value = item.dataset.id;
-            input.value = item.dataset.name;
-            selectedName = item.dataset.name;
-            phoneField.value = item.dataset.phone;
+            input.value = item.dataset.phone;
+            selectedPhone = item.dataset.phone;
+            nameField.value = item.dataset.name;
             results.classList.add('d-none');
 
             loadAddresses(item.dataset.id);
         });
 
         document.addEventListener('click', function (e) {
-            if (!e.target.closest('#ocCustomerSearch') && !e.target.closest('#ocCustomerResults')) {
+            if (!e.target.closest('#ocPhone') && !e.target.closest('#ocCustomerResults')) {
                 results.classList.add('d-none');
             }
         });
@@ -407,7 +485,7 @@
             labelEl.textContent = btn.dataset.label;
             hiddenEl.value = btn.dataset.value;
             close();
-            if (onSelect) onSelect(btn.dataset.value, btn.dataset.label);
+            if (onSelect) onSelect(btn.dataset.value, btn.dataset.label, btn);
         });
 
         document.addEventListener('click', function (e) {
@@ -437,6 +515,63 @@
             }
         },
     });
+
+    /* ── Chọn Tỉnh/Thành phố + Phường/Xã cho địa chỉ mới qua API địa giới hành chính
+       (dùng chung route proxy /api/location/... với trang checkout), thay cho gõ tay tự do
+       và bỏ hẳn trường Quận/Huyện (cơ cấu hành chính mới chỉ còn 2 cấp Tỉnh → Phường/Xã). ── */
+    (function () {
+        const provinceHidden = document.getElementById('ocProvinceHidden');
+        const wardHidden      = document.getElementById('ocWardHidden');
+        const oldCityName = provinceHidden.value;
+
+        const provinceDropdown = wireDropdown({
+            root: 'ocProvinceDrop', trigger: 'ocProvinceTrigger', panel: 'ocProvincePanel',
+            label: 'ocProvinceLabel', list: 'ocProvinceList', hidden: 'ocProvinceHidden',
+            onSelect: function (value, label, btn) {
+                wardHidden.value = '';
+                document.getElementById('ocWardLabel').textContent = '— Chọn phường/xã —';
+                loadWards(btn.dataset.code);
+            },
+        });
+
+        const wardDropdown = wireDropdown({
+            root: 'ocWardDrop', trigger: 'ocWardTrigger', panel: 'ocWardPanel',
+            label: 'ocWardLabel', list: 'ocWardList', hidden: 'ocWardHidden',
+        });
+
+        function loadWards(code) {
+            if (!code) { wardDropdown.disable(); return; }
+            wardDropdown.disable();
+            document.getElementById('ocWardLabel').textContent = 'Đang tải...';
+            fetch(`/api/location/provinces/${code}/wards`, { headers: { Accept: 'application/json' } })
+                .then(r => r.json())
+                .then(wards => {
+                    const html = (wards || []).map(w =>
+                        `<button type="button" class="hk-cat-item" data-value="${w.name}" data-label="${w.name}">${w.name}</button>`
+                    ).join('');
+                    wardDropdown.setOptions(html);
+                    wardDropdown.enable();
+                    document.getElementById('ocWardLabel').textContent = '— Chọn phường/xã —';
+                });
+        }
+
+        fetch('{{ route('location.provinces') }}', { headers: { Accept: 'application/json' } })
+            .then(r => r.json())
+            .then(provinces => {
+                const html = (provinces || []).map(p =>
+                    `<button type="button" class="hk-cat-item" data-value="${p.name}" data-label="${p.name}" data-code="${p.code}">${p.name}</button>`
+                ).join('');
+                provinceDropdown.setOptions(html);
+
+                if (oldCityName) {
+                    const match = (provinces || []).find(p => p.name === oldCityName);
+                    if (match) {
+                        document.querySelector(`#ocProvinceList .hk-cat-item[data-value="${oldCityName}"]`)?.classList.add('is-active');
+                        loadWards(match.code);
+                    }
+                }
+            });
+    }());
 
     function loadAddresses(userId) {
         fetch(`/admin/orders/customers/${userId}/addresses`, {
@@ -478,8 +613,11 @@
         newAddressFields.classList.remove('d-none');
     }
 
-    /* ── Tìm & thêm sản phẩm ── */
-    const items = [];
+    /* ── Tìm & thêm sản phẩm ──
+       Khôi phục lại danh sách đã thêm trước đó nếu trang này vừa reload sau một lần submit
+       thất bại (vd. trùng SĐT) — nếu không, bảng sản phẩm sẽ trắng trơn dù dữ liệu khác vẫn
+       được Laravel giữ lại qua old(). ── */
+    const items = @json($oldItems ?? []);
 
     (function () {
         const input   = document.getElementById('ocProductSearch');
@@ -534,6 +672,22 @@
         });
     }());
 
+    function esc(str) {
+        return String(str ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    function resolveImageUrl(path) {
+        if (!path) return null;
+        if (path.startsWith('http://') || path.startsWith('https://')) return path;
+        return '/' + path.replace(/^\/+/, '');
+    }
+
+    function thumbHtml(path) {
+        const url = resolveImageUrl(path);
+        if (url) return `<img src="${url}" class="oc-row-thumb" alt="">`;
+        return `<div class="oc-row-thumb d-flex align-items-center justify-content-center border"><i class="fa-regular fa-image text-muted"></i></div>`;
+    }
+
     function addItem(variant) {
         const existing = items.find(i => i.id === variant.id);
         if (existing) {
@@ -542,7 +696,9 @@
             items.push({
                 id: variant.id,
                 name: variant.product_name,
+                thumbnail: variant.thumbnail,
                 color: variant.color,
+                color_hex: variant.color_hex,
                 size: variant.size,
                 unit_price: variant.unit_price,
                 stock: variant.stock,
@@ -557,38 +713,68 @@
         const hiddenWrap = document.getElementById('ocItemsHidden');
 
         if (!items.length) {
-            body.innerHTML = '<tr id="ocEmptyItemsRow"><td colspan="5" class="oc-empty-items">Chưa có sản phẩm nào. Tìm và thêm sản phẩm ở trên.</td></tr>';
+            body.innerHTML = '<tr id="ocEmptyItemsRow"><td colspan="9" class="oc-empty-items">Chưa có sản phẩm nào. Tìm và thêm sản phẩm ở trên.</td></tr>';
             hiddenWrap.innerHTML = '';
             updateSummary();
             return;
         }
 
         body.innerHTML = items.map((item, idx) => `
-            <tr>
-                <td>${item.name} ${item.color ? '· ' + item.color : ''} ${item.size ? '· ' + item.size : ''}</td>
+            <tr data-idx="${idx}">
+                <td>${idx + 1}</td>
+                <td>${thumbHtml(item.thumbnail)}</td>
+                <td class="fw-semibold">${esc(item.name)}</td>
+                <td>${item.color ? `<span class="oc-row-dot" style="background:${esc(item.color_hex || '#ccc')};"></span>${esc(item.color)}` : '—'}</td>
+                <td>${esc(item.size) || '—'}</td>
                 <td>${money(item.unit_price)}</td>
                 <td><input type="number" class="form-control form-control-sm oc-qty-input" data-idx="${idx}" min="1" max="${item.stock}" value="${item.quantity}"></td>
-                <td>${money(item.unit_price * item.quantity)}</td>
+                <td class="oc-item-total">${money(item.unit_price * item.quantity)}</td>
                 <td><button type="button" class="btn btn-sm btn-light border oc-remove-item" data-idx="${idx}"><i class="fa-solid fa-trash"></i></button></td>
             </tr>
         `).join('');
 
-        hiddenWrap.innerHTML = items.map((item, idx) => `
-            <input type="hidden" name="items[${idx}][product_variant_id]" value="${item.id}">
-            <input type="hidden" name="items[${idx}][quantity]" value="${item.quantity}">
-        `).join('');
-
+        updateHiddenItemInputs();
         updateSummary();
     }
 
+    function updateHiddenItemInputs() {
+        document.getElementById('ocItemsHidden').innerHTML = items.map((item, idx) => `
+            <input type="hidden" name="items[${idx}][product_variant_id]" value="${item.id}">
+            <input type="hidden" name="items[${idx}][quantity]" value="${item.quantity}">
+        `).join('');
+    }
+
+    // Cập nhật số lượng tại chỗ (không renderItems() lại toàn bộ bảng) — renderItems() thay
+    // mới các <input>, làm mất focus/con trỏ đang gõ dở nên trước đây gõ số 2 chữ số trở lên
+    // sẽ bị bung ra khỏi ô sau mỗi phím bấm.
     document.getElementById('ocItemsBody').addEventListener('input', function (e) {
         if (!e.target.matches('.oc-qty-input')) return;
         const idx = Number(e.target.dataset.idx);
-        let qty = parseInt(e.target.value, 10) || 1;
-        qty = Math.max(1, Math.min(qty, items[idx].stock));
-        items[idx].quantity = qty;
-        renderItems();
+        const qty = parseInt(e.target.value, 10);
+        if (!Number.isFinite(qty)) return; // đang gõ dở (rỗng...) — chưa ép giá trị vội
+
+        const clamped = Math.min(qty, items[idx].stock);
+        if (clamped !== qty) e.target.value = clamped;
+        items[idx].quantity = clamped;
+
+        document.querySelector(`#ocItemsBody tr[data-idx="${idx}"] .oc-item-total`).textContent = money(items[idx].unit_price * clamped);
+        updateHiddenItemInputs();
+        updateSummary();
     });
+
+    document.getElementById('ocItemsBody').addEventListener('blur', function (e) {
+        if (!e.target.matches('.oc-qty-input')) return;
+        const idx = Number(e.target.dataset.idx);
+        let qty = parseInt(e.target.value, 10);
+        if (!Number.isFinite(qty) || qty < 1) qty = 1;
+        qty = Math.min(qty, items[idx].stock);
+        e.target.value = qty;
+        items[idx].quantity = qty;
+
+        document.querySelector(`#ocItemsBody tr[data-idx="${idx}"] .oc-item-total`).textContent = money(items[idx].unit_price * qty);
+        updateHiddenItemInputs();
+        updateSummary();
+    }, true);
 
     document.getElementById('ocItemsBody').addEventListener('click', function (e) {
         const btn = e.target.closest('.oc-remove-item');
@@ -600,17 +786,93 @@
     const shippingInput = document.getElementById('ocShippingFee');
     shippingInput.addEventListener('input', updateSummary);
 
+    /* ── Mã giảm giá — xem trước qua AJAX (giống trang checkout của khách), xác thực thật sự
+       vẫn nằm ở server lúc submit (VoucherService dùng chung luật với checkout). ── */
+    let appliedVoucher = null; // { code, discountAmount, subtotalAtApply }
+
+    function setVoucherMessage(text, isError) {
+        const el = document.getElementById('ocVoucherMessage');
+        el.textContent = text || '';
+        el.style.color = isError ? '#dc2626' : '#16a34a';
+    }
+
+    function clearVoucher(message) {
+        appliedVoucher = null;
+        document.getElementById('ocVoucherHidden').value = '';
+        document.getElementById('ocDiscountRow').style.display = 'none';
+        document.getElementById('ocVoucherInput').disabled = false;
+        document.getElementById('ocVoucherApplyBtn').disabled = false;
+        if (message) setVoucherMessage(message, true);
+    }
+
+    function applyVoucherCode(code) {
+        code = (code || '').trim();
+        if (!code) {
+            setVoucherMessage('Vui lòng nhập mã giảm giá.', true);
+            return;
+        }
+
+        const subtotal = items.reduce((sum, i) => sum + i.unit_price * i.quantity, 0);
+        const applyBtn = document.getElementById('ocVoucherApplyBtn');
+        applyBtn.disabled = true;
+        setVoucherMessage('Đang kiểm tra mã...', false);
+
+        const params = new URLSearchParams({ code: code, subtotal: subtotal });
+        const userId = document.getElementById('ocUserId').value;
+        if (userId) params.set('user_id', userId);
+
+        fetch(`{{ route('admin.orders.checkVoucher') }}?${params.toString()}`, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+        })
+            .then(r => r.json().then(data => ({ ok: r.ok, data })))
+            .then(({ ok, data }) => {
+                if (!ok || !data.success) {
+                    setVoucherMessage(data.message || 'Mã giảm giá không hợp lệ.', true);
+                    applyBtn.disabled = false;
+                    return;
+                }
+
+                appliedVoucher = { code: code, discountAmount: data.discount_amount, subtotalAtApply: subtotal };
+                document.getElementById('ocVoucherHidden').value = code;
+                document.getElementById('ocVoucherInput').disabled = true;
+                applyBtn.disabled = true;
+                setVoucherMessage('Áp dụng mã giảm giá thành công!', false);
+                updateSummary();
+            })
+            .catch(() => {
+                setVoucherMessage('Có lỗi xảy ra, vui lòng thử lại.', true);
+                applyBtn.disabled = false;
+            });
+    }
+
+    document.getElementById('ocVoucherApplyBtn').addEventListener('click', function () {
+        applyVoucherCode(document.getElementById('ocVoucherInput').value);
+    });
+
     function updateSummary() {
         const subtotal = items.reduce((sum, i) => sum + i.unit_price * i.quantity, 0);
         const shipping = parseFloat(shippingInput.value) || 0;
+
+        // Đơn hàng thay đổi (thêm/bớt/sửa số lượng sản phẩm) sau khi đã áp mã → giảm giá cũ
+        // không còn đúng nữa (vd. không đạt tối thiểu, hoặc trần giảm % đã tính sai) — gỡ mã,
+        // bắt admin áp lại theo đúng tạm tính mới.
+        if (appliedVoucher && subtotal !== appliedVoucher.subtotalAtApply) {
+            clearVoucher('Đơn hàng đã thay đổi — vui lòng áp dụng lại mã giảm giá.');
+        }
+
+        const discount = appliedVoucher ? appliedVoucher.discountAmount : 0;
         document.getElementById('ocSubtotal').textContent = money(subtotal);
         document.getElementById('ocSummaryShipping').textContent = money(shipping);
-        document.getElementById('ocTotal').textContent = money(subtotal + shipping);
+        if (discount > 0) {
+            document.getElementById('ocDiscountRow').style.display = 'flex';
+            document.getElementById('ocDiscountValue').textContent = '-' + money(discount);
+        }
+        document.getElementById('ocTotal').textContent = money(Math.max(subtotal - discount, 0) + shipping);
     }
 
     document.getElementById('createOrderForm').addEventListener('submit', function (e) {
         const hasExistingCustomer = !!document.getElementById('ocUserId').value;
-        const hasNewCustomerName  = document.getElementById('ocCustomerSearch').value.trim() !== '';
+        const hasNewCustomerName  = document.getElementById('ocCustomerName').value.trim() !== '';
         if (!hasExistingCustomer && !hasNewCustomerName) {
             e.preventDefault();
             alert('Vui lòng nhập hoặc chọn khách hàng.');
@@ -622,7 +884,19 @@
         }
     });
 
-    updateSummary();
+    if (items.length) {
+        renderItems();
+    } else {
+        updateSummary();
+    }
+
+    // Trang reload sau 1 lần submit lỗi (vd. trùng SĐT) — mã giảm giá đã gõ vẫn còn trong ô
+    // input (value cũ do Laravel giữ qua old()) nhưng chưa được xem trước lại; tự động áp lại
+    // luôn để "Giảm giá" hiện đúng, không bắt admin phải bấm "Áp dụng" thêm lần nữa.
+    {
+        const oldVoucherCode = document.getElementById('ocVoucherInput').value.trim();
+        if (oldVoucherCode) applyVoucherCode(oldVoucherCode);
+    }
 
     /* ── Giữ thanh hành động cố định đúng vị trí/độ rộng vùng nội dung (không đè lên sidebar) ── */
     (function () {

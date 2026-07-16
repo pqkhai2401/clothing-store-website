@@ -47,7 +47,7 @@ class CheckoutController extends Controller
             'subtotal'       => $subtotal,
             'shippingFee'    => $shippingFee,
             'total'          => $total,
-            'address'        => $user->addresses()->latest()->first(),
+            'address'        => $user->addresses()->orderByDesc('is_default')->orderByDesc('id')->first(),
             'paymentMethods' => PaymentMethod::where('status', true)->orderBy('id')->get(),
         ]);
     }

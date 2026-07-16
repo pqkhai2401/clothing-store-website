@@ -122,9 +122,13 @@ class ProductSeeder extends Seeder
                                 'product_id' => $product->id,
                                 'color_id'   => $colorId,
                                 'size_id'    => $sizeId,
-                                'stock'      => rand(5, 80),
+                                // Tồn kho & giá vốn KHÔNG được gán trực tiếp ở đây — chúng chỉ do
+                                // Kho quản lý qua Lô hàng (ProductBatch). InventorySeeder sẽ tạo
+                                // phiếu nhập tồn đầu kỳ thật (qua InventoryBatchService::receive())
+                                // cho mọi biến thể còn stock=0 sau bước này.
+                                'stock'      => 0,
                                 'image'      => $data['thumbnail'],
-                                'cost_price' => round($data['price'] * 0.6, 2),
+                                'cost_price' => 0,
                                 'price'      => round($data['price'], 2),
                                 'status'     => 'Active',
                             ]

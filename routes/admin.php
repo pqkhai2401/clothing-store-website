@@ -232,6 +232,7 @@ Route::middleware(['auth.login', 'active.account', 'admin', 'force.password.chan
             Route::get('/search-customers', [OrderController::class, 'searchCustomers'])->name('searchCustomers');
             Route::get('/search-variants', [OrderController::class, 'searchVariants'])->name('searchVariants');
             Route::get('/customers/{user}/addresses', [OrderController::class, 'customerAddresses'])->name('customerAddresses');
+            Route::get('/check-voucher', [OrderController::class, 'checkVoucher'])->name('checkVoucher');
             Route::post('/trash/bulk-restore', [OrderController::class, 'bulkRestore'])->name('bulkRestore');
             Route::post('/trash/bulk-force-delete', [OrderController::class, 'bulkForceDelete'])->name('bulkForceDelete');
             $trashRoutes(OrderController::class)();

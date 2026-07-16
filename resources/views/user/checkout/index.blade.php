@@ -932,7 +932,7 @@
                 @csrf
 
                 <!-- Shipping Info Block -->
-                <div class="checkout-block">
+                <div class="checkout-block" data-has-old="{{ (old('city') || old('ward') || old('apartment_number')) ? '1' : '0' }}">
                     <div class="checkout-block-title">
                         <span>Thông tin vận chuyển</span>
                         <button type="button" class="btn-link-sm" id="openAddressBookBtn">
@@ -994,10 +994,11 @@
                         <div class="col-12">
                             <div class="form-group mb-3">
                                 <label for="ward" class="form-label">Phường/Xã</label>
-                                <input type="text" id="ward" name="ward"
-                                    class="form-control @error('ward') is-invalid @enderror"
-                                    value="{{ old('ward', $address->ward ?? '') }}"
-                                    placeholder="Nhập phường/xã" required>
+                                <select id="ward" name="ward"
+                                    class="form-select @error('ward') is-invalid @enderror" required disabled
+                                    data-selected="{{ old('ward', $address->ward ?? '') }}">
+                                    <option value="" selected disabled>Chọn tỉnh/thành phố trước</option>
+                                </select>
                                 @error('ward')
                                     <div class="invalid-feedback d-block">{{ $message }}</div>
                                 @enderror
@@ -1497,9 +1498,9 @@
 <script>
 (function () {
     const provinceSelect = document.getElementById('province');
-    const wardInput = document.getElementById('ward');
+    const wardSelect = document.getElementById('ward');
 
-    if (!provinceSelect || !wardInput) return;
+    if (!provinceSelect || !wardSelect) return;
 
     function escapeHtml(str) {
         return String(str)
@@ -1527,12 +1528,46 @@
         return match;
     }
 
+    /* ── Gọi API lấy danh sách Phường/Xã theo mã Tỉnh/Thành phố đã chọn ── */
+    async function loadWards(provinceCode, selectedWardName) {
+        if (!provinceCode) {
+            resetSelect(wardSelect, 'Chọn tỉnh/thành phố trước', true);
+            return;
+        }
+
+        resetSelect(wardSelect, 'Đang tải...', true);
+
+        try {
+            const res = await fetch(`/api/location/provinces/${provinceCode}/wards`, { headers: { 'Accept': 'application/json' } });
+            const wards = await res.json();
+
+            if (!wards.length) {
+                resetSelect(wardSelect, 'Không có dữ liệu phường/xã', true);
+                return;
+            }
+
+            fillSelect(wardSelect, wards, 'Chọn phường/xã');
+            wardSelect.disabled = false;
+
+            if (selectedWardName) {
+                selectByName(wardSelect, selectedWardName);
+            }
+        } catch {
+            resetSelect(wardSelect, 'Không thể tải danh sách', false);
+        }
+    }
+
+    provinceSelect.addEventListener('change', function () {
+        const option = provinceSelect.selectedOptions[0];
+        loadWards(option?.dataset.code || '');
+    });
+
     window.applyCheckoutLocation = async function (cityName, wardName) {
         if (cityName) {
-            selectByName(provinceSelect, cityName);
-        }
-        if (wardName) {
-            wardInput.value = wardName;
+            const matched = selectByName(provinceSelect, cityName);
+            if (matched) {
+                await loadWards(matched.dataset.code, wardName);
+            }
         }
     };
 
@@ -1548,9 +1583,40 @@
 
         const oldCity = provinceSelect.dataset.selected;
         if (oldCity) {
-            selectByName(provinceSelect, oldCity);
+            const matched = selectByName(provinceSelect, oldCity);
+            if (matched) {
+                await loadWards(matched.dataset.code, wardSelect.dataset.selected);
+            }
         }
+
+        await prefillDefaultAddress();
     });
+
+    /* ── Gọi API lấy địa chỉ mặc định của user để điền sẵn form (bỏ qua nếu form đang hiển thị lại do lỗi validate) ── */
+    async function prefillDefaultAddress() {
+        const shippingBlock = document.querySelector('[data-has-old]');
+        if (shippingBlock?.dataset.hasOld === '1') return;
+
+        try {
+            const res = await fetch('{{ route('addresses.index') }}', {
+                headers: { 'Accept': 'application/json' },
+            });
+            if (!res.ok) return;
+
+            const addresses = await res.json();
+            const defaultAddr = addresses.find(a => a.is_default) || addresses[0];
+            if (!defaultAddr) return;
+
+            await window.applyCheckoutLocation?.(defaultAddr.city, defaultAddr.ward);
+
+            const apartmentInput = document.getElementById('apartment_number');
+            if (apartmentInput && !apartmentInput.value) {
+                apartmentInput.value = defaultAddr.apartment_number;
+            }
+        } catch {
+            /* im lặng bỏ qua, người dùng vẫn có thể tự nhập */
+        }
+    }
 })();
 </script>
 

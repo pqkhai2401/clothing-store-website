@@ -21,6 +21,8 @@ class Order extends Model implements \OwenIt\Auditing\Contracts\Auditable
         'address_id',
         'payment_method_id',
         'voucher_id',
+        'source',
+        'created_by',
         'order_code',
         'payos_order_code',
         'payos_payload',
@@ -83,6 +85,14 @@ class Order extends Model implements \OwenIt\Auditing\Contracts\Auditable
     public function voucher(): BelongsTo
     {
         return $this->belongsTo(Voucher::class);
+    }
+
+    /**
+     * Nhân sự đã tạo đơn này (chỉ có giá trị với đơn source = admin; đơn khách tự đặt thì null).
+     */
+    public function createdBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 
     /**

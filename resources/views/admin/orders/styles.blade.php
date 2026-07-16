@@ -33,6 +33,10 @@
         .payment-badge--paid   { background: #ECFDF5; border: 1.5px solid #86EFAC; color: #16A34A; }
         .payment-badge--unpaid { background: #FEF2F2; border: 1.5px solid #FECACA; color: #DC2626; }
 
+        /* Đơn admin tạo thủ công (vd. đặt hộ khách qua điện thoại), khác với đơn khách tự đặt
+           trên website — dùng tông tím trung tính để không lẫn với các trạng thái xanh/đỏ/vàng ở trên. */
+        .order-badge--manual { background: #F5F3FF; border: 1.5px solid #DDD6FE; color: #6D28D9; font-size: 10.5px; padding: 2px 9px; min-height: auto; }
+
         .order-code {
             display: inline-block;
             font-family: monospace;
@@ -221,6 +225,7 @@
         [data-theme="dark"] .order-badge--cancelled { background: rgba(239,68,68,0.12) !important; border-color: rgba(239,68,68,0.3) !important; color: #FCA5A5 !important; }
         [data-theme="dark"] .payment-badge--paid    { background: rgba(34,197,94,0.12) !important; border-color: rgba(34,197,94,0.3) !important; color: #86EFAC !important; }
         [data-theme="dark"] .payment-badge--unpaid  { background: rgba(239,68,68,0.12) !important; border-color: rgba(239,68,68,0.3) !important; color: #FCA5A5 !important; }
+        [data-theme="dark"] .order-badge--manual    { background: rgba(139,92,246,0.12) !important; border-color: rgba(139,92,246,0.3) !important; color: #C4B5FD !important; }
         [data-theme="dark"] .order-code {
             background: #162843 !important;
             color: #CBD5E1 !important;
