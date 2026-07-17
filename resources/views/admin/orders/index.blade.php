@@ -172,7 +172,10 @@
                     <span class="spinner-border spinner-border-sm me-2"></span> Đang tải...
                 </div>
             </div>
-            <div class="modal-footer justify-content-end pb-4 px-4">
+            <div class="modal-footer justify-content-end pb-4 px-4 gap-2">
+                <a href="#" target="_blank" class="btn account-action-btn btn-dark" id="orderDetailPrintBtn" style="display:none;">
+                    <i class="fa-solid fa-print me-1"></i> In hóa đơn
+                </a>
                 <button type="button" class="btn account-action-btn btn-light" data-bs-dismiss="modal">Đóng</button>
             </div>
         </div>
@@ -191,9 +194,10 @@
         (function () {
             const modalEl = document.getElementById('orderDetailModal');
             if (!modalEl) return;
-            const modal   = new bootstrap.Modal(modalEl);
-            const body    = document.getElementById('orderDetailBody');
-            const titleEl = document.getElementById('orderDetailModalLabel');
+            const modal    = new bootstrap.Modal(modalEl);
+            const body     = document.getElementById('orderDetailBody');
+            const titleEl  = document.getElementById('orderDetailModalLabel');
+            const printBtn = document.getElementById('orderDetailPrintBtn');
             const loadingHtml = '<div class="text-center py-5 text-muted"><span class="spinner-border spinner-border-sm me-2"></span> Đang tải...</div>';
 
             document.addEventListener('click', async function (e) {
@@ -204,6 +208,7 @@
                 const url = link.getAttribute('href');
                 titleEl.textContent = 'Chi tiết đơn hàng';
                 body.innerHTML = loadingHtml;
+                printBtn.style.display = 'none';
                 modal.show();
 
                 try {
@@ -214,6 +219,10 @@
                     const data = await res.json();
                     body.innerHTML = data.html || '';
                     titleEl.textContent = 'Chi tiết đơn hàng ' + (data.code || '');
+                    if (data.invoice_url) {
+                        printBtn.href = data.invoice_url;
+                        printBtn.style.display = '';
+                    }
                 } catch {
                     body.innerHTML = '<div class="text-center py-5 text-danger">Không tải được chi tiết đơn hàng. Vui lòng thử lại.</div>';
                 }

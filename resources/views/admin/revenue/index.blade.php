@@ -4,6 +4,7 @@
 
 @push('styles')
 @include('admin.products.styles')
+@include('admin.orders.styles')
 <style>
     /* Trang Thống kê doanh thu — dùng biến --hk-* của theme để tự đổi sáng/tối theo nút
        "Giao diện tối" (không dùng @media prefers-color-scheme, có thể lệch trạng thái thật). */

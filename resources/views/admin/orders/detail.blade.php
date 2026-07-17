@@ -33,6 +33,9 @@
                 <a href="{{ route('admin.orders.list') }}" class="btn btn-outline-secondary btn-sm fw-semibold">
                     <i class="fa-solid fa-arrow-left me-1"></i> Quay lại
                 </a>
+                <a href="{{ route('admin.orders.invoice', $order->id) }}" target="_blank" class="btn btn-outline-dark btn-sm fw-semibold">
+                    <i class="fa-solid fa-print me-1"></i> In hóa đơn
+                </a>
                 @if(\App\Http\Controllers\Admin\OrderController::canOpenEditPanel($order))
                     <button type="button" class="btn btn-outline-primary btn-sm fw-semibold"
                         data-order-edit-trigger

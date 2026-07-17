@@ -755,10 +755,35 @@ class OrderController extends Controller
                 'status'       => $order->status,
                 'status_label' => self::STATUS_LABELS[$order->status] ?? $order->status,
                 'status_css'   => self::STATUS_BADGE[$order->status] ?? '',
+                'invoice_url'  => route('admin.orders.invoice', $order->id),
             ]);
         }
 
         return view('admin.orders.detail', $data);
+    }
+
+    /**
+     * Hóa đơn bán hàng dạng in (khổ A4, HTML + window.print()). Số hiệu dùng lại order_code.
+     * Trả về trang in độc lập (không dùng layout admin) — đơn đã hủy vẫn in được (đóng dấu "ĐÃ HỦY").
+     */
+    public function invoice(string $id)
+    {
+        $order = Order::with([
+            'user',
+            'address',
+            'paymentMethod',
+            'voucher',
+            'orderItems.productVariant.product',
+            'orderItems.productVariant.color',
+            'orderItems.productVariant.size',
+        ])->findOrFail($id);
+
+        return view('admin.orders.invoice', [
+            'order'               => $order,
+            'setting'             => \App\Models\Setting::current(),
+            'statusLabels'        => self::STATUS_LABELS,
+            'paymentStatusLabels' => self::PAYMENT_STATUS_LABELS,
+        ]);
     }
 
     /**
