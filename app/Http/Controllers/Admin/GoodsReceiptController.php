@@ -589,6 +589,22 @@ class GoodsReceiptController extends Controller
         return view('admin.goods-receipts.show', compact('goodsReceipt'));
     }
 
+    /**
+     * Trang in phiếu nhập kho (khổ A4, HTML + window.print()). Số hiệu = mã phiếu.
+     * Trang in độc lập (không layout admin), nhúng vào modal xem trước qua iframe.
+     */
+    public function print(string $id)
+    {
+        $goodsReceipt = GoodsReceipt::with([
+            'supplier', 'creator', 'warehouse',
+            'items.productVariant.product:id,name',
+            'items.productVariant.color:id,name',
+            'items.productVariant.size:id,name',
+        ])->findOrFail($id);
+
+        return view('admin.goods-receipts.print', compact('goodsReceipt'));
+    }
+
     public function complete(string $id)
     {
         $code = null;

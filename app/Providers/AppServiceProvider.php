@@ -83,6 +83,8 @@ class AppServiceProvider extends ServiceProvider
             'layouts.partial.sidebar',
             'admin.goods-receipts.partials.show-content',
             'admin.stock-issues.partials.show-content',
+            'admin.goods-receipts.print',
+            'admin.stock-issues.print',
         ], function ($view): void {
             $view->with('siteSettings', \App\Models\Setting::current());
         });

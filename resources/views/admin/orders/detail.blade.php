@@ -33,7 +33,10 @@
                 <a href="{{ route('admin.orders.list') }}" class="btn btn-outline-secondary btn-sm fw-semibold">
                     <i class="fa-solid fa-arrow-left me-1"></i> Quay lại
                 </a>
-                <a href="{{ route('admin.orders.invoice', $order->id) }}" target="_blank" class="btn btn-outline-dark btn-sm fw-semibold">
+                <a href="{{ route('admin.orders.invoice', $order->id) }}" target="_blank"
+                    data-print-url="{{ route('admin.orders.invoice', $order->id) }}"
+                    data-print-title="Hóa đơn {{ $order->order_code ?? ('#'.$order->id) }}"
+                    class="btn btn-outline-dark btn-sm fw-semibold">
                     <i class="fa-solid fa-print me-1"></i> In hóa đơn
                 </a>
                 @if(\App\Http\Controllers\Admin\OrderController::canOpenEditPanel($order))
@@ -60,6 +63,7 @@
     </main>
 
     @include('admin.orders.partials.edit-offcanvas')
+    @include('admin.partials.print-preview-modal')
 
     @push('modals')
         @include('layouts.components.confirm.delete')

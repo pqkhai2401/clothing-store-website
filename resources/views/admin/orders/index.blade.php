@@ -173,14 +173,16 @@
                 </div>
             </div>
             <div class="modal-footer justify-content-end pb-4 px-4 gap-2">
-                <a href="#" target="_blank" class="btn account-action-btn btn-dark" id="orderDetailPrintBtn" style="display:none;">
+                <button type="button" class="btn account-action-btn btn-dark" id="orderDetailPrintBtn" style="display:none;">
                     <i class="fa-solid fa-print me-1"></i> In hóa đơn
-                </a>
+                </button>
                 <button type="button" class="btn account-action-btn btn-light" data-bs-dismiss="modal">Đóng</button>
             </div>
         </div>
     </div>
 </div>
+
+@include('admin.partials.print-preview-modal')
 
 @push('modals')
     @include('layouts.components.confirm.delete')
@@ -220,7 +222,8 @@
                     body.innerHTML = data.html || '';
                     titleEl.textContent = 'Chi tiết đơn hàng ' + (data.code || '');
                     if (data.invoice_url) {
-                        printBtn.href = data.invoice_url;
+                        printBtn.dataset.printUrl = data.invoice_url;
+                        printBtn.dataset.printTitle = 'Hóa đơn ' + (data.code || '');
                         printBtn.style.display = '';
                     }
                 } catch {

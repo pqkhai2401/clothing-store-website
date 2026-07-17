@@ -164,6 +164,22 @@ class StockIssueController extends Controller
         return view('admin.stock-issues.show', compact('stockIssue'));
     }
 
+    /**
+     * Trang in phiếu xuất kho (khổ A4, HTML + window.print()). Số hiệu = mã phiếu.
+     * Trang in độc lập (không layout admin), nhúng vào modal xem trước qua iframe.
+     */
+    public function print(string $id)
+    {
+        $stockIssue = StockIssue::with([
+            'creator', 'warehouse', 'order',
+            'items.productVariant.product:id,name',
+            'items.productVariant.color:id,name',
+            'items.productVariant.size:id,name',
+        ])->findOrFail($id);
+
+        return view('admin.stock-issues.print', compact('stockIssue'));
+    }
+
     public function edit(Request $request, string $id)
     {
         $stockIssue = StockIssue::with('items.productVariant.product')->findOrFail($id);

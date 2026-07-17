@@ -672,6 +672,9 @@
             @endif
         </section>
     </div>
+
+    {{-- Modal xem trước + in phiếu (dùng chung với đơn hàng) --}}
+    @include('admin.partials.print-preview-modal')
 @endsection
 
 @push('scripts')

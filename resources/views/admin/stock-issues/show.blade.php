@@ -26,4 +26,6 @@
         @include('admin.stock-issues.partials.show-content', ['stockIssue' => $stockIssue])
     </div>
 </main>
+
+@include('admin.partials.print-preview-modal')
 @endsection

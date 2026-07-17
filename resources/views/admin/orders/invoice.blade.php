@@ -26,7 +26,8 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Hóa đơn {{ $order->order_code ?? ('#' . $order->id) }}</title>
+    {{-- Title = mã hóa đơn: trình duyệt dùng làm tên file mặc định khi "Lưu dưới dạng PDF". --}}
+    <title>{{ $order->order_code ?: ('HoaDon-' . $order->id) }}</title>
     <style>
         * { box-sizing: border-box; }
         body {
@@ -49,6 +50,7 @@
             cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;
         }
         .inv-btn--ghost { background: #fff; color: #374151; border-color: #d1d5db; }
+        .inv-btn--pdf { background: #fff; color: #b91c1c; border-color: #f0a5a5; }
 
         .invoice {
             position: relative;
@@ -64,7 +66,7 @@
         .inv-shop-name { font-size: 18px; font-weight: 800; margin: 0 0 4px; }
         .inv-shop-meta { color: #4b5563; line-height: 1.5; }
         .inv-title { text-align: right; }
-        .inv-title h1 { font-size: 24px; letter-spacing: .06em; margin: 0 0 6px; text-transform: uppercase; }
+        .inv-title h1 { font-size: 17px; letter-spacing: .03em; margin: 0 0 6px; text-transform: uppercase; white-space: nowrap; }
         .inv-title .inv-code { font-family: "Courier New", monospace; font-weight: 700; }
         .inv-title .inv-date { color: #4b5563; margin-top: 2px; }
 
@@ -123,6 +125,8 @@
 <body>
     <div class="inv-toolbar no-print">
         <button type="button" class="inv-btn" onclick="window.print()">🖨 In hóa đơn</button>
+        <button type="button" class="inv-btn inv-btn--pdf" onclick="window.print()"
+            title="Trong hộp thoại in, chọn 'Lưu dưới dạng PDF'. Tên file = mã hóa đơn.">📄 Lưu PDF</button>
         <button type="button" class="inv-btn inv-btn--ghost" onclick="window.close()">Đóng</button>
     </div>
 
@@ -254,10 +258,19 @@
     </div>
 
     <script>
-        // Tự mở hộp thoại in ngay khi mở tab (người dùng vẫn có nút "In hóa đơn" để in lại).
-        window.addEventListener('load', function () {
-            setTimeout(function () { window.print(); }, 350);
-        });
+        // Khi nhúng trong popup (iframe): ẩn thanh công cụ nội bộ và KHÔNG tự in — để người dùng
+        // xem trước rồi bấm nút "In hóa đơn" của modal. Khi mở URL trực tiếp: tự mở hộp thoại in.
+        (function () {
+            var inIframe = window.self !== window.top;
+            if (inIframe) {
+                var tb = document.querySelector('.inv-toolbar');
+                if (tb) tb.style.display = 'none';
+                return;
+            }
+            window.addEventListener('load', function () {
+                setTimeout(function () { window.print(); }, 350);
+            });
+        })();
     </script>
 </body>
 </html>

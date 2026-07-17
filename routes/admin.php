@@ -172,6 +172,7 @@ Route::middleware(['auth.login', 'active.account', 'admin', 'force.password.chan
                 Route::post('/trash/bulk-force-delete', [GoodsReceiptController::class, 'bulkForceDelete'])->name('bulkForceDelete');
                 Route::get('/trash', [GoodsReceiptController::class, 'trash'])->name('trash');
                 Route::get('/{id}/edit', [GoodsReceiptController::class, 'edit'])->name('edit');
+                Route::get('/{id}/print', [GoodsReceiptController::class, 'print'])->name('print');
                 Route::put('/{id}', [GoodsReceiptController::class, 'update'])->name('update');
                 Route::get('/{id}', [GoodsReceiptController::class, 'show'])->name('show');
                 Route::patch('/{id}/complete', [GoodsReceiptController::class, 'complete'])->name('complete');
@@ -201,6 +202,7 @@ Route::middleware(['auth.login', 'active.account', 'admin', 'force.password.chan
                 Route::post('/trash/bulk-force-delete', [StockIssueController::class, 'bulkForceDelete'])->name('bulkForceDelete');
                 $trashRoutes(StockIssueController::class)();
                 Route::get('/{id}', [StockIssueController::class, 'show'])->name('show');
+                Route::get('/{id}/print', [StockIssueController::class, 'print'])->name('print');
                 Route::get('/{id}/edit', [StockIssueController::class, 'edit'])->name('edit');
                 Route::put('/{id}', [StockIssueController::class, 'update'])->name('update');
                 Route::patch('/{id}/issue', [StockIssueController::class, 'confirm'])->name('issue');
