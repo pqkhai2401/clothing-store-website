@@ -6,7 +6,9 @@ use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Services\OrderFulfillmentService;
 use App\Services\PayosService;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -211,8 +213,18 @@ class PayosController extends Controller
             return;
         }
 
-        // Chỉ cập nhật trạng thái thanh toán; việc xử lý đơn/tồn kho do admin thực hiện.
-        $order->update(['payment_status' => PaymentStatus::PAID->value]);
+        // Đã thu tiền → đơn tự vào "Đang xử lý" và sinh phiếu xuất kho (chứng từ).
+        // Kho KHÔNG bị trừ lại ở đây: hàng đã được giữ theo FIFO từ lúc checkout
+        // (CheckoutController::store). Job hủy 30' khi tới hạn sẽ thấy đơn không còn
+        // pending/unpaid nên tự bỏ qua.
+        DB::transaction(function () use ($order) {
+            $order->update([
+                'payment_status' => PaymentStatus::PAID->value,
+                'status'         => OrderStatus::PROCESSING->value,
+            ]);
+
+            app(OrderFulfillmentService::class)->generateSaleStockIssue($order);
+        });
 
         // Thanh toán xong mới xóa sản phẩm khỏi giỏ (đơn online trước đó vẫn giữ giỏ để user
         // có thể tiếp tục thanh toán / đặt lại nếu bỏ dở).

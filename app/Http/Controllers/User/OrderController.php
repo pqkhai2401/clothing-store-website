@@ -89,17 +89,17 @@ class OrderController extends Controller
         }
 
         try {
-            DB::beginTransaction();
+            // Dưới mô hình "Hold & Release", đơn pending ĐANG GIỮ KHO (đã trừ FIFO từ lúc
+            // checkout) nên hủy phải nhả kho về đúng lô + nhả voucher. Service xử lý atomic
+            // và idempotent (khóa đơn, kiểm tra lại trạng thái) → không lo hoàn kho 2 lần.
+            $cancelled = app(\App\Services\OrderCancellationService::class)
+                ->cancelPendingUnpaid($order, 'Khách hàng tự hủy đơn');
 
-            // Chỉ cho hủy đơn ở trạng thái pending/unpaid (đã chặn ở trên). Đơn pending CHƯA bị
-            // trừ kho (kho chỉ trừ khi admin chuyển sang 'processing'), nên KHÔNG cộng lại tồn —
-            // cộng lại sẽ tạo tồn kho ảo.
-            $order->update(['status' => 'cancelled']);
-
-            // Giải phóng voucher để khách hàng có thể sử dụng lại mã
-            \App\Services\VoucherService::releaseUsage($order->id);
-
-            DB::commit();
+            if (! $cancelled) {
+                return response()->json([
+                    'message' => 'Không thể hủy đơn hàng này. Đơn vừa được xử lý hoặc đã thanh toán.',
+                ], 403);
+            }
 
             return response()->json([
                 'success' => true,
@@ -107,9 +107,6 @@ class OrderController extends Controller
             ]);
 
         } catch (\Throwable $e) {
-            // Xảy ra lỗi — rollback toàn bộ để đảm bảo dữ liệu nguyên vẹn
-            DB::rollBack();
-
             return response()->json([
                 'message' => 'Có lỗi xảy ra: ' . $e->getMessage(),
             ], 500);

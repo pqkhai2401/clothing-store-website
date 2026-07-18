@@ -98,6 +98,10 @@
             Giá bán của từng biến thể được nhập tại đây. Dùng ô áp dụng nhanh để gán cùng một giá bán cho tất cả biến thể, sau đó chỉnh riêng từng dòng nếu cần.
         </p>
 
+        @error('variants')
+            <div class="alert alert-danger py-2 px-3 small mb-3">{{ $message }}</div>
+        @enderror
+
         {{-- Bulk apply bar --}}
         <div class="vm-bulk-bar">
             <span class="vm-bulk-label">Áp dụng nhanh:</span>

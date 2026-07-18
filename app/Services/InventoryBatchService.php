@@ -253,6 +253,75 @@ class InventoryBatchService
     }
 
     /**
+     * HOÀN KHO THEO SỐ DƯ (net) của 1 chứng từ: chỉ cộng trả phần ĐANG CÒN GIỮ trên mỗi lô
+     * = (tổng đã xuất − tổng đã hoàn) của chính chứng từ đó.
+     *
+     * Khác với restoreByReference() (đảo từng bút toán export), hàm này:
+     *  - IDEMPOTENT: gọi nhiều lần cũng không cộng khống (lần sau số dư = 0 → bỏ qua).
+     *  - Đúng khi chứng từ được SỬA NỘI DUNG: nhả hold cũ rồi giữ hold mới trên cùng
+     *    reference (xem OrderController::updateContent) — số dư luôn phản ánh hold hiện tại.
+     *
+     * Dùng cho hold của đơn hàng (reference_type='order'). Phải nằm trong transaction.
+     */
+    public function restoreOutstandingByReference(
+        string $referenceType,
+        int $referenceId,
+        ?int $userId = null
+    ): void {
+        $rows = StockMovement::query()
+            ->where('reference_type', $referenceType)
+            ->where('reference_id', $referenceId)
+            ->whereNotNull('product_batch_id')
+            ->selectRaw("product_batch_id, product_variant_id,
+                SUM(CASE WHEN movement_type = 'export' THEN ABS(quantity) ELSE 0 END)
+              - SUM(CASE WHEN movement_type = 'import' THEN ABS(quantity) ELSE 0 END) AS outstanding")
+            ->groupBy('product_batch_id', 'product_variant_id')
+            ->having('outstanding', '>', 0)
+            ->get();
+
+        $touchedVariantIds = [];
+
+        foreach ($rows as $row) {
+            $qty = (int) $row->outstanding;
+            $batch = ProductBatch::lockForUpdate()->find($row->product_batch_id);
+            $variant = ProductVariant::lockForUpdate()->find($row->product_variant_id);
+            if (! $batch || ! $variant) {
+                continue;
+            }
+
+            $batch->update([
+                'quantity_remaining' => (int) $batch->quantity_remaining + $qty,
+                'status' => $batch->status === ProductBatch::STATUS_DEPLETED
+                    ? ProductBatch::STATUS_ACTIVE
+                    : $batch->status,
+            ]);
+
+            $before = (int) $variant->stock;
+            $after  = $before + $qty;
+
+            StockMovement::create([
+                'product_variant_id' => $variant->id,
+                'product_batch_id'   => $batch->id,
+                'reference_type'     => $referenceType,
+                'reference_id'       => $referenceId,
+                'movement_type'      => 'import',
+                'quantity'           => $qty,
+                'unit_cost'          => (float) $batch->cost_price,
+                'before_quantity'    => $before,
+                'after_quantity'     => $after,
+                'created_by'         => $userId,
+            ]);
+
+            $variant->update(['stock' => $after]);
+            $touchedVariantIds[$variant->id] = true;
+        }
+
+        foreach (array_keys($touchedVariantIds) as $variantId) {
+            $this->recalcVariantStock($variantId);
+        }
+    }
+
+    /**
      * Đồng bộ cache trên biến thể theo các lô: stock = tổng tồn lô active,
      * cost_price = bình quân gia quyền tồn còn lại (chỉ để hiển thị).
      */

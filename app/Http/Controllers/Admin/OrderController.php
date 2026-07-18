@@ -692,11 +692,23 @@ class OrderController extends Controller
                     'unit_price'         => $variant->final_price,
                     'quantity'           => $item['quantity'],
                 ]);
+
+                // HOLD: giữ hàng ngay khi tạo đơn (mọi trạng thái, giống luồng khách checkout).
+                // consumeFifo tự khóa lô + ném ValidationException nếu thiếu → nằm trong
+                // transaction nên rollback cả đơn. Đơn tạo thẳng ở trạng thái "Đã hủy" thì bỏ qua.
+                if ($order->status !== 'cancelled') {
+                    app(\App\Services\InventoryBatchService::class)->consumeFifo(
+                        \App\Models\ProductVariant::lockForUpdate()->find($variant->id),
+                        (int) $item['quantity'],
+                        'order',
+                        $order->id,
+                        $userId
+                    );
+                }
             }
 
-            // Nếu tạo đơn ở trạng thái đã "xuất hàng" thì trừ kho ngay (giống luồng update).
-            // autoGenerateStockIssueForOrder tự khóa + kiểm tra tồn từng biến thể và ném
-            // ValidationException nếu thiếu → nằm trong transaction nên rollback cả đơn.
+            // Đơn tạo thẳng ở trạng thái đã "xuất hàng" thì sinh luôn phiếu xuất kho (chứng từ).
+            // Kho đã được giữ ở trên nên bước này KHÔNG trừ lại.
             if (in_array($order->status, ['processing', 'shipping', 'completed'], true)) {
                 $this->autoGenerateStockIssueForOrder($order);
             }
@@ -981,6 +993,12 @@ class OrderController extends Controller
                     $itemsTotal += $variant->final_price * $item['quantity'];
                 }
 
+                // Đơn đang "Chờ xác nhận" ĐANG GIỮ KHO (hold FIFO từ lúc đặt). Sửa danh sách sản
+                // phẩm ⇒ phải nhả hold cũ rồi giữ lại theo danh sách mới, nếu không kho sẽ lệch
+                // (hàng cũ bị giữ vĩnh viễn, hàng mới không được giữ).
+                $batchService = app(\App\Services\InventoryBatchService::class);
+                $batchService->restoreOutstandingByReference('order', $order->id, Auth::id());
+
                 $order->orderItems()->delete();
                 foreach ($validated['items'] as $item) {
                     $variant = $variants[$item['product_variant_id']];
@@ -990,6 +1008,15 @@ class OrderController extends Controller
                         'unit_price'         => $variant->final_price,
                         'quantity'           => $item['quantity'],
                     ]);
+
+                    // Giữ lại kho theo số lượng mới (ném ValidationException nếu thiếu → rollback).
+                    $batchService->consumeFifo(
+                        ProductVariant::lockForUpdate()->find($variant->id),
+                        (int) $item['quantity'],
+                        'order',
+                        $order->id,
+                        Auth::id()
+                    );
                 }
 
                 $order->shipping_fee = $validated['shipping_fee'];
@@ -1186,142 +1213,24 @@ class OrderController extends Controller
         return back()->with('success', "Đã xóa vĩnh viễn {$count} đơn hàng.");
     }
 
+    /**
+     * Sinh phiếu xuất kho cho đơn khi đơn được xử lý.
+     *
+     * KHÔNG trừ kho ở đây: từ khi áp dụng "Hold & Release", hàng đã được giữ theo FIFO
+     * ngay lúc đặt đơn (CheckoutController::store / store() của admin). Phiếu xuất kho
+     * chỉ là chứng từ — trừ lại sẽ thành trừ HAI LẦN.
+     */
     private function autoGenerateStockIssueForOrder(Order $order): void
     {
-        $exists = \App\Models\StockIssue::where('order_id', $order->id)
-            ->where('status', \App\Models\StockIssue::STATUS_COMPLETED)
-            ->exists();
-        if ($exists) {
-            return;
-        }
-
-        $orderItems = $order->orderItems()->with('productVariant.product')->get();
-        if ($orderItems->isEmpty()) {
-            return;
-        }
-
-        $warehouse = \App\Models\Warehouse::where('is_default', true)->where('status', true)->first()
-            ?? \App\Models\Warehouse::where('status', true)->first();
-        if (!$warehouse) {
-            throw new \Exception("Không tìm thấy kho hàng hoạt động nào trong hệ thống.");
-        }
-
-        // Mã phiếu xuất kho: dùng DocumentSequenceService (có lock chống trùng) để đồng nhất
-        // định dạng với phiếu tạo tay ở StockIssueController — không tự chế generator.
-        $code = app(\App\Services\DocumentSequenceService::class)->generateStockIssueCode();
-
-        $totalQty = $orderItems->sum('quantity');
-        $totalCost = $orderItems->sum(fn ($item) => $item->quantity * ($item->productVariant->cost_price ?? 0));
-        $totalSale = $orderItems->sum(fn ($item) => $item->quantity * $item->unit_price);
-
-        $stockIssue = \App\Models\StockIssue::create([
-            'code' => $code,
-            'issue_type' => \App\Models\StockIssue::ISSUE_TYPE_SALE,
-            'warehouse_id' => $warehouse->id,
-            'order_id' => $order->id,
-            'reason' => "Xuất kho tự động cho đơn hàng #" . ($order->order_code ?? $order->id),
-            'note' => $order->note,
-            'status' => \App\Models\StockIssue::STATUS_DRAFT,
-            'total_quantity' => $totalQty,
-            'total_cost_amount' => $totalCost,
-            'total_sale_amount' => $totalSale,
-            'total_amount' => $totalSale,
-            'created_by' => Auth::id() ?? 1, // Fallback if CLI/system
-        ]);
-
-        foreach ($orderItems as $item) {
-            $variant = $item->productVariant;
-            if (!$variant) continue;
-
-            $lockedVariant = \App\Models\ProductVariant::lockForUpdate()->find($variant->id);
-            if ($lockedVariant->stock < $item->quantity) {
-                $variantName = ($lockedVariant->product->name ?? 'Sản phẩm') 
-                    . ' - ' . ($lockedVariant->color->name ?? 'Không màu') 
-                    . ' - Size ' . ($lockedVariant->size->name ?? 'Không size') 
-                    . ' - SKU ' . ($lockedVariant->sku ?? 'N/A');
-                throw ValidationException::withMessages([
-                    'status' => ["Không đủ tồn kho để xuất. Sản phẩm [{$variantName}] hiện chỉ còn [{$lockedVariant->stock}] sản phẩm."]
-                ]);
-            }
-
-            $stockIssue->items()->create([
-                'product_id' => $lockedVariant->product_id,
-                'product_variant_id' => $lockedVariant->id,
-                'quantity' => $item->quantity,
-                'cost_price' => $lockedVariant->cost_price,
-                'sale_price' => $item->unit_price,
-                'total_cost' => $lockedVariant->cost_price * $item->quantity,
-                'total_sale' => $item->unit_price * $item->quantity,
-            ]);
-
-            // Trừ tồn theo FIFO qua các lô — service ghi sổ cái + đồng bộ cache tồn.
-            app(\App\Services\InventoryBatchService::class)->consumeFifo(
-                $lockedVariant,
-                (int) $item->quantity,
-                'stock_issue',
-                $stockIssue->id,
-                Auth::id()
-            );
-        }
-
-        $stockIssue->update([
-            'status' => \App\Models\StockIssue::STATUS_COMPLETED,
-            'confirmed_by' => Auth::id() ?? 1,
-            'confirmed_at' => now(),
-            'issued_at' => now(),
-        ]);
-
-        \App\Models\StockIssueLog::create([
-            'stock_issue_id' => $stockIssue->id,
-            'user_id' => Auth::id() ?? 1,
-            'action' => 'created',
-            'message' => 'Tạo phiếu xuất kho tự động từ đơn hàng #' . ($order->order_code ?? $order->id),
-        ]);
-
-        \App\Models\StockIssueLog::create([
-            'stock_issue_id' => $stockIssue->id,
-            'user_id' => Auth::id() ?? 1,
-            'action' => 'confirmed',
-            'message' => 'Hoàn tất xuất kho tự động',
-        ]);
+        app(\App\Services\OrderFulfillmentService::class)->generateSaleStockIssue($order);
     }
 
     /**
-     * Hoàn kho khi hủy đơn đã trừ kho: đảo ngược phiếu xuất kho tự động (issue_type = sale,
-     * status = completed) gắn với đơn — cộng lại tồn, ghi StockMovement 'import' và đánh dấu
-     * phiếu xuất kho là đã hủy. Nếu đơn chưa từng trừ kho (vd pending → cancelled) thì bỏ qua.
+     * Nhả kho đang giữ khi hủy đơn: cộng trả về ĐÚNG lô đã trừ, đúng giá vốn gốc,
+     * và đánh dấu phiếu xuất kho (nếu có) là đã hủy.
      */
     private function restoreStockForCancelledOrder(Order $order): void
     {
-        $stockIssue = \App\Models\StockIssue::with('items')
-            ->where('order_id', $order->id)
-            ->where('issue_type', \App\Models\StockIssue::ISSUE_TYPE_SALE)
-            ->where('status', \App\Models\StockIssue::STATUS_COMPLETED)
-            ->first();
-        if (!$stockIssue) {
-            return;
-        }
-
-        // Hoàn trả về ĐÚNG lô đã trừ (đọc ngược các bút toán export của phiếu xuất) — giá vốn không méo.
-        app(\App\Services\InventoryBatchService::class)->restoreByReference(
-            'stock_issue',
-            $stockIssue->id,
-            'stock_issue',
-            $stockIssue->id,
-            Auth::id()
-        );
-
-        $stockIssue->update([
-            'status' => \App\Models\StockIssue::STATUS_CANCELLED,
-            'cancelled_by' => Auth::id() ?? 1,
-            'cancelled_at' => now(),
-        ]);
-
-        \App\Models\StockIssueLog::create([
-            'stock_issue_id' => $stockIssue->id,
-            'user_id' => Auth::id() ?? 1,
-            'action' => 'cancelled',
-            'message' => 'Hoàn kho tự động do hủy đơn hàng #' . ($order->order_code ?? $order->id),
-        ]);
+        app(\App\Services\OrderCancellationService::class)->releaseHold($order);
     }
 }

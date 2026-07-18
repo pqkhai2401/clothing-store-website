@@ -5,6 +5,7 @@ namespace App\Http\Controllers\User;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
 use App\Http\Controllers\Controller;
+use App\Jobs\CancelUnpaidOrderJob;
 use App\Models\Address;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -13,10 +14,14 @@ use App\Models\ProductVariant;
 use App\Models\Voucher;
 use App\Models\VoucherHistory;
 use App\Services\CartPricingService;
+use App\Services\InventoryBatchService;
+use App\Services\OrderCancellationService;
+use App\Services\PayosService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class CheckoutController extends Controller
@@ -146,7 +151,20 @@ class CheckoutController extends Controller
                 // không lock) rồi cùng increment -> dùng quá số lượng / cùng user dùng lại 1 mã.
                 $lockedVoucher = Voucher::whereKey($voucher->id)->lockForUpdate()->first();
 
-                if (! $lockedVoucher || $lockedVoucher->used_count >= $lockedVoucher->quantity) {
+                if (! $lockedVoucher) {
+                    throw new \RuntimeException('Mã giảm giá không còn tồn tại.');
+                }
+
+                // Recheck hạn sử dụng/trạng thái NGAY TRONG transaction: validateVoucher() ở trên chạy
+                // trước transaction (không lock), nên nếu voucher hết hạn hoặc bị admin vô hiệu hóa đúng
+                // lúc user đang ở giữa quá trình đặt hàng, đơn vẫn có thể được tạo với discount đã tính
+                // từ trước nếu không recheck lại tại đây.
+                $now = Carbon::now();
+                if (! $lockedVoucher->status || $now->lt($lockedVoucher->start_date) || $now->gt($lockedVoucher->end_date)) {
+                    throw new \RuntimeException('Mã giảm giá đã hết hạn hoặc bị vô hiệu hóa. Vui lòng kiểm tra lại giỏ hàng.');
+                }
+
+                if ($lockedVoucher->used_count >= $lockedVoucher->quantity) {
                     throw new \RuntimeException('Mã giảm giá đã hết lượt sử dụng.');
                 }
 
@@ -184,7 +202,7 @@ class CheckoutController extends Controller
 
                 $unitPrice = (float) $variant->final_price;
 
-                // Giá vốn được snapshot qua StockIssueItem lúc admin xuất kho, không lưu ở order_items
+                // Giá vốn được snapshot qua StockIssueItem lúc xuất kho, không lưu ở order_items
                 // (cột này không tồn tại + không fillable nên trước đây bị Eloquent bỏ im lặng).
                 OrderItem::create([
                     'order_id'           => $order->id,
@@ -192,6 +210,17 @@ class CheckoutController extends Controller
                     'unit_price'         => $unitPrice,
                     'quantity'           => $item->quantity,
                 ]);
+
+                // HOLD: giữ hàng ngay lúc đặt — trừ tồn theo FIFO qua các lô, ghi sổ cái với
+                // reference_type='order'. Mọi đường hủy sau này nhả kho qua đúng reference này
+                // (OrderCancellationService::releaseHold). Áp dụng cho cả COD để chống oversell.
+                app(InventoryBatchService::class)->consumeFifo(
+                    $variant,
+                    (int) $item->quantity,
+                    'order',
+                    $order->id,
+                    $user->id
+                );
             }
 
             // Đơn online (PayOS/MoMo) giữ nguyên giỏ hàng để người dùng có thể "Tiếp tục thanh toán"
@@ -202,21 +231,43 @@ class CheckoutController extends Controller
             }
 
             // Đơn online (PayOS/MoMo) mới thay thế các đơn online chưa thanh toán cũ của user:
-            // hủy chúng để tránh đơn treo tích tụ (chỉ đổi status, KHÔNG hoàn kho vì
-            // đơn pending/unpaid chưa từng bị trừ kho — xem OrderController::cancelOrder).
+            // hủy chúng để tránh đơn treo tích tụ. Dưới mô hình Hold, các đơn cũ ĐANG GIỮ KHO
+            // nên phải hủy qua service để nhả kho + nhả voucher (không dùng bulk update).
             if ($paymentMethod->isOnlineGateway()) {
-                Order::where('user_id', $user->id)
+                $staleOrders = Order::where('user_id', $user->id)
                     ->where('id', '!=', $order->id)
                     ->where('status', OrderStatus::PENDING->value)
                     ->where('payment_status', PaymentStatus::UNPAID->value)
                     ->whereIn('payment_method_id', $this->onlinePaymentMethodIds())
-                    ->update(['status' => OrderStatus::CANCELLED->value]);
+                    ->get();
+
+                foreach ($staleOrders as $staleOrder) {
+                    app(OrderCancellationService::class)->cancelPendingUnpaid(
+                        $staleOrder,
+                        'Bị thay thế bởi đơn thanh toán online mới #' . ($order->order_code ?? $order->id)
+                    );
+                }
             }
 
             return $order;
             });
         } catch (\RuntimeException $e) {
             return redirect()->route('cart.index')->with('warning', $e->getMessage());
+        } catch (ValidationException $e) {
+            // consumeFifo ném ValidationException key 'stock' khi lô không đủ hàng.
+            $message = collect($e->errors())->flatten()->first()
+                ?? 'Sản phẩm vừa hết hàng. Vui lòng kiểm tra lại giỏ hàng.';
+
+            return redirect()->route('cart.index')->with('warning', $message);
+        }
+
+        // RELEASE: hẹn job nhả kho nếu đơn online không được thanh toán đúng hạn.
+        // Mốc trễ = ĐÚNG hạn sống của mã QR (30') — hủy sớm hơn sẽ khiến khách thanh toán
+        // ở phút cuối trả tiền cho đơn đã hủy. Đơn COD KHÔNG hẹn job (COD luôn 'unpaid'
+        // tới khi giao xong, hẹn job sẽ tự hủy oan).
+        if ($paymentMethod->isOnlineGateway()) {
+            CancelUnpaidOrderJob::dispatch($order)
+                ->delay(now()->addMinutes(PayosService::EXPIRE_MINUTES));
         }
 
         // Cổng online: chuyển sang trang QR để thanh toán ngay thay vì kết thúc.

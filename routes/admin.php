@@ -76,7 +76,8 @@ Route::middleware(['auth.login', 'active.account', 'admin', 'force.password.chan
                 Route::prefix('users')->name('staff.')->group(fn () => $accountRoutes('staff'));
             });
 
-        Route::prefix('products')->name('products.')->group(function () use ($trashRoutes) {
+        Route::middleware('permission:manage-products')
+            ->prefix('products')->name('products.')->group(function () use ($trashRoutes) {
             Route::get('/', [ProductController::class, 'index'])->name('list');
             Route::get('/export', [ProductController::class, 'export'])->name('export');
             Route::get('/create', [ProductController::class, 'create'])->name('create');
@@ -95,7 +96,8 @@ Route::middleware(['auth.login', 'active.account', 'admin', 'force.password.chan
             $trashRoutes(ProductController::class)();
         });
 
-        Route::prefix('categories')->name('categories.')->group(function () use ($trashRoutes) {
+        Route::middleware('permission:manage-categories')
+            ->prefix('categories')->name('categories.')->group(function () use ($trashRoutes) {
             Route::get('/', [CategoryController::class, 'index'])->name('list');
             Route::post('/', [CategoryController::class, 'store'])->name('store');
             Route::get('/{id}/edit', [CategoryController::class, 'edit'])->name('edit');
@@ -108,7 +110,8 @@ Route::middleware(['auth.login', 'active.account', 'admin', 'force.password.chan
             $trashRoutes(CategoryController::class)();
         });
 
-        Route::prefix('brands')->name('brands.')->group(function () use ($trashRoutes) {
+        Route::middleware('permission:manage-brands')
+            ->prefix('brands')->name('brands.')->group(function () use ($trashRoutes) {
             Route::get('/', [BrandController::class, 'index'])->name('list');
             Route::post('/', [BrandController::class, 'store'])->name('store');
             Route::get('/{id}/edit', [BrandController::class, 'edit'])->name('edit');
@@ -121,7 +124,8 @@ Route::middleware(['auth.login', 'active.account', 'admin', 'force.password.chan
             $trashRoutes(BrandController::class)();
         });
 
-        Route::prefix('colors')->name('colors.')->group(function () use ($trashRoutes) {
+        Route::middleware('permission:manage-colors')
+            ->prefix('colors')->name('colors.')->group(function () use ($trashRoutes) {
             Route::get('/', [ColorController::class, 'index'])->name('list');
             Route::post('/', [ColorController::class, 'store'])->name('store');
             Route::get('/{id}/edit', [ColorController::class, 'edit'])->name('edit');
@@ -134,7 +138,8 @@ Route::middleware(['auth.login', 'active.account', 'admin', 'force.password.chan
             $trashRoutes(ColorController::class)();
         });
 
-        Route::prefix('sizes')->name('sizes.')->group(function () use ($trashRoutes) {
+        Route::middleware('permission:manage-sizes')
+            ->prefix('sizes')->name('sizes.')->group(function () use ($trashRoutes){
             Route::get('/', [SizeController::class, 'index'])->name('list');
             Route::post('/', [SizeController::class, 'store'])->name('store');
             Route::get('/{id}/edit', [SizeController::class, 'edit'])->name('edit');

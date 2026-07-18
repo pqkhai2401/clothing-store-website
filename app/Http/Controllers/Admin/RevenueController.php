@@ -72,11 +72,11 @@ class RevenueController extends Controller
             ->whereIn('order_id', $orderIds)
             ->get(['id', 'order_id', 'total_cost_amount', 'created_by']);
 
-        $issueIds = $issues->pluck('id');
-
-        $cogsByIssueId = StockMovement::query()
-            ->where('reference_type', 'stock_issue')
-            ->whereIn('reference_id', $issueIds)
+        // Từ khi áp dụng "Hold & Release", kho bị trừ FIFO ngay lúc checkout và bút toán ghi với
+        // reference_type='order' (phiếu xuất kho chỉ còn là chứng từ, không sinh bút toán).
+        $cogsByOrderRef = StockMovement::query()
+            ->where('reference_type', 'order')
+            ->whereIn('reference_id', $orderIds)
             ->where('movement_type', 'export')
             ->selectRaw('reference_id, SUM(ABS(quantity) * unit_cost) as cogs')
             ->groupBy('reference_id')
@@ -85,9 +85,10 @@ class RevenueController extends Controller
         $cogsByOrderId = [];
         $staffIdByOrderId = [];
         foreach ($issues as $issue) {
-            $cogs = (float) ($cogsByIssueId[$issue->id] ?? 0);
+            $cogs = (float) ($cogsByOrderRef[$issue->order_id] ?? 0);
             if ($cogs <= 0) {
-                // Phiếu cũ trước khi quản lý theo lô → fallback giá vốn đã chốt lúc tạo phiếu.
+                // Đơn cũ (trừ kho theo reference_type='stock_issue' trước Hold & Release, hoặc
+                // phát sinh trước khi quản lý theo lô) → fallback giá vốn đã chốt lúc tạo phiếu.
                 $cogs = (float) $issue->total_cost_amount;
             }
             $cogsByOrderId[$issue->order_id] = ($cogsByOrderId[$issue->order_id] ?? 0) + $cogs;

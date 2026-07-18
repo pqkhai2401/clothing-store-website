@@ -236,7 +236,7 @@ class ProductController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
+        $validator = Validator::make($request->all(), [
             'name'          => ['required', 'string', 'max:255'],
             'slug'          => ['nullable', 'string', 'max:255', Rule::unique('products', 'slug')],
             'category_id'   => ['required', 'integer', Rule::exists('categories', 'id')],
@@ -267,6 +267,12 @@ class ProductController extends Controller
             'images.*.image'       => 'File ảnh không hợp lệ.',
             'images.*.max'         => 'Mỗi ảnh không được vượt quá 2MB.',
         ]);
+
+        $validator->after(function ($validator) use ($request) {
+            $this->checkVariantSkuConflicts($request, $validator);
+        });
+
+        $validator->validate();
 
         $slug = $request->filled('slug')
             ? Str::slug($request->input('slug'))
@@ -417,6 +423,10 @@ class ProductController extends Controller
             'image_2.max'          => 'Ảnh phụ 2 không được vượt quá 2MB.',
             'image_3.max'          => 'Ảnh phụ 3 không được vượt quá 2MB.',
         ]);
+
+        $validator->after(function ($validator) use ($request, $id) {
+            $this->checkVariantSkuConflicts($request, $validator, $id);
+        });
 
         if ($validator->fails()) {
             if ($request->ajax() || $request->wantsJson()) {
@@ -572,6 +582,53 @@ class ProductController extends Controller
         }
 
         return redirect()->route('admin.products.list')->with('success', $message);
+    }
+
+    /**
+     * Chặn sớm việc lưu biến thể có SKU trùng với biến thể khác (SKU là duy nhất
+     * toàn hệ thống, không theo từng sản phẩm), tránh để lộ lỗi SQL thô ra giao diện.
+     */
+    private function checkVariantSkuConflicts(Request $request, $validator, ?string $productId = null): void
+    {
+        $slotsBySku = [];
+        foreach ($request->input('variants', []) as $colorId => $sizes) {
+            foreach ($sizes as $sizeId => $data) {
+                $sku = trim((string) ($data['sku'] ?? ''));
+                if ($sku === '') continue;
+                $slotsBySku[$sku][] = [$colorId, $sizeId];
+            }
+        }
+
+        $conflicts = [];
+        foreach ($slotsBySku as $sku => $slots) {
+            // Trùng SKU giữa 2 biến thể khác nhau ngay trong lần lưu này
+            if (count($slots) > 1) {
+                $conflicts[] = $sku;
+                continue;
+            }
+
+            [$colorId, $sizeId] = $slots[0];
+            $query = ProductVariant::where('sku', $sku);
+
+            if ($productId !== null) {
+                $query->where(function ($q) use ($productId, $colorId, $sizeId) {
+                    $q->where('product_id', '!=', $productId)
+                      ->orWhere('color_id', '!=', $colorId)
+                      ->orWhere('size_id', '!=', $sizeId);
+                });
+            }
+
+            if ($query->exists()) {
+                $conflicts[] = $sku;
+            }
+        }
+
+        if (!empty($conflicts)) {
+            $validator->errors()->add(
+                'variants',
+                'Mã SKU đã được sử dụng cho biến thể khác: ' . implode(', ', array_unique($conflicts)) . '. Vui lòng đổi mã SKU khác.'
+            );
+        }
     }
 
     public function toggleStatus(Request $request, string $id)
