@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use OwenIt\Auditing\Events\AuditCustom;
 use Spatie\Permission\Models\Role;
@@ -149,27 +150,41 @@ class UserController extends Controller
             $avatarPath = $request->file('avatar')->store('avatars', 'public');
         }
 
-        $user = User::create([
-            'username'     => $validated['username'],
-            'email'        => $validated['email'],
-            'phone_number' => $validated['phone_number'] ?? null,
-            'gender'       => $validated['gender'] ?? null,
-            'avatar_url'   => $avatarPath,
-            'is_active'    => (bool) $validated['is_active'],
-            'password'     => Hash::make($validated['password']),
-            'is_protected' => false,
-        ]);
+        // Bọc tạo user + gán vai trò + tạo địa chỉ trong 1 transaction để không sinh ra
+        // user "lỗi dở" (đã tạo nhưng chưa có vai trò/địa chỉ) khi 1 bước bất kỳ thất bại.
+        // Ảnh avatar đã upload trước transaction: nếu DB lỗi thì xóa ảnh rác đã ghi lên đĩa.
+        try {
+            $user = DB::transaction(function () use ($validated, $avatarPath, $roleForUser) {
+                $user = User::create([
+                    'username'     => $validated['username'],
+                    'email'        => $validated['email'],
+                    'phone_number' => $validated['phone_number'] ?? null,
+                    'gender'       => $validated['gender'] ?? null,
+                    'avatar_url'   => $avatarPath,
+                    'is_active'    => (bool) $validated['is_active'],
+                    'password'     => Hash::make($validated['password']),
+                    'is_protected' => false,
+                ]);
 
-        if ($roleForUser) {
-            $user->syncRoles([$roleForUser->name]);
-        }
+                if ($roleForUser) {
+                    $user->syncRoles([$roleForUser->name]);
+                }
 
-        if ($this->hasAddressInput($validated)) {
-            $user->addresses()->create([
-                'city' => $validated['city'] ?? '',
-                'ward' => $validated['ward'] ?? '',
-                'apartment_number' => $validated['apartment_number'] ?? '',
-            ]);
+                if ($this->hasAddressInput($validated)) {
+                    $user->addresses()->create([
+                        'city' => $validated['city'] ?? '',
+                        'ward' => $validated['ward'] ?? '',
+                        'apartment_number' => $validated['apartment_number'] ?? '',
+                    ]);
+                }
+
+                return $user;
+            });
+        } catch (\Throwable $e) {
+            if ($avatarPath) {
+                Storage::disk('public')->delete($avatarPath);
+            }
+            throw $e;
         }
 
         return redirect()->route($context['routePrefix'].'.list')->with('success', 'Tạo '.$context['itemLabelLower'].' thành công');

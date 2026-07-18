@@ -42,25 +42,16 @@
                         <div class="invalid-feedback d-block mt-1" data-si-error="issue_type"></div>
                     </div>
 
-                    {{-- Kho xuất kho --}}
+                    {{-- Kho xuất kho — hệ thống hiện chỉ vận hành 1 kho nên gán cố định, không cho chọn --}}
                     <div class="col-md-6">
-                        <span class="si-inline-label d-block mb-1">Kho xuất hàng <span class="text-danger">*</span></span>
-                        <input type="hidden" name="warehouse_id" id="warehouseIdInputEdit" value="{{ $stockIssue->warehouse_id }}" required>
-                        <div class="hk-cat-filter si-filter-width" id="warehouseIdFilterEdit">
-                            <button type="button" class="hk-cat-trigger" id="warehouseIdTriggerEdit">
-                                <span class="hk-cat-trigger-label" id="warehouseIdLabelEdit">
-                                    {{ $stockIssue->warehouse->name ?? 'Chọn kho xuất' }}
-                                </span>
-                                <i class="fa-solid fa-chevron-down hk-cat-arrow"></i>
-                            </button>
-                            <div class="hk-cat-panel" id="warehouseIdPanelEdit" hidden style="width:280px;">
-                                <div class="hk-cat-list" id="warehouseIdListEdit">
-                                    @foreach($warehouses as $wh)
-                                        <button type="button" class="hk-cat-item {{ $stockIssue->warehouse_id == $wh->id ? 'is-active' : '' }}"
-                                            data-value="{{ $wh->id }}" data-label="{{ $wh->name }}">{{ $wh->name }}</button>
-                                    @endforeach
-                                </div>
-                            </div>
+                        <span class="si-inline-label d-block mb-1">Kho xuất hàng</span>
+                        @php
+                            $selectedWh = $stockIssue->warehouse ?? $warehouses->firstWhere('is_default', true) ?? $warehouses->first();
+                        @endphp
+                        <input type="hidden" name="warehouse_id" id="warehouseIdInputEdit" value="{{ $selectedWh?->id }}" required>
+                        <div class="si-warehouse-static">
+                            <i class="fa-solid fa-warehouse"></i>
+                            {{ $selectedWh?->name ?? '—' }}
                         </div>
                         <div class="invalid-feedback d-block mt-1" data-si-error="warehouse_id"></div>
                     </div>
@@ -206,10 +197,6 @@
     const issueTypeList = document.getElementById('issueTypeListEdit');
 
     const warehouseIdInput = document.getElementById('warehouseIdInputEdit');
-    const warehouseIdTrigger = document.getElementById('warehouseIdTriggerEdit');
-    const warehouseIdLabel = document.getElementById('warehouseIdLabelEdit');
-    const warehouseIdPanel = document.getElementById('warehouseIdPanelEdit');
-    const warehouseIdList = document.getElementById('warehouseIdListEdit');
 
     const orderIdInput = document.getElementById('orderIdInputEdit');
     const orderIdTrigger = document.getElementById('orderIdTriggerEdit');
@@ -223,7 +210,6 @@
 
     function closeAllPanels() {
         issueTypePanel.hidden = true;
-        warehouseIdPanel.hidden = true;
         if (orderIdPanel) orderIdPanel.hidden = true;
         pickerPanel.hidden = true;
     }
@@ -269,25 +255,6 @@
 
         updatePriceEditingState();
         calculateTotals();
-    });
-
-    // ── Warehouse Dropdown ──
-    warehouseIdTrigger.addEventListener('click', function() {
-        const isHidden = warehouseIdPanel.hidden;
-        closeAllPanels();
-        warehouseIdPanel.hidden = !isHidden;
-    });
-
-    warehouseIdList.addEventListener('click', function(e) {
-        const btn = e.target.closest('.hk-cat-item');
-        if (!btn) return;
-        
-        warehouseIdList.querySelectorAll('.hk-cat-item').forEach(el => el.classList.remove('is-active'));
-        btn.classList.add('is-active');
-        
-        warehouseIdInput.value = btn.dataset.value;
-        warehouseIdLabel.textContent = btn.dataset.label;
-        warehouseIdPanel.hidden = true;
     });
 
     // ── Order Dropdown ──

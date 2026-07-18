@@ -84,38 +84,18 @@
                     <div class="invalid-feedback d-block mt-1" data-gr-edit-error="receipt_type"></div>
                 </div>
 
-                {{-- Kho nhận hàng --}}
+                {{-- Kho nhận hàng — hệ thống hiện chỉ vận hành 1 kho nên gán cố định, không cho chọn --}}
                 <div class="edit-field mb-3">
-                    <label class="gr-inline-label d-block mb-1">Kho nhận <span class="text-danger">*</span></label>
-                    <input type="hidden" name="warehouse_id" id="grEditModalWarehouseId" value="{{ $goodsReceipt->warehouse_id }}">
-                    <div class="hk-cat-filter gr-warehouse-filter" id="grEditModalWarehouseFilter">
-                        <button type="button" class="hk-cat-trigger" id="grEditModalWarehouseTrigger"
-                            aria-haspopup="listbox" aria-expanded="false">
-                            <span class="hk-cat-trigger-label" id="grEditModalWarehouseLabel">
-                                @php
-                                    $selectedWh = $warehouses->firstWhere('id', $goodsReceipt->warehouse_id);
-                                @endphp
-                                {{ $selectedWh ? $selectedWh->full_name . ($selectedWh->is_default ? ' (Mặc định)' : '') : '— Chọn kho nhận —' }}
-                            </span>
-                            <i class="fa-solid fa-chevron-down hk-cat-arrow"></i>
-                        </button>
-                        <div class="hk-cat-panel" id="grEditModalWarehousePanel" hidden>
-                            <div class="hk-cat-list" id="grEditModalWarehouseList" role="listbox">
-                                @foreach($warehouses as $warehouse)
-                                    <button type="button" class="hk-cat-item {{ $goodsReceipt->warehouse_id == $warehouse->id ? 'is-active' : '' }}"
-                                        data-value="{{ $warehouse->id }}"
-                                        data-label="{{ $warehouse->full_name }}{{ $warehouse->is_default ? ' (Mặc định)' : '' }}">
-                                        <span class="gr-wh-dot {{ $warehouse->is_default ? 'gr-wh-dot--default' : '' }}"></span>
-                                        {{ $warehouse->full_name }}
-                                        @if($warehouse->is_default)
-                                            <span class="badge bg-success ms-auto" style="font-size:10px;">Mặc định</span>
-                                        @endif
-                                    </button>
-                                @endforeach
-                            </div>
-                        </div>
+                    <label class="gr-inline-label d-block mb-1">Kho nhận</label>
+                    @php
+                        $selectedWh = $warehouses->firstWhere('id', $goodsReceipt->warehouse_id)
+                            ?? $warehouses->firstWhere('is_default', true) ?? $warehouses->first();
+                    @endphp
+                    <input type="hidden" name="warehouse_id" id="grEditModalWarehouseId" value="{{ $selectedWh?->id }}">
+                    <div class="gr-warehouse-static">
+                        <i class="fa-solid fa-warehouse"></i>
+                        {{ $selectedWh?->full_name ?? '—' }}
                     </div>
-                    <div class="invalid-feedback d-block mt-1" data-gr-edit-error="warehouse_id"></div>
                 </div>
 
                 {{-- Ngày nhập kho --}}
@@ -256,11 +236,6 @@
     const supplierLabel = document.getElementById('grEditModalSupplierLabel');
     const supplierList = document.getElementById('grEditModalSupplierList');
     const warehouseHiddenEl = document.getElementById('grEditModalWarehouseId');
-    const warehouseTrigger = document.getElementById('grEditModalWarehouseTrigger');
-    const warehousePanel = document.getElementById('grEditModalWarehousePanel');
-    const warehouseLabel = document.getElementById('grEditModalWarehouseLabel');
-    const warehouseList = document.getElementById('grEditModalWarehouseList');
-    const warehouseFilter = document.getElementById('grEditModalWarehouseFilter');
     const reasonField = document.getElementById('grEditModalReasonField');
     const receiptReasonEl = document.getElementById('grEditModalReceiptReason');
     const pickerInput = document.getElementById('grEditModalPickerInput');
@@ -307,10 +282,6 @@
 
     // ── Custom dropdowns helper ──────────────────────────────
     function closeAllCustomDropdowns() {
-        if (warehousePanel) warehousePanel.hidden = true;
-        warehouseTrigger?.classList.remove('is-open');
-        warehouseTrigger?.setAttribute('aria-expanded', 'false');
-
         if (sourceTypePanel) sourceTypePanel.hidden = true;
         sourceTypeTrigger?.classList.remove('is-open');
         sourceTypeTrigger?.setAttribute('aria-expanded', 'false');
@@ -323,28 +294,6 @@
         supplierTrigger?.classList.remove('is-open');
         supplierTrigger?.setAttribute('aria-expanded', 'false');
     }
-
-    // ── Warehouse dropdown ──────────────────────────────────
-    warehouseTrigger?.addEventListener('click', function (e) {
-        e.stopPropagation();
-        const shouldOpen = warehousePanel.hidden;
-        closeAllCustomDropdowns();
-        if (shouldOpen) {
-            warehousePanel.hidden = false;
-            warehouseTrigger.classList.add('is-open');
-            warehouseTrigger.setAttribute('aria-expanded', 'true');
-        }
-    });
-
-    warehouseList?.addEventListener('click', function (e) {
-        const btn = e.target.closest('.hk-cat-item');
-        if (!btn) return;
-        warehouseHiddenEl.value = btn.dataset.value || '';
-        warehouseLabel.textContent = btn.dataset.label || '— Chọn kho nhận —';
-        warehouseList.querySelectorAll('.hk-cat-item').forEach(item => item.classList.toggle('is-active', item === btn));
-        closeAllCustomDropdowns();
-        checkFormValidity();
-    });
 
     // ── Source Type dropdown ────────────────────────────────
     sourceTypeTrigger?.addEventListener('click', function (e) {
@@ -418,8 +367,7 @@
     });
 
     document.addEventListener('click', function (e) {
-        if (warehouseFilter && !warehouseFilter.contains(e.target) &&
-            sourceTypeFilter && !sourceTypeFilter.contains(e.target) &&
+        if (sourceTypeFilter && !sourceTypeFilter.contains(e.target) &&
             receiptTypeFilter && !receiptTypeFilter.contains(e.target) &&
             supplierFilter && !supplierFilter.contains(e.target)) {
             closeAllCustomDropdowns();

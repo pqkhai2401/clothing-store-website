@@ -50,28 +50,16 @@
                             <div class="invalid-feedback d-block mt-1" data-si-error="issue_type"></div>
                         </div>
 
-                        {{-- Kho xuất kho --}}
+                        {{-- Kho xuất kho — hệ thống hiện chỉ vận hành 1 kho nên gán cố định, không cho chọn --}}
                         <div class="col-md-6">
-                            <span class="si-inline-label d-block mb-1">Kho xuất hàng <span class="text-danger">*</span></span>
+                            <span class="si-inline-label d-block mb-1">Kho xuất hàng</span>
                             @php
                                 $defaultWh = $warehouses->first(fn($w) => $w->is_default) ?? $warehouses->first();
                             @endphp
                             <input type="hidden" name="warehouse_id" id="warehouseIdInput" value="{{ $defaultWh->id ?? '' }}" required>
-                            <div class="hk-cat-filter si-filter-width" id="warehouseIdFilter">
-                                <button type="button" class="hk-cat-trigger" id="warehouseIdTrigger">
-                                    <span class="hk-cat-trigger-label" id="warehouseIdLabel">
-                                        {{ $defaultWh ? $defaultWh->name : 'Chọn kho xuất' }}
-                                    </span>
-                                    <i class="fa-solid fa-chevron-down hk-cat-arrow"></i>
-                                </button>
-                                <div class="hk-cat-panel" id="warehouseIdPanel" hidden style="width:280px;">
-                                    <div class="hk-cat-list" id="warehouseIdList">
-                                        @foreach($warehouses as $wh)
-                                            <button type="button" class="hk-cat-item {{ ($defaultWh->id ?? '') == $wh->id ? 'is-active' : '' }}"
-                                                data-value="{{ $wh->id }}" data-label="{{ $wh->name }}">{{ $wh->name }}</button>
-                                        @endforeach
-                                    </div>
-                                </div>
+                            <div class="si-warehouse-static">
+                                <i class="fa-solid fa-warehouse"></i>
+                                {{ $defaultWh->name ?? '—' }}
                             </div>
                             <div class="invalid-feedback d-block mt-1" data-si-error="warehouse_id"></div>
                         </div>
@@ -195,6 +183,17 @@
 .price-input.is-locked { background: #f3f4f6 !important; color: #9ca3af !important; cursor: not-allowed; }
 .gr-num-input.border-danger { border-color: #dc2626 !important; }
 .si-stock-warning { font-size: 11px; font-weight: 600; color: #dc2626; margin-top: 4px; }
+.si-warehouse-static {
+    display: flex; align-items: center; gap: 8px;
+    width: 100%; min-height: 38px;
+    border-radius: 999px;
+    border: 1.5px solid #e5e7eb;
+    background: #f9fafb;
+    color: #374151;
+    font-size: 13px;
+    padding: 0 14px;
+}
+.si-warehouse-static i { color: #9ca3af; }
 
 /* ── Custom dropdowns (general) ── */
 .si-offcanvas .hk-cat-filter { position: relative; }
@@ -331,10 +330,6 @@
     const issueTypeList = document.getElementById('issueTypeList');
 
     const warehouseIdInput = document.getElementById('warehouseIdInput');
-    const warehouseIdTrigger = document.getElementById('warehouseIdTrigger');
-    const warehouseIdLabel = document.getElementById('warehouseIdLabel');
-    const warehouseIdPanel = document.getElementById('warehouseIdPanel');
-    const warehouseIdList = document.getElementById('warehouseIdList');
 
     const orderIdInput = document.getElementById('orderIdInput');
     const orderIdTrigger = document.getElementById('orderIdTrigger');
@@ -350,13 +345,12 @@
 
     function closeAllPanels() {
         issueTypePanel.hidden = true;
-        warehouseIdPanel.hidden = true;
         if (orderIdPanel) orderIdPanel.hidden = true;
         pickerPanel.hidden = true;
     }
 
     document.addEventListener('click', function(e) {
-        if (!e.target.closest('#issueTypeFilter') && !e.target.closest('#warehouseIdFilter') && !e.target.closest('#orderIdFilter') && !e.target.closest('.gr-picker-wrap')) {
+        if (!e.target.closest('#issueTypeFilter') && !e.target.closest('#orderIdFilter') && !e.target.closest('.gr-picker-wrap')) {
             closeAllPanels();
         }
     });
@@ -405,25 +399,6 @@
         // Update price editable state
         updatePriceEditingState();
         calculateTotals();
-    });
-
-    // ── Warehouse Dropdown ──
-    warehouseIdTrigger.addEventListener('click', function() {
-        const isHidden = warehouseIdPanel.hidden;
-        closeAllPanels();
-        warehouseIdPanel.hidden = !isHidden;
-    });
-
-    warehouseIdList.addEventListener('click', function(e) {
-        const btn = e.target.closest('.hk-cat-item');
-        if (!btn) return;
-        
-        warehouseIdList.querySelectorAll('.hk-cat-item').forEach(el => el.classList.remove('is-active'));
-        btn.classList.add('is-active');
-        
-        warehouseIdInput.value = btn.dataset.value;
-        warehouseIdLabel.textContent = btn.dataset.label;
-        warehouseIdPanel.hidden = true;
     });
 
     // ── Order Dropdown ──

@@ -35,17 +35,17 @@
                             <button type="button" class="hk-cat-trigger" id="grModalSourceTypeTrigger"
                                 aria-haspopup="listbox" aria-expanded="false">
                                 <span class="hk-cat-trigger-label" id="grModalSourceTypeLabel">
-                                    🏭 Nhập từ nhà cung cấp
+                                    Nhập từ nhà cung cấp
                                 </span>
                                 <i class="fa-solid fa-chevron-down hk-cat-arrow"></i>
                             </button>
                             <div class="hk-cat-panel" id="grModalSourceTypePanel" hidden>
                                 <div class="hk-cat-list" id="grModalSourceTypeList" role="listbox">
                                     <button type="button" class="hk-cat-item is-active" data-value="supplier" data-label="🏭 Nhập từ nhà cung cấp">
-                                        🏭 Nhập từ nhà cung cấp
+                                        Nhập từ nhà cung cấp
                                     </button>
                                     <button type="button" class="hk-cat-item" data-value="internal" data-label="🏠 Nhập nội bộ (kiểm kê / điều chỉnh)">
-                                        🏠 Nhập nội bộ (kiểm kê / điều chỉnh)
+                                        Nhập nội bộ (kiểm kê / điều chỉnh)
                                     </button>
                                 </div>
                             </div>
@@ -61,23 +61,23 @@
                             <button type="button" class="hk-cat-trigger" id="grModalReceiptTypeTrigger"
                                 aria-haspopup="listbox" aria-expanded="false">
                                 <span class="hk-cat-trigger-label" id="grModalReceiptTypeLabel">
-                                    📦 Nhập hàng nhà cung cấp
+                                    Nhập hàng nhà cung cấp
                                 </span>
                                 <i class="fa-solid fa-chevron-down hk-cat-arrow"></i>
                             </button>
                             <div class="hk-cat-panel" id="grModalReceiptTypePanel" hidden>
                                 <div class="hk-cat-list" id="grModalReceiptTypeList" role="listbox">
                                     <button type="button" class="hk-cat-item is-active" data-value="purchase" data-label="📦 Nhập hàng nhà cung cấp">
-                                        📦 Nhập hàng nhà cung cấp
+                                        Nhập hàng nhà cung cấp
                                     </button>
                                     <button type="button" class="hk-cat-item" data-value="return" data-label="🔄 Nhập trả hàng">
-                                        🔄 Nhập trả hàng
+                                        Nhập trả hàng
                                     </button>
                                     <button type="button" class="hk-cat-item" data-value="adjustment" data-label="⚖️ Điều chỉnh kiểm kê">
-                                        ⚖️ Điều chỉnh kiểm kê
+                                        Điều chỉnh kiểm kê
                                     </button>
                                     <button type="button" class="hk-cat-item" data-value="initial" data-label="🗂️ Nhập tồn đầu kỳ">
-                                        🗂️ Nhập tồn đầu kỳ
+                                        Nhập tồn đầu kỳ
                                     </button>
                                 </div>
                             </div>
@@ -85,83 +85,16 @@
                         <div class="invalid-feedback d-block mt-1" data-gr-error="receipt_type"></div>
                     </div>
 
-                    {{-- Kho nhận hàng --}}
+                    {{-- Kho nhận hàng — hệ thống hiện chỉ vận hành 1 kho nên gán cố định, không cho chọn --}}
                     <div class="edit-field mb-3">
-                        <label class="gr-inline-label d-block mb-1">Kho nhận <span class="text-danger">*</span></label>
-                        <input type="hidden" name="warehouse_id" id="grModalWarehouseId"
-                            value="{{ $warehouses->firstWhere('is_default', true)?->id ?? $warehouses->first()?->id }}">
-                        <div class="d-flex align-items-center gap-2">
-                            <div class="hk-cat-filter gr-warehouse-filter flex-grow-1" id="grModalWarehouseFilter">
-                                <button type="button" class="hk-cat-trigger" id="grModalWarehouseTrigger"
-                                    aria-haspopup="listbox" aria-expanded="false">
-                                    <span class="hk-cat-trigger-label" id="grModalWarehouseLabel">
-                                        @php
-                                            $defaultWh = $warehouses->firstWhere('is_default', true) ?? $warehouses->first();
-                                        @endphp
-                                        {{ $defaultWh ? $defaultWh->full_name . ($defaultWh->is_default ? ' (Mặc định)' : '') : '— Chọn kho nhận —' }}
-                                    </span>
-                                    <i class="fa-solid fa-chevron-down hk-cat-arrow"></i>
-                                </button>
-                                <div class="hk-cat-panel" id="grModalWarehousePanel" hidden>
-                                    <div class="hk-cat-list" id="grModalWarehouseList" role="listbox">
-                                        @foreach($warehouses as $warehouse)
-                                            <button type="button" class="hk-cat-item {{ $warehouse->is_default ? 'is-active' : '' }}"
-                                                data-value="{{ $warehouse->id }}"
-                                                data-label="{{ $warehouse->full_name }}{{ $warehouse->is_default ? ' (Mặc định)' : '' }}">
-                                                <span class="gr-wh-dot {{ $warehouse->is_default ? 'gr-wh-dot--default' : '' }}"></span>
-                                                {{ $warehouse->full_name }}
-                                                @if($warehouse->is_default)
-                                                    <span class="badge bg-success ms-auto" style="font-size:10px;">Mặc định</span>
-                                                @endif
-                                            </button>
-                                        @endforeach
-                                    </div>
-                                </div>
-                            </div>
-                            <button type="button" id="grModalAddWarehouseBtn"
-                                class="btn gr-add-wh-btn d-flex align-items-center justify-content-center"
-                                title="Thêm kho nhận mới"
-                                data-bs-toggle="modal" data-bs-target="#grAddWarehouseModal">
-                                <i class="fa-solid fa-plus"></i>
-                            </button>
-                        </div>
-                        <div class="invalid-feedback d-block mt-1" data-gr-error="warehouse_id"></div>
-                    </div>
-
-                    {{-- Pop-up Thêm Kho Mới (inline modal nhỏ, dùng Bootstrap modal) --}}
-                    <div class="modal fade" id="grAddWarehouseModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="false">
-                        <div class="modal-dialog modal-dialog-centered" style="max-width: 480px;">
-                            <div class="modal-content" style="border-radius: 16px; border: 1.5px solid #e5e7eb; box-shadow: 0 20px 60px rgba(0,0,0,0.18);">
-                                <div class="modal-header border-bottom" style="padding: 18px 22px 14px;">
-                                    <h5 class="modal-title fw-bold" style="font-size:15px; color:#0f172a;">
-                                        <i class="fa-solid fa-warehouse me-2 text-primary"></i>Thêm kho nhận mới
-                                    </h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                </div>
-                                <div class="modal-body" style="padding: 20px 22px;">
-                                    <div class="mb-3">
-                                        <label for="grNewWhName" class="gr-inline-label d-block mb-1">Tên kho <span class="text-danger">*</span></label>
-                                        <input type="text" id="grNewWhName" class="form-control" placeholder="Ví dụ: Kho Hà Nội, Kho Chi Nhánh...">
-                                        <div class="invalid-feedback d-block" id="grNewWhNameError" style="display:none!"></div>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="grNewWhCity" class="gr-inline-label d-block mb-1">Thành phố / Địa chỉ</label>
-                                        <input type="text" id="grNewWhCity" class="form-control" placeholder="TP. Hồ Chí Minh, Hà Nội...">
-                                    </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="grNewWhDefault">
-                                        <label class="form-check-label fw-semibold" for="grNewWhDefault" style="font-size:13px;">
-                                            Đặt làm kho mặc định
-                                        </label>
-                                    </div>
-                                </div>
-                                <div class="modal-footer border-top" style="padding: 14px 22px;">
-                                    <button type="button" class="btn btn-light border fw-semibold" data-bs-dismiss="modal">Hủy</button>
-                                    <button type="button" class="btn btn-dark fw-semibold" id="grNewWhSaveBtn">
-                                        <i class="fa-solid fa-plus me-1"></i> Tạo kho
-                                    </button>
-                                </div>
-                            </div>
+                        <label class="gr-inline-label d-block mb-1">Kho nhận</label>
+                        @php
+                            $defaultWh = $warehouses->firstWhere('is_default', true) ?? $warehouses->first();
+                        @endphp
+                        <input type="hidden" name="warehouse_id" id="grModalWarehouseId" value="{{ $defaultWh?->id }}">
+                        <div class="gr-warehouse-static">
+                            <i class="fa-solid fa-warehouse"></i>
+                            {{ $defaultWh?->full_name ?? '—' }}
                         </div>
                     </div>
 
@@ -315,22 +248,9 @@
     outline: none;
 }
 
-/* ── Bo góc input trong modal Thêm kho ── */
-#grAddWarehouseModal .form-control {
-    border-radius: 10px !important;
-    border: 1.5px solid #d1d5db;
-    font-size: 13.5px;
-    transition: border-color .15s, box-shadow .15s;
-}
-#grAddWarehouseModal .form-control:focus {
-    border-color: #000;
-    box-shadow: 0 0 0 3px rgba(23,71,97,.08);
-    outline: none;
-}
-.gr-source-type-filter, .gr-receipt-type-filter, .gr-warehouse-filter, .gr-supplier-filter { width: 100%; position: relative; }
+.gr-source-type-filter, .gr-receipt-type-filter, .gr-supplier-filter { width: 100%; position: relative; }
 .gr-source-type-filter .hk-cat-trigger,
 .gr-receipt-type-filter .hk-cat-trigger,
-.gr-warehouse-filter .hk-cat-trigger,
 .gr-supplier-filter .hk-cat-trigger {
     width: 100%; height: 40px;
     justify-content: space-between;
@@ -348,8 +268,6 @@
 .gr-source-type-filter .hk-cat-trigger.is-open,
 .gr-receipt-type-filter .hk-cat-trigger:hover,
 .gr-receipt-type-filter .hk-cat-trigger.is-open,
-.gr-warehouse-filter .hk-cat-trigger:hover,
-.gr-warehouse-filter .hk-cat-trigger.is-open,
 .gr-supplier-filter .hk-cat-trigger:hover,
 .gr-supplier-filter .hk-cat-trigger.is-open {
     border-color: #000;
@@ -357,7 +275,6 @@
 }
 .gr-source-type-filter .hk-cat-panel,
 .gr-receipt-type-filter .hk-cat-panel,
-.gr-warehouse-filter .hk-cat-panel,
 .gr-supplier-filter .hk-cat-panel {
     width: 100%;
     border-radius: 14px;
@@ -373,11 +290,9 @@
 }
 .gr-source-type-filter .hk-cat-list,
 .gr-receipt-type-filter .hk-cat-list,
-.gr-warehouse-filter .hk-cat-list,
 .gr-supplier-filter .hk-cat-list { max-height: 240px; overflow-y: auto; display: flex; flex-direction: column; }
 .gr-source-type-filter .hk-cat-item,
 .gr-receipt-type-filter .hk-cat-item,
-.gr-warehouse-filter .hk-cat-item,
 .gr-supplier-filter .hk-cat-item {
     display: flex;
     align-items: center;
@@ -393,42 +308,29 @@
 }
 .gr-source-type-filter .hk-cat-item:hover,
 .gr-receipt-type-filter .hk-cat-item:hover,
-.gr-warehouse-filter .hk-cat-item:hover,
 .gr-supplier-filter .hk-cat-item:hover {
     background: #f3f4f6;
     color: #111827;
 }
 .gr-source-type-filter .hk-cat-item.is-active,
 .gr-receipt-type-filter .hk-cat-item.is-active,
-.gr-warehouse-filter .hk-cat-item.is-active,
 .gr-supplier-filter .hk-cat-item.is-active {
     background: #e0f2fe;
     color: #0369a1;
     font-weight: 600;
 }
-.gr-wh-dot {
-    width: 8px; height: 8px; border-radius: 50%;
-    background: #d1d5db; flex-shrink: 0;
-}
-.gr-wh-dot--default { background: #16a34a; }
-
-/* Nút + thêm kho */
-.gr-add-wh-btn {
-    width: 40px; height: 40px; flex-shrink: 0;
+/* Kho nhận — hiển thị tĩnh, chỉ 1 kho nên không cần chọn */
+.gr-warehouse-static {
+    display: flex; align-items: center; gap: 8px;
+    width: 100%; height: 40px;
     border-radius: 999px;
-    border: 1.5px solid #d1d5db;
-    background: #fff;
+    border: 1.5px solid #e5e7eb;
+    background: #f9fafb;
     color: #374151;
-    font-size: 14px;
-    transition: all .15s;
-    padding: 0;
+    font-size: 13px;
+    padding: 0 14px;
 }
-.gr-add-wh-btn:hover {
-    background: #174761;
-    border-color: #000;
-    color: #fff;
-    box-shadow: 0 4px 12px rgba(23,71,97,.2);
-}
+.gr-warehouse-static i { color: #9ca3af; }
 
 .gr-add-product-btn {
     width: 42px; height: 42px; flex-shrink: 0;
@@ -555,12 +457,6 @@
     const supplierPanel = document.getElementById('grModalSupplierPanel');
     const supplierLabel = document.getElementById('grModalSupplierLabel');
     const supplierList = document.getElementById('grModalSupplierList');
-    const warehouseHiddenEl = document.getElementById('grModalWarehouseId');
-    const warehouseTrigger = document.getElementById('grModalWarehouseTrigger');
-    const warehousePanel = document.getElementById('grModalWarehousePanel');
-    const warehouseLabel = document.getElementById('grModalWarehouseLabel');
-    const warehouseList = document.getElementById('grModalWarehouseList');
-    const warehouseFilter = document.getElementById('grModalWarehouseFilter');
     const reasonField = document.getElementById('grModalReasonField');
     const receiptReasonEl = document.getElementById('grModalReceiptReason');
     const receivedAtEl = document.getElementById('grModalReceivedAt');
@@ -596,10 +492,6 @@
 
     // ── Custom dropdowns helper ──────────────────────────────
     function closeAllCustomDropdowns() {
-        if (warehousePanel) warehousePanel.hidden = true;
-        warehouseTrigger?.classList.remove('is-open');
-        warehouseTrigger?.setAttribute('aria-expanded', 'false');
-
         if (sourceTypePanel) sourceTypePanel.hidden = true;
         sourceTypeTrigger?.classList.remove('is-open');
         sourceTypeTrigger?.setAttribute('aria-expanded', 'false');
@@ -612,28 +504,6 @@
         supplierTrigger?.classList.remove('is-open');
         supplierTrigger?.setAttribute('aria-expanded', 'false');
     }
-
-    // ── Warehouse dropdown ──────────────────────────────────
-    warehouseTrigger?.addEventListener('click', function (e) {
-        e.stopPropagation();
-        const shouldOpen = warehousePanel.hidden;
-        closeAllCustomDropdowns();
-        if (shouldOpen) {
-            warehousePanel.hidden = false;
-            warehouseTrigger.classList.add('is-open');
-            warehouseTrigger.setAttribute('aria-expanded', 'true');
-        }
-    });
-
-    warehouseList?.addEventListener('click', function (e) {
-        const btn = e.target.closest('.hk-cat-item');
-        if (!btn) return;
-        warehouseHiddenEl.value = btn.dataset.value || '';
-        warehouseLabel.textContent = btn.dataset.label || '— Chọn kho nhận —';
-        warehouseList.querySelectorAll('.hk-cat-item').forEach(item => item.classList.toggle('is-active', item === btn));
-        closeAllCustomDropdowns();
-        checkFormValidity();
-    });
 
     // ── Source Type dropdown ────────────────────────────────
     sourceTypeTrigger?.addEventListener('click', function (e) {
@@ -707,104 +577,10 @@
     });
 
     document.addEventListener('click', function (e) {
-        if (warehouseFilter && !warehouseFilter.contains(e.target) &&
-            sourceTypeFilter && !sourceTypeFilter.contains(e.target) &&
+        if (sourceTypeFilter && !sourceTypeFilter.contains(e.target) &&
             receiptTypeFilter && !receiptTypeFilter.contains(e.target) &&
             supplierFilter && !supplierFilter.contains(e.target)) {
             closeAllCustomDropdowns();
-        }
-    });
-
-    // ── Add new warehouse popup ─────────────────────────────
-    const newWhNameEl = document.getElementById('grNewWhName');
-    const newWhCityEl = document.getElementById('grNewWhCity');
-    const newWhDefaultEl = document.getElementById('grNewWhDefault');
-    const newWhSaveBtn = document.getElementById('grNewWhSaveBtn');
-    const newWhNameError = document.getElementById('grNewWhNameError');
-    const addWhModalEl = document.getElementById('grAddWarehouseModal');
-
-    newWhSaveBtn?.addEventListener('click', async function () {
-        const name = newWhNameEl?.value.trim();
-        const city = newWhCityEl?.value.trim();
-        const isDefault = newWhDefaultEl?.checked;
-
-        if (!name) {
-            newWhNameError.textContent = 'Vui lòng nhập tên kho.';
-            newWhNameError.style.display = '';
-            newWhNameEl.focus();
-            return;
-        }
-        newWhNameError.style.display = 'none';
-        newWhNameError.textContent = '';
-
-        newWhSaveBtn.setAttribute('disabled', 'disabled');
-        newWhSaveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Đang tạo...';
-
-        try {
-            const formData = new FormData();
-            formData.append('name', name);
-            if (city) formData.append('city', city);
-            formData.append('is_default', isDefault ? '1' : '0');
-            formData.append('_token', document.querySelector('meta[name="csrf-token"]')?.content || '');
-
-            const res = await fetch('{{ route('admin.warehouses.store') }}', {
-                method: 'POST',
-                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
-                body: formData,
-            });
-
-            const data = await res.json().catch(() => null);
-
-            if (!res.ok || !data) {
-                const errMsg = (data?.errors?.name?.[0]) || data?.message || 'Không thể tạo kho.';
-                newWhNameError.textContent = errMsg;
-                newWhNameError.style.display = '';
-                return;
-            }
-
-            // Thêm option mới vào danh sách dropdown
-            const newBtn = document.createElement('button');
-            newBtn.type = 'button';
-            newBtn.className = 'hk-cat-item';
-            newBtn.dataset.value = data.warehouse.id;
-            newBtn.dataset.label = data.warehouse.full_name + (data.warehouse.is_default ? ' (Mặc định)' : '');
-            newBtn.innerHTML = `
-                <span class="gr-wh-dot ${data.warehouse.is_default ? 'gr-wh-dot--default' : ''}"></span>
-                ${esc(data.warehouse.full_name)}
-                ${data.warehouse.is_default ? '<span class="badge bg-success ms-auto" style="font-size:10px;">Mặc định</span>' : ''}
-            `;
-
-            // Nếu là mặc định: xóa badge mặc định cũ
-            if (data.warehouse.is_default) {
-                warehouseList.querySelectorAll('.hk-cat-item').forEach(item => {
-                    item.querySelector('.gr-wh-dot')?.classList.remove('gr-wh-dot--default');
-                    const oldBadge = item.querySelector('.badge.bg-success');
-                    if (oldBadge) oldBadge.remove();
-                    item.classList.remove('is-active');
-                });
-            }
-
-            warehouseList.appendChild(newBtn);
-
-            // Tự động chọn kho vừa tạo
-            warehouseHiddenEl.value = data.warehouse.id;
-            warehouseLabel.textContent = newBtn.dataset.label;
-            warehouseList.querySelectorAll('.hk-cat-item').forEach(item => item.classList.remove('is-active'));
-            newBtn.classList.add('is-active');
-            checkFormValidity();
-
-            // Đóng modal
-            if (addWhModalEl) bootstrap.Modal.getOrCreateInstance(addWhModalEl).hide();
-            if (newWhNameEl) newWhNameEl.value = '';
-            if (newWhCityEl) newWhCityEl.value = '';
-            if (newWhDefaultEl) newWhDefaultEl.checked = false;
-
-            showToast(`Tạo kho "${data.warehouse.full_name}" thành công.`);
-        } catch (err) {
-            showToast('Không thể kết nối máy chủ. Vui lòng thử lại.', 'error');
-        } finally {
-            newWhSaveBtn.removeAttribute('disabled');
-            newWhSaveBtn.innerHTML = '<i class="fa-solid fa-plus me-1"></i> Tạo kho';
         }
     });
 

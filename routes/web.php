@@ -78,7 +78,10 @@ Route::middleware(['auth', 'active.account'])->group(function () {
     Route::delete('/tai-khoan/dia-chi/{address}', [AddressController::class, 'destroy'])->name('addresses.destroy');
 
     // Gửi đánh giá sản phẩm (yêu cầu đăng nhập). {product} là ID sản phẩm.
-    Route::post('/san-pham/{product}/danh-gia', [ReviewController::class, 'store'])->name('reviews.store');
+    // throttle:3,1 — tối đa 3 đánh giá/phút mỗi user để chống spam review.
+    Route::post('/san-pham/{product}/danh-gia', [ReviewController::class, 'store'])
+        ->middleware('throttle:3,1')
+        ->name('reviews.store');
 });
 
 
