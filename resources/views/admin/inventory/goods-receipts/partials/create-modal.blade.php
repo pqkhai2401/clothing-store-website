@@ -280,7 +280,7 @@
     </form>
 </div>
 
-@include('admin.goods-receipts.partials.quick-create-product-modal')
+@include('admin.inventory.goods-receipts.partials.quick-create-product-modal')
 
 @once
 @push('styles')

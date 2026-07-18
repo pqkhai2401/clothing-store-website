@@ -132,12 +132,12 @@ class StockIssueController extends Controller
             return response()->json([
                 'message' => "Tạo phiếu xuất kho \"{$stockIssue->code}\" thành công.",
                 'code' => $stockIssue->code,
-                'show_url' => route('admin.stock-issues.show', $stockIssue->id),
+                'show_url' => route('admin.inventory.stock-issues.show', $stockIssue->id),
                 'table_url' => route('admin.goods-receipts.list', ['tab' => 'outbound']),
             ]);
         }
 
-        return redirect()->route('admin.stock-issues.show', $stockIssue->id)
+        return redirect()->route('admin.inventory.stock-issues.show', $stockIssue->id)
             ->with('success', "Tạo phiếu xuất kho \"{$stockIssue->code}\" thành công.");
     }
 
@@ -157,11 +157,11 @@ class StockIssueController extends Controller
 
         if ($request->expectsJson() || $request->ajax()) {
             return response()->json([
-                'html' => view('admin.stock-issues.partials.show-content', compact('stockIssue'))->render(),
+                'html' => view('admin.inventory.stock-issues.partials.show-content', compact('stockIssue'))->render(),
             ]);
         }
 
-        return view('admin.stock-issues.show', compact('stockIssue'));
+        return view('admin.inventory.stock-issues.show', compact('stockIssue'));
     }
 
     /**
@@ -177,7 +177,7 @@ class StockIssueController extends Controller
             'items.productVariant.size:id,name',
         ])->findOrFail($id);
 
-        return view('admin.stock-issues.print', compact('stockIssue'));
+        return view('admin.inventory.stock-issues.print', compact('stockIssue'));
     }
 
     public function edit(Request $request, string $id)
@@ -223,11 +223,11 @@ class StockIssueController extends Controller
 
         if ($request->expectsJson() || $request->ajax()) {
             return response()->json([
-                'html' => view('admin.stock-issues.partials.edit-content', compact('stockIssue', 'variants', 'warehouses', 'selectedItems'))->render(),
+                'html' => view('admin.inventory.stock-issues.partials.edit-content', compact('stockIssue', 'variants', 'warehouses', 'selectedItems'))->render(),
             ]);
         }
 
-        return view('admin.stock-issues.edit', compact('stockIssue', 'variants', 'warehouses', 'selectedItems'));
+        return view('admin.inventory.stock-issues.edit', compact('stockIssue', 'variants', 'warehouses', 'selectedItems'));
     }
 
     public function update(Request $request, string $id)
@@ -336,12 +336,12 @@ class StockIssueController extends Controller
             return response()->json([
                 'message' => "Cập nhật phiếu xuất kho \"{$stockIssue->code}\" thành công.",
                 'code' => $stockIssue->code,
-                'show_url' => route('admin.stock-issues.show', $stockIssue->id),
+                'show_url' => route('admin.inventory.stock-issues.show', $stockIssue->id),
                 'table_url' => route('admin.goods-receipts.list', ['tab' => 'outbound']),
             ]);
         }
 
-        return redirect()->route('admin.stock-issues.show', $stockIssue->id)
+        return redirect()->route('admin.inventory.stock-issues.show', $stockIssue->id)
             ->with('success', "Cập nhật phiếu xuất kho \"{$stockIssue->code}\" thành công.");
     }
 
@@ -443,11 +443,11 @@ class StockIssueController extends Controller
 
         if ($request->ajax()) {
             return response()->json([
-                'html' => view('admin.stock-issues.partials.trash-table', compact('stockIssues'))->render(),
+                'html' => view('admin.inventory.stock-issues.partials.trash-table', compact('stockIssues'))->render(),
             ]);
         }
 
-        return view('admin.stock-issues.trash', compact('stockIssues', 'keyword', 'perPage'));
+        return view('admin.inventory.stock-issues.trash', compact('stockIssues', 'keyword', 'perPage'));
     }
 
     public function restore(string $id)
@@ -456,14 +456,14 @@ class StockIssueController extends Controller
         StockIssue::onlyTrashed()->where('id', $stockIssue->id)->update(['deleted_by' => null]);
         $stockIssue->restore();
 
-        return redirect()->route('admin.stock-issues.trash')->with('success', 'Khôi phục phiếu xuất kho thành công');
+        return redirect()->route('admin.inventory.stock-issues.trash')->with('success', 'Khôi phục phiếu xuất kho thành công');
     }
 
     public function forceDelete(string $id)
     {
         StockIssue::onlyTrashed()->findOrFail($id)->forceDelete();
 
-        return redirect()->route('admin.stock-issues.trash')->with('success', 'Đã xóa vĩnh viễn phiếu xuất kho');
+        return redirect()->route('admin.inventory.stock-issues.trash')->with('success', 'Đã xóa vĩnh viễn phiếu xuất kho');
     }
 
     public function bulkRestore(Request $request)

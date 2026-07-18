@@ -23,7 +23,7 @@
     </div>
 
     <div class="mx-auto" style="max-width: 900px;">
-        @include('admin.stock-issues.partials.show-content', ['stockIssue' => $stockIssue])
+        @include('admin.inventory.stock-issues.partials.show-content', ['stockIssue' => $stockIssue])
     </div>
 </main>
 

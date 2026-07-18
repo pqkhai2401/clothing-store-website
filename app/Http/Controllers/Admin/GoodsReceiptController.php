@@ -76,14 +76,14 @@ class GoodsReceiptController extends Controller
 
         if ($request->ajax()) {
             return response()->json([
-                'html' => view('admin.goods-receipts.partials.stocktake-table', compact('stocktakes'))->render(),
+                'html' => view('admin.inventory.stocktakes.partials.table', compact('stocktakes'))->render(),
             ]);
         }
 
         $stocktakeVariants = $this->stockIssueVariants();
         $stocktakeCodePreview = $this->stocktakeCodePreview();
 
-        return view('admin.goods-receipts.index', compact('stocktakes', 'keyword', 'status', 'perPage', 'stocktakeVariants', 'stocktakeCodePreview') + ['tab' => 'stocktake']);
+        return view('admin.inventory.index', compact('stocktakes', 'keyword', 'status', 'perPage', 'stocktakeVariants', 'stocktakeCodePreview') + ['tab' => 'stocktake']);
     }
 
     private function outboundIndex(Request $request)
@@ -120,7 +120,7 @@ class GoodsReceiptController extends Controller
 
         if ($request->ajax()) {
             return response()->json([
-                'html' => view('admin.goods-receipts.partials.outbound-table', compact('stockIssues'))->render(),
+                'html' => view('admin.inventory.stock-issues.partials.outbound-table', compact('stockIssues'))->render(),
             ]);
         }
 
@@ -128,7 +128,7 @@ class GoodsReceiptController extends Controller
         $warehouses = Warehouse::where('status', true)->orderBy('is_default', 'desc')->orderBy('name')->get();
         $orders = Order::orderByDesc('id')->get(['id', 'order_code']);
 
-        return view('admin.goods-receipts.index', compact('stockIssues', 'keyword', 'status', 'perPage', 'stockIssueVariants', 'warehouses', 'orders') + ['tab' => 'outbound']);
+        return view('admin.inventory.index', compact('stockIssues', 'keyword', 'status', 'perPage', 'stockIssueVariants', 'warehouses', 'orders') + ['tab' => 'outbound']);
     }
 
     private function overviewIndex(Request $request)
@@ -180,7 +180,7 @@ class GoodsReceiptController extends Controller
 
         if ($request->ajax()) {
             return response()->json([
-                'html' => view('admin.goods-receipts.partials.overview-table', compact('variants'))->render(),
+                'html' => view('admin.inventory.goods-receipts.partials.overview-table', compact('variants'))->render(),
             ]);
         }
 
@@ -188,7 +188,7 @@ class GoodsReceiptController extends Controller
 
         $activeVariants = ProductVariant::whereHas('product', fn ($q) => $q->whereNull('deleted_at'));
 
-        return view('admin.goods-receipts.index', [
+        return view('admin.inventory.index', [
             'tab'               => 'overview',
             'variants'          => $variants,
             'keyword'           => $keyword,
@@ -235,7 +235,7 @@ class GoodsReceiptController extends Controller
 
         if ($request->ajax()) {
             return response()->json([
-                'html' => view('admin.goods-receipts.partials.table', compact('goodsReceipts'))->render(),
+                'html' => view('admin.inventory.goods-receipts.partials.table', compact('goodsReceipts'))->render(),
             ]);
         }
 
@@ -244,7 +244,7 @@ class GoodsReceiptController extends Controller
         $warehouses = Warehouse::where('status', true)->orderBy('is_default', 'desc')->orderBy('name')->get();
         $quickCreateData = $this->quickCreateFormData();
 
-        return view('admin.goods-receipts.index', compact(
+        return view('admin.inventory.index', compact(
             'goodsReceipts',
             'keyword',
             'perPage',
@@ -261,7 +261,7 @@ class GoodsReceiptController extends Controller
         $variants   = $this->goodsReceiptVariants();
         $warehouses = Warehouse::where('status', true)->orderBy('is_default', 'desc')->orderBy('name')->get();
 
-        return view('admin.goods-receipts.create', compact('suppliers', 'variants', 'warehouses')
+        return view('admin.inventory.goods-receipts.create', compact('suppliers', 'variants', 'warehouses')
             + $this->quickCreateFormData());
     }
 
@@ -306,7 +306,7 @@ class GoodsReceiptController extends Controller
                     'type' => 'nhap_kho',
                     'type_label' => 'Nhập kho',
                     'document_code' => $receipt?->code,
-                    'document_url' => $receipt ? route('admin.goods-receipts.show', $receipt->id) : null,
+                    'document_url' => $receipt ? route('admin.inventory.goods-receipts.show', $receipt->id) : null,
                     'quantity_change' => (int) $item->quantity,
                     'user' => $receipt?->creator?->username ?? 'N/A',
                 ]);
@@ -393,7 +393,7 @@ class GoodsReceiptController extends Controller
             ->get();
 
         return response()->json([
-            'html' => view('admin.goods-receipts.partials.stock-card', compact('variant', 'transactions', 'batches'))->render(),
+            'html' => view('admin.inventory.goods-receipts.partials.stock-card', compact('variant', 'transactions', 'batches'))->render(),
         ]);
     }
 
@@ -561,12 +561,12 @@ class GoodsReceiptController extends Controller
             return response()->json([
                 'message' => "Tạo phiếu nhập kho \"{$goodsReceipt->code}\" thành công.",
                 'code' => $goodsReceipt->code,
-                'show_url' => route('admin.goods-receipts.show', $goodsReceipt->id),
+                'show_url' => route('admin.inventory.goods-receipts.show', $goodsReceipt->id),
                 'table_url' => route('admin.goods-receipts.list', ['tab' => 'inbound']),
             ]);
         }
 
-        return redirect()->route('admin.goods-receipts.show', $goodsReceipt->id)
+        return redirect()->route('admin.inventory.goods-receipts.show', $goodsReceipt->id)
             ->with('success', "Tạo phiếu nhập kho \"{$goodsReceipt->code}\" thành công.");
     }
 
@@ -582,11 +582,11 @@ class GoodsReceiptController extends Controller
 
         if ($request->expectsJson()) {
             return response()->json([
-                'html' => view('admin.goods-receipts.partials.show-content', compact('goodsReceipt'))->render(),
+                'html' => view('admin.inventory.goods-receipts.partials.show-content', compact('goodsReceipt'))->render(),
             ]);
         }
 
-        return view('admin.goods-receipts.show', compact('goodsReceipt'));
+        return view('admin.inventory.goods-receipts.show', compact('goodsReceipt'));
     }
 
     /**
@@ -602,7 +602,7 @@ class GoodsReceiptController extends Controller
             'items.productVariant.size:id,name',
         ])->findOrFail($id);
 
-        return view('admin.goods-receipts.print', compact('goodsReceipt'));
+        return view('admin.inventory.goods-receipts.print', compact('goodsReceipt'));
     }
 
     public function complete(string $id)
@@ -672,11 +672,11 @@ class GoodsReceiptController extends Controller
 
         if ($request->expectsJson() || $request->ajax()) {
             return response()->json([
-                'html' => view('admin.goods-receipts.partials.edit-content', compact('goodsReceipt', 'suppliers', 'variants', 'warehouses', 'selectedItems'))->render(),
+                'html' => view('admin.inventory.goods-receipts.partials.edit-content', compact('goodsReceipt', 'suppliers', 'variants', 'warehouses', 'selectedItems'))->render(),
             ]);
         }
 
-        return view('admin.goods-receipts.edit', compact('goodsReceipt', 'suppliers', 'variants', 'warehouses', 'selectedItems'));
+        return view('admin.inventory.goods-receipts.edit', compact('goodsReceipt', 'suppliers', 'variants', 'warehouses', 'selectedItems'));
     }
 
     public function update(Request $request, string $id)
@@ -804,7 +804,7 @@ class GoodsReceiptController extends Controller
             return response()->json([
                 'message' => $message,
                 'code' => $goodsReceipt->code,
-                'show_url' => route('admin.goods-receipts.show', $goodsReceipt->id),
+                'show_url' => route('admin.inventory.goods-receipts.show', $goodsReceipt->id),
                 'table_url' => route('admin.goods-receipts.list', ['tab' => 'inbound']),
             ]);
         }
@@ -876,11 +876,11 @@ class GoodsReceiptController extends Controller
 
         if ($request->ajax()) {
             return response()->json([
-                'html' => view('admin.goods-receipts.partials.trash-table', compact('goodsReceipts'))->render(),
+                'html' => view('admin.inventory.goods-receipts.partials.trash-table', compact('goodsReceipts'))->render(),
             ]);
         }
 
-        return view('admin.goods-receipts.trash', compact('goodsReceipts', 'keyword', 'perPage'));
+        return view('admin.inventory.goods-receipts.trash', compact('goodsReceipts', 'keyword', 'perPage'));
     }
 
     public function restore(string $id)
@@ -889,14 +889,14 @@ class GoodsReceiptController extends Controller
         GoodsReceipt::onlyTrashed()->where('id', $goodsReceipt->id)->update(['deleted_by' => null]);
         $goodsReceipt->restore();
 
-        return redirect()->route('admin.goods-receipts.trash')->with('success', 'Khôi phục phiếu nhập kho thành công');
+        return redirect()->route('admin.inventory.goods-receipts.trash')->with('success', 'Khôi phục phiếu nhập kho thành công');
     }
 
     public function forceDelete(string $id)
     {
         GoodsReceipt::onlyTrashed()->findOrFail($id)->forceDelete();
 
-        return redirect()->route('admin.goods-receipts.trash')->with('success', 'Đã xóa vĩnh viễn phiếu nhập kho');
+        return redirect()->route('admin.inventory.goods-receipts.trash')->with('success', 'Đã xóa vĩnh viễn phiếu nhập kho');
     }
 
     public function bulkRestore(Request $request)

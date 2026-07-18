@@ -23,7 +23,7 @@
 
     <div class="row g-4">
         <div class="col-12">
-            @include('admin.goods-receipts.partials.edit-content')
+            @include('admin.inventory.goods-receipts.partials.edit-content')
         </div>
     </div>
 </main>

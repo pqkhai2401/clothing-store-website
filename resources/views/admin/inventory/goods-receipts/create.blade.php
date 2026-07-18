@@ -320,7 +320,7 @@
         </div>
     </form>
 
-    @include('admin.goods-receipts.partials.quick-create-product-modal')
+    @include('admin.inventory.goods-receipts.partials.quick-create-product-modal')
 </main>
 @endsection
 

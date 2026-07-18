@@ -371,7 +371,7 @@
                 </form>
 
                 <div data-admin-table-area>
-                    @include('admin.goods-receipts.partials.overview-table')
+                    @include('admin.inventory.goods-receipts.partials.overview-table')
                 </div>
 
                 <div class="modal fade" id="stockCardModal" tabindex="-1" aria-hidden="true">
@@ -430,10 +430,10 @@
                 </form>
 
                 <div data-admin-table-area>
-                    @include('admin.goods-receipts.partials.table')
+                    @include('admin.inventory.goods-receipts.partials.table')
                 </div>
 
-                @include('admin.goods-receipts.partials.create-modal', [
+                @include('admin.inventory.goods-receipts.partials.create-modal', [
                     'suppliers' => $suppliers ?? collect(),
                     'variants' => $goodsReceiptVariants ?? collect(),
                 ])
@@ -563,10 +563,10 @@
                 </form>
 
                 <div data-admin-table-area>
-                    @include('admin.goods-receipts.partials.outbound-table')
+                    @include('admin.inventory.stock-issues.partials.outbound-table')
                 </div>
 
-                @include('admin.stock-issues.partials.create-modal', [
+                @include('admin.inventory.stock-issues.partials.create-modal', [
                     'variants' => $stockIssueVariants ?? collect(),
                 ])
 
@@ -643,10 +643,10 @@
                 </form>
 
                 <div data-admin-table-area>
-                    @include('admin.goods-receipts.partials.stocktake-table')
+                    @include('admin.inventory.stocktakes.partials.table')
                 </div>
 
-                @include('admin.goods-receipts.partials.stocktake-modal', [
+                @include('admin.inventory.stocktakes.partials.modal', [
                     'variants' => $stocktakeVariants ?? collect(),
                     'stocktakeCode' => $stocktakeCodePreview ?? null,
                 ])

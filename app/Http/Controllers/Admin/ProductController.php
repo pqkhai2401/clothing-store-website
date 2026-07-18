@@ -154,37 +154,54 @@ class ProductController extends Controller
             'sku.unique'           => 'SKU này đã tồn tại, vui lòng chọn mã khác.',
         ]);
 
-        $slug = Str::slug($request->input('name'));
-        if (Product::where('slug', $slug)->exists()) {
-            $slug = $slug . '-' . time();
-        }
+        $baseSlug = Str::slug($request->input('name'));
+        $slug = Product::where('slug', $baseSlug)->exists() ? $baseSlug . '-' . time() : $baseSlug;
 
         $sku = trim((string) $request->input('sku'));
 
-        $variant = DB::transaction(function () use ($request, $slug, $sku) {
-            $product = Product::create([
-                'name'        => $request->input('name'),
-                'slug'        => $slug,
-                'category_id' => $request->input('category_id'),
-                'brand_id'    => $request->input('brand_id') ?: null,
-                'gender'      => $request->input('gender'),
-                'description' => null,
-                'thumbnail'   => null,
-                'is_featured' => false,
-                'status'      => false,
-            ]);
+        // Kiểm tra slug trùng ở trên chỉ là "best-effort": nếu 2 request Quick Create cùng tên
+        // chạy song song, cả hai có thể vượt qua kiểm tra và cùng insert, gây lỗi 500 Duplicate
+        // Entry ở tầng DB (cột slug unique). Bắt lỗi này và thử lại với hậu tố ngẫu nhiên khác
+        // thay vì để lộ lỗi SQL thô ra người dùng.
+        $maxAttempts = 3;
+        for ($attempt = 1; ; $attempt++) {
+            try {
+                $variant = DB::transaction(function () use ($request, $slug, $sku) {
+                    $product = Product::create([
+                        'name'        => $request->input('name'),
+                        'slug'        => $slug,
+                        'category_id' => $request->input('category_id'),
+                        'brand_id'    => $request->input('brand_id') ?: null,
+                        'gender'      => $request->input('gender'),
+                        'description' => null,
+                        'thumbnail'   => null,
+                        'is_featured' => false,
+                        'status'      => false,
+                    ]);
 
-            return $product->productVariants()->create([
-                'color_id'   => $request->input('color_id'),
-                'size_id'    => $request->input('size_id'),
-                'sku'        => $sku !== '' ? $sku : Str::upper(Str::random(10)),
-                // Giá vốn/giá bán/tồn kho do KHO quản lý (qua Batch) — khởi tạo 0, nhập hàng
-                // thực tế qua Phiếu nhập kho sẽ điền giá nhập cho dòng hàng ngay bên dưới.
-                'cost_price' => 0,
-                'price'      => 0,
-                'stock'      => 0,
-            ])->load(['product:id,name,thumbnail', 'color:id,name,hex_code', 'size:id,name']);
-        });
+                    return $product->productVariants()->create([
+                        'color_id'   => $request->input('color_id'),
+                        'size_id'    => $request->input('size_id'),
+                        'sku'        => $sku !== '' ? $sku : Str::upper(Str::random(10)),
+                        // Giá vốn/giá bán/tồn kho do KHO quản lý (qua Batch) — khởi tạo 0, nhập hàng
+                        // thực tế qua Phiếu nhập kho sẽ điền giá nhập cho dòng hàng ngay bên dưới.
+                        'cost_price' => 0,
+                        'price'      => 0,
+                        'stock'      => 0,
+                    ])->load(['product:id,name,thumbnail', 'color:id,name,hex_code', 'size:id,name']);
+                });
+                break;
+            } catch (\Illuminate\Database\QueryException $e) {
+                $isDuplicateSlug = (int) $e->getCode() === 23000
+                    && str_contains(strtolower($e->getMessage()), 'slug');
+
+                if (!$isDuplicateSlug || $attempt >= $maxAttempts) {
+                    throw $e;
+                }
+
+                $slug = $baseSlug . '-' . time() . '-' . Str::lower(Str::random(4));
+            }
+        }
 
         return response()->json([
             'message' => "Đã tạo nhanh sản phẩm \"{$variant->product->name}\" (chưa công bố).",

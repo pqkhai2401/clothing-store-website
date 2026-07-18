@@ -72,7 +72,7 @@ class StocktakeController extends Controller
         ])->findOrFail($id);
 
         return response()->json([
-            'html' => view('admin.goods-receipts.partials.stocktake-detail-content', compact('stocktake'))->render(),
+            'html' => view('admin.inventory.stocktakes.partials.detail-content', compact('stocktake'))->render(),
         ]);
     }
 
@@ -143,11 +143,11 @@ class StocktakeController extends Controller
 
         if ($request->ajax()) {
             return response()->json([
-                'html' => view('admin.goods-receipts.partials.stocktake-trash-table', compact('stocktakes'))->render(),
+                'html' => view('admin.inventory.stocktakes.partials.trash-table', compact('stocktakes'))->render(),
             ]);
         }
 
-        return view('admin.goods-receipts.stocktake-trash', compact('stocktakes', 'keyword', 'perPage'));
+        return view('admin.inventory.stocktakes.trash', compact('stocktakes', 'keyword', 'perPage'));
     }
 
     public function restore(string $id)

@@ -36,7 +36,7 @@
         </form>
 
         <div data-admin-table-area>
-            @include('admin.goods-receipts.partials.trash-table')
+            @include('admin.inventory.goods-receipts.partials.trash-table')
         </div>
     </main>
 @endsection
