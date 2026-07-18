@@ -37,8 +37,10 @@ class CheckoutController extends Controller
 
         // Xóa sản phẩm đã bị ẩn khỏi giỏ và báo user (cả sản phẩm và biến thể).
         // Lưu ý: status của ProductVariant là chuỗi 'Active'/'Inactive' (không phải boolean như Product).
+        // product() dùng withTrashed() nên phải check trashed() riêng: sản phẩm bị xóa mềm có thể vẫn còn status=true.
         $inactive = $cartItems->filter(fn ($item) => $item->productVariant?->status !== 'Active'
-            || ! (bool) ($item->productVariant?->product?->status));
+            || ! (bool) ($item->productVariant?->product?->status)
+            || (bool) $item->productVariant?->product?->trashed());
         if ($inactive->isNotEmpty()) {
             $inactive->each(fn ($item) => $item->delete());
             return redirect()->route('cart.index')
@@ -96,7 +98,8 @@ class CheckoutController extends Controller
 
         // Backend recheck: từ chối nếu có sản phẩm/biến thể bị ẩn (tránh bypass qua Postman)
         $hasInactive = $cartItems->contains(fn ($item) => $item->productVariant?->status !== 'Active'
-            || ! (bool) ($item->productVariant?->product?->status));
+            || ! (bool) ($item->productVariant?->product?->status)
+            || (bool) $item->productVariant?->product?->trashed());
         if ($hasInactive) {
             return redirect()->route('checkout.index')
                 ->with('warning', 'Một số sản phẩm không còn hoạt động. Vui lòng kiểm tra lại giỏ hàng.');

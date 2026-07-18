@@ -792,7 +792,9 @@
                         $pCategory = $prod->category->name ?? 'Thời trang';
                         $pUrl      = url('/san-pham/' . $pSlug);
                         $pImage    = $prod->thumbnail
-                            ? (str_starts_with($prod->thumbnail, 'http') ? $prod->thumbnail : asset('storage/' . $prod->thumbnail))
+                            ? (str_starts_with($prod->thumbnail, 'http')
+                                ? $prod->thumbnail
+                                : (str_starts_with($prod->thumbnail, 'storage/') ? asset($prod->thumbnail) : asset('storage/' . $prod->thumbnail)))
                             : 'https://placehold.co/400x533?text=No+Image';
                         $colors    = $prod->colors ?? collect([]);
                         $sizes     = $prod->sizes ?? collect([]);
@@ -968,7 +970,9 @@
                         $rCategory = $recProduct->category->name ?? 'Thời trang';
                         $rUrl      = url('/san-pham/' . $rSlug);
                         $rImage    = $recProduct->thumbnail
-                            ? (str_starts_with($recProduct->thumbnail, 'http') ? $recProduct->thumbnail : asset('storage/' . $recProduct->thumbnail))
+                            ? (str_starts_with($recProduct->thumbnail, 'http')
+                                ? $recProduct->thumbnail
+                                : (str_starts_with($recProduct->thumbnail, 'storage/') ? asset($recProduct->thumbnail) : asset('storage/' . $recProduct->thumbnail)))
                             : 'https://placehold.co/400x533?text=No+Image';
                         $matchScore = $recProduct->match_score ?? null;
                     @endphp

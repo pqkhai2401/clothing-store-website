@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Maatwebsite\Excel\Facades\Excel;
+use Mews\Purifier\Facades\Purifier;
 
 class ProductController extends Controller
 {
@@ -225,7 +226,7 @@ class ProductController extends Controller
         $categories     = Category::with('childrenCategories')->orderBy('name')->get();
         $brands         = Brand::orderBy('name')->get();
         $genders        = Gender::labels();
-        $colors         = Color::orderBy('name')->get();
+        $colors         = Color::where('status', 1)->orderBy('name')->get();
         $sizes          = Size::where('status', 1)->orderBy('sort_weight')->orderBy('name')->get();
         $existingVariants = [];
 
@@ -269,6 +270,7 @@ class ProductController extends Controller
         ]);
 
         $validator->after(function ($validator) use ($request) {
+            $this->checkVariantStructure($request, $validator);
             $this->checkVariantSkuConflicts($request, $validator);
         });
 
@@ -310,7 +312,7 @@ class ProductController extends Controller
                     'discount_start_at' => $request->input('discount_start_at'),
                     'discount_end_at'   => $request->input('discount_end_at'),
                     'gender'      => $request->input('gender'),
-                    'description' => $request->input('description'),
+                    'description' => Purifier::clean($request->input('description')),
                     'thumbnail'   => $thumbnailPath,
                     'is_featured' => $request->boolean('is_featured'),
                     'status'      => $request->boolean('status'),
@@ -372,7 +374,10 @@ class ProductController extends Controller
         $categories = Category::with('childrenCategories')->orderBy('name')->get();
         $brands     = Brand::orderBy('name')->get();
         $genders    = Gender::labels();
-        $colors     = Color::orderBy('name')->get();
+        // Chỉ hiển thị màu đang hoạt động để chọn, nhưng vẫn giữ lại màu đã bị vô hiệu hóa
+        // nếu sản phẩm đang có biến thể dùng màu đó (tránh mất biến thể cũ khỏi form edit).
+        $usedColorIds = $product->productVariants->pluck('color_id')->unique();
+        $colors     = Color::where('status', 1)->orWhereIn('id', $usedColorIds)->orderBy('name')->get();
         $sizes      = Size::where('status', 1)->orderBy('sort_weight')->orderBy('name')->get();
 
         $existingVariants = $product->productVariants
@@ -404,8 +409,9 @@ class ProductController extends Controller
             'gender'      => ['required', Rule::in(Gender::values())],
             'description' => ['required', 'string'],
             'thumbnail'   => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
-            'image_2'     => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
-            'image_3'     => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
+            'new_images'    => ['nullable', 'array'],
+            'new_images.*'  => ['image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
+            'remove_image_ids' => ['nullable', 'string'],
             'is_featured' => ['boolean'],
             'status'      => ['boolean'],
         ], [
@@ -420,11 +426,12 @@ class ProductController extends Controller
             'description.required' => 'Mô tả sản phẩm không được để trống.',
             'thumbnail.image'      => 'File ảnh chính không hợp lệ.',
             'thumbnail.max'        => 'Ảnh chính không được vượt quá 2MB.',
-            'image_2.max'          => 'Ảnh phụ 2 không được vượt quá 2MB.',
-            'image_3.max'          => 'Ảnh phụ 3 không được vượt quá 2MB.',
+            'new_images.*.image'   => 'File ảnh phụ không hợp lệ.',
+            'new_images.*.max'     => 'Mỗi ảnh phụ không được vượt quá 2MB.',
         ]);
 
         $validator->after(function ($validator) use ($request, $id) {
+            $this->checkVariantStructure($request, $validator);
             $this->checkVariantSkuConflicts($request, $validator, $id);
         });
 
@@ -461,8 +468,15 @@ class ProductController extends Controller
         };
 
         $newThumbnail = $storeImage('thumbnail');
-        $newImage2    = $storeImage('image_2');
-        $newImage3    = $storeImage('image_3');
+
+        $newExtraImagePaths = [];
+        foreach ($request->file('new_images', []) as $file) {
+            $path = $file->store('products', 'public');
+            $uploadedPaths[] = $path;
+            $newExtraImagePaths[] = 'storage/' . $path;
+        }
+
+        $removeImageIds = array_map('intval', json_decode($request->input('remove_image_ids', '[]'), true) ?: []);
 
         // Sản phẩm tạo nhanh (Quick Create) từ nhập kho có thể vẫn thiếu ảnh chính.
         // Chỉ Admin (quyền publish-products) được phép công bố khi thông tin còn thiếu.
@@ -485,7 +499,12 @@ class ProductController extends Controller
         }
 
         try {
-            DB::transaction(function () use ($request, $product, $id, $slug, $newThumbnail, $newImage2, $newImage3) {
+            DB::transaction(function () use ($request, $product, $id, $slug, $newThumbnail, $newExtraImagePaths, $removeImageIds) {
+                // Xoá file ảnh chính cũ nếu được thay bằng ảnh mới, tránh tích tụ file rác trên disk
+                if ($newThumbnail !== null && $product->thumbnail) {
+                    Storage::disk('public')->delete(str_replace('storage/', '', $product->thumbnail));
+                }
+
                 $product->update([
                     'name'        => $request->input('name'),
                     'slug'        => $slug,
@@ -496,39 +515,23 @@ class ProductController extends Controller
                     'discount_start_at' => $request->input('discount_start_at'),
                     'discount_end_at'   => $request->input('discount_end_at'),
                     'gender'      => $request->input('gender'),
-                    'description' => $request->input('description'),
+                    'description' => Purifier::clean($request->input('description')),
                     'thumbnail'   => $newThumbnail ?? $product->thumbnail,
                     'is_featured' => $request->boolean('is_featured'),
                     'status'      => $request->boolean('status'),
                 ]);
 
-                // Cập nhật ảnh phụ: slot 1 → index 0, slot 2 → index 1
-                $extraImages = $product->productImages->values();
-                
-                // Xử lý xoá ảnh phụ nếu có tín hiệu xoá từ client
-                foreach ([0 => 'remove_image_2', 1 => 'remove_image_3'] as $idx => $removeField) {
-                    if ($request->input($removeField) == 1) {
-                        $existing = $extraImages->get($idx);
-                        if ($existing) {
-                            $filePath = str_replace('storage/', '', $existing->image);
-                            Storage::disk('public')->delete($filePath);
-                            $existing->delete();
-                        }
-                    }
+                // Xoá các ảnh phụ mà client đã đánh dấu xoá (không giới hạn số lượng)
+                if (!empty($removeImageIds)) {
+                    $product->productImages()->whereIn('id', $removeImageIds)->get()->each(function ($img) {
+                        Storage::disk('public')->delete(str_replace('storage/', '', $img->image));
+                        $img->delete();
+                    });
                 }
 
-                // Cập nhật hoặc thêm mới ảnh phụ
-                foreach ([0 => $newImage2, 1 => $newImage3] as $idx => $newPath) {
-                    if ($newPath === null) continue;
-                    $existing = $extraImages->get($idx);
-                    if ($existing) {
-                        // Xoá file cũ nếu thay thế bằng file mới
-                        $filePath = str_replace('storage/', '', $existing->image);
-                        Storage::disk('public')->delete($filePath);
-                        $existing->update(['image' => $newPath]);
-                    } else {
-                        $product->productImages()->create(['image' => $newPath]);
-                    }
+                // Thêm các ảnh phụ mới
+                foreach ($newExtraImagePaths as $newPath) {
+                    $product->productImages()->create(['image' => $newPath]);
                 }
 
                 // Sync biến thể: variants[color_id][size_id] = {sku, cost_price, price, stock}
@@ -557,13 +560,20 @@ class ProductController extends Controller
                 // Xử lý các biến thể bị bỏ chọn (không nằm trong danh sách keep)
                 $variantsToRemove = $product->productVariants()->whereNotIn('id', $keep)->get();
                 foreach ($variantsToRemove as $v) {
-                    // Kiểm tra xem biến thể có nằm trong đơn hàng nào không
-                    $hasOrders = DB::table('order_items')->where('product_variant_id', $v->id)->exists();
-                    if ($hasOrders) {
-                        // Nếu có đơn hàng, chuyển trạng thái thành Inactive để bảo toàn lịch sử hóa đơn tài chính
+                    // Chỉ xóa cứng khi biến thể chưa từng có dấu vết nào trong đơn hàng lẫn kho
+                    // (nhập kho, di chuyển kho, kiểm kho). Các bảng này cascadeOnDelete theo
+                    // product_variant_id, xóa cứng sẽ kéo theo mất chứng từ kế toán kho.
+                    $hasHistory = DB::table('order_items')->where('product_variant_id', $v->id)->exists()
+                        || DB::table('product_batches')->where('product_variant_id', $v->id)->exists()
+                        || DB::table('stock_movements')->where('product_variant_id', $v->id)->exists()
+                        || DB::table('goods_receipt_items')->where('product_variant_id', $v->id)->exists()
+                        || DB::table('stocktake_items')->where('product_variant_id', $v->id)->exists();
+
+                    if ($hasHistory) {
+                        // Có lịch sử đơn hàng hoặc kho, chuyển trạng thái thành Inactive để bảo toàn dữ liệu
                         $v->update(['status' => 'Inactive']);
                     } else {
-                        // Nếu chưa có đơn hàng nào, tiến hành xóa hoàn toàn khỏi DB
+                        // Chưa từng động chạm gì tới kho lẫn đơn hàng, an toàn để xóa hoàn toàn khỏi DB
                         $v->delete();
                     }
                 }
@@ -582,6 +592,47 @@ class ProductController extends Controller
         }
 
         return redirect()->route('admin.products.list')->with('success', $message);
+    }
+
+    /**
+     * Kiểm tra cấu trúc mảng variants[color_id][size_id] gửi lên: phải có ít nhất
+     * một biến thể, và color_id/size_id phải tồn tại trong DB — tránh để lộ lỗi
+     * SQL 500 Integrity Constraint Violation khi client gửi ID giả mạo.
+     */
+    private function checkVariantStructure(Request $request, $validator): void
+    {
+        $variants = $request->input('variants', []);
+
+        if (empty($variants) || !is_array($variants)) {
+            $validator->errors()->add('variants', 'Vui lòng thêm ít nhất một biến thể (màu sắc + kích thước).');
+            return;
+        }
+
+        $colorIds = Color::pluck('id')->all();
+        $sizeIds  = Size::pluck('id')->all();
+        $hasAnySize = false;
+
+        foreach ($variants as $colorId => $sizes) {
+            if (!in_array((int) $colorId, $colorIds, true)) {
+                $validator->errors()->add('variants', "Màu sắc không hợp lệ (ID: {$colorId}).");
+                continue;
+            }
+
+            if (!is_array($sizes) || empty($sizes)) {
+                continue;
+            }
+
+            foreach ($sizes as $sizeId => $data) {
+                $hasAnySize = true;
+                if (!in_array((int) $sizeId, $sizeIds, true)) {
+                    $validator->errors()->add('variants', "Kích thước không hợp lệ (ID: {$sizeId}).");
+                }
+            }
+        }
+
+        if (!$hasAnySize) {
+            $validator->errors()->add('variants', 'Vui lòng thêm ít nhất một biến thể (màu sắc + kích thước).');
+        }
     }
 
     /**

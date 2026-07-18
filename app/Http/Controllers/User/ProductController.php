@@ -162,7 +162,7 @@ class ProductController extends Controller
             'size_id'    => 'nullable|integer|exists:sizes,id',
         ]);
 
-        $product = Product::findOrFail($request->product_id);
+        $product = Product::where('status', true)->findOrFail($request->product_id);
 
         // Lọc biến thể theo những gì đã chọn (có thể chỉ màu, chỉ size, hoặc cả hai)
         $query = ProductVariant::where('product_id', $product->id)

@@ -507,6 +507,9 @@
         if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
             return $path;
         }
+        if (str_starts_with($path, 'storage/')) {
+            return asset($path);
+        }
         return asset('storage/' . $path);
     }
 @endphp

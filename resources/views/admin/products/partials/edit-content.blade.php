@@ -16,6 +16,51 @@
         right: auto;
         width: 100%;
     }
+
+    /* Ảnh phụ: danh sách động không giới hạn số lượng (thay cho 2 slot cố định cũ) */
+    .extra-images-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 8px;
+    }
+    .extra-image-item, .extra-image-add {
+        width: 90px;
+        height: 90px;
+        border-radius: 10px;
+        overflow: hidden;
+        position: relative;
+    }
+    .extra-image-item {
+        border: 1px solid #e5e7eb;
+    }
+    .extra-image-item img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    .extra-image-item .extra-image-remove {
+        position: absolute; top: 4px; right: 4px;
+        width: 20px; height: 20px; border-radius: 50%;
+        background: rgba(0,0,0,0.55); color: #fff;
+        border: 0; font-size: 10px;
+        display: flex; align-items: center; justify-content: center;
+        cursor: pointer;
+    }
+    .extra-image-add {
+        border: 2px dashed #d1d5db;
+        background: #fafafa;
+        color: #9ca3af;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: border-color 0.15s, background 0.15s;
+    }
+    .extra-image-add:hover {
+        border-color: #000;
+        background: #f0f9ff;
+    }
 </style>
 
 <form method="POST" action="{{ route('admin.products.update', $product->id) }}"
@@ -263,13 +308,13 @@
                     </div>
                     <div class="card-body p-4">
 
-                        <div class="img-slots mb-3">
-                            {{-- Slot 0: Ảnh chính --}}
-                            @php
-                                $thumbSrc = $product->thumbnail
-                                    ? (\Illuminate\Support\Str::startsWith($product->thumbnail, 'http') ? $product->thumbnail : asset($product->thumbnail))
-                                    : null;
-                            @endphp
+                        {{-- Ảnh chính --}}
+                        @php
+                            $thumbSrc = $product->thumbnail
+                                ? (\Illuminate\Support\Str::startsWith($product->thumbnail, 'http') ? $product->thumbnail : asset($product->thumbnail))
+                                : null;
+                        @endphp
+                        <div class="mb-3" style="width: 120px;">
                             <div class="img-slot {{ $thumbSrc ? 'has-image' : '' }}" id="slot0" data-slot="0">
                                 <span class="slot-badge">Chính</span>
                                 <div class="slot-placeholder">
@@ -281,49 +326,23 @@
                                     <i class="fa-solid fa-xmark"></i>
                                 </button>
                             </div>
-
-                            {{-- Slot 1: Ảnh phụ 1 --}}
-                            @php
-                                $img2 = $extraImages->get(0);
-                                $img2Src = $img2 ? (\Illuminate\Support\Str::startsWith($img2->image, 'http') ? $img2->image : asset($img2->image)) : null;
-                            @endphp
-                            <div class="img-slot {{ $img2Src ? 'has-image' : '' }}" id="slot1" data-slot="1">
-                                <span class="slot-badge" style="background:#6b7280;">2</span>
-                                <div class="slot-placeholder">
-                                    <i class="fa-regular fa-image"></i>
-                                    <p>Ảnh phụ</p>
-                                </div>
-                                <img src="{{ $img2Src ?? '' }}" alt="" class="slot-preview {{ $img2Src ? '' : 'd-none' }}">
-                                <button type="button" class="slot-remove" data-slot="1" title="Xóa ảnh">
-                                    <i class="fa-solid fa-xmark"></i>
-                                </button>
-                            </div>
-
-                            {{-- Slot 2: Ảnh phụ 2 --}}
-                            @php
-                                $img3 = $extraImages->get(1);
-                                $img3Src = $img3 ? (\Illuminate\Support\Str::startsWith($img3->image, 'http') ? $img3->image : asset($img3->image)) : null;
-                            @endphp
-                            <div class="img-slot {{ $img3Src ? 'has-image' : '' }}" id="slot2" data-slot="2">
-                                <span class="slot-badge" style="background:#6b7280;">3</span>
-                                <div class="slot-placeholder">
-                                    <i class="fa-regular fa-image"></i>
-                                    <p>Ảnh phụ</p>
-                                </div>
-                                <img src="{{ $img3Src ?? '' }}" alt="" class="slot-preview {{ $img3Src ? '' : 'd-none' }}">
-                                <button type="button" class="slot-remove" data-slot="2" title="Xóa ảnh">
-                                    <i class="fa-solid fa-xmark"></i>
-                                </button>
-                            </div>
                         </div>
 
                         <input type="file" id="fileInput0" name="thumbnail" accept="image/*" class="d-none @error('thumbnail') is-invalid @enderror">
-                        <input type="file" id="fileInput1" name="image_2"   accept="image/*" class="d-none">
-                        <input type="file" id="fileInput2" name="image_3"   accept="image/*" class="d-none">
-                        <input type="hidden" name="remove_image_2" id="removeImage2" value="0">
-                        <input type="hidden" name="remove_image_3" id="removeImage3" value="0">
                         @error('thumbnail') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
-                        <div class="form-text">JPEG, PNG, WebP · Tối đa 2MB · Để trống để giữ ảnh cũ</div>
+                        <div class="form-text mb-3">JPEG, PNG, WebP · Tối đa 2MB · Để trống để giữ ảnh chính cũ</div>
+
+                        <label class="form-label small text-muted mb-2 d-block">Ảnh phụ (không giới hạn số lượng)</label>
+                        <div class="extra-images-grid" id="extraImagesGrid">
+                            <div class="extra-image-add" id="extraImagesAddBtn" title="Thêm ảnh phụ">
+                                <i class="fa-solid fa-plus"></i>
+                            </div>
+                        </div>
+                        <input type="file" id="extraImagesInput" name="new_images[]" accept="image/*" multiple class="d-none">
+                        <input type="hidden" name="remove_image_ids" id="removeImageIdsInput" value="[]">
+                        @error('new_images') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                        @error('new_images.*') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                        <div class="form-text">JPEG, PNG, WebP · Tối đa 2MB mỗi ảnh</div>
 
                     </div>
                 </div>
@@ -406,82 +425,144 @@
     })();
 
     /* ═══════════════════════════════════════════
-       1. IMAGE SLOTS
+       1. ẢNH CHÍNH (thumbnail) — 1 slot cố định
     ═══════════════════════════════════════════ */
-    const slots = form.querySelectorAll('.img-slot');
+    const thumbSlot = form.querySelector('#slot0');
 
-    slots.forEach(function (slot) {
-        const idx       = slot.dataset.slot;
-        const input     = form.querySelector('#fileInput' + idx);
-        const preview   = slot.querySelector('.slot-preview');
-        const removeBtn = slot.querySelector('.slot-remove');
+    if (thumbSlot) {
+        const input     = form.querySelector('#fileInput0');
+        const preview   = thumbSlot.querySelector('.slot-preview');
+        const removeBtn = thumbSlot.querySelector('.slot-remove');
 
-        function setPreview(file) {
+        function setThumbPreview(file) {
             if (!file || !file.type.startsWith('image/')) return;
             const reader = new FileReader();
             reader.onload = function (e) {
                 preview.src = e.target.result;
                 preview.classList.remove('d-none');
-                slot.classList.add('has-image');
-                if (idx === '1') {
-                    const removeInput = form.querySelector('#removeImage2');
-                    if (removeInput) removeInput.value = '0';
-                } else if (idx === '2') {
-                    const removeInput = form.querySelector('#removeImage3');
-                    if (removeInput) removeInput.value = '0';
-                }
+                thumbSlot.classList.add('has-image');
             };
             reader.readAsDataURL(file);
         }
 
-        slot.addEventListener('click', function (e) {
+        thumbSlot.addEventListener('click', function (e) {
             if (e.target.closest('.slot-remove')) return;
             input.click();
         });
 
         input.addEventListener('change', function () {
-            if (this.files[0]) setPreview(this.files[0]);
+            if (this.files[0]) setThumbPreview(this.files[0]);
         });
 
-        slot.addEventListener('dragover', function (e) {
+        thumbSlot.addEventListener('dragover', function (e) {
             e.preventDefault();
-            slot.classList.add('drag-over');
+            thumbSlot.classList.add('drag-over');
         });
 
-        slot.addEventListener('dragleave', function () {
-            slot.classList.remove('drag-over');
+        thumbSlot.addEventListener('dragleave', function () {
+            thumbSlot.classList.remove('drag-over');
         });
 
-        slot.addEventListener('drop', function (e) {
+        thumbSlot.addEventListener('drop', function (e) {
             e.preventDefault();
-            slot.classList.remove('drag-over');
+            thumbSlot.classList.remove('drag-over');
             const file = e.dataTransfer.files[0];
             if (file) {
                 const dt = new DataTransfer();
                 dt.items.add(file);
                 input.files = dt.files;
-                setPreview(file);
+                setThumbPreview(file);
             }
         });
 
         removeBtn.addEventListener('click', function (e) {
             e.stopPropagation();
+            // Chỉ hủy ảnh mới vừa chọn (chưa gửi lên) — không thể bỏ trống ảnh chính đã lưu.
             preview.src = '';
             preview.classList.add('d-none');
-            slot.classList.remove('has-image');
+            thumbSlot.classList.remove('has-image');
             input.value = '';
-            if (idx === '1') {
-                const removeInput = form.querySelector('#removeImage2');
-                if (removeInput) removeInput.value = '1';
-            } else if (idx === '2') {
-                const removeInput = form.querySelector('#removeImage3');
-                if (removeInput) removeInput.value = '1';
-            }
         });
-    });
+    }
 
     /* ═══════════════════════════════════════════
-       2. HK-CAT DROPDOWNS
+       2. ẢNH PHỤ — danh sách động, không giới hạn số lượng
+    ═══════════════════════════════════════════ */
+    (function () {
+        const grid           = form.querySelector('#extraImagesGrid');
+        const addBtn          = form.querySelector('#extraImagesAddBtn');
+        const fileInput       = form.querySelector('#extraImagesInput');
+        const removeIdsInput  = form.querySelector('#removeImageIdsInput');
+        if (!grid || !addBtn || !fileInput || !removeIdsInput) return;
+
+        let existingImages = @json($extraImages->map(fn ($img) => [
+            'id'  => $img->id,
+            'url' => \Illuminate\Support\Str::startsWith($img->image, 'http') ? $img->image : asset($img->image),
+        ]));
+        let newFiles   = []; // { file, previewUrl }
+        let removedIds = [];
+
+        function syncFileInput() {
+            const dt = new DataTransfer();
+            newFiles.forEach(item => dt.items.add(item.file));
+            fileInput.files = dt.files;
+        }
+
+        function renderGrid() {
+            grid.querySelectorAll('.extra-image-item').forEach(el => el.remove());
+
+            existingImages.forEach(function (img) {
+                const cell = document.createElement('div');
+                cell.className = 'extra-image-item';
+                cell.innerHTML = '<img src="' + img.url + '" alt="">' +
+                    '<button type="button" class="extra-image-remove" data-type="existing" data-id="' + img.id + '" title="Xóa ảnh">' +
+                    '<i class="fa-solid fa-xmark"></i></button>';
+                grid.insertBefore(cell, addBtn);
+            });
+
+            newFiles.forEach(function (item, index) {
+                const cell = document.createElement('div');
+                cell.className = 'extra-image-item';
+                cell.innerHTML = '<img src="' + item.previewUrl + '" alt="">' +
+                    '<button type="button" class="extra-image-remove" data-type="new" data-index="' + index + '" title="Xóa ảnh">' +
+                    '<i class="fa-solid fa-xmark"></i></button>';
+                grid.insertBefore(cell, addBtn);
+            });
+        }
+
+        addBtn.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', function () {
+            Array.from(this.files).forEach(function (file) {
+                if (!file.type.startsWith('image/')) return;
+                newFiles.push({ file: file, previewUrl: URL.createObjectURL(file) });
+            });
+            syncFileInput();
+            renderGrid();
+        });
+
+        grid.addEventListener('click', function (e) {
+            const btn = e.target.closest('.extra-image-remove');
+            if (!btn) return;
+
+            if (btn.dataset.type === 'existing') {
+                const id = parseInt(btn.dataset.id, 10);
+                existingImages = existingImages.filter(img => img.id !== id);
+                removedIds.push(id);
+                removeIdsInput.value = JSON.stringify(removedIds);
+            } else {
+                const idx = parseInt(btn.dataset.index, 10);
+                newFiles.splice(idx, 1);
+                syncFileInput();
+            }
+            renderGrid();
+        });
+
+        renderGrid();
+    })();
+
+    /* ═══════════════════════════════════════════
+       3. HK-CAT DROPDOWNS
     ═══════════════════════════════════════════ */
     function setupHkCat(opts) {
         const trigger = form.querySelector('#' + opts.triggerId);

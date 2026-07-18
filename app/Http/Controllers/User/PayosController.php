@@ -217,13 +217,23 @@ class PayosController extends Controller
         // Kho KHÔNG bị trừ lại ở đây: hàng đã được giữ theo FIFO từ lúc checkout
         // (CheckoutController::store). Job hủy 30' khi tới hạn sẽ thấy đơn không còn
         // pending/unpaid nên tự bỏ qua.
+        // Khóa + kiểm tra lại trong transaction để 2 webhook đến gần đồng thời (PayOS retry)
+        // không tạo 2 phiếu xuất kho.
         DB::transaction(function () use ($order) {
-            $order->update([
+            $fresh = Order::whereKey($order->id)->lockForUpdate()->first();
+            if (! $fresh
+                || $fresh->status === OrderStatus::CANCELLED->value
+                || $fresh->payment_status === PaymentStatus::PAID->value
+            ) {
+                return;
+            }
+
+            $fresh->update([
                 'payment_status' => PaymentStatus::PAID->value,
                 'status'         => OrderStatus::PROCESSING->value,
             ]);
 
-            app(OrderFulfillmentService::class)->generateSaleStockIssue($order);
+            app(OrderFulfillmentService::class)->generateSaleStockIssue($fresh);
         });
 
         // Thanh toán xong mới xóa sản phẩm khỏi giỏ (đơn online trước đó vẫn giữ giỏ để user
