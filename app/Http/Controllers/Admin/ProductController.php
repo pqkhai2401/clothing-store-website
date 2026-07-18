@@ -155,7 +155,7 @@ class ProductController extends Controller
         ]);
 
         $baseSlug = Str::slug($request->input('name'));
-        $slug = Product::where('slug', $baseSlug)->exists() ? $baseSlug . '-' . time() : $baseSlug;
+        $slug = Product::withTrashed()->where('slug', $baseSlug)->exists() ? $baseSlug . '-' . time() : $baseSlug;
 
         $sku = trim((string) $request->input('sku'));
 
@@ -297,7 +297,7 @@ class ProductController extends Controller
             ? Str::slug($request->input('slug'))
             : Str::slug($request->input('name'));
 
-        if (Product::where('slug', $slug)->exists()) {
+        if (Product::withTrashed()->where('slug', $slug)->exists()) {
             $slug = $slug . '-' . time();
         }
 
@@ -471,7 +471,7 @@ class ProductController extends Controller
             ? Str::slug($request->input('slug'))
             : Str::slug($request->input('name'));
 
-        if (Product::where('slug', $slug)->where('id', '!=', $id)->exists()) {
+        if (Product::withTrashed()->where('slug', $slug)->where('id', '!=', $id)->exists()) {
             $slug = $slug . '-' . $id;
         }
 

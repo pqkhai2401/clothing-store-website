@@ -44,51 +44,25 @@ class DashboardController extends Controller
         'year'  => 'Năm',
     ];
 
-    public const CHART_TYPE_LABELS = [
-        'line' => 'Biểu đồ đường',
-        'bar'  => 'Biểu đồ cột',
-        'area' => 'Biểu đồ vùng',
-    ];
-
-    public const COMPARE_LABELS = [
-        'previous'  => 'Kỳ liền trước',
-        'last_year' => 'Cùng kỳ năm trước',
-        'custom'    => 'Khoảng tự chọn',
-        'none'      => 'Không so sánh',
-    ];
-
     public function index(Request $request)
     {
-        $metric    = array_key_exists($request->input('metric'), self::METRIC_LABELS) ? $request->input('metric') : 'revenue';
-        $range     = array_key_exists($request->input('range'), self::RANGE_LABELS) ? $request->input('range') : '30d';
-        $groupBy   = array_key_exists($request->input('group_by'), self::GROUP_BY_LABELS) ? $request->input('group_by') : 'day';
-        $chartType = array_key_exists($request->input('chart_type'), self::CHART_TYPE_LABELS) ? $request->input('chart_type') : 'line';
-        $compare   = array_key_exists($request->input('compare'), self::COMPARE_LABELS) ? $request->input('compare') : 'previous';
-        $dateFrom  = (string) $request->input('date_from', '');
-        $dateTo    = (string) $request->input('date_to', '');
-        $compareFrom = (string) $request->input('compare_from', '');
-        $compareTo   = (string) $request->input('compare_to', '');
+        // Dashboard chỉ xem nhanh: chỉ lọc theo Thời gian (kỳ). Các thao tác phân tích
+        // (đổi chỉ số, độ chi tiết, kiểu biểu đồ, so sánh) dành cho trang Thống kê doanh thu.
+        $range    = array_key_exists($request->input('range'), self::RANGE_LABELS) ? $request->input('range') : '30d';
+        $dateFrom = (string) $request->input('date_from', '');
+        $dateTo   = (string) $request->input('date_to', '');
 
-        // Dashboard chỉ để xem nhanh — không có bộ lọc nâng cao (trạng thái/thanh toán/phương thức).
-        // Lọc chi tiết dành cho trang Thống kê doanh thu. $filters rỗng ⇒ các query bỏ qua điều kiện này.
-        $filters = [];
+        $filters = []; // không lọc nâng cao ⇒ các query bỏ qua điều kiện trạng thái/thanh toán/phương thức
 
-        [$from, $to]         = $this->resolveRange($range, $dateFrom, $dateTo);
-        [$prevFrom, $prevTo] = $this->resolveCompareRange($compare, $from, $to, $compareFrom, $compareTo);
-        $hasCompare = $prevFrom !== null && $prevTo !== null;
+        [$from, $to] = $this->resolveRange($range, $dateFrom, $dateTo);
+        $groupBy = $this->autoGroupBy($from, $to); // độ chi tiết trục thời gian tự suy theo độ dài kỳ
 
         // KPI theo kỳ đang chọn
         $periodRevenue      = $this->metricValue('revenue', $from, $to, $filters);
         $periodOrders       = $this->metricValue('orders', $from, $to, $filters);
-        $periodPending      = $this->orderFilterQuery($from, $to, $filters)->where('status', 'pending')->count();
         $newCustomersPeriod = (int) $this->metricValue('new_customers', $from, $to, $filters);
 
-        // Số liệu kỳ so sánh (chỉ tính khi có so sánh)
-        $prevPeriodRevenue = $hasCompare ? $this->metricValue('revenue', $prevFrom, $prevTo, $filters) : null;
-        $prevPeriodOrders  = $hasCompare ? $this->metricValue('orders', $prevFrom, $prevTo, $filters) : null;
-        $prevPeriodPending = $hasCompare ? $this->orderFilterQuery($prevFrom, $prevTo, $filters)->where('status', 'pending')->count() : null;
-
-        // Số liệu tức thời (không phụ thuộc kỳ/bộ lọc) — snapshot hiện tại của hệ thống
+        // Số liệu tức thời (không phụ thuộc kỳ) — snapshot hiện tại của hệ thống
         $pending   = Order::where('status', 'pending')->count();
         $shipping  = Order::where('status', 'shipping')->count();
         $completed = Order::where('status', 'completed')->count();
@@ -105,11 +79,8 @@ class DashboardController extends Controller
 
         $stats = [
             'revenue'         => $periodRevenue,
-            'revenueDelta'    => $hasCompare ? $this->percentChange($periodRevenue, $prevPeriodRevenue) : null,
             'orders'          => $periodOrders,
-            'ordersDelta'     => $hasCompare ? $this->percentChange($periodOrders, $prevPeriodOrders) : null,
             'pending'         => $pending,
-            'pendingDelta'    => $hasCompare ? $this->percentChange($periodPending, $prevPeriodPending) : null,
             'sellingProducts' => $sellingProducts,
             'totalProducts'   => $totalProducts,
             'totalCustomers'  => $totalCustomers,
@@ -121,7 +92,8 @@ class DashboardController extends Controller
             'lowStock'        => $lowStock,
         ];
 
-        $revenueChart = $this->buildMetricChart($metric, $from, $to, $prevFrom, $prevTo, $groupBy, $filters);
+        // Biểu đồ cố định là Doanh thu, không so sánh (prev = null).
+        $revenueChart = $this->buildMetricChart('revenue', $from, $to, null, null, $groupBy, $filters);
 
         // Tỷ lệ trạng thái đơn THEO KỲ đang chọn (đơn đặt trong [from, to]) — nhất quán với biểu đồ.
         // Không áp bộ lọc "Trạng thái đơn" (nếu áp sẽ chỉ còn 1 lát 100%), chỉ honor thanh toán/phương thức.
@@ -156,22 +128,11 @@ class DashboardController extends Controller
             'lowStockProducts' => $this->buildLowStockProducts(),
             'latestReviews'    => $this->buildLatestReviews(),
 
-            'metric'    => $metric,
-            'range'     => $range,
-            'groupBy'   => $groupBy,
-            'chartType' => $chartType,
-            'compare'     => $compare,
-            'dateFrom'    => $dateFrom,
-            'dateTo'      => $dateTo,
-            'compareFrom' => $compareFrom,
-            'compareTo'   => $compareTo,
+            'range'    => $range,
+            'dateFrom' => $dateFrom,
+            'dateTo'   => $dateTo,
 
-            'metricLabels'    => self::METRIC_LABELS,
-            'rangeLabels'     => self::RANGE_LABELS,
-            'groupByLabels'   => self::GROUP_BY_LABELS,
-            'chartTypeLabels' => self::CHART_TYPE_LABELS,
-            'compareLabels'   => self::COMPARE_LABELS,
-            'compareLabel'    => self::COMPARE_LABELS[$compare],
+            'rangeLabels' => self::RANGE_LABELS,
 
             'periodLabel' => $from->format('d/m/Y') . ' – ' . $to->format('d/m/Y'),
         ]);
@@ -209,49 +170,18 @@ class DashboardController extends Controller
     }
 
     /**
-     * Suy ra khoảng [prevFrom, prevTo] để so sánh, tùy lựa chọn của người dùng:
-     *  - 'none'      : không so sánh → trả [null, null].
-     *  - 'last_year' : cùng khoảng ngày đó nhưng của năm trước.
-     *  - 'custom'    : khoảng ngày do người dùng tự chọn (compare_from/compare_to).
-     *  - 'previous'  : (mặc định) kỳ liền trước, dài đúng bằng kỳ hiện tại.
+     * Tự chọn độ chi tiết trục thời gian cho biểu đồ theo độ dài kỳ, để dashboard xem nhanh
+     * không cần người dùng chỉnh: tới ~3 tháng → theo ngày, tới ~2 năm → theo tháng, dài hơn → theo năm.
      */
-    private function resolveCompareRange(string $compare, Carbon $from, Carbon $to, string $compareFrom = '', string $compareTo = ''): array
+    private function autoGroupBy(Carbon $from, Carbon $to): string
     {
-        if ($compare === 'none') {
-            return [null, null];
-        }
+        $days = $from->diffInDays($to);
 
-        if ($compare === 'last_year') {
-            return [$from->copy()->subYear(), $to->copy()->subYear()];
-        }
-
-        if ($compare === 'custom' && $compareFrom !== '' && $compareTo !== '') {
-            try {
-                $cf = Carbon::parse($compareFrom)->startOfDay();
-                $ct = Carbon::parse($compareTo)->endOfDay();
-
-                return $cf->lte($ct) ? [$cf, $ct] : [$ct, $cf];
-            } catch (\Throwable) {
-                // Ngày không hợp lệ → rơi xuống mặc định "kỳ liền trước".
-            }
-        }
-
-        $prevTo   = $from->copy()->subSecond();
-        $prevFrom = $prevTo->copy()->subSeconds($from->diffInSeconds($to));
-
-        return [$prevFrom, $prevTo];
-    }
-
-    /**
-     * % thay đổi so với kỳ trước. Tránh chia cho 0 khi kỳ trước không có dữ liệu.
-     */
-    private function percentChange(float $current, float $previous): float
-    {
-        if ($previous == 0.0) {
-            return $current > 0 ? 100.0 : 0.0;
-        }
-
-        return round((($current - $previous) / $previous) * 100, 1);
+        return match (true) {
+            $days <= 92  => 'day',
+            $days <= 731 => 'month',
+            default      => 'year',
+        };
     }
 
     /**

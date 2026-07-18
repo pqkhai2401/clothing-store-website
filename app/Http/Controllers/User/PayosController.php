@@ -186,7 +186,9 @@ class PayosController extends Controller
         if ($payosOrderCode) {
             $order = Order::where('payos_order_code', $payosOrderCode)->first();
 
-            $isSuccess = ($payload['success'] ?? false) === true || ($data['code'] ?? null) === '00';
+            // Chỉ tin trường nằm trong phạm vi HMAC (`data.code`) — `payload.success` không
+            // được ký nên có thể bị sửa mà không làm sai chữ ký, không được dùng để quyết định.
+            $isSuccess = ($data['code'] ?? null) === '00';
 
             if ($order && $isSuccess && $order->payment_status !== PaymentStatus::PAID->value) {
                 $this->markPaid($order);

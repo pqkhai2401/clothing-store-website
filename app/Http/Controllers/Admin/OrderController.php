@@ -1107,15 +1107,34 @@ class OrderController extends Controller
     }
 
     /**
-     * Chỉ cho xóa đơn hàng còn ở trạng thái "Chờ xác nhận" (chưa từng trừ kho/xuất kho).
-     * Đơn đã được xử lý (processing trở đi) phải hủy (cancelled) để hoàn kho đúng quy trình,
-     * không xóa thẳng vì sẽ làm lệch sổ kho/báo cáo doanh thu.
+     * Chỉ cho xóa đơn hàng còn ở trạng thái "Chờ xác nhận". Đơn "pending" vẫn ĐANG GIỮ KHO
+     * (hold FIFO từ lúc checkout, xem OrderCancellationService) và có thể đã ghi nhận lượt dùng
+     * voucher, nên phải nhả kho + nhả voucher giống hệt luồng hủy đơn trước khi xóa mềm, nếu
+     * không hàng sẽ bị giữ vĩnh viễn và voucher mất lượt oan (đơn đã xử lý processing trở đi
+     * vẫn phải hủy (cancelled) trước, không xóa thẳng, vì sẽ làm lệch sổ kho/báo cáo doanh thu).
      */
     public function destroy(Request $request, string $id)
     {
-        $order = Order::findOrFail($id);
+        $orderLabel = null;
 
-        if ($order->status !== 'pending') {
+        $deleted = DB::transaction(function () use ($id, &$orderLabel) {
+            $order = Order::whereKey($id)->lockForUpdate()->firstOrFail();
+
+            if ($order->status !== 'pending') {
+                return false;
+            }
+
+            $orderLabel = $order->order_code ?? '#' . $order->id;
+
+            app(\App\Services\OrderCancellationService::class)->releaseHold($order);
+            \App\Services\VoucherService::releaseUsage($order->id);
+
+            $order->delete();
+
+            return true;
+        });
+
+        if (! $deleted) {
             $message = 'Chỉ có thể xóa đơn hàng đang ở trạng thái "Chờ xác nhận". '
                 . 'Vui lòng hủy đơn hàng nếu đơn đã được xử lý.';
 
@@ -1125,9 +1144,6 @@ class OrderController extends Controller
 
             return back()->withErrors(['status' => $message]);
         }
-
-        $orderLabel = $order->order_code ?? '#' . $order->id;
-        $order->delete();
 
         $message = "Đã xóa đơn hàng \"{$orderLabel}\" thành công.";
 

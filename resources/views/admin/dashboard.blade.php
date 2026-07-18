@@ -4,7 +4,6 @@
 
 @php
     $statusTotal = collect($statusRatio)->sum('value');
-    $compareShort = mb_strtolower($compareLabel);
 @endphp
 
 @push('styles')
@@ -32,14 +31,11 @@
     .dash-filter { padding:22px; margin-bottom:20px; }
     .dash-filter-head { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; margin-bottom:18px; flex-wrap:wrap; }
     .dash-sec-title { font-size:18px; font-weight:700; color:var(--hk-text-1); margin:0; }
-    .dash-fgrid { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:14px; }
     .dash-field { display:flex; flex-direction:column; gap:6px; }
     .dash-field label { font-size:11px; font-weight:700; color:var(--hk-text-2); text-transform:uppercase; letter-spacing:.06em; }
     .dash-field .form-select, .dash-field .form-control { height:40px; border-radius:10px; font-size:13px; }
-    .dash-field-actions { display:flex; align-items:flex-end; gap:8px; }
-    .dash-field-actions .dash-btn { flex:1; justify-content:center; }
-    .dash-custom-date { display:none; gap:14px; align-items:flex-end; margin-top:16px; padding-top:16px; border-top:1px solid var(--hk-border); flex-wrap:wrap; }
-    .dash-custom-date.show { display:flex; }
+    .dash-inline-dates { display:none; gap:12px; align-items:flex-end; }
+    .dash-inline-dates.show { display:flex; }
 
     /* ── Primary KPI (6 thẻ, 3/hàng) ── */
     .dash-kpi { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:14px; }
@@ -205,50 +201,19 @@
             </div>
             <a href="#" class="dash-btn dash-btn-ghost"><i class="fa-solid fa-download"></i> Xuất báo cáo</a>
         </div>
-        <div class="dash-fgrid">
-            <div class="dash-field"><label>Chỉ số</label>
-                <select class="form-select" name="metric">
-                    @foreach($metricLabels as $value => $label)
-                        <option value="{{ $value }}" @selected($metric === $value)>{{ $label }}</option>
-                    @endforeach
-                </select></div>
-            <div class="dash-field"><label>Thời gian</label>
+        <div class="dash-filter-actions" style="align-items:flex-end; flex-wrap:wrap; gap:12px;">
+            <div class="dash-field" style="min-width:200px; max-width:240px;">
+                <label>Thời gian</label>
                 <select class="form-select" id="dashTimeSel" name="range">
                     @foreach($rangeLabels as $value => $label)
                         <option value="{{ $value }}" @selected($range === $value)>{{ $label }}</option>
                     @endforeach
-                </select></div>
-            <div class="dash-field"><label>Hiển thị theo</label>
-                <select class="form-select" name="group_by">
-                    @foreach($groupByLabels as $value => $label)
-                        <option value="{{ $value }}" @selected($groupBy === $value)>{{ $label }}</option>
-                    @endforeach
-                </select></div>
-            <div class="dash-field"><label>Loại biểu đồ</label>
-                <select class="form-select" name="chart_type">
-                    @foreach($chartTypeLabels as $value => $label)
-                        <option value="{{ $value }}" @selected($chartType === $value)>{{ $label }}</option>
-                    @endforeach
-                </select></div>
-            <div class="dash-field"><label>So sánh</label>
-                <select class="form-select" name="compare">
-                    @foreach($compareLabels as $value => $label)
-                        <option value="{{ $value }}" @selected($compare === $value)>{{ $label }}</option>
-                    @endforeach
-                </select></div>
-        </div>
-
-        <div class="dash-custom-date @if($range === 'custom') show @endif" id="dashCustomDate">
-            <div class="dash-field"><label>Từ ngày</label><input type="date" name="date_from" class="form-control" value="{{ $dateFrom }}"></div>
-            <div class="dash-field"><label>Đến ngày</label><input type="date" name="date_to" class="form-control" value="{{ $dateTo }}"></div>
-        </div>
-
-        <div class="dash-custom-date @if($compare === 'custom') show @endif" id="dashCompareDate">
-            <div class="dash-field"><label>So sánh từ ngày</label><input type="date" name="compare_from" class="form-control" value="{{ $compareFrom }}"></div>
-            <div class="dash-field"><label>Đến ngày</label><input type="date" name="compare_to" class="form-control" value="{{ $compareTo }}"></div>
-        </div>
-
-        <div class="dash-filter-actions">
+                </select>
+            </div>
+            <div class="dash-inline-dates @if($range === 'custom') show @endif" id="dashCustomDate">
+                <div class="dash-field" style="min-width:150px; max-width:180px;"><label>Từ ngày</label><input type="date" name="date_from" class="form-control" value="{{ $dateFrom }}"></div>
+                <div class="dash-field" style="min-width:150px; max-width:180px;"><label>Đến ngày</label><input type="date" name="date_to" class="form-control" value="{{ $dateTo }}"></div>
+            </div>
             <button type="submit" class="dash-btn dash-btn-primary"><i class="fa-solid fa-rotate"></i> Áp dụng</button>
             <a href="{{ route('admin.dashboard') }}" class="dash-btn">Đặt lại</a>
         </div>
@@ -264,9 +229,6 @@
                     <p class="dash-kpi-label">Doanh thu thực thu</p>
                     <p class="dash-kpi-value">{{ number_format($stats['revenue'], 0, ',', '.') }} ₫</p>
                 </div>
-                @if(!is_null($stats['revenueDelta']))
-                    <div class="dash-delta"><span class="dash-pct {{ $stats['revenueDelta'] >= 0 ? 'up' : 'down' }}">{{ $stats['revenueDelta'] >= 0 ? '+' : '' }}{{ $stats['revenueDelta'] }}%</span><small>vs {{ $compareShort }}</small></div>
-                @endif
             </div>
             <p class="dash-kpi-sub">Chỉ tính đơn đã hoàn thành, không gồm đơn đã hủy.</p>
         </a>
@@ -277,9 +239,6 @@
                     <p class="dash-kpi-label">Tổng đơn hàng</p>
                     <p class="dash-kpi-value">{{ number_format($stats['orders'], 0, ',', '.') }}</p>
                 </div>
-                @if(!is_null($stats['ordersDelta']))
-                    <div class="dash-delta"><span class="dash-pct {{ $stats['ordersDelta'] >= 0 ? 'info' : 'down' }}">{{ $stats['ordersDelta'] >= 0 ? '+' : '' }}{{ $stats['ordersDelta'] }}%</span><small>vs {{ $compareShort }}</small></div>
-                @endif
             </div>
             <p class="dash-kpi-sub">Tất cả đơn hàng trong kỳ đang chọn</p>
         </a>
@@ -290,9 +249,6 @@
                     <p class="dash-kpi-label">Đơn chờ xử lý</p>
                     <p class="dash-kpi-value warnv">{{ number_format($stats['pending'], 0, ',', '.') }}</p>
                 </div>
-                @if(!is_null($stats['pendingDelta']))
-                    <div class="dash-delta"><span class="dash-pct {{ $stats['pendingDelta'] >= 0 ? 'up' : 'down' }}">{{ $stats['pendingDelta'] >= 0 ? '+' : '' }}{{ $stats['pendingDelta'] }}%</span><small>vs {{ $compareShort }}</small></div>
-                @endif
             </div>
             <p class="dash-kpi-sub warns">Cần xử lý ngay</p>
         </a>
@@ -349,7 +305,6 @@
         <div class="card dash-panel">
             <div class="dash-panel-head">
                 <h2 class="dash-sec-title">{{ $revenueChart['title'] }}</h2>
-                <div class="dash-legend"><span><i class="dash-sw cur"></i> Kỳ này</span>@if(!is_null($revenueChart['previous']))<span><i class="dash-sw prev"></i> {{ $compareLabel }}</span>@endif</div>
             </div>
             <div id="dashRevenueChart"></div>
         </div>
@@ -452,33 +407,16 @@
 @push('scripts')
 <script>
 (function () {
-    // ── Hiện/ẩn ô ngày tùy chỉnh cho "Thời gian" và "So sánh" ──
-    var filterForm  = document.querySelector('.dash-filter form');
-    var timeSel     = document.getElementById('dashTimeSel');
-    var customDate  = document.getElementById('dashCustomDate');
-    var compareSel  = filterForm ? filterForm.querySelector('select[name="compare"]') : null;
-    var compareDate = document.getElementById('dashCompareDate');
+    // ── Hiện/ẩn ô ngày khi chọn "Tùy chỉnh…" ở Thời gian ──
+    var filterForm = document.querySelector('.dash-filter form');
+    var timeSel    = document.getElementById('dashTimeSel');
+    var customDate = document.getElementById('dashCustomDate');
 
     if (timeSel && customDate) {
         timeSel.addEventListener('change', function () {
             customDate.classList.toggle('show', timeSel.value === 'custom');
-        });
-    }
-    if (compareSel && compareDate) {
-        compareSel.addEventListener('change', function () {
-            compareDate.classList.toggle('show', compareSel.value === 'custom');
-        });
-    }
-
-    // ── Tự động áp dụng khi đổi lựa chọn, trừ khi đang chọn "…tùy chỉnh"
-    //    (chờ người dùng nhập ngày rồi bấm "Áp dụng") ──
-    if (filterForm) {
-        filterForm.querySelectorAll('select').forEach(function (sel) {
-            sel.addEventListener('change', function () {
-                if (sel === timeSel && sel.value === 'custom') return;
-                if (sel === compareSel && sel.value === 'custom') return;
-                filterForm.submit();
-            });
+            // Đổi kỳ (khác "Tùy chỉnh") thì áp dụng ngay; "Tùy chỉnh" thì chờ nhập ngày rồi bấm Áp dụng.
+            if (timeSel.value !== 'custom') filterForm.submit();
         });
     }
 
@@ -502,26 +440,15 @@
     var axisColor = isDark ? '#94A3B8' : '#64748B';
     var gridColor = isDark ? '#22324D' : '#EEF3F1';
 
-    // ── Biểu đồ chỉ số đã chọn (đường/cột/vùng, kỳ này vs kỳ trước) ──
-    var isMoney   = @json($revenueChart['isMoney']);
-    var chartType = @json($chartType); // 'line' | 'bar' | 'area'
-    var isArea    = chartType === 'area';
-    var isBar     = chartType === 'bar';
+    // ── Biểu đồ Doanh thu theo kỳ (dạng vùng) ──
+    var isMoney = @json($revenueChart['isMoney']);
 
     var revenueChart = new ApexCharts(document.getElementById('dashRevenueChart'), {
-        chart: { type: isBar ? 'bar' : (isArea ? 'area' : 'line'), height: 300, toolbar: { show: false }, fontFamily: 'inherit', zoom: { enabled: false } },
-        series: [
-            { name: 'Kỳ này',  data: @json($revenueChart['current']) },
-            @if(!is_null($revenueChart['previous']))
-            { name: @json($compareLabel), data: @json($revenueChart['previous']) }
-            @endif
-        ],
-        colors: ['#16A34A', '#94A3B8'],
-        stroke: isBar ? { width: 0 } : { curve: 'smooth', width: [3, 2], dashArray: [0, 5] },
-        fill: (isBar || !isArea)
-            ? { type: 'solid', opacity: 1 }
-            : { type: ['gradient', 'solid'], opacity: [0.18, 0], gradient: { opacityFrom: 0.28, opacityTo: 0.02 } },
-        plotOptions: { bar: { borderRadius: 4, columnWidth: '55%' } },
+        chart: { type: 'area', height: 300, toolbar: { show: false }, fontFamily: 'inherit', zoom: { enabled: false } },
+        series: [{ name: 'Doanh thu', data: @json($revenueChart['current']) }],
+        colors: ['#16A34A'],
+        stroke: { curve: 'smooth', width: 3 },
+        fill: { type: 'gradient', gradient: { opacityFrom: 0.28, opacityTo: 0.02 } },
         dataLabels: { enabled: false },
         legend: { show: false },
         xaxis: {
