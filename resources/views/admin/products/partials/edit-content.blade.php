@@ -495,10 +495,15 @@
         const removeIdsInput  = form.querySelector('#removeImageIdsInput');
         if (!grid || !addBtn || !fileInput || !removeIdsInput) return;
 
-        let existingImages = @json($extraImages->map(fn ($img) => [
-            'id'  => $img->id,
-            'url' => \Illuminate\Support\Str::startsWith($img->image, 'http') ? $img->image : asset($img->image),
-        ]));
+        @php
+            $existingImagesData = $extraImages->map(function ($img) {
+                return [
+                    'id'  => $img->id,
+                    'url' => \Illuminate\Support\Str::startsWith($img->image, 'http') ? $img->image : asset($img->image),
+                ];
+            });
+        @endphp
+        let existingImages = @json($existingImagesData);
         let newFiles   = []; // { file, previewUrl }
         let removedIds = [];
 

@@ -103,7 +103,7 @@ class ProductController extends Controller
         $products   = $query->paginate($perPage)->withQueryString();
         $categories = Category::whereNull('parent_id')->with('childrenCategories')->get();
         $sizes      = Size::where('status', 1)->orderBy('sort_weight')->orderBy('name')->get();
-        $colors     = Color::orderBy('name')->get();
+        $colors     = Color::where('status', 1)->orderBy('name')->get();
         $brands     = Brand::orderBy('name')->get();
 
         if ($request->ajax()) {

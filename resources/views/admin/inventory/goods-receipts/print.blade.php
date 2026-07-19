@@ -22,13 +22,6 @@
     @include('admin.partials.print-sheet-styles')
 </head>
 <body>
-    <div class="pp-toolbar pp-no-print">
-        <button type="button" class="pp-btn" onclick="window.print()">🖨 In phiếu</button>
-        <button type="button" class="pp-btn pp-btn--pdf" onclick="window.print()"
-            title="Trong hộp thoại in, chọn 'Lưu dưới dạng PDF'. Tên file = mã phiếu.">📄 Lưu PDF</button>
-        <button type="button" class="pp-btn pp-btn--ghost" onclick="window.close()">Đóng</button>
-    </div>
-
     <div class="pp-wrap">
         <div class="sid-print-sheet" id="printSheet">
             @if($isCancelled)
@@ -140,15 +133,7 @@
     </div>
 
     <script>
-        (function () {
-            var inIframe = window.self !== window.top;
-            if (inIframe) {
-                var tb = document.querySelector('.pp-toolbar');
-                if (tb) tb.style.display = 'none';
-                return;
-            }
-            window.addEventListener('load', function () { setTimeout(function () { window.print(); }, 350); });
-        })();
+        window.addEventListener('load', function () { setTimeout(function () { window.print(); }, 350); });
     </script>
 </body>
 </html>

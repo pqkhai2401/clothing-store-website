@@ -38,20 +38,6 @@
             font-size: 13px;
         }
 
-        /* Thanh hành động — chỉ hiện trên màn hình, ẩn khi in */
-        .inv-toolbar {
-            position: sticky; top: 0; z-index: 10;
-            display: flex; justify-content: center; gap: 12px;
-            padding: 12px; background: #ffffff; border-bottom: 1px solid #d8dee6;
-        }
-        .inv-btn {
-            border: 1.5px solid #16A34A; background: #16A34A; color: #fff;
-            padding: 8px 20px; border-radius: 8px; font-weight: 700; font-size: 13px;
-            cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;
-        }
-        .inv-btn--ghost { background: #fff; color: #374151; border-color: #d1d5db; }
-        .inv-btn--pdf { background: #fff; color: #b91c1c; border-color: #f0a5a5; }
-
         .invoice {
             position: relative;
             width: 800px; max-width: 100%;
@@ -116,20 +102,12 @@
 
         @media print {
             body { background: #fff; }
-            .no-print { display: none !important; }
             .invoice { width: auto; margin: 0; padding: 0 8px; border: none; box-shadow: none; }
             @page { size: A4; margin: 14mm; }
         }
     </style>
 </head>
 <body>
-    <div class="inv-toolbar no-print">
-        <button type="button" class="inv-btn" onclick="window.print()">🖨 In hóa đơn</button>
-        <button type="button" class="inv-btn inv-btn--pdf" onclick="window.print()"
-            title="Trong hộp thoại in, chọn 'Lưu dưới dạng PDF'. Tên file = mã hóa đơn.">📄 Lưu PDF</button>
-        <button type="button" class="inv-btn inv-btn--ghost" onclick="window.close()">Đóng</button>
-    </div>
-
     <div class="invoice">
         @if($isCancelled)
             <div class="inv-watermark">ĐÃ HỦY</div>
@@ -258,19 +236,9 @@
     </div>
 
     <script>
-        // Khi nhúng trong popup (iframe): ẩn thanh công cụ nội bộ và KHÔNG tự in — để người dùng
-        // xem trước rồi bấm nút "In hóa đơn" của modal. Khi mở URL trực tiếp: tự mở hộp thoại in.
-        (function () {
-            var inIframe = window.self !== window.top;
-            if (inIframe) {
-                var tb = document.querySelector('.inv-toolbar');
-                if (tb) tb.style.display = 'none';
-                return;
-            }
-            window.addEventListener('load', function () {
-                setTimeout(function () { window.print(); }, 350);
-            });
-        })();
+        window.addEventListener('load', function () {
+            setTimeout(function () { window.print(); }, 350);
+        });
     </script>
 </body>
 </html>

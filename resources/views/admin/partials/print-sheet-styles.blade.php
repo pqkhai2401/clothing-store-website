@@ -2,11 +2,6 @@
     * { box-sizing: border-box; }
     body { margin: 0; font-family: "Segoe UI", Roboto, Arial, sans-serif; background: #eef2f7; color: #1f2937; font-size: 12.5px; }
 
-    /* Thanh công cụ — chỉ hiện trên màn hình (khi mở URL trực tiếp), ẩn khi in */
-    .pp-toolbar { position: sticky; top: 0; z-index: 10; display: flex; justify-content: center; gap: 12px; padding: 12px; background: #fff; border-bottom: 1px solid #d8dee6; }
-    .pp-btn { border: 1.5px solid #059669; background: #059669; color: #fff; padding: 8px 20px; border-radius: 8px; font-weight: 700; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
-    .pp-btn--pdf { background: #fff; color: #b91c1c; border-color: #f0a5a5; }
-    .pp-btn--ghost { background: #fff; color: #374151; border-color: #d1d5db; }
     .pp-wrap { padding: 24px; }
 
     /* Tờ phiếu (đồng bộ với thiết kế .sid-print của kho) */
@@ -47,7 +42,6 @@
 
     @media print {
         body { background: #fff; }
-        .pp-no-print { display: none !important; }
         .pp-wrap { padding: 0; }
         .sid-print-sheet { max-width: 100%; margin: 0; box-shadow: none; border-radius: 0; padding: 10mm; }
         @page { size: A4; margin: 0; }
