@@ -328,12 +328,21 @@ class OrderController extends Controller
         foreach ($eligibleOrders as $order) {
             try {
                 DB::transaction(function () use ($order, $validated) {
-                    $order->update(['status' => $validated['status']]);
+                    // Khóa + kiểm tra lại trong transaction: đơn có thể vừa bị luồng khác đổi
+                    // trạng thái sau bước lọc eligibleOrders (đọc không khóa) ở trên.
+                    $locked = Order::with('paymentMethod')->whereKey($order->id)->lockForUpdate()->firstOrFail();
+
+                    if (! self::isValidStatusTransition($locked->status, $validated['status'])
+                        || ! self::canAdvanceOnlineOrder($locked, $validated['status'])) {
+                        throw new \App\Exceptions\StaleOrderStateException();
+                    }
+
+                    $locked->update(['status' => $validated['status']]);
                     if (in_array($validated['status'], ['processing', 'shipping'], true)) {
-                        $this->autoGenerateStockIssueForOrder($order);
+                        $this->autoGenerateStockIssueForOrder($locked);
                     } elseif ($validated['status'] === 'cancelled') {
-                        $this->restoreStockForCancelledOrder($order);
-                        \App\Services\VoucherService::releaseUsage($order->id);
+                        $this->restoreStockForCancelledOrder($locked);
+                        \App\Services\VoucherService::releaseUsage($locked->id);
                     }
                 });
                 $updated++;
@@ -964,7 +973,20 @@ class OrderController extends Controller
             return back()->withErrors(['status' => $message]);
         }
 
-        DB::transaction(function () use ($order, $validated, $scope, $newStatus) {
+        try {
+            DB::transaction(function () use ($order, $validated, $scope, $newStatus) {
+            // Khóa + kiểm tra lại trong transaction (xem quickUpdateStatus): chống 2 admin/2 tab
+            // sửa đồng thời gây ghi đè trạng thái, và đảm bảo phạm vi sửa nội dung (editableScope)
+            // vẫn đúng với thực tế đơn — nếu đơn vừa được luồng khác đẩy sang trạng thái khác thì
+            // dừng để không xử lý kho/sản phẩm sai.
+            $order = Order::with('paymentMethod')->whereKey($order->id)->lockForUpdate()->firstOrFail();
+
+            if (! self::isValidStatusTransition($order->status, $newStatus)
+                || ! self::canAdvanceOnlineOrder($order, $newStatus)
+                || self::editableScope($order) !== $scope) {
+                throw new \App\Exceptions\StaleOrderStateException();
+            }
+
             $order->note = $validated['note'] ?? null;
 
             if ($scope !== 'none') {
@@ -1024,7 +1046,16 @@ class OrderController extends Controller
             }
 
             $this->applyStatusChange($order, $newStatus, $validated['payment_status']);
-        });
+            });
+        } catch (\App\Exceptions\StaleOrderStateException) {
+            $message = 'Đơn hàng vừa được cập nhật bởi thao tác khác. Vui lòng tải lại trang.';
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['message' => $message], 409);
+            }
+
+            return back()->withErrors(['status' => $message]);
+        }
 
         $message = 'Cập nhật đơn hàng thành công.';
 
@@ -1068,9 +1099,26 @@ class OrderController extends Controller
             return response()->json(['success' => false, 'message' => $message], 422);
         }
 
-        DB::transaction(function () use ($order, $validated, $newStatus) {
-            $this->applyStatusChange($order, $newStatus, $validated['payment_status']);
-        });
+        try {
+            DB::transaction(function () use ($order, $validated, $newStatus) {
+                // Khóa dòng đơn rồi KIỂM TRA LẠI trong transaction: một luồng khác (admin khác,
+                // 2 tab, webhook) có thể đã đổi trạng thái sau lần đọc ở trên. Nếu vậy thì dừng
+                // để không ghi đè lên thay đổi đó (tránh oversell / trạng thái lệch với hiệu ứng kho).
+                $locked = Order::with('paymentMethod')->whereKey($order->id)->lockForUpdate()->firstOrFail();
+
+                if (! self::isValidStatusTransition($locked->status, $newStatus)
+                    || ! self::canAdvanceOnlineOrder($locked, $newStatus)) {
+                    throw new \App\Exceptions\StaleOrderStateException();
+                }
+
+                $this->applyStatusChange($locked, $newStatus, $validated['payment_status']);
+            });
+        } catch (\App\Exceptions\StaleOrderStateException) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Trạng thái đơn hàng vừa được cập nhật bởi thao tác khác. Vui lòng tải lại trang.',
+            ], 409);
+        }
 
         return response()->json(['success' => true, 'message' => 'Cập nhật trạng thái đơn hàng thành công.']);
     }

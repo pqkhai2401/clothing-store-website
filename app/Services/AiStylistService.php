@@ -79,7 +79,7 @@ class AiStylistService
 
         // 1) Lấy tập ứng viên: cùng giới tính (hoặc unisex), khác chính nó,
         //    và KHÁC danh mục với sản phẩm neo (vì phối đồ là ghép món khác loại:
-        //    mua áo thì gợi quần/áo khoác/phụ kiện, không gợi thêm một cái áo y hệt).
+        //    mua áo thì gợi quần/áo khoác, không gợi thêm một cái áo y hệt).
         $candidates = Product::query()
             ->where('status', true)
             ->where('id', '!=', $anchor->id)
@@ -239,7 +239,7 @@ class AiStylistService
 
         BẠN PHẢI TUÂN THỦ NGHIÊM NGẶT CÁC LUẬT SAU:
         1. LUẬT BỔ TRỢ (Mix & Match): Chọn các món KHÁC CÔNG NĂNG để ghép thành bộ.
-           Ví dụ: áo thun -> phối quần short / quần jeans / áo khoác / phụ kiện.
+           Ví dụ: áo thun -> phối quần short / quần jeans / áo khoác.
         2. LUẬT LOẠI TRỪ (Style Conflict):
            - TUYỆT ĐỐI KHÔNG chọn món trùng công năng với sản phẩm khách đã chọn
              (khách đã có quần dài thì KHÔNG gợi thêm một quần dài khác).
@@ -270,7 +270,7 @@ class AiStylistService
         Khách hàng này là KHÁCH MỚI, chưa có lịch sử mua/xem, nên chưa biết sở thích.
 
         Nhiệm vụ: chọn ra tối đa {$limit} sản phẩm HẤP DẪN NHẤT, ĐA DẠNG danh mục
-        (đủ áo/quần/phụ kiện...) và PHÙ HỢP với mùa "{$season}" để trưng ở trang chủ,
+        (đủ áo/quần...) và PHÙ HỢP với mùa "{$season}" để trưng ở trang chủ,
         tạo ấn tượng đầu tiên tốt và có khả năng chốt đơn cao.
 
         DANH SÁCH ỨNG VIÊN (chỉ được chọn ID trong danh sách này):

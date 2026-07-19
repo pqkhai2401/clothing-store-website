@@ -293,6 +293,18 @@ class ProductController extends Controller
 
         $validator->validate();
 
+        // Chặn cứng Publish khi còn biến thể chưa có giá bán — không cho bỏ qua kể cả với
+        // quyền publish-products (khác chặn thiếu ảnh/thương hiệu/mô tả bên dưới).
+        if ($request->boolean('status') && $this->payloadHasUnpricedVariant((array) $request->input('variants', []))) {
+            $message = 'Không thể công bố sản phẩm vì còn biến thể chưa có giá bán hợp lệ (giá phải lớn hơn 0).';
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['message' => $message], 422);
+            }
+
+            return back()->withErrors(['status' => $message])->withInput();
+        }
+
         $slug = $request->filled('slug')
             ? Str::slug($request->input('slug'))
             : Str::slug($request->input('name'));
@@ -387,7 +399,10 @@ class ProductController extends Controller
 
     private function editFormData(string $id): array
     {
-        $product    = Product::with(['productVariants', 'productImages'])->findOrFail($id);
+        $product    = Product::with([
+            'productVariants' => fn ($q) => $q->withCount('batches'),
+            'productImages',
+        ])->findOrFail($id);
         $categories = Category::with('childrenCategories')->orderBy('name')->get();
         $brands     = Brand::orderBy('name')->get();
         $genders    = Gender::labels();
@@ -400,10 +415,11 @@ class ProductController extends Controller
         $existingVariants = $product->productVariants
             ->groupBy('color_id')
             ->map(fn ($variants) => $variants->keyBy('size_id')->map(fn ($v) => [
-                'sku'        => $v->sku,
-                'cost_price' => (float) $v->cost_price,
-                'price'      => (float) $v->price,
-                'stock'      => $v->stock,
+                'sku'         => $v->sku,
+                'cost_price'  => (float) $v->cost_price,
+                'price'       => (float) $v->price,
+                'stock'       => $v->stock,
+                'has_batches' => $v->batches_count > 0,
             ])->toArray())
             ->toArray();
 
@@ -515,6 +531,22 @@ class ProductController extends Controller
             return back()->withErrors(['status' => $message])->withInput();
         }
 
+        // Chặn cứng Publish khi còn biến thể chưa có giá bán — không cho bỏ qua kể cả với
+        // quyền publish-products (khác chặn thiếu ảnh/thương hiệu/mô tả ở trên).
+        if ($request->boolean('status') && $this->payloadHasUnpricedVariant((array) $request->input('variants', []))) {
+            foreach ($uploadedPaths as $path) {
+                Storage::disk('public')->delete($path);
+            }
+
+            $message = 'Không thể công bố sản phẩm vì còn biến thể chưa có giá bán hợp lệ (giá phải lớn hơn 0).';
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['message' => $message], 422);
+            }
+
+            return back()->withErrors(['status' => $message])->withInput();
+        }
+
         try {
             DB::transaction(function () use ($request, $product, $id, $slug, $newThumbnail, $newExtraImagePaths, $removeImageIds) {
                 // Xoá file ảnh chính cũ nếu được thay bằng ảnh mới, tránh tích tụ file rác trên disk
@@ -559,7 +591,15 @@ class ProductController extends Controller
                         $variant = ProductVariant::firstOrNew(
                             ['product_id' => $product->id, 'color_id' => $colorId, 'size_id' => $sizeId]
                         );
-                        $variant->sku    = $sku !== '' ? $sku : ($variant->sku ?: Str::upper(Str::random(10)));
+
+                        // SKU: khoá lại nếu biến thể đã phát sinh Lô (nhập kho) — đổi SKU sau khi
+                        // đã nhập kho sẽ làm mất khả năng đối chiếu với tem/mã vạch đã in dán lên
+                        // hàng thật. Bỏ qua giá trị form gửi lên, giữ nguyên SKU cũ trong trường hợp này.
+                        $skuLocked = $variant->exists && $variant->batches()->exists();
+                        if (! $skuLocked) {
+                            $variant->sku = $sku !== '' ? $sku : ($variant->sku ?: Str::upper(Str::random(10)));
+                        }
+
                         $variant->price  = max(0, (float) ($data['price'] ?? $data['sale_price'] ?? 0));
                         $variant->status = 'Active'; // Kích hoạt lại hoạt động nếu trước đó bị ẩn
 
@@ -709,6 +749,18 @@ class ProductController extends Controller
 
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json(['message' => $message], 403);
+            }
+
+            return back()->with('error', $message);
+        }
+
+        // Chặn cứng Publish khi còn biến thể chưa có giá bán — không cho bỏ qua kể cả với
+        // quyền publish-products.
+        if ($newStatus && $product->hasUnpricedVariant()) {
+            $message = 'Không thể công bố sản phẩm vì còn biến thể chưa có giá bán hợp lệ (giá phải lớn hơn 0).';
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['message' => $message], 422);
             }
 
             return back()->with('error', $message);
@@ -871,12 +923,43 @@ class ProductController extends Controller
         return redirect()->route('admin.products.trash')->with('success', 'Xóa vĩnh viễn sản phẩm thành công');
     }
 
+    /**
+     * Có dòng biến thể nào trong payload gửi lên chưa có giá bán hợp lệ (giá <= 0) không.
+     * Dùng ở store()/update() để chặn Publish khi variants vừa submit chưa lưu vào DB —
+     * xem thêm Product::hasUnpricedVariant() (kiểm tra dữ liệu đã lưu, dùng ở toggleStatus()).
+     */
+    private function payloadHasUnpricedVariant(array $variantsPayload): bool
+    {
+        foreach ($variantsPayload as $sizes) {
+            foreach ((array) $sizes as $data) {
+                if ((float) ($data['price'] ?? 0) <= 0) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
     private function productForceDeleteBlocker(Product $product): ?string
     {
         if ($product->productVariants()
             ->whereHas('orderItems')
             ->exists()) {
             return 'Không thể xóa vĩnh viễn sản phẩm này vì đã phát sinh đơn hàng. Hãy giữ sản phẩm trong thùng rác để bảo toàn lịch sử đơn hàng.';
+        }
+
+        // Đã từng nhập/xuất/kiểm kê kho (có Lô/Batch, dòng phiếu nhập-xuất, hoặc bút toán sổ cái)
+        // — xoá cứng sẽ bị DB chặn (FK restrictOnDelete) để bảo toàn dữ liệu kế toán kho.
+        // Kiểm tra trước ở đây để trả lỗi thân thiện thay vì để lộ lỗi ràng buộc khoá ngoại thô.
+        if ($product->productVariants()
+            ->where(fn ($q) => $q
+                ->whereHas('batches')
+                ->orWhereHas('goodsReceiptItems')
+                ->orWhereHas('stockIssueItems')
+                ->orWhereHas('stockMovements'))
+            ->exists()) {
+            return 'Không thể xóa vĩnh viễn sản phẩm này vì đã phát sinh lịch sử nhập/xuất kho. Hãy giữ sản phẩm trong thùng rác để bảo toàn lịch sử kế toán kho.';
         }
 
         return null;

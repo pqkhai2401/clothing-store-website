@@ -881,66 +881,6 @@ class ProductSeeder extends Seeder
                 'sizes'  => ['XS', 'S', 'M', 'L'],
                 'tags'   => ['casual', 'dao-pho'],
             ],
-
-            // ═══════════════════════════════════════════════════════════════════
-            // PHỤ KIỆN
-            // ═══════════════════════════════════════════════════════════════════
-            [
-                'name'        => 'Mũ Lưỡi Trai MLB Logo Classic',
-                'slug'        => 'mu-luoi-trai-mlb-logo-classic',
-                'description' => 'Mũ lưỡi trai MLB với logo NY thêu nổi kinh điển, chất cotton twill dày dặn giữ form tốt. Khóa điều chỉnh phía sau phù hợp mọi kích cỡ đầu. Lưỡi trai cong che nắng hiệu quả. Item phụ kiện streetwear không thể thiếu.',
-                'price'       => 450000,
-                'thumbnail'   => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQqf85NLeJoaFwujF78NK35-sS2rViNJv8COyD7bLJUZg&s',
-                'category'    => 'mu-non',
-                'brand'       => 'MLB',
-                'gender'      => 'unisex',
-                'is_featured' => true,
-                'views_count' => 398,
-                'images'      => [
-                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTSlfvgUfYZP2qnvD_rY4zKV44PP-GKsdxUle5kPTtMYA&s',
-                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRwH77uWnwL7OumyRpESlZty3E3-hdGnuEqdZ8atjFJ5A&s=10',
-                ],
-                'colors' => ['Đen', 'Trắng', 'Xanh navy'],
-                'sizes'  => ['M', 'L'],
-                'tags'   => ['xu-huong', 'best-seller'],
-            ],
-            [
-                'name'        => 'Nón Bucket Nike Sportswear',
-                'slug'        => 'non-bucket-nike-sportswear',
-                'description' => 'Nón bucket Nike Sportswear dáng rộng vành che nắng tốt, chất nylon nhẹ chống nước nhẹ. Logo Swoosh thêu tinh tế phía trước. Thiết kế gọn gàng có thể gấp lại khi không sử dụng.',
-                'price'       => 390000,
-                'thumbnail'   => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTlyncdK_Onm0-HLUf6ggoIiS_Wl7hq1WB9Qyr9eOd1eg&s=10',
-                'category'    => 'mu-non',
-                'brand'       => 'Nike',
-                'gender'      => 'unisex',
-                'is_featured' => false,
-                'views_count' => 167,
-                'images'      => [
-                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRMDexEITAHc0IWKcUEzIeNQyeeoFrFZt3U8-O8IRbFzg&s=10',
-                ],
-                'colors' => ['Đen', 'Be', 'Xanh rêu'],
-                'sizes'  => ['M', 'L'],
-                'tags'   => ['mua-he', 'casual'],
-            ],
-            [
-                'name'        => 'Túi Tote Vải Canvas Unisex',
-                'slug'        => 'tui-tote-vai-canvas-converse',
-                'description' => 'Túi tote Converse chất liệu canvas dày bền, logo All Star in nổi bật. Dung tích lớn đủ chứa laptop, sách vở và đồ cá nhân. Quai xách dài có thể đeo vai thoải mái. Phong cách casual phù hợp đi học, đi làm hay dạo phố.',
-                'price'       => 350000,
-                'thumbnail'   => 'https://images.unsplash.com/photo-1544816155-12df9643f363?w=800&h=1000&fit=crop&q=80',
-                'category'    => 'tui-xach',
-                'brand'       => 'Converse',
-                'gender'      => 'unisex',
-                'is_featured' => false,
-                'views_count' => 231,
-                'images'      => [
-                    'https://images.unsplash.com/photo-1544816155-12df9643f363?w=800&h=1000&fit=crop&q=80',
-                ],
-                'colors' => ['Đen', 'Trắng', 'Be'],
-                'sizes'  => ['M'],
-                'tags'   => ['casual', 'dao-pho'],
-            ],
-
             // ═══════════════════════════════════════════════════════════════════
             // BỘ SƯU TẬP MÙA XUÂN — sắc sáng, chất liệu nhẹ, phom thanh lịch
             // ═══════════════════════════════════════════════════════════════════

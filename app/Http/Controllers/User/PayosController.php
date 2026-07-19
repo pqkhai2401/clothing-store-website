@@ -39,46 +39,64 @@ class PayosController extends Controller
         // (2) đồng hồ đếm ngược luôn bị reset về 30 phút dù link cũ chưa hết hạn.
         // getPaymentInfo() (GET /v2/payment-requests/{id}) của PayOS không trả lại `qrCode`
         // (trường này chỉ có ở response lúc tạo mới) nên phải tự cache lại vào payos_payload.
-        $payosOrderCode = $order->payos_order_code ? (int) $order->payos_order_code : null;
-        $payload = null;
+        // Khóa dòng đơn khi quyết định "tái dùng mã cũ hay sinh mã mới" + ghi payos_order_code:
+        // double-click "Tiếp tục thanh toán" hoặc mở 2 tab có thể cùng sinh 2 mã rồi ghi đè nhau;
+        // mã bị ghi đè khiến webhook/return tra theo code không thấy đơn → khách trả tiền nhưng
+        // đơn kẹt. getPaymentInfo/createPaymentLink là gọi HTTP ra PayOS — chấp nhận giữ khóa
+        // trong lúc gọi vì 2 request chỉ cách nhau vài ms và lưu lượng thấp.
+        $alreadyPaid = false;
 
-        if ($payosOrderCode && $order->payos_payload) {
-            $info   = $this->payos->getPaymentInfo($payosOrderCode);
-            $status = $info['status'] ?? null;
+        try {
+            $payload = DB::transaction(function () use ($order, &$alreadyPaid) {
+                $locked = Order::whereKey($order->id)->lockForUpdate()->firstOrFail();
 
-            if ($status === 'PAID') {
-                $this->markPaid($order);
+                if ($locked->payment_status === PaymentStatus::PAID->value) {
+                    $alreadyPaid = true;
 
-                return redirect()->route('orders.show', $order->id)
-                    ->with('success', 'Đơn hàng đã được thanh toán.');
-            }
+                    return null;
+                }
 
-            if ($info && in_array($status, ['PENDING', 'PROCESSING'], true)) {
-                $payload = $order->payos_payload;
-            }
+                $payosOrderCode = $locked->payos_order_code ? (int) $locked->payos_order_code : null;
+
+                if ($payosOrderCode && $locked->payos_payload) {
+                    $info   = $this->payos->getPaymentInfo($payosOrderCode);
+                    $status = $info['status'] ?? null;
+
+                    if ($status === 'PAID') {
+                        $alreadyPaid = true;
+
+                        return null;
+                    }
+
+                    if ($info && in_array($status, ['PENDING', 'PROCESSING'], true)) {
+                        return $locked->payos_payload; // tái dùng link cũ còn hiệu lực
+                    }
+                }
+
+                // Chưa có link hợp lệ → sinh mã mới + tạo link, ghi ngay khi còn giữ khóa.
+                $payosOrderCode = $this->generatePayosOrderCode($locked);
+                $data = $this->payos->createPaymentLink($locked, $payosOrderCode);
+                $data['_created_at'] = now()->timestamp;
+
+                $locked->update([
+                    'payos_order_code' => $payosOrderCode,
+                    'payos_payload'    => $data,
+                ]);
+
+                return $data;
+            });
+        } catch (\Throwable $e) {
+            Log::error('PayOS create link failed', ['order_id' => $order->id, 'error' => $e->getMessage()]);
+
+            return redirect()->route('orders.show', $order->id)
+                ->with('error', 'Không tạo được mã thanh toán PayOS. Vui lòng thử lại hoặc chọn phương thức khác.');
         }
 
-        $isNewCode = $payload === null;
+        if ($alreadyPaid) {
+            $this->markPaid($order->refresh());
 
-        if ($isNewCode) {
-            $payosOrderCode = $this->generatePayosOrderCode($order);
-
-            try {
-                $data = $this->payos->createPaymentLink($order, $payosOrderCode);
-            } catch (\Throwable $e) {
-                Log::error('PayOS create link failed', ['order_id' => $order->id, 'error' => $e->getMessage()]);
-
-                return redirect()->route('orders.show', $order->id)
-                    ->with('error', 'Không tạo được mã thanh toán PayOS. Vui lòng thử lại hoặc chọn phương thức khác.');
-            }
-
-            $payload = $data;
-            $payload['_created_at'] = now()->timestamp;
-
-            $order->update([
-                'payos_order_code' => $payosOrderCode,
-                'payos_payload'    => $payload,
-            ]);
+            return redirect()->route('orders.show', $order->id)
+                ->with('success', 'Đơn hàng đã được thanh toán.');
         }
 
         $createdAt = $payload['_created_at'] ?? now()->timestamp;
@@ -203,10 +221,11 @@ class PayosController extends Controller
         // Không đánh dấu đã thanh toán cho đơn đã hủy/hết hạn (tránh trạng thái mâu thuẫn
         // cancelled + paid khi webhook/poll đến sau lệnh expire). Cũng bỏ qua nếu đã paid (idempotent).
         if ($order->status === OrderStatus::CANCELLED->value) {
-            Log::warning('PayOS: bỏ qua markPaid cho đơn đã hủy/hết hạn.', [
-                'order_id'         => $order->id,
-                'payos_order_code' => $order->payos_order_code,
-            ]);
+            // Đơn đã hủy (thường do bị supersede khi khách đặt đơn mới) nhưng khách vẫn trả tiền
+            // qua QR cũ. KHÔNG tự đánh dấu paid (sẽ mâu thuẫn cancelled+paid và có thể oversell vì
+            // kho/voucher đã nhả) — ghi bản ghi đối soát để admin thấy và liên hệ hoàn tiền.
+            app(\App\Services\PaymentReconciliationService::class)
+                ->flagCancelledButPaid($order, 'payos', (string) $order->payos_order_code);
 
             return;
         }

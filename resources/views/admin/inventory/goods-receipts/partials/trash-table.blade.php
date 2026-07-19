@@ -34,6 +34,8 @@
                                 <span class="gr-badge gr-badge--completed">Hoàn tất</span>
                             @elseif($receipt->isAdjusted())
                                 <span class="gr-badge gr-badge--adjusted">Đã điều chỉnh</span>
+                            @elseif($receipt->isCancelled())
+                                <span class="gr-badge gr-badge--cancelled">Đã hủy</span>
                             @else
                                 <span class="gr-badge gr-badge--draft">Nháp</span>
                             @endif

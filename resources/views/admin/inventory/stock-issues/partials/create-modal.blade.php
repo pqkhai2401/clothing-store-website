@@ -662,6 +662,10 @@
     form.addEventListener('submit', function(e) {
         e.preventDefault();
 
+        // Chặn double-click/double-submit: khoá nút bấm ngay khi gửi request.
+        const submitter = e.submitter;
+        submitter?.setAttribute('disabled', 'disabled');
+
         // Clear error highlights
         document.querySelectorAll('[data-si-error]').forEach(el => el.textContent = '');
 
@@ -714,6 +718,9 @@
             if (err.message !== 'validation-failed') {
                 console.error(err);
             }
+        })
+        .finally(() => {
+            submitter?.removeAttribute('disabled');
         });
     });
 

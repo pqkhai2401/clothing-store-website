@@ -181,4 +181,15 @@ class Product extends Model implements \OwenIt\Auditing\Contracts\Auditable
     {
         return blank($this->thumbnail) || blank($this->brand_id) || blank($this->description);
     }
+
+    /**
+     * Có biến thể nào chưa có giá bán hợp lệ (giá <= 0) không — dùng để chặn Publish.
+     * Khác isIncomplete(): đây là chặn CỨNG, không cho phép bỏ qua kể cả với quyền
+     * publish-products, vì để lọt sản phẩm 0đ lên website là rủi ro nghiêm trọng hơn
+     * thiếu ảnh/mô tả.
+     */
+    public function hasUnpricedVariant(): bool
+    {
+        return $this->productVariants()->where('price', '<=', 0)->exists();
+    }
 }

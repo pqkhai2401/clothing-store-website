@@ -630,6 +630,12 @@ window.__VM_EXISTING__ = @json($existingVariants);
                 const costPrice  = data.cost_price ?? '';
                 const price      = data.price ?? data.sale_price ?? '';
                 const stock      = data.stock      ?? '';
+                const hasBatches = data.has_batches ?? false;
+                const skuLockedClass = hasBatches ? 'is-locked' : '';
+                const skuReadonly    = hasBatches ? 'readonly' : '';
+                const skuTitle       = hasBatches
+                    ? 'Đã phát sinh Lô nhập kho — không thể đổi SKU để tránh mất khả năng đối chiếu với tem/mã vạch đã in.'
+                    : '';
 
                 const tr = document.createElement('tr');
                 tr.dataset.colorId = color.id;
@@ -642,8 +648,9 @@ window.__VM_EXISTING__ = @json($existingVariants);
                         </div>
                     </td>
                     <td>
-                        <input type="text" class="vm-matrix-input" data-field="sku"
-                               name="variants[${color.id}][${size.id}][sku]" value="${esc(sku)}">
+                        <input type="text" class="vm-matrix-input ${skuLockedClass}" data-field="sku"
+                               name="variants[${color.id}][${size.id}][sku]" value="${esc(sku)}"
+                               title="${skuTitle}" ${skuReadonly}>
                     </td>
                     <td>
                         <input type="number" min="0" step="1000" class="vm-matrix-input is-locked" data-field="cost_price"

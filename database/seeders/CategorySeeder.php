@@ -42,14 +42,6 @@ class CategorySeeder extends Seeder
                     ['name' => 'Váy',        'slug' => 'nu-vay'],
                 ],
             ],
-            [
-                'name'     => 'Phụ kiện',
-                'slug'     => 'phu-kien',
-                'children' => [
-                    ['name' => 'Mũ & Nón', 'slug' => 'mu-non'],
-                    ['name' => 'Túi xách', 'slug' => 'tui-xach'],
-                ],
-            ],
         ];
 
         foreach ($structure as $parentData) {

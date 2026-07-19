@@ -87,6 +87,14 @@
                                         title="Xóa">
                                         <i class="fa-regular fa-trash-can"></i>
                                     </button>
+                                @elseif($receipt->isCancelled())
+                                    <button type="button" class="product-more-btn text-danger d-inline-flex align-items-center justify-content-center"
+                                        data-delete-url="{{ route('admin.goods-receipts.trashDelete', $receipt->id) }}"
+                                        data-delete-name="{{ $receipt->code }}"
+                                        data-delete-type="phiếu nhập kho"
+                                        title="Xóa (chuyển vào thùng rác)">
+                                        <i class="fa-regular fa-trash-can"></i>
+                                    </button>
                                 @endif
                             </div>
                         </td>

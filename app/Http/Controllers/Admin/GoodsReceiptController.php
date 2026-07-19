@@ -854,6 +854,20 @@ class GoodsReceiptController extends Controller
         return back()->with('success', "Đã hủy {$count} phiếu nhập kho thành công.");
     }
 
+    /**
+     * Chuyển phiếu nhập kho đã hủy vào thùng rác (soft-delete) — an toàn, có thể khôi phục.
+     * Chỉ cho phép với phiếu ở trạng thái "Đã hủy" (đã chốt không còn thao tác gì khác).
+     */
+    public function trashDelete(string $id)
+    {
+        $goodsReceipt = GoodsReceipt::where('status', GoodsReceipt::STATUS_CANCELLED)->findOrFail($id);
+        $goodsReceipt->update(['deleted_by' => Auth::id()]);
+        $goodsReceipt->delete();
+
+        return redirect()->route('admin.goods-receipts.list', ['tab' => 'inbound'])
+            ->with('success', "Đã chuyển phiếu nhập kho \"{$goodsReceipt->code}\" vào thùng rác.");
+    }
+
     public function trash(Request $request)
     {
         $keyword = trim((string) $request->input('search', $request->input('keyword')));

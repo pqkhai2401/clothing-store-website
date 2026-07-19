@@ -184,6 +184,7 @@ Route::middleware(['auth.login', 'active.account', 'admin', 'force.password.chan
                 Route::patch('/{id}/adjust', [GoodsReceiptController::class, 'adjust'])->name('adjust');
                 Route::patch('/{id}/restore', [GoodsReceiptController::class, 'restore'])->name('restore');
                 Route::delete('/{id}/force-delete', [GoodsReceiptController::class, 'forceDelete'])->name('forceDelete');
+                Route::delete('/{id}/trash', [GoodsReceiptController::class, 'trashDelete'])->name('trashDelete');
                 Route::delete('/{id}', [GoodsReceiptController::class, 'destroy'])->name('destroy');
             });
 

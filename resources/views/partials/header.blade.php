@@ -55,11 +55,11 @@
                             <li class="simple-menu-sub"><a href="{{ route('category.products', 'nu-dam') }}">Đầm</a></li>
                             <li class="simple-menu-sub"><a href="{{ route('category.products', 'nu-vay') }}">Váy</a></li>
 
-                            <li class="simple-menu-divider"></li>
+                            {{-- <li class="simple-menu-divider"></li>
                             <!-- Nhóm Phụ kiện -->
                             <li class="simple-menu-heading"><a href="{{ route('category.products', 'phu-kien') }}">PHỤ KIỆN</a></li>
                             <li class="simple-menu-sub"><a href="{{ route('category.products', 'mu-non') }}">Mũ nón</a></li>
-                            <li class="simple-menu-sub"><a href="{{ route('category.products', 'tui-xach') }}">Túi xách</a></li>
+                            <li class="simple-menu-sub"><a href="{{ route('category.products', 'tui-xach') }}">Túi xách</a></li> --}}
 
                             <li class="simple-menu-divider"></li>
                             <li><a href="{{ url('/san-pham') }}" class="simple-menu-all">Tất cả sản phẩm</a></li>
