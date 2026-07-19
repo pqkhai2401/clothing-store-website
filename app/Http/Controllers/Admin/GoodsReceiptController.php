@@ -306,7 +306,7 @@ class GoodsReceiptController extends Controller
                     'type' => 'nhap_kho',
                     'type_label' => 'Nhập kho',
                     'document_code' => $receipt?->code,
-                    'document_url' => $receipt ? route('admin.inventory.goods-receipts.show', $receipt->id) : null,
+                    'document_url' => $receipt ? route('admin.goods-receipts.show', $receipt->id) : null,
                     'quantity_change' => (int) $item->quantity,
                     'user' => $receipt?->creator?->username ?? 'N/A',
                 ]);
@@ -561,12 +561,12 @@ class GoodsReceiptController extends Controller
             return response()->json([
                 'message' => "Tạo phiếu nhập kho \"{$goodsReceipt->code}\" thành công.",
                 'code' => $goodsReceipt->code,
-                'show_url' => route('admin.inventory.goods-receipts.show', $goodsReceipt->id),
+                'show_url' => route('admin.goods-receipts.show', $goodsReceipt->id),
                 'table_url' => route('admin.goods-receipts.list', ['tab' => 'inbound']),
             ]);
         }
 
-        return redirect()->route('admin.inventory.goods-receipts.show', $goodsReceipt->id)
+        return redirect()->route('admin.goods-receipts.show', $goodsReceipt->id)
             ->with('success', "Tạo phiếu nhập kho \"{$goodsReceipt->code}\" thành công.");
     }
 
@@ -804,7 +804,7 @@ class GoodsReceiptController extends Controller
             return response()->json([
                 'message' => $message,
                 'code' => $goodsReceipt->code,
-                'show_url' => route('admin.inventory.goods-receipts.show', $goodsReceipt->id),
+                'show_url' => route('admin.goods-receipts.show', $goodsReceipt->id),
                 'table_url' => route('admin.goods-receipts.list', ['tab' => 'inbound']),
             ]);
         }
@@ -889,14 +889,14 @@ class GoodsReceiptController extends Controller
         GoodsReceipt::onlyTrashed()->where('id', $goodsReceipt->id)->update(['deleted_by' => null]);
         $goodsReceipt->restore();
 
-        return redirect()->route('admin.inventory.goods-receipts.trash')->with('success', 'Khôi phục phiếu nhập kho thành công');
+        return redirect()->route('admin.goods-receipts.trash')->with('success', 'Khôi phục phiếu nhập kho thành công');
     }
 
     public function forceDelete(string $id)
     {
         GoodsReceipt::onlyTrashed()->findOrFail($id)->forceDelete();
 
-        return redirect()->route('admin.inventory.goods-receipts.trash')->with('success', 'Đã xóa vĩnh viễn phiếu nhập kho');
+        return redirect()->route('admin.goods-receipts.trash')->with('success', 'Đã xóa vĩnh viễn phiếu nhập kho');
     }
 
     public function bulkRestore(Request $request)
