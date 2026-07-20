@@ -11,7 +11,7 @@
 
     /** Cập nhật tất cả badge trái tim trên header */
     function updateHeaderBadge(count) {
-        document.querySelectorAll('.utility-icons a[href*="wishlist"] .badge-count')
+        document.querySelectorAll('#wishlistCountBadge')
             .forEach(function (el) { el.textContent = count; });
     }
 
@@ -40,7 +40,6 @@
         })
         .then(function (r) {
             if (r.status === 401) {
-                // Chưa đăng nhập → chuyển đến trang login
                 window.location.href = '/dang-nhap';
                 return null;
             }

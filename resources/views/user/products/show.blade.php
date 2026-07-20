@@ -1207,7 +1207,7 @@
 
                 // Cập nhật badge số lượng trên header (real-time, không reload)
                 if (data.count !== undefined) {
-                    document.querySelectorAll('.utility-icons a[href*="wishlist"] .badge-count').forEach(function (el) {
+                    document.querySelectorAll('#wishlistCountBadge').forEach(function (el) {
                         el.textContent = data.count;
                     });
                 }
