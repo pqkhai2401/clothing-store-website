@@ -59,7 +59,13 @@ Route::middleware(['auth', 'active.account'])->group(function () {
     Route::delete('/gio-hang/{cartItem}', [CartController::class, 'destroy'])->name('cart.destroy');
 
     Route::get('/thanh-toan', [CheckoutController::class, 'index'])->name('checkout.index');
-    Route::post('/thanh-toan', [CheckoutController::class, 'store'])->name('checkout.store');
+    // throttle:10,1 — chống spam đặt hàng (mỗi lần tạo đơn giữ kho + gọi API cổng thanh toán,
+    // spam liên tục không làm sai dữ liệu (mọi bước đều atomic/idempotent) nhưng lãng phí
+    // tài nguyên và làm bẩn lịch sử giao dịch trên PayOS/MoMo).
+    Route::post('/thanh-toan', [CheckoutController::class, 'store'])->name('checkout.store')
+        ->middleware('throttle:10,1');
+    Route::post('/thanh-toan/{order}/doi-phuong-thuc', [CheckoutController::class, 'changePaymentMethod'])->name('checkout.changePaymentMethod')
+        ->middleware('throttle:10,1');
 
     // PayOS: trang QR nhúng + poll trạng thái + return/cancel (fallback từ trang hosted)
     Route::get('/checkout/payos/return', [PayosController::class, 'return'])->name('checkout.payos.return');
@@ -114,7 +120,10 @@ Route::get('/dang-nhap', [AuthController::class, 'index'])->name(name: 'auth.log
 Route::post('/dang-nhap', [AuthController::class, 'webLogin'])->name(name: 'auth.login')
     ->middleware('throttle:5,1');
 Route::get('/dang-ky', [AuthController::class, 'registerPage'])->name('auth.registerpage')->middleware('redirect.authenticated');
-Route::post('/dang-ky', [AuthController::class, 'webRegister'])->name('auth.register');
+// throttle:5,1 — chống script tạo hàng loạt tài khoản (bypass throttle theo-tài-khoản ở checkout
+// bằng cách tạo nhiều tài khoản, mỗi tài khoản giữ 1 đơn online để "khóa" tồn kho khan hiếm).
+Route::post('/dang-ky', [AuthController::class, 'webRegister'])->name('auth.register')
+    ->middleware('throttle:5,1');
 Route::get('/auth/google/redirect', [AuthController::class, 'redirectToGoogle'])
     ->name('auth.google.redirect')
     ->middleware('redirect.authenticated');

@@ -198,11 +198,17 @@ class InventoryBatchService
         int $newReferenceId,
         ?int $userId = null
     ): void {
+        // orderBy product_batch_id: PHẢI khóa lô theo cùng 1 thứ tự cố định trên MỌI đường (khớp
+        // hướng tăng dần của consumeFifo() qua received_at/id) — nếu không, 1 giao dịch consumeFifo
+        // và 1 giao dịch restore chạy đồng thời trên cùng biến thể có thể khóa lô theo thứ tự
+        // ngược nhau và gây deadlock. Không có ORDER BY tường minh thì thứ tự trả về của
+        // GROUP BY/không GROUP BY không được đảm bảo.
         $exports = StockMovement::query()
             ->where('reference_type', $referenceType)
             ->where('reference_id', $referenceId)
             ->where('movement_type', 'export')
             ->whereNotNull('product_batch_id')
+            ->orderBy('product_batch_id')
             ->get();
 
         $touchedVariantIds = [];
@@ -268,6 +274,8 @@ class InventoryBatchService
         int $referenceId,
         ?int $userId = null
     ): void {
+        // orderBy product_batch_id: cùng lý do như restoreByReference() — khóa lô theo thứ tự cố
+        // định để không deadlock với consumeFifo() chạy đồng thời trên cùng biến thể.
         $rows = StockMovement::query()
             ->where('reference_type', $referenceType)
             ->where('reference_id', $referenceId)
@@ -277,6 +285,7 @@ class InventoryBatchService
               - SUM(CASE WHEN movement_type = 'import' THEN ABS(quantity) ELSE 0 END) AS outstanding")
             ->groupBy('product_batch_id', 'product_variant_id')
             ->having('outstanding', '>', 0)
+            ->orderBy('product_batch_id')
             ->get();
 
         $touchedVariantIds = [];

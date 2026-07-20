@@ -90,6 +90,28 @@ class CheckoutController extends Controller
             return back()->withErrors(['payment_method_id' => 'Phương thức thanh toán không hợp lệ.'])->withInput();
         }
 
+        // Supersede đơn online cũ TRƯỚC MỌI THỨ khác (kể cả validateVoucher() bên dưới): đây là
+        // nơi DUY NHẤT đủ sớm để nhả voucher đơn cũ trước khi validateVoucher() của đơn mới chạy.
+        // Đặt bước này TRONG transaction tạo đơn (như từng làm) là KHÔNG đủ — validateVoucher()
+        // chạy ở ngoài, TRƯỚC transaction, nên vẫn thấy VoucherHistory của đơn cũ còn sống và luôn
+        // chặn "Bạn đã sử dụng mã giảm giá này rồi" (không phải race hiếm gặp — lỗi 100% các lần
+        // khách đặt lại đúng voucher đang dùng dở). cancelPendingUnpaid() tự mở transaction riêng
+        // cho từng đơn (atomic + idempotent), không cần bọc thêm transaction ở đây.
+        if ($paymentMethod->isOnlineGateway()) {
+            $staleOrders = Order::where('user_id', $user->id)
+                ->where('status', OrderStatus::PENDING->value)
+                ->where('payment_status', PaymentStatus::UNPAID->value)
+                ->whereIn('payment_method_id', $this->onlinePaymentMethodIds())
+                ->get();
+
+            foreach ($staleOrders as $staleOrder) {
+                app(OrderCancellationService::class)->cancelPendingUnpaid(
+                    $staleOrder,
+                    'Bị thay thế bởi đơn thanh toán online mới'
+                );
+            }
+        }
+
         $cartItems = $this->cartItems($user);
 
         if ($cartItems->isEmpty()) {
@@ -233,25 +255,6 @@ class CheckoutController extends Controller
                 $cartItems->each(fn ($item) => $item->delete());
             }
 
-            // Đơn online (PayOS/MoMo) mới thay thế các đơn online chưa thanh toán cũ của user:
-            // hủy chúng để tránh đơn treo tích tụ. Dưới mô hình Hold, các đơn cũ ĐANG GIỮ KHO
-            // nên phải hủy qua service để nhả kho + nhả voucher (không dùng bulk update).
-            if ($paymentMethod->isOnlineGateway()) {
-                $staleOrders = Order::where('user_id', $user->id)
-                    ->where('id', '!=', $order->id)
-                    ->where('status', OrderStatus::PENDING->value)
-                    ->where('payment_status', PaymentStatus::UNPAID->value)
-                    ->whereIn('payment_method_id', $this->onlinePaymentMethodIds())
-                    ->get();
-
-                foreach ($staleOrders as $staleOrder) {
-                    app(OrderCancellationService::class)->cancelPendingUnpaid(
-                        $staleOrder,
-                        'Bị thay thế bởi đơn thanh toán online mới #' . ($order->order_code ?? $order->id)
-                    );
-                }
-            }
-
             return $order;
             });
         } catch (\RuntimeException $e) {
@@ -284,6 +287,76 @@ class CheckoutController extends Controller
 
         return redirect()->route('home')
             ->with('success', 'Đặt hàng thành công! Mã đơn hàng của bạn là '.$order->order_code.'.');
+    }
+
+    /**
+     * Đổi phương thức thanh toán của một đơn "Chờ xác nhận, chưa thanh toán" — ĐỔI TRÊN CÙNG
+     * ĐƠN (giống Coolmate/Shopee: "thanh toán lại" chọn cổng khác), KHÔNG tạo đơn mới. Nhờ vậy
+     * kho đang giữ + voucher đã ghi nhận của đơn không bị đụng tới (không supersede, không
+     * double-hold, không bị chặn "đã dùng mã này rồi" khi đổi qua đổi lại phương thức).
+     */
+    public function changePaymentMethod(Request $request, Order $order): RedirectResponse
+    {
+        abort_if($order->user_id !== $request->user()->id, 403);
+
+        $validated = $request->validate([
+            'payment_method_id' => ['required', 'integer', 'exists:payment_methods,id'],
+        ], [
+            'payment_method_id.required' => 'Vui lòng chọn phương thức thanh toán.',
+            'payment_method_id.exists'   => 'Phương thức thanh toán không hợp lệ.',
+        ]);
+
+        $newMethod = PaymentMethod::where('id', $validated['payment_method_id'])->where('status', true)->first();
+
+        if (! $newMethod) {
+            return back()->withErrors(['payment_method_id' => 'Phương thức thanh toán không hợp lệ.']);
+        }
+
+        try {
+            DB::transaction(function () use ($order, $newMethod) {
+                // Khóa + kiểm tra lại trong transaction: đơn có thể vừa được webhook xác nhận
+                // thanh toán, admin xử lý, hoặc job 30' hủy ngay trước khi request này chạy tới.
+                $locked = Order::whereKey($order->id)->lockForUpdate()->firstOrFail();
+
+                if ($locked->status !== OrderStatus::PENDING->value || $locked->payment_status !== PaymentStatus::UNPAID->value) {
+                    throw new \App\Exceptions\StaleOrderStateException();
+                }
+
+                if ((int) $locked->payment_method_id === (int) $newMethod->id) {
+                    return; // không đổi gì — giữ nguyên mã/link đang có, tránh sinh lại vô ích
+                }
+
+                $wasOnline = $locked->paymentMethod?->isOnlineGateway() ?? false;
+                $isOnline  = $newMethod->isOnlineGateway();
+
+                $locked->payment_method_id = $newMethod->id;
+
+                // Xóa mã cổng cũ: mỗi lần đổi cổng phải sinh lại link mới ở lần mở trang sau,
+                // không được để mã cũ "sống" song song (webhook đến trễ tra theo mã cũ sẽ
+                // đối soát nhầm đơn, hoặc trang mới hiển thị QR/link của cổng không còn dùng).
+                $locked->payos_order_code = null;
+                $locked->payos_payload    = null;
+                $locked->momo_order_id    = null;
+                $locked->momo_payload     = null;
+                $locked->save();
+
+                // Chuyển từ online sang COD/chuyển khoản (offline): đơn coi như đã chốt ngay,
+                // xóa giỏ hàng giống hệt hành vi lúc tạo đơn offline ở store(). Chiều ngược lại
+                // (offline -> online) KHÔNG khôi phục giỏ — giỏ đã bị xóa từ trước, chấp nhận
+                // không đối xứng vì hiếm khi xảy ra (đơn offline coi như đã chốt).
+                if ($wasOnline && ! $isOnline) {
+                    $locked->clearPurchasedItemsFromCart();
+                }
+            });
+        } catch (\App\Exceptions\StaleOrderStateException) {
+            return redirect()->route('orders.show', $order->id)
+                ->with('warning', 'Đơn hàng vừa được xử lý/thanh toán, không thể đổi phương thức thanh toán nữa.');
+        }
+
+        $order->refresh();
+
+        return redirect($order->paymentResumeUrl() ?? route('orders.show', $order->id))
+            ->with('success', 'Đã đổi phương thức thanh toán sang "'.$newMethod->name.'".');
     }
 
     /**

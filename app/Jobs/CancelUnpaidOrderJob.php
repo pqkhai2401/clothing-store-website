@@ -58,8 +58,21 @@ class CancelUnpaidOrderJob implements ShouldQueue
     public function handle(OrderCancellationService $cancellationService): void
     {
         try {
+            // Đơn có thể đã bị người dùng ĐỔI SANG phương thức offline (COD/chuyển khoản) sau khi
+            // job này được hẹn giờ lúc tạo đơn online — lúc đó đơn không còn "chờ QR hết hạn" nữa,
+            // job phải bỏ qua (nếu không sẽ hủy oan một đơn COD hợp lệ đang chờ giao).
+            $order = $this->order->fresh(['paymentMethod']);
+
+            if (! $order || ! ($order->paymentMethod?->isOnlineGateway() ?? false)) {
+                Log::info('Bỏ qua hủy đơn quá hạn: đơn không còn là thanh toán online (đã đổi phương thức).', [
+                    'order_id' => $this->order->id,
+                ]);
+
+                return;
+            }
+
             $cancelled = $cancellationService->cancelPendingUnpaid(
-                $this->order,
+                $order,
                 'Quá hạn thanh toán online (30 phút)'
             );
 

@@ -6,6 +6,7 @@ use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Models\PaymentMethod;
 use App\Services\OrderFulfillmentService;
 use App\Services\PayosService;
 use Illuminate\Support\Facades\DB;
@@ -112,6 +113,7 @@ class PayosController extends Controller
             'bin'           => $payload['bin'] ?? null,
             'bankName'      => $this->bankNameFromBin($payload['bin'] ?? null),
             'expiresIn'     => $expiresIn,
+            'paymentMethods' => PaymentMethod::where('status', true)->orderBy('id')->get(),
         ]);
     }
 
