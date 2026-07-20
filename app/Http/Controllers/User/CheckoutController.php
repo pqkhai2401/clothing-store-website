@@ -90,13 +90,13 @@ class CheckoutController extends Controller
             return back()->withErrors(['payment_method_id' => 'Phương thức thanh toán không hợp lệ.'])->withInput();
         }
 
-        // Supersede đơn online cũ TRƯỚC MỌI THỨ khác (kể cả validateVoucher() bên dưới): đây là
-        // nơi DUY NHẤT đủ sớm để nhả voucher đơn cũ trước khi validateVoucher() của đơn mới chạy.
-        // Đặt bước này TRONG transaction tạo đơn (như từng làm) là KHÔNG đủ — validateVoucher()
-        // chạy ở ngoài, TRƯỚC transaction, nên vẫn thấy VoucherHistory của đơn cũ còn sống và luôn
-        // chặn "Bạn đã sử dụng mã giảm giá này rồi" (không phải race hiếm gặp — lỗi 100% các lần
-        // khách đặt lại đúng voucher đang dùng dở). cancelPendingUnpaid() tự mở transaction riêng
-        // cho từng đơn (atomic + idempotent), không cần bọc thêm transaction ở đây.
+        // Supersede đơn online cũ TRƯỚC KHI xác thực voucher của đơn mới: nếu không nhả voucher
+        // đơn cũ trước, khách đặt lại đúng voucher đang dùng dở sẽ bị hệ thống âm thầm BỎ voucher
+        // (do vẫn thấy VoucherHistory đơn cũ còn sống → coi là "đã dùng mã này rồi") — đơn vẫn tạo
+        // thành công (không còn chặn cứng như trước) nhưng khách mất oan phần giảm giá đáng lẽ được
+        // hưởng. Làm sớm ở đây để giữ đúng trải nghiệm "đặt lại thì vẫn còn ưu đãi".
+        // cancelPendingUnpaid() tự mở transaction riêng cho từng đơn (atomic + idempotent), không
+        // cần bọc thêm transaction ở đây.
         if ($paymentMethod->isOnlineGateway()) {
             $staleOrders = Order::where('user_id', $user->id)
                 ->where('status', OrderStatus::PENDING->value)
@@ -127,25 +127,17 @@ class CheckoutController extends Controller
                 ->with('warning', 'Một số sản phẩm không còn hoạt động. Vui lòng kiểm tra lại giỏ hàng.');
         }
 
-        [$subtotal, $shippingFee, $total] = CartPricingService::totals($cartItems);
+        [$subtotal, $shippingFee, ] = CartPricingService::totals($cartItems);
 
-        // Xác thực lại voucher ở backend (không tin dữ liệu discount từ client) để tránh bypass qua Postman.
-        $voucher = null;
-        $discountAmount = 0.0;
-
-        if (! empty($validated['voucher_code'])) {
-            $voucher = $this->validateVoucher($validated['voucher_code'], $subtotal, $user);
-
-            if ($voucher instanceof \Illuminate\Http\RedirectResponse) {
-                return $voucher;
-            }
-
-            $discountAmount = $this->calculateDiscount($voucher, $subtotal);
-            $total -= $discountAmount;
-        }
+        $voucherCode = trim((string) ($validated['voucher_code'] ?? ''));
+        // Khi voucher không còn hợp lệ LÚC ĐẶT HÀNG THẬT (khác lúc "áp mã" ở UI — có thể khách đã
+        // đổi số lượng/giỏ hàng sau đó khiến subtotal không còn đạt min_order_amount, hoặc mã bị
+        // người khác dùng hết/admin tắt giữa chừng): KHÔNG chặn cả đơn, chỉ âm thầm bỏ voucher và
+        // vẫn cho đặt hàng theo giá gốc — báo cho khách biết lý do qua $voucherDroppedReason.
+        $voucherDroppedReason = null;
 
         try {
-            $order = DB::transaction(function () use ($user, $validated, $paymentMethod, $cartItems, $shippingFee, $total, $voucher, $discountAmount) {
+            $order = DB::transaction(function () use ($user, $validated, $paymentMethod, $cartItems, $subtotal, $shippingFee, $voucherCode, &$voucherDroppedReason) {
             $address = Address::firstOrCreate([
                 'user_id'          => $user->id,
                 'city'             => $validated['city'],
@@ -154,6 +146,36 @@ class CheckoutController extends Controller
             ]);
 
             $orderCode = app(\App\Services\DocumentSequenceService::class)->generateOrderCode();
+
+            // Xác thực voucher NGAY TỪ ĐẦU trong transaction (khóa dòng voucher ngay khi đọc) —
+            // gộp luôn bước "validate" và "recheck chống race" cũ thành MỘT lần duy nhất, không còn
+            // cửa sổ race giữa validate (ngoài transaction, không lock) và ghi nhận (trong transaction)
+            // như thiết kế trước đây.
+            $finalVoucher = null;
+            $discountAmount = 0.0;
+
+            if ($voucherCode !== '') {
+                $voucher = Voucher::where('code', $voucherCode)->lockForUpdate()->first();
+                $now = Carbon::now();
+
+                $reason = match (true) {
+                    ! $voucher || ! $voucher->status => 'Mã giảm giá không tồn tại hoặc đã bị vô hiệu hóa.',
+                    $now->lt($voucher->start_date) || $now->gt($voucher->end_date) => 'Mã giảm giá đã hết hạn hoặc chưa đến thời gian sử dụng.',
+                    $voucher->used_count >= $voucher->quantity => 'Mã giảm giá đã hết lượt sử dụng.',
+                    $subtotal < (float) $voucher->min_order_amount => 'Đơn hàng chưa đạt giá trị tối thiểu để áp dụng mã giảm giá này.',
+                    VoucherHistory::where('user_id', $user->id)->where('voucher_id', $voucher->id)->exists() => 'Bạn đã sử dụng mã giảm giá này rồi.',
+                    default => null,
+                };
+
+                if ($reason === null) {
+                    $finalVoucher = $voucher;
+                    $discountAmount = $this->calculateDiscount($voucher, $subtotal);
+                } else {
+                    $voucherDroppedReason = $reason;
+                }
+            }
+
+            $total = $subtotal + $shippingFee - $discountAmount;
 
             $order = Order::create([
                 'user_id'           => $user->id,
@@ -164,51 +186,21 @@ class CheckoutController extends Controller
                 'note'              => $validated['note'] ?? null,
                 'total_money'       => $total,
                 'shipping_fee'      => $shippingFee,
-                'voucher_id'        => $voucher?->id,
+                'voucher_id'        => $finalVoucher?->id,
                 'discount_amount'   => $discountAmount,
                 'status'            => OrderStatus::PENDING->value,
                 'payment_status'    => PaymentStatus::UNPAID->value,
             ]);
 
-            if ($voucher) {
-                // Khóa dòng voucher + recheck trong transaction để chống race-condition:
-                // 2 checkout đồng thời có thể cùng vượt qua validateVoucher() (chạy ngoài transaction,
-                // không lock) rồi cùng increment -> dùng quá số lượng / cùng user dùng lại 1 mã.
-                $lockedVoucher = Voucher::whereKey($voucher->id)->lockForUpdate()->first();
-
-                if (! $lockedVoucher) {
-                    throw new \RuntimeException('Mã giảm giá không còn tồn tại.');
-                }
-
-                // Recheck hạn sử dụng/trạng thái NGAY TRONG transaction: validateVoucher() ở trên chạy
-                // trước transaction (không lock), nên nếu voucher hết hạn hoặc bị admin vô hiệu hóa đúng
-                // lúc user đang ở giữa quá trình đặt hàng, đơn vẫn có thể được tạo với discount đã tính
-                // từ trước nếu không recheck lại tại đây.
-                $now = Carbon::now();
-                if (! $lockedVoucher->status || $now->lt($lockedVoucher->start_date) || $now->gt($lockedVoucher->end_date)) {
-                    throw new \RuntimeException('Mã giảm giá đã hết hạn hoặc bị vô hiệu hóa. Vui lòng kiểm tra lại giỏ hàng.');
-                }
-
-                if ($lockedVoucher->used_count >= $lockedVoucher->quantity) {
-                    throw new \RuntimeException('Mã giảm giá đã hết lượt sử dụng.');
-                }
-
-                $alreadyUsed = VoucherHistory::where('user_id', $user->id)
-                    ->where('voucher_id', $lockedVoucher->id)
-                    ->exists();
-
-                if ($alreadyUsed) {
-                    throw new \RuntimeException('Bạn đã sử dụng mã giảm giá này rồi.');
-                }
-
+            if ($finalVoucher) {
                 VoucherHistory::create([
                     'user_id'   => $user->id,
-                    'voucher_id' => $lockedVoucher->id,
+                    'voucher_id' => $finalVoucher->id,
                     'order_id'  => $order->id,
                     'used_at'   => now(),
                 ]);
 
-                $lockedVoucher->increment('used_count');
+                $finalVoucher->increment('used_count');
             }
 
             foreach ($cartItems as $item) {
@@ -274,6 +266,13 @@ class CheckoutController extends Controller
         if ($paymentMethod->isOnlineGateway()) {
             CancelUnpaidOrderJob::dispatch($order)
                 ->delay(now()->addMinutes(PayosService::EXPIRE_MINUTES));
+        }
+
+        // Voucher bị âm thầm bỏ lúc tạo đơn (xem $voucherDroppedReason ở trên): đơn vẫn đặt thành
+        // công theo giá gốc, chỉ cần báo cho khách biết vì sao không thấy giảm giá — không chặn
+        // luồng thanh toán (kể cả khi chuyển tiếp sang trang QR online).
+        if ($voucherDroppedReason) {
+            session()->flash('warning', 'Mã giảm giá không được áp dụng: '.$voucherDroppedReason.' Đơn hàng vẫn được tạo theo giá gốc.');
         }
 
         // Cổng online: chuyển sang trang QR để thanh toán ngay thay vì kết thúc.
@@ -357,42 +356,6 @@ class CheckoutController extends Controller
 
         return redirect($order->paymentResumeUrl() ?? route('orders.show', $order->id))
             ->with('success', 'Đã đổi phương thức thanh toán sang "'.$newMethod->name.'".');
-    }
-
-    /**
-     * Xác thực mã giảm giá ở backend trước khi đặt hàng (đồng bộ luật với Api\VoucherController::apply).
-     * Trả về Voucher hợp lệ, hoặc RedirectResponse kèm lỗi nếu không hợp lệ.
-     */
-    private function validateVoucher(string $code, float $subtotal, $user)
-    {
-        $voucher = Voucher::where('code', $code)->first();
-
-        if (! $voucher || ! $voucher->status) {
-            return back()->withErrors(['voucher_code' => 'Mã giảm giá không tồn tại hoặc đã bị vô hiệu hóa.'])->withInput();
-        }
-
-        $now = Carbon::now();
-        if ($now->lt($voucher->start_date) || $now->gt($voucher->end_date)) {
-            return back()->withErrors(['voucher_code' => 'Mã giảm giá đã hết hạn hoặc chưa đến thời gian sử dụng.'])->withInput();
-        }
-
-        if ($voucher->used_count >= $voucher->quantity) {
-            return back()->withErrors(['voucher_code' => 'Mã giảm giá đã hết lượt sử dụng.'])->withInput();
-        }
-
-        if ($subtotal < (float) $voucher->min_order_amount) {
-            return back()->withErrors(['voucher_code' => 'Đơn hàng chưa đạt giá trị tối thiểu để áp dụng mã giảm giá này.'])->withInput();
-        }
-
-        $alreadyUsed = VoucherHistory::where('user_id', $user->id)
-            ->where('voucher_id', $voucher->id)
-            ->exists();
-
-        if ($alreadyUsed) {
-            return back()->withErrors(['voucher_code' => 'Bạn đã sử dụng mã giảm giá này rồi.'])->withInput();
-        }
-
-        return $voucher;
     }
 
     private function calculateDiscount(Voucher $voucher, float $subtotal): float

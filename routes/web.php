@@ -117,7 +117,7 @@ Route::middleware(['auth', 'active.account'])->group(function () {
 
 // Auth
 Route::get('/dang-nhap', [AuthController::class, 'index'])->name(name: 'auth.loginpage')->middleware('redirect.authenticated');
-Route::post('/dang-nhap', [AuthController::class, 'webLogin'])->name(name: 'auth.login')
+Route::post('/dang-nhap', [AuthController::class, 'login'])->name(name: 'auth.login')
     ->middleware('throttle:5,1');
 Route::get('/dang-ky', [AuthController::class, 'registerPage'])->name('auth.registerpage')->middleware('redirect.authenticated');
 // throttle:5,1 — chống script tạo hàng loạt tài khoản (bypass throttle theo-tài-khoản ở checkout
@@ -143,4 +143,4 @@ Route::middleware('redirect.authenticated')->group(function () {
         ->middleware('throttle:6,1');
 });
 
-Route::post('/dang-xuat', action: [AuthController::class, 'webLogout'])->name('auth.logout');
+Route::post('/dang-xuat', action: [AuthController::class, 'logout'])->name('auth.logout');

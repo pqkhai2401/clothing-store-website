@@ -10,7 +10,10 @@ return new class extends Migration
     {
         Schema::create('stock_movements', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('product_variant_id')->constrained('product_variants')->cascadeOnDelete();
+            // restrictOnDelete: xoá cứng 1 ProductVariant không được phép kéo theo mất sổ cái
+            // biến động kho — tầng ứng dụng (ProductController::productForceDeleteBlocker) chặn
+            // và báo lỗi thân thiện trước khi chạm tới ràng buộc DB này.
+            $table->foreignId('product_variant_id')->constrained('product_variants')->restrictOnDelete();
             $table->foreignId('product_batch_id')->nullable()->constrained('product_batches')->nullOnDelete();
             $table->string('reference_type', 50);
             $table->unsignedBigInteger('reference_id');

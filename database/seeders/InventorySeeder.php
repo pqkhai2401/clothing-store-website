@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Enums\UserRole;
 use App\Models\GoodsReceipt;
 use App\Models\GoodsReceiptItem;
 use App\Models\ProductVariant;
@@ -16,6 +17,7 @@ use App\Services\DocumentSequenceService;
 use App\Services\InventoryBatchService;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Str;
 
 /**
  * QUAN TRỌNG: mọi thay đổi tồn kho trong seeder này PHẢI đi qua
@@ -48,13 +50,19 @@ class InventorySeeder extends Seeder
         })->first() ?? User::first();
 
         if (!$adminUser) {
+            // Chỉ xảy ra khi UserSeeder chưa chạy — tạo tài khoản dự phòng với mật
+            // khẩu ngẫu nhiên mạnh (không hardcode) và gán role admin đầy đủ,
+            // is_protected để tránh bị xoá nhầm như tài khoản admin thật.
             $adminUser = User::create([
                 'username' => 'Quản trị viên kho',
                 'email' => 'admin.kho@gmail.com',
-                'password' => bcrypt('password'),
+                'password' => bcrypt(Str::password(20)),
                 'phone_number' => '0900000000',
                 'is_active' => true,
+                'is_protected' => true,
+                'email_verified_at' => $now,
             ]);
+            $adminUser->assignRole(UserRole::ADMIN->value);
         }
 
         $userId = $adminUser->id;
@@ -87,6 +95,22 @@ class InventorySeeder extends Seeder
                     'address' => '07 Lê Minh Xuân, Tân Bình, TP. HCM',
                     'note' => 'Đối tác cung cấp áo sơ mi công sở cao cấp.',
                     'status' => true,
+                ],
+                [
+                    'name' => 'Công Ty TNHH May Mặc Đà Nẵng Xanh',
+                    'phone' => '0236384720',
+                    'email' => 'danangxanh@garment.vn',
+                    'address' => '120 Nguyễn Tất Thành, Đà Nẵng',
+                    'note' => 'Nhà cung cấp đồ thể thao, áo khoác gió.',
+                    'status' => true,
+                ],
+                [
+                    'name' => 'Xưởng Da Giày & Phụ Kiện Bình Dương',
+                    'phone' => '0274385291',
+                    'email' => 'binhduongaccessories@gmail.com',
+                    'address' => 'KCN Sóng Thần 2, Dĩ An, Bình Dương',
+                    'note' => 'Từng có lô hàng giao trễ hẹn, cần theo dõi tiến độ.',
+                    'status' => false,
                 ],
             ];
             foreach ($suppliers as $supplierData) {

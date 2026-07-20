@@ -33,11 +33,25 @@ return new class extends Migration
             $table->foreignId('adjusted_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamp('adjusted_at')->nullable();
             $table->text('adjustment_reason')->nullable();
+            $table->foreignId('adjustment_goods_receipt_id')->nullable()->constrained('goods_receipts')->nullOnDelete();
+        });
+
+        // goods_receipts.adjustment_stock_issue_id is declared as a plain column in the
+        // goods_receipts migration (it runs before this table exists); link it here now
+        // that both tables are present.
+        Schema::table('goods_receipts', function (Blueprint $table) {
+            $table->foreign('adjustment_stock_issue_id')
+                ->references('id')->on('stock_issues')
+                ->nullOnDelete();
         });
     }
 
     public function down(): void
     {
+        Schema::table('goods_receipts', function (Blueprint $table) {
+            $table->dropForeign(['adjustment_stock_issue_id']);
+        });
+
         Schema::dropIfExists('stock_issues');
     }
 };

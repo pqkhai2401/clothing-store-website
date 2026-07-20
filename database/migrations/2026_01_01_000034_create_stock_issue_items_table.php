@@ -12,7 +12,10 @@ return new class extends Migration
             $table->id();
             $table->foreignId('stock_issue_id')->constrained('stock_issues')->cascadeOnDelete();
             $table->foreignId('product_id')->nullable()->constrained('products')->cascadeOnDelete();
-            $table->foreignId('product_variant_id')->constrained('product_variants')->cascadeOnDelete();
+            // restrictOnDelete: xoá cứng 1 ProductVariant không được phép kéo theo mất lịch sử
+            // xuất kho — tầng ứng dụng (ProductController::productForceDeleteBlocker) chặn và
+            // báo lỗi thân thiện trước khi chạm tới ràng buộc DB này.
+            $table->foreignId('product_variant_id')->constrained('product_variants')->restrictOnDelete();
             $table->unsignedInteger('quantity');
             $table->decimal('cost_price', 15, 2)->default(0);
             $table->decimal('sale_price', 15, 2)->default(0);

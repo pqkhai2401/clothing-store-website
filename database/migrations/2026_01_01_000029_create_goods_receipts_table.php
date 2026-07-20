@@ -33,6 +33,9 @@ return new class extends Migration
             $table->foreignId('adjusted_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamp('adjusted_at')->nullable();
             $table->text('adjustment_reason')->nullable();
+            // FK constraint is added by the stock_issues migration (it runs after this one,
+            // so that's the earliest point both tables exist for MySQL to link them).
+            $table->unsignedBigInteger('adjustment_stock_issue_id')->nullable();
         });
     }
 
