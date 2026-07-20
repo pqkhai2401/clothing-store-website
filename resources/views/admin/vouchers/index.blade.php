@@ -581,6 +581,9 @@
                         const data = await res.json();
                         closeModal();
                         showAdminToast(data.message || 'Cập nhật voucher thành công.', 'success');
+                        if (data.warning) {
+                            setTimeout(() => showAdminToast(data.warning, 'warning'), 400);
+                        }
                         setTimeout(() => window.reloadAdminTable?.(), 600);
                     } catch {
                         showAdminToast('Không thể cập nhật voucher. Vui lòng thử lại.', 'error');

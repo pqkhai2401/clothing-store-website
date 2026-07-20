@@ -165,13 +165,12 @@
             <tbody>
                 @forelse($order->orderItems as $index => $item)
                     @php
-                        $variant = $item->productVariant;
-                        $product = $variant?->product;
-                        $attrs = collect([$variant?->color?->name, $variant?->size?->name])->filter()->join(' / ') ?: '—';
+                        // M4: ưu tiên thông tin snapshot lúc đặt hàng (đóng băng theo hóa đơn).
+                        $attrs = collect([$item->displayColor(), $item->displaySize()])->filter()->join(' / ') ?: '—';
                     @endphp
                     <tr>
                         <td class="center">{{ $index + 1 }}</td>
-                        <td>{{ $product?->name ?? 'Sản phẩm đã bị xóa' }}</td>
+                        <td>{{ $item->displayName() }}</td>
                         <td class="center">{{ $attrs }}</td>
                         <td class="num">{{ number_format($item->unit_price ?? 0, 0, ',', '.') }}₫</td>
                         <td class="center">{{ $item->quantity }}</td>

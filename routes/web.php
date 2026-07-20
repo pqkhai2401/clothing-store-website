@@ -51,7 +51,7 @@ Route::get('/danh-muc/{slug}', [ProductController::class, 'getProductsByCategory
 Route::get('/bo-suu-tap/{slug}', [ProductController::class, 'getProductsByCollection'])
     ->name('collections.show');
 
-Route::middleware(['auth', 'active.account'])->group(function () {
+Route::middleware(['auth', 'active.account', 'auth.session'])->group(function () {
     Route::get('/gio-hang', [CartController::class, 'index'])->name('cart.index');
     Route::post('/gio-hang/them', [CartController::class, 'store'])->name('cart.add');
     Route::patch('/gio-hang/{cartItem}', [CartController::class, 'update'])->name('cart.update');
@@ -92,7 +92,7 @@ Route::middleware(['auth', 'active.account'])->group(function () {
 
 
 // Orders
-Route::middleware(['auth', 'active.account'])->group(function () {
+Route::middleware(['auth', 'active.account', 'auth.session'])->group(function () {
     Route::get('/don-hang', [OrderController::class, 'index'])->name('orders.index');
     Route::get('/don-hang/{id}/chi-tiet', [OrderController::class, 'detail'])->name('orders.detail');
     Route::patch('/don-hang/{id}/huy', [OrderController::class, 'cancelOrder'])->name('orders.cancel');
@@ -100,14 +100,14 @@ Route::middleware(['auth', 'active.account'])->group(function () {
 });
 
 // Profile
-Route::middleware(['auth', 'active.account'])->group(function () {
+Route::middleware(['auth', 'active.account', 'auth.session'])->group(function () {
     Route::get('/tai-khoan', [ProfileController::class, 'index'])->name('profile.index');
     Route::put('/tai-khoan', [ProfileController::class, 'update'])->name('profile.update');
     Route::put('/tai-khoan/doi-mat-khau', [ProfileController::class, 'changePassword'])->name('profile.change-password');
 });
 
 // Wishlist (yêu cầu đăng nhập)
-Route::middleware(['auth', 'active.account'])->group(function () {
+Route::middleware(['auth', 'active.account', 'auth.session'])->group(function () {
     Route::get('/yeu-thich', [WishlistController::class, 'index'])->name('wishlist.index');
     Route::post('/yeu-thich/them/{productId}', [WishlistController::class, 'add'])->name('wishlist.add');
     Route::post('/yeu-thich/bat-tat/{productId}', [WishlistController::class, 'toggle'])->name('wishlist.toggle');

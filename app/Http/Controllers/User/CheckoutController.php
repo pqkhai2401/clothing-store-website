@@ -206,7 +206,7 @@ class CheckoutController extends Controller
             foreach ($cartItems as $item) {
                 // Khóa + recheck lại status/tồn kho ngay trước khi tạo đơn (chống race-condition
                 // giữa lúc user xem giỏ hàng và lúc bấm đặt hàng — 2 tab, 2 user cùng mua...).
-                $variant = ProductVariant::lockForUpdate()->with('product')->find($item->product_variant_id);
+                $variant = ProductVariant::lockForUpdate()->with(['product', 'color', 'size'])->find($item->product_variant_id);
 
                 if (! $variant || $variant->status !== 'Active' || ! $variant->product?->status) {
                     throw new \RuntimeException('Một số sản phẩm trong giỏ hàng đã ngừng bán. Vui lòng kiểm tra lại giỏ hàng.');
@@ -224,6 +224,12 @@ class CheckoutController extends Controller
                 OrderItem::create([
                     'order_id'           => $order->id,
                     'product_variant_id' => $item->product_variant_id,
+                    // Snapshot thông tin sản phẩm lúc đặt hàng (M4) — hóa đơn không đổi theo
+                    // catalog khi admin sửa tên/SKU về sau.
+                    'product_name'       => $variant->product?->name,
+                    'variant_sku'        => $variant->sku,
+                    'color_name'         => $variant->color?->name,
+                    'size_name'          => $variant->size?->name,
                     'unit_price'         => $unitPrice,
                     'quantity'           => $item->quantity,
                 ]);

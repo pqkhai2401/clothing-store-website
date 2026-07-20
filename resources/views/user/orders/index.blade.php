@@ -721,11 +721,12 @@
                             </div>
                         @endif
                         <div class="order-item-info">
-                            <div class="order-item-name">{{ $product?->name ?? 'Sản phẩm đã xoá' }}</div>
+                            {{-- M4: tên/màu/size theo snapshot lúc đặt hàng --}}
+                            <div class="order-item-name">{{ $item->displayName() }}</div>
                             <div class="order-item-meta">
-                                @if($variant?->color) {{ $variant->color->name }} @endif
-                                @if($variant?->color && $variant?->size) · @endif
-                                @if($variant?->size) {{ $variant->size->name }} @endif
+                                @if($item->displayColor()) {{ $item->displayColor() }} @endif
+                                @if($item->displayColor() && $item->displaySize()) · @endif
+                                @if($item->displaySize()) {{ $item->displaySize() }} @endif
                             </div>
                             <div class="order-item-qty">Số lượng: <span>{{ $item->quantity }}</span></div>
                         </div>

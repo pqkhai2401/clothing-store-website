@@ -567,6 +567,14 @@ class UserController extends Controller
                 ->with('error', 'Không thể xóa admin hệ thống.');
         }
 
+        // Tương đương rule 9 của update(): admin thường không được xóa admin khác (kể cả admin
+        // thường khác, không riêng gì admin hệ thống đã chặn ở check is_protected phía trên).
+        $currentIsNormalAdmin = auth()->user()->isAdmin() && ! (bool) auth()->user()->is_protected;
+        if ($currentIsNormalAdmin && $user->isAdmin()) {
+            return redirect()->route($context['routePrefix'].'.list')
+                ->with('error', 'Quản trị viên thường không có quyền xóa quản trị viên khác.');
+        }
+
         $user->delete();
 
         return redirect()->route($context['routePrefix'].'.list')->with('success', 'Xóa '.$context['itemLabelLower'].' thành công');
@@ -630,6 +638,15 @@ class UserController extends Controller
 
         $query = User::whereIn('id', $ids)->where('is_protected', false);
         $this->applyTypeFilter($query, $context['type']);
+
+        // Cùng rule 9 của update()/destroy(): admin thường không được đụng tới tài khoản admin
+        // khác qua đường bulk-delete — trước đây chỉ where('is_protected', false) nên vẫn lọt
+        // được admin thường khác (chưa is_protected) khi type === 'all'.
+        $currentIsNormalAdmin = $request->user()->isAdmin() && ! (bool) $request->user()->is_protected;
+        if ($currentIsNormalAdmin) {
+            $query->whereDoesntHave('roles', fn ($q) => $q->where('name', UserRole::ADMIN->value));
+        }
+
         $deleted = $query->delete();
 
         return back()->with('success', "Đã xóa {$deleted} {$context['itemLabelLower']} thành công.");

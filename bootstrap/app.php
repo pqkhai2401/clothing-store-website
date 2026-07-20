@@ -19,6 +19,15 @@ return Application::configure(basePath: dirname(__DIR__))
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Route đăng nhập của dự án tên 'auth.loginpage' (không phải 'login' mặc định Laravel).
+        // App\Http\Middleware\Authenticate (alias 'auth') đã tự override redirectTo() đúng, nhưng
+        // Illuminate\Session\Middleware\AuthenticateSession (built-in, dùng cho 'auth.session' —
+        // buộc đăng xuất phiên khác khi đổi mật khẩu) không biết custom class đó, vẫn gọi
+        // route('login') mặc định của Laravel và ném RouteNotFoundException (lỗi 500) vì route
+        // đó không tồn tại. Khai báo dùng chung ở đây để MỌI middleware built-in cần redirect
+        // guest đều resolve đúng route thật của dự án.
+        $middleware->redirectGuestsTo(fn () => route('auth.loginpage'));
+
         $middleware->trustProxies(
             at: '*',
             headers: Request::HEADER_X_FORWARDED_FOR

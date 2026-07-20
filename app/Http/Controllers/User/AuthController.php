@@ -292,6 +292,16 @@ class AuthController extends AppBaseController
             return redirect()
                 ->route('auth.loginpage')
                 ->with('error', 'Tài khoản của bạn đã ngưng hoạt động.');
+        } elseif (! $user->google_id) {
+            // Tài khoản đã tồn tại (đăng ký bằng email/mật khẩu thường) nhưng CHƯA từng liên kết
+            // Google trước đây — không được tự động merge+login chỉ vì email trùng khớp. Đăng ký
+            // thường không xác thực quyền sở hữu email, nên tài khoản này có thể do người khác
+            // đăng ký giùm email của chủ thật ("dangling account") để chờ chủ thật tự đăng nhập
+            // Google vào rồi âm thầm truy cập lại bằng mật khẩu đã biết trước — bắt buộc xác thực
+            // qua mật khẩu (hoặc luồng "Quên mật khẩu" xác thực qua OTP) trước khi cho liên kết.
+            return redirect()
+                ->route('auth.loginpage')
+                ->with('error', 'Email này đã có tài khoản trên hệ thống. Vui lòng đăng nhập bằng mật khẩu. Nếu đây không phải tài khoản bạn tạo, hãy dùng "Quên mật khẩu" để xác thực lại quyền sở hữu email.');
         } else {
             $user->forceFill([
                 'google_id' => $googleUser->getId() ?: $user->google_id,

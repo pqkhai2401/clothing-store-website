@@ -157,10 +157,11 @@
                                 @endif
                             </td>
                             <td>
-                                <div class="fw-semibold">{{ $product?->name ?? 'Sản phẩm đã bị xóa' }}</div>
+                                {{-- M4: tên/màu/size theo snapshot lúc đặt hàng, không đổi khi sửa catalog --}}
+                                <div class="fw-semibold">{{ $item->displayName() }}</div>
                             </td>
-                            <td class="text-muted">{{ $variant?->color?->name ?? '—' }}</td>
-                            <td class="text-muted">{{ $variant?->size?->name ?? '—' }}</td>
+                            <td class="text-muted">{{ $item->displayColor() ?? '—' }}</td>
+                            <td class="text-muted">{{ $item->displaySize() ?? '—' }}</td>
                             <td class="fw-semibold">{{ number_format($item->unit_price ?? 0, 0, ',', '.') }}₫</td>
                             <td>{{ $item->quantity }}</td>
                             <td class="fw-bold" style="color:#174761;">

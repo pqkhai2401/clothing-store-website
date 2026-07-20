@@ -40,7 +40,7 @@
                                 </button>
                                 <div class="hk-cat-panel" id="issueTypePanel" hidden style="width:280px;">
                                     <div class="hk-cat-list" id="issueTypeList">
-                                        @foreach(\App\Models\StockIssue::ISSUE_TYPE_LABELS as $value => $label)
+                                        @foreach(\App\Models\StockIssue::ISSUE_TYPE_SELECTABLE_LABELS as $value => $label)
                                             <button type="button" class="hk-cat-item {{ $value === 'sale' ? 'is-active' : '' }}"
                                                 data-value="{{ $value }}" data-label="{{ $label }}">{{ $label }}</button>
                                         @endforeach

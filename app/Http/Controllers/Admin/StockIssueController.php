@@ -26,7 +26,7 @@ class StockIssueController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'issue_type' => ['required', Rule::in(array_keys(StockIssue::ISSUE_TYPE_LABELS))],
+            'issue_type' => ['required', Rule::in(array_keys(StockIssue::ISSUE_TYPE_SELECTABLE_LABELS))],
             'warehouse_id' => ['required', 'integer', Rule::exists('warehouses', 'id')],
             'order_id' => ['nullable', 'integer', Rule::exists('orders', 'id')],
             'reason' => ['nullable', 'string', 'max:500'],
@@ -38,6 +38,7 @@ class StockIssueController extends Controller
             'items.*.sale_price' => ['nullable', 'numeric', 'min:0'],
         ], [
             'issue_type.required' => 'Vui lòng chọn loại xuất kho.',
+            'issue_type.in' => 'Loại xuất kho không hợp lệ hoặc hiện chưa hỗ trợ (hệ thống chỉ vận hành 1 kho, chưa hỗ trợ xuất điều chuyển kho).',
             'warehouse_id.required' => 'Vui lòng chọn kho xuất.',
             'items.required' => 'Vui lòng chọn ít nhất một sản phẩm.',
             'items.min' => 'Vui lòng chọn ít nhất một sản phẩm.',
@@ -241,7 +242,7 @@ class StockIssueController extends Controller
         }
 
         $validated = $request->validate([
-            'issue_type' => ['required', Rule::in(array_keys(StockIssue::ISSUE_TYPE_LABELS))],
+            'issue_type' => ['required', Rule::in(array_keys(StockIssue::ISSUE_TYPE_SELECTABLE_LABELS))],
             'warehouse_id' => ['required', 'integer', Rule::exists('warehouses', 'id')],
             'order_id' => ['nullable', 'integer', Rule::exists('orders', 'id')],
             'reason' => ['nullable', 'string', 'max:500'],
@@ -253,6 +254,7 @@ class StockIssueController extends Controller
             'items.*.sale_price' => ['nullable', 'numeric', 'min:0'],
         ], [
             'issue_type.required' => 'Vui lòng chọn loại xuất kho.',
+            'issue_type.in' => 'Loại xuất kho không hợp lệ hoặc hiện chưa hỗ trợ (hệ thống chỉ vận hành 1 kho, chưa hỗ trợ xuất điều chuyển kho).',
             'warehouse_id.required' => 'Vui lòng chọn kho xuất.',
             'items.required' => 'Vui lòng chọn ít nhất một sản phẩm.',
             'items.min' => 'Vui lòng chọn ít nhất một sản phẩm.',

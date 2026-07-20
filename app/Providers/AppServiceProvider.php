@@ -89,9 +89,17 @@ class AppServiceProvider extends ServiceProvider
             $view->with('siteSettings', \App\Models\Setting::current());
         });
 
-        // Danh sách banner trang chủ đang bật, dùng cho slider hero-section.
+        // Danh sách banner trang chủ đang bật VÀ còn trong khoảng ngày hiệu lực (nếu có đặt).
+        // start_date/end_date nullable — banner không đặt ngày coi như hiển thị vô thời hạn.
         View::composer('user.home.index', function ($view): void {
+            $now = now();
             $view->with('heroBanners', \App\Models\HeroBanner::where('is_active', true)
+                ->where(function ($q) use ($now) {
+                    $q->whereNull('start_date')->orWhere('start_date', '<=', $now);
+                })
+                ->where(function ($q) use ($now) {
+                    $q->whereNull('end_date')->orWhere('end_date', '>=', $now);
+                })
                 ->orderBy('sort_order')
                 ->orderByDesc('id')
                 ->get());

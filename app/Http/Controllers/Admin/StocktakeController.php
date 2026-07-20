@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class StocktakeController extends Controller
 {
@@ -30,7 +31,7 @@ class StocktakeController extends Controller
 
         $stocktake = DB::transaction(function () use ($validated) {
             $stocktake = Stocktake::create([
-                'code' => $this->generateCode(),
+                'code' => app(\App\Services\DocumentSequenceService::class)->generateStocktakeCode(),
                 'note' => $validated['note'] ?? null,
                 'status' => Stocktake::STATUS_PENDING,
                 'created_by' => Auth::id(),
@@ -84,7 +85,21 @@ class StocktakeController extends Controller
             return back()->with('error', 'Phiếu kiểm kê này đã được xử lý trước đó.');
         }
 
-        DB::transaction(fn () => $this->approveStocktake($stocktake));
+        try {
+            $skippedWarnings = DB::transaction(fn () => $this->approveStocktake($stocktake));
+        } catch (ValidationException $e) {
+            // consumeFifo() ném lỗi này khi tồn kho thực tế không đủ để trừ theo số đã kiểm kê
+            // (ví dụ hàng đã bán hết giữa lúc tạo phiếu và lúc duyệt) — bắt tường minh để báo lỗi
+            // thân thiện, thay vì để Laravel tự chuyển thành redirect im lặng không rõ nguyên nhân.
+            $message = collect($e->errors())->flatten()->first()
+                ?? 'Không đủ tồn kho để duyệt phiếu kiểm kê này. Vui lòng kiểm tra lại.';
+
+            return back()->with('error', $message);
+        }
+
+        if (!empty($skippedWarnings)) {
+            session()->flash('warning', 'Đã duyệt phiếu nhưng bỏ qua một số dòng để tránh điều chỉnh trùng: ' . implode(' ', $skippedWarnings));
+        }
 
         return back()->with('success', "Đã duyệt cân bằng kho cho phiếu \"{$stocktake->code}\".");
     }
@@ -192,10 +207,15 @@ class StocktakeController extends Controller
         return back()->with('success', "Đã xóa vĩnh viễn {$count} phiếu kiểm kê.");
     }
 
-    private function approveStocktake(Stocktake $stocktake): void
+    /**
+     * @return string[] Cảnh báo cho các dòng bị BỎ QUA (không áp chênh lệch) do phát hiện rủi ro
+     *                   điều chỉnh trùng (double-correction) — xem ghi chú bên trong vòng lặp.
+     */
+    private function approveStocktake(Stocktake $stocktake): array
     {
         $negativeItems = [];
         $positiveItems = [];
+        $skippedWarnings = [];
 
         foreach ($stocktake->items as $item) {
             $diff = $item->diff();
@@ -206,6 +226,28 @@ class StocktakeController extends Controller
 
             $variant = ProductVariant::lockForUpdate()->find($item->product_variant_id);
             if (! $variant) {
+                continue;
+            }
+
+            // system_stock/actual_stock của dòng này là snapshot "đông cứng" tại thời điểm TẠO
+            // phiếu (store()), không phải lúc duyệt — nếu phiếu ở trạng thái chờ xử lý một thời
+            // gian, một phiếu kiểm kê KHÁC cũng đếm trùng biến thể này có thể đã được duyệt
+            // TRƯỚC phiếu hiện tại (sau khi phiếu hiện tại được tạo) — tức chênh lệch phát hiện ở
+            // đây rất có thể đã được xử lý/ghi nhận một phần bởi phiếu kia rồi. Áp lại chênh lệch
+            // lần nữa sẽ điều chỉnh trùng (double-correction). Bỏ qua dòng này, để admin tự đối
+            // chiếu và tạo phiếu kiểm kê mới nếu vẫn còn chênh lệch thật.
+            $hasNewerApprovedStocktake = Stocktake::where('id', '!=', $stocktake->id)
+                ->where('status', Stocktake::STATUS_APPROVED)
+                ->where('created_at', '>', $stocktake->created_at)
+                ->whereHas('items', fn ($q) => $q->where('product_variant_id', $item->product_variant_id))
+                ->exists();
+
+            if ($hasNewerApprovedStocktake) {
+                $skippedWarnings[] = sprintf(
+                    'SKU %s: bỏ qua điều chỉnh (chênh lệch %+d) vì đã có phiếu kiểm kê khác duyệt sau khi phiếu này được tạo — có thể đã được xử lý trùng.',
+                    $variant->sku,
+                    $diff
+                );
                 continue;
             }
 
@@ -296,16 +338,10 @@ class StocktakeController extends Controller
             'stock_issue_id' => $stockIssue?->id,
             'goods_receipt_id' => $goodsReceipt?->id,
         ]);
+
+        return $skippedWarnings;
     }
 
-    private function generateCode(): string
-    {
-        $prefix = 'PKK' . now()->format('Ymd');
-        $lastToday = Stocktake::withTrashed()->where('code', 'like', "{$prefix}%")->orderByDesc('code')->first();
-        $sequence = $lastToday ? ((int) substr($lastToday->code, -3)) + 1 : 1;
-
-        return $prefix . str_pad((string) $sequence, 3, '0', STR_PAD_LEFT);
-    }
 
 }
 

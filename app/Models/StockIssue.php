@@ -34,6 +34,19 @@ class StockIssue extends Model implements \OwenIt\Auditing\Contracts\Auditable
         self::ISSUE_TYPE_TRANSFER        => 'Xuất điều chuyển kho',
     ];
 
+    // Danh sách loại xuất kho được PHÉP CHỌN khi tạo/sửa phiếu (dropdown + validate server-side).
+    // "Xuất điều chuyển kho" bị loại khỏi đây: hệ thống hiện chỉ vận hành 1 kho duy nhất (xem
+    // create-modal.blade.php — ô chọn kho xuất bị khóa cứng), nên loại này không có "kho đích"
+    // nào để chuyển tới — cho phép chọn sẽ trừ tồn thật nhưng không có nơi nào ghi nhận hàng đã
+    // đi đâu, hàng "biến mất" khỏi hệ thống. Vẫn giữ trong ISSUE_TYPE_LABELS để các phiếu cũ
+    // (nếu có, hoặc khi hệ thống sau này hỗ trợ nhiều kho) vẫn hiển thị đúng nhãn.
+    public const ISSUE_TYPE_SELECTABLE_LABELS = [
+        self::ISSUE_TYPE_SALE            => 'Xuất bán hàng',
+        self::ISSUE_TYPE_RETURN_SUPPLIER => 'Xuất trả nhà cung cấp',
+        self::ISSUE_TYPE_ADJUSTMENT      => 'Điều chỉnh giảm sau kiểm kê',
+        self::ISSUE_TYPE_DAMAGED         => 'Xuất hủy hàng lỗi / hư hỏng',
+    ];
+
     protected $fillable = [
         'code',
         'issue_type',

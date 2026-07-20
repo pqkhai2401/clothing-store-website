@@ -246,12 +246,59 @@ class VoucherController extends Controller
         $validated = $request->validate($rules, $this->validationMessages());
         $validated['status'] = $request->boolean('status');
 
+        // Cảnh báo (không chặn) khi sửa các field ảnh hưởng đến ưu đãi của voucher đã có người
+        // dùng: đơn cũ không bị đổi số liệu (discount_amount đã chốt lúc đặt hàng), nhưng khách
+        // dùng mã từ giờ trở đi sẽ nhận điều khoản mới — admin cần biết để cân nhắc, không nên
+        // âm thầm đổi luật chơi giữa chừng một chiến dịch đang chạy.
+        $numericFields = ['value', 'min_order_amount', 'max_discount_amount'];
+        $dateFields = ['start_date', 'end_date'];
+        $changedSensitiveFields = [];
+        if ($voucher->used_count > 0) {
+            if (array_key_exists('type', $validated) && $voucher->type !== $validated['type']) {
+                $changedSensitiveFields[] = 'type';
+            }
+
+            foreach ($numericFields as $field) {
+                if (!array_key_exists($field, $validated)) {
+                    continue;
+                }
+                // Cast decimal:2 trả về string "200000.00" — so bằng (float) để tránh báo
+                // "thay đổi" giả khi client chỉ gửi lại đúng giá trị cũ ở định dạng khác.
+                $oldVal = $voucher->{$field} === null ? null : (float) $voucher->{$field};
+                $newVal = $validated[$field] === null || $validated[$field] === '' ? null : (float) $validated[$field];
+                if ($oldVal !== $newVal) {
+                    $changedSensitiveFields[] = $field;
+                }
+            }
+
+            foreach ($dateFields as $field) {
+                if (!array_key_exists($field, $validated)) {
+                    continue;
+                }
+                $oldVal = $voucher->{$field}?->timestamp;
+                $newVal = $validated[$field] ? \Illuminate\Support\Carbon::parse($validated[$field])->timestamp : null;
+                if ($oldVal !== $newVal) {
+                    $changedSensitiveFields[] = $field;
+                }
+            }
+        }
+
         $voucher->update($validated);
+
+        if (!empty($changedSensitiveFields)) {
+            session()->flash('warning', sprintf(
+                'Lưu ý: voucher "%s" đã được sử dụng %d lượt — bạn vừa thay đổi %s. Các đơn hàng đã đặt trước đó không bị ảnh hưởng, nhưng khách dùng mã từ giờ trở đi sẽ áp dụng theo điều khoản mới.',
+                $voucher->code,
+                $voucher->used_count,
+                implode(', ', $changedSensitiveFields)
+            ));
+        }
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
                 'success' => true,
                 'message' => "Cap nhat voucher \"{$voucher->code}\" thanh cong.",
+                'warning' => $changedSensitiveFields ? session('warning') : null,
             ]);
         }
 

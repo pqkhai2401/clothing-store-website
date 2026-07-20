@@ -637,7 +637,7 @@ class OrderController extends Controller
 
             $orderCode = app(\App\Services\DocumentSequenceService::class)->generateOrderCode();
 
-            $variants = ProductVariant::with('product')
+            $variants = ProductVariant::with(['product', 'color', 'size'])
                 ->whereIn('id', collect($validated['items'])->pluck('product_variant_id'))
                 ->get()
                 ->keyBy('id');
@@ -698,6 +698,11 @@ class OrderController extends Controller
                 OrderItem::create([
                     'order_id'           => $order->id,
                     'product_variant_id' => $variant->id,
+                    // Snapshot thông tin sản phẩm lúc tạo đơn (M4).
+                    'product_name'       => $variant->product?->name,
+                    'variant_sku'        => $variant->sku,
+                    'color_name'         => $variant->color?->name,
+                    'size_name'          => $variant->size?->name,
                     'unit_price'         => $variant->final_price,
                     'quantity'           => $item['quantity'],
                 ]);
@@ -1004,7 +1009,7 @@ class OrderController extends Controller
             }
 
             if ($scope === 'full') {
-                $variants = ProductVariant::with('product')
+                $variants = ProductVariant::with(['product', 'color', 'size'])
                     ->whereIn('id', collect($validated['items'])->pluck('product_variant_id'))
                     ->get()
                     ->keyBy('id');
@@ -1027,6 +1032,11 @@ class OrderController extends Controller
                     OrderItem::create([
                         'order_id'           => $order->id,
                         'product_variant_id' => $variant->id,
+                        // Snapshot thông tin sản phẩm lúc sửa đơn (M4).
+                        'product_name'       => $variant->product?->name,
+                        'variant_sku'        => $variant->sku,
+                        'color_name'         => $variant->color?->name,
+                        'size_name'          => $variant->size?->name,
                         'unit_price'         => $variant->final_price,
                         'quantity'           => $item['quantity'],
                     ]);

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\User;
 use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\Wishlist;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -72,10 +73,19 @@ class WishlistController extends Controller
             return response()->json(['message' => 'Sản phẩm không tồn tại.'], 404);
         }
 
-        Wishlist::create([
-            'user_id'    => $userId,
-            'product_id' => $productId,
-        ]);
+        try {
+            Wishlist::create([
+                'user_id'    => $userId,
+                'product_id' => $productId,
+            ]);
+        } catch (QueryException $e) {
+            // Race condition: 2 request đồng thời (double-click, 2 tab) cùng vượt qua exists()
+            // ở trên rồi cùng đụng UNIQUE(user_id, product_id) — request thua chỉ cần coi như
+            // "đã có sẵn" thay vì để lộ 500.
+            if ((int) $e->getCode() !== 23000) {
+                throw $e;
+            }
+        }
 
         return response()->json([
             'added'   => true,
@@ -106,10 +116,19 @@ class WishlistController extends Controller
                 return response()->json(['message' => 'Sản phẩm không tồn tại.'], 404);
             }
 
-            Wishlist::create([
-                'user_id'    => $userId,
-                'product_id' => $productId,
-            ]);
+            try {
+                Wishlist::create([
+                    'user_id'    => $userId,
+                    'product_id' => $productId,
+                ]);
+            } catch (QueryException $e) {
+                // Cùng lý do như add(): 2 request "bật" đồng thời cùng lọt qua check $existing
+                // ở trên (chưa ai commit) rồi cùng đụng UNIQUE constraint — request thua vẫn coi
+                // là đã "thêm" thành công (sản phẩm chắc chắn có trong wishlist) thay vì lộ 500.
+                if ((int) $e->getCode() !== 23000) {
+                    throw $e;
+                }
+            }
             $added = true;
         }
 

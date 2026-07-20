@@ -289,6 +289,7 @@ class ProductController extends Controller
         $validator->after(function ($validator) use ($request) {
             $this->checkVariantStructure($request, $validator);
             $this->checkVariantSkuConflicts($request, $validator);
+            $this->checkVariantPricing($request, $validator);
         });
 
         $validator->validate();
@@ -364,7 +365,7 @@ class ProductController extends Controller
                             // Tồn & giá vốn do KHO quản lý theo lô (product_batches) — khởi tạo 0,
                             // nhập hàng thực tế qua Phiếu nhập kho để sinh lô + giá vốn.
                             'cost_price' => 0,
-                            'price'      => max(0, (float) ($data['price'] ?? $data['sale_price'] ?? 0)),
+                            'price'      => (float) ($data['price'] ?? $data['sale_price'] ?? 0),
                             'stock'      => 0,
                         ]);
                     }
@@ -466,6 +467,7 @@ class ProductController extends Controller
         $validator->after(function ($validator) use ($request, $id) {
             $this->checkVariantStructure($request, $validator);
             $this->checkVariantSkuConflicts($request, $validator, $id);
+            $this->checkVariantPricing($request, $validator);
         });
 
         if ($validator->fails()) {
@@ -547,8 +549,13 @@ class ProductController extends Controller
             return back()->withErrors(['status' => $message])->withInput();
         }
 
+        // Cảnh báo (không chặn cứng — bán lỗ đôi khi có chủ đích, vd xả hàng tồn) khi giá bán
+        // mới thấp hơn giá vốn thật của biến thể (giá vốn do KHO quản lý qua Phiếu nhập kho,
+        // độc lập với form giá bán ở đây — trước đây 2 luồng này không hề đối chiếu với nhau).
+        $priceWarnings = [];
+
         try {
-            DB::transaction(function () use ($request, $product, $id, $slug, $newThumbnail, $newExtraImagePaths, $removeImageIds) {
+            DB::transaction(function () use ($request, $product, $id, $slug, $newThumbnail, $newExtraImagePaths, $removeImageIds, &$priceWarnings) {
                 // Xoá file ảnh chính cũ nếu được thay bằng ảnh mới, tránh tích tụ file rác trên disk
                 if ($newThumbnail !== null && $product->thumbnail) {
                     Storage::disk('public')->delete(str_replace('storage/', '', $product->thumbnail));
@@ -600,7 +607,21 @@ class ProductController extends Controller
                             $variant->sku = $sku !== '' ? $sku : ($variant->sku ?: Str::upper(Str::random(10)));
                         }
 
-                        $variant->price  = max(0, (float) ($data['price'] ?? $data['sale_price'] ?? 0));
+                        $newPrice = (float) ($data['price'] ?? $data['sale_price'] ?? 0);
+
+                        // So sánh với giá vốn THẬT trước khi ghi đè — chỉ có ý nghĩa với biến thể
+                        // đã tồn tại và đã từng nhập kho (cost_price > 0); biến thể mới luôn có
+                        // cost_price = 0 nên chưa có gì để so sánh.
+                        if ($variant->exists && (float) $variant->cost_price > 0 && $newPrice < (float) $variant->cost_price) {
+                            $priceWarnings[] = sprintf(
+                                '%s: giá bán %sđ thấp hơn giá vốn %sđ',
+                                $variant->sku,
+                                number_format($newPrice, 0, ',', '.'),
+                                number_format((float) $variant->cost_price, 0, ',', '.')
+                            );
+                        }
+
+                        $variant->price  = $newPrice;
                         $variant->status = 'Active'; // Kích hoạt lại hoạt động nếu trước đó bị ẩn
 
                         // Tồn & giá vốn do KHO quản lý theo lô (product_batches) — KHÔNG ghi đè từ form.
@@ -644,8 +665,12 @@ class ProductController extends Controller
 
         $message = "Cập nhật sản phẩm \"{$product->name}\" thành công.";
 
+        if (!empty($priceWarnings)) {
+            session()->flash('warning', 'Lưu ý: ' . implode('; ', $priceWarnings) . '.');
+        }
+
         if ($request->ajax() || $request->wantsJson()) {
-            return response()->json(['message' => $message]);
+            return response()->json(['message' => $message, 'warning' => $priceWarnings[0] ?? null]);
         }
 
         return redirect()->route('admin.products.list')->with('success', $message);
@@ -656,6 +681,27 @@ class ProductController extends Controller
      * một biến thể, và color_id/size_id phải tồn tại trong DB — tránh để lộ lỗi
      * SQL 500 Integrity Constraint Violation khi client gửi ID giả mạo.
      */
+    /**
+     * Chặn giá bán âm bằng lỗi validate rõ ràng — trước đây `max(0, ...)` âm thầm ép giá âm
+     * về 0 lúc lưu, khiến admin không hiểu vì sao giá hiển thị 0đ sau khi lưu giá âm.
+     */
+    private function checkVariantPricing(Request $request, $validator): void
+    {
+        foreach ($request->input('variants', []) as $colorId => $sizes) {
+            if (!is_array($sizes)) continue;
+
+            foreach ($sizes as $sizeId => $data) {
+                $priceRaw = $data['price'] ?? $data['sale_price'] ?? null;
+                if ($priceRaw === null || $priceRaw === '') continue;
+
+                if ((float) $priceRaw < 0) {
+                    $validator->errors()->add('variants', 'Giá bán không được là số âm.');
+                    return;
+                }
+            }
+        }
+    }
+
     private function checkVariantStructure(Request $request, $validator): void
     {
         $variants = $request->input('variants', []);
