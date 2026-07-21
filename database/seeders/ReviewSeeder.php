@@ -14,8 +14,8 @@ use Illuminate\Database\Seeder;
  * chỉ ~55% dòng đơn hoàn tất được chọn ngẫu nhiên để sinh đánh giá.
  *
  * status/ai_score/ai_reason được set thẳng để mô phỏng kết quả sau khi đã
- * qua lớp kiểm duyệt AI (xem GeminiModerationService) — phần lớn approved,
- * một số nhỏ pending/flagged/rejected cho đúng phân bố thật.
+ * qua lớp kiểm duyệt — phần lớn approved, một số nhỏ pending/flagged/rejected
+ * cho đúng phân bố thật.
  */
 class ReviewSeeder extends Seeder
 {

@@ -130,6 +130,18 @@
         overflow: hidden;
     }
 
+    /* Tên sản phẩm dạng link -> giữ nguyên màu, chỉ đổi màu + gạch chân khi hover */
+    .order-item-name-link {
+        color: inherit;
+        text-decoration: none;
+        transition: color 0.15s;
+    }
+
+    .order-item-name-link:hover {
+        color: #d97706;
+        text-decoration: underline;
+    }
+
     .order-item-meta {
         font-size: 12px;
         color: #6b7280;
@@ -769,8 +781,15 @@
                             </div>
                         @endif
                         <div class="order-item-info">
-                            {{-- M4: tên/màu/size theo snapshot lúc đặt hàng --}}
-                            <div class="order-item-name">{{ $item->displayName() }}</div>
+                            {{-- M4: tên/màu/size theo snapshot lúc đặt hàng.
+                                 Nếu sản phẩm còn tồn tại -> tên là link tới trang chi tiết. --}}
+                            <div class="order-item-name">
+                                @if($product)
+                                    <a href="{{ route('products.show', $product->slug) }}" class="order-item-name-link">{{ $item->displayName() }}</a>
+                                @else
+                                    {{ $item->displayName() }}
+                                @endif
+                            </div>
                             <div class="order-item-meta">
                                 @if($item->displayColor()) {{ $item->displayColor() }} @endif
                                 @if($item->displayColor() && $item->displaySize()) · @endif
@@ -783,14 +802,17 @@
                                 {{ number_format($item->unit_price * $item->quantity, 0, ',', '.') }} đ
                             </div>
 
-                            {{-- Nút đánh giá: chỉ hiện với đơn ĐÃ GIAO (completed) --}}
+                            {{-- Nút đánh giá: chỉ hiện với đơn ĐÃ GIAO (completed).
+                                 Trạng thái "đã đánh giá" xét theo TỪNG ĐƠN (order_id_product_id)
+                                 nên mua lại ở đơn khác vẫn hiện nút để đánh giá tiếp. --}}
                             @if($order->status === 'completed' && $product)
-                                @if(in_array($product->id, $reviewedProductIds))
+                                @if(in_array($order->id.'_'.$product->id, $reviewedKeys))
                                     <span class="review-done"><i class="bi bi-check-circle-fill"></i> Đã đánh giá</span>
                                 @else
                                     <button type="button" class="btn-review-product"
                                             data-review-product-id="{{ $product->id }}"
                                             data-review-product-name="{{ $product->name }}"
+                                            data-review-order-id="{{ $order->id }}"
                                             data-review-image="{{ $image ? asset($image) : '' }}">
                                         <i class="bi bi-star"></i> Đánh giá
                                     </button>
@@ -1285,6 +1307,7 @@
     const csrf      = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
 
     let currentProductId = null;   // sản phẩm đang được đánh giá
+    let currentOrderId   = null;   // đơn hàng tương ứng của lần đánh giá này
     let currentButton    = null;   // nút "Đánh giá" vừa bấm (để thay bằng "Đã đánh giá")
 
     function openModal() { overlay.classList.add('open'); document.body.style.overflow = 'hidden'; }
@@ -1293,6 +1316,7 @@
         overlay.classList.remove('open');
         document.body.style.overflow = '';
         currentProductId = null;
+        currentOrderId   = null;
         currentButton    = null;
     }
 
@@ -1305,6 +1329,7 @@
     document.querySelectorAll('.btn-review-product').forEach(btn => {
         btn.addEventListener('click', function () {
             currentProductId = this.dataset.reviewProductId;
+            currentOrderId   = this.dataset.reviewOrderId || null;
             currentButton    = this;
 
             // Điền thông tin sản phẩm vào modal
@@ -1347,7 +1372,7 @@
                     'Accept': 'application/json',
                     'X-CSRF-TOKEN': csrf,
                 },
-                body: JSON.stringify({ rating, comment }),
+                body: JSON.stringify({ rating, comment, order_id: currentOrderId }),
             });
 
             const data = await res.json().catch(() => ({}));

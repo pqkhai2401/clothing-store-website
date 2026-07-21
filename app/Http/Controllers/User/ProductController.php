@@ -161,22 +161,29 @@ class ProductController extends Controller
         if (Auth::check()) {
             $userId = Auth::id();
 
-            // Điều kiện đánh giá: có đơn hàng ở trạng thái "completed" chứa sản phẩm này.
+            // Các đơn "completed" của user có chứa sản phẩm này.
             // (order_items -> product_variant -> product_id).
-            $hasCompletedPurchase = Order::where('user_id', $userId)
+            $completedOrderIds = Order::where('user_id', $userId)
                 ->where('status', OrderStatus::COMPLETED->value)
                 ->whereHas('orderItems.productVariant', function ($query) use ($product) {
                     $query->where('product_id', $product->id);
                 })
-                ->exists();
+                ->pluck('id');
 
-            // Kiểm tra user đã đánh giá sản phẩm này chưa (chống hiển thị form trùng).
+            // Các đơn đã được user đánh giá cho sản phẩm này.
+            $reviewedOrderIds = Review::where('user_id', $userId)
+                ->where('product_id', $product->id)
+                ->pluck('order_id')
+                ->filter();
+
+            // Đã từng đánh giá sản phẩm này chưa (dùng cho thông báo trên giao diện).
             $hasReviewed = Review::where('user_id', $userId)
                 ->where('product_id', $product->id)
                 ->exists();
 
-            // Chỉ cho phép đánh giá khi: đã mua & hoàn thành, và CHƯA từng đánh giá.
-            $canReview = $hasCompletedPurchase && !$hasReviewed;
+            // Cho phép đánh giá khi CÒN ít nhất 1 đơn completed chưa được đánh giá
+            // -> mua lại (đơn mới) thì được đánh giá tiếp.
+            $canReview = $completedOrderIds->diff($reviewedOrderIds)->isNotEmpty();
         }
 
         return view('user.products.show', compact(

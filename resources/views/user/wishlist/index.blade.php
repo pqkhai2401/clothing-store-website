@@ -1081,7 +1081,7 @@
        Cập nhật badge header (Wishlist & Cart)
        ================================================ */
     function updateWishlistBadge(count) {
-        document.querySelectorAll('.utility-icons a[href*="wishlist"] .badge-count').forEach(el => {
+        document.querySelectorAll('#wishlistCountBadge').forEach(el => {
             el.textContent = count;
         });
         const chip = document.getElementById('headerCountChip');
@@ -1101,7 +1101,7 @@
     }
 
     function updateCartBadge(count) {
-        document.querySelectorAll('.utility-icons a[href*="cart"] .badge-count').forEach(el => {
+        document.querySelectorAll('#cartCountBadge').forEach(el => {
             el.textContent = count;
         });
     }
