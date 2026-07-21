@@ -28,6 +28,7 @@ class RecommendationService
         $targetProductId = $product->id;
         $targetCategoryId = $product->category_id;
         $targetParentId = $product->category->parent_id ?? null;
+        $targetOutfitType = $product->category->outfit_type ?? null;
         $targetBrandId = $product->brand_id;
         $targetGender = $product->gender;
         $product->loadMissing('productVariants');
@@ -43,6 +44,7 @@ class RecommendationService
         return $candidates->map(function ($candidate) use (
             $targetCategoryId,
             $targetParentId,
+            $targetOutfitType,
             $targetBrandId,
             $targetGender,
             $targetPrice,
@@ -50,12 +52,18 @@ class RecommendationService
         ) {
             $score = 0.0;
 
-            // 1. Trọng số cùng Danh mục (Category)
+            // 1. Trọng số cùng Danh mục (Category). Khi danh mục quá ít sản phẩm (VD chỉ
+            //    có chính nó), ưu tiên "cùng LOẠI trang phục" (outfit_type: áo/quần/váy/
+            //    đầm/áo khoác/phụ kiện) trước khi rơi về "cùng danh mục cha" (Nam/Nữ) —
+            //    nếu không, mục "Sản phẩm liên quan" (danh mục Áo) sẽ lẫn cả Đầm/Váy/Quần
+            //    chỉ vì chúng cùng giới tính + giá gần, dù khác hẳn loại trang phục.
             if ($candidate->category_id == $targetCategoryId) {
                 $score += 5.0;
+            } elseif ($targetOutfitType && ($candidate->category->outfit_type ?? null) === $targetOutfitType) {
+                $score += 3.5;
             } elseif ($targetParentId && $candidate->category->parent_id == $targetParentId) {
-                // Cùng danh mục cha
-                $score += 2.5;
+                // Cùng danh mục cha nhưng khác loại trang phục -> điểm thấp nhất trong 3 mức.
+                $score += 1.0;
             }
 
             // 2. Trọng số cùng Giới tính (Gender)
