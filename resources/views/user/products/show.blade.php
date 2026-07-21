@@ -536,21 +536,21 @@
                         {{-- Cột thumbnail dọc --}}
                         <div class="col-2">
                             <div class="gallery-thumbs">
-                                {{-- Thumbnail ảnh chính (thumbnail của sản phẩm) --}}
-                                {{-- Thumbnail chính của sản phẩm --}}
-                                <img
-                                    src="{{ productImage($product->thumbnail) }}"
-                                    alt="{{ $product->name }}"
-                                    class="gallery-thumb active"
-                                    onclick="changeMainImage(this)"
-                                >
+                                {{--
+                                    Danh sách ảnh do Controller gom sẵn theo thứ tự:
+                                    ảnh chính -> ảnh phụ (product_images) -> ảnh riêng theo màu
+                                    (product_variants.image), đã khử trùng lặp theo URL.
 
-                                {{-- Các ảnh phụ từ bảng product_images --}}
-                                @foreach($product->productImages as $img)
+                                    data-color-ids: các màu mà ảnh này thuộc về.
+                                    Rỗng = ảnh dùng chung, chỉ hiện khi chưa chọn màu
+                                    hoặc khi màu đang chọn không có ảnh riêng.
+                                --}}
+                                @foreach($galleryImages as $imageUrl => $imageColorIds)
                                     <img
-                                        src="{{ productImage($img->image) }}"
+                                        src="{{ productImage($imageUrl) }}"
                                         alt="{{ $product->name }}"
-                                        class="gallery-thumb"
+                                        class="gallery-thumb {{ $loop->first ? 'active' : '' }}"
+                                        data-color-ids="{{ implode(',', $imageColorIds) }}"
                                         onclick="changeMainImage(this)"
                                     >
                                 @endforeach
@@ -889,7 +889,6 @@
     (function () {
         // ===== Biến lưu trạng thái lựa chọn hiện tại =====
         const productId = {{ $product->id }};
-        const originalThumbnail = "{{ productImage($product->thumbnail) }}";
         let selectedColorId = null;
         let selectedSizeId = null;
         let currentStock = 0;
@@ -904,6 +903,30 @@
         const btnAddCart = document.getElementById('btnAddCart');
         const btnBuyNow = document.getElementById('btnBuyNow');
         const mainImage = document.getElementById('mainProductImage');
+        const galleryThumbs = Array.from(document.querySelectorAll('.gallery-thumb'));
+
+        // ===== Lọc gallery ảnh theo màu đang chọn =====
+        // - Màu có ảnh riêng  -> dải thumbnail chỉ còn ảnh của màu đó, ảnh lớn nhảy sang ảnh đầu tiên.
+        // - Màu chưa có ảnh riêng -> hiện lại toàn bộ ảnh và quay về ảnh chính của sản phẩm.
+        function filterGalleryByColor(colorId) {
+            const matched = galleryThumbs.filter(function (thumb) {
+                const ids = (thumb.dataset.colorIds || '').split(',').filter(Boolean);
+                return colorId !== null && ids.includes(String(colorId));
+            });
+
+            // Không khớp ảnh nào -> fallback về toàn bộ gallery (ảnh đầu tiên là thumbnail sản phẩm)
+            const visibleThumbs = matched.length > 0 ? matched : galleryThumbs;
+
+            galleryThumbs.forEach(function (thumb) {
+                thumb.classList.toggle('d-none', !visibleThumbs.includes(thumb));
+                thumb.classList.remove('active');
+            });
+
+            if (visibleThumbs.length > 0) {
+                visibleThumbs[0].classList.add('active');
+                mainImage.src = visibleThumbs[0].src;
+            }
+        }
 
         // ===== Xử lý click chọn Màu sắc =====
         colorBtns.forEach(function (btn) {
@@ -912,6 +935,9 @@
                 colorBtns.forEach(function (b) { b.classList.remove('active'); });
                 btn.classList.add('active');
                 selectedColorId = parseInt(btn.getAttribute('data-color-id'));
+
+                // Đổi ảnh sản phẩm theo màu ngay lập tức (không cần chờ chọn size)
+                filterGalleryByColor(selectedColorId);
 
                 // Cập nhật giá real-time ngay khi chọn màu (dù chưa chọn size)
                 checkVariant();
@@ -961,18 +987,14 @@
                 }
 
                 if (data.mode === 'exact') {
-                    // Đã chọn đủ Màu + Size -> hiển thị giá, tồn kho, SKU, ảnh của đúng biến thể đó
+                    // Đã chọn đủ Màu + Size -> hiển thị giá, tồn kho, SKU của đúng biến thể đó.
+                    // Ảnh KHÔNG đổi ở đây: gallery đã được lọc theo màu từ trước, nếu ghi đè
+                    // src sẽ hủy mất ảnh mà người dùng vừa chọn trong dải thumbnail.
                     skuEl.textContent = data.sku || 'N/A';
                     updatePriceDisplay(data.price, data.price, data.has_discount, data.final_price, data.final_price);
 
                     currentStock = data.stock;
                     updateStockDisplay(data.stock);
-
-                    if (data.image) {
-                        mainImage.src = resolveImageUrl(data.image);
-                    } else {
-                        mainImage.src = originalThumbnail;
-                    }
                 } else {
                     // Mới chọn Màu hoặc Size (chưa đủ cả 2) -> chỉ cập nhật khoảng giá, chưa xác định tồn kho/SKU
                     skuEl.textContent = 'N/A';
@@ -1035,13 +1057,6 @@
             btnBuyNow.disabled = false;
             btnBuyNow.classList.remove('disabled');
             btnBuyNow.textContent = 'Mua ngay';
-        }
-
-        // ===== Xử lý đường dẫn ảnh (URL tuyệt đối hoặc tương đối) =====
-        function resolveImageUrl(path) {
-            if (!path) return 'https://placehold.co/800x1000?text=No+Image';
-            if (path.startsWith('http://') || path.startsWith('https://')) return path;
-            return '/storage/' + path;
         }
 
         // ===== Định dạng tiền tệ VNĐ =====
