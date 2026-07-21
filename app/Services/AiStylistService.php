@@ -77,13 +77,20 @@ class AiStylistService
             return $cached;
         }
 
-        // 1) Lấy tập ứng viên: cùng giới tính (hoặc unisex), khác chính nó,
-        //    và KHÁC danh mục với sản phẩm neo (vì phối đồ là ghép món khác loại:
-        //    mua áo thì gợi quần/áo khoác/phụ kiện, không gợi thêm một cái áo y hệt).
+        // 1) Lấy tập ứng viên: cùng giới tính (hoặc unisex), khác chính nó, và thuộc
+        //    NHÓM TRANG PHỤC (outfit_type) tương thích với sản phẩm neo (VD: áo ->
+        //    quần/chân váy/áo khoác, KHÔNG gợi đầm tùy tiện chỉ vì "khác category_id"
+        //    — xem Category::outfitCompatibilityMap()).
+        $anchorOutfitType = $anchor->category?->outfit_type;
+        $compatibleTypes  = $anchor->category?->compatibleOutfitTypes() ?? [];
+
         $candidates = Product::query()
             ->where('status', true)
             ->where('id', '!=', $anchor->id)
             ->where('category_id', '!=', $anchor->category_id)
+            ->when($anchorOutfitType && !empty($compatibleTypes), function ($q) use ($compatibleTypes) {
+                $q->whereHas('category', fn ($cq) => $cq->whereIn('outfit_type', $compatibleTypes));
+            })
             ->when($anchor->gender && $anchor->gender !== 'unisex', function ($q) use ($anchor) {
                 $q->whereIn('gender', [$anchor->gender, 'unisex']);
             })
@@ -92,9 +99,54 @@ class AiStylistService
             ->limit($this->candidatePoolSize)
             ->get();
 
+        // 1b) LOẠI TRỪ áo khoác SAI MÙA/độ dày (VD: áo lụa mỏng mùa Xuân không nên
+        //    ghép với áo phao lông vũ dày mùa Đông — đúng "loại" nhưng sai "mùa" vẫn
+        //    là phối đồ vô lý). Chỉ áp dụng cho outerwear vì đây là slot nhạy cảm với
+        //    thời tiết nhất; top/bottom/skirt linh hoạt hơn nên không siết ở đây.
+        //    Nếu sản phẩm neo không gắn Bộ sưu tập/mùa nào thì bỏ qua bước lọc này.
+        $anchorCollectionIds = $anchor->collections->pluck('id')->all();
+        if (!empty($anchorCollectionIds)) {
+            $candidates = $candidates->reject(function (Product $c) use ($anchorCollectionIds) {
+                if (($c->category->outfit_type ?? null) !== 'outerwear') {
+                    return false;
+                }
+                return empty(array_intersect($anchorCollectionIds, $c->collections->pluck('id')->all()));
+            })->values();
+        }
+
+        // 1c) LOẠI TRỪ ứng viên XUNG ĐỘT PHONG CÁCH (VD: áo sơ mi "smart_casual"
+        //    không nên ghép với quần jogger/short "sporty" — đúng loại quần, đúng
+        //    mùa, nhưng sai độ trang trọng, phối lên vẫn kỳ cục). Xem
+        //    Category::styleConflictMap(). Bỏ qua nếu neo không gắn style_group.
+        $conflictingStyleGroups = $anchor->category?->conflictingStyleGroups() ?? [];
+        if (!empty($conflictingStyleGroups)) {
+            $candidates = $candidates->reject(
+                fn (Product $c) => in_array($c->category->style_group ?? null, $conflictingStyleGroups, true)
+            )->values();
+        }
+
+        // 1d) SẮP XẾP LẠI theo ĐỘ GẦN PHONG CÁCH với sản phẩm neo (formal gần formal/
+        //    smart_casual hơn casual). Chỉ loại xung đột (bước 1c) là chưa đủ: quần
+        //    tây "formal" tuy không xung đột với áo len/hoodie "casual", nhưng về gu
+        //    thời trang thì áo sơ mi/polo "smart_casual" mới là lựa chọn tự nhiên hơn.
+        //    Không sắp lại thì views_count thô sẽ lấn át, y hệt bug đã gặp với mùa/
+        //    loại trang phục trước đó. Ổn định (PHP >=8 usort stable) nên vẫn giữ
+        //    views_count làm tiêu chí phụ cho các món đồng hạng phong cách.
+        $anchorStyleGroup = $anchor->category?->style_group;
+        if ($anchorStyleGroup) {
+            $candidates = $candidates
+                ->sortBy(fn (Product $c) => $this->styleDistance($anchorStyleGroup, $c->category->style_group ?? null))
+                ->values();
+        }
+
         if ($candidates->isEmpty()) {
             return $this->fallbackSimilar($anchor, $limit);
         }
+
+        // Nhóm trang phục "chủ lực" phải phối cùng nếu có hàng (áo <-> quần/chân váy).
+        // LLM đôi khi không tuân thủ 100% chỉ dẫn trong prompt (đặc biệt model free-tier
+        // nhỏ), nên luật này được ÉP BẰNG CODE ở bước hậu xử lý, không chỉ dựa vào prompt.
+        $primaryTypes = $this->primaryComplementTypes($anchorOutfitType);
 
         // 2) Dựng prompt Stylist và gọi AI.
         $prompt   = $this->buildMixMatchPrompt($anchor, $candidates, $limit);
@@ -103,7 +155,9 @@ class AiStylistService
         // 3) AI lỗi -> bù bằng chính pool phối đồ (ĐÃ lọc khác loại), KHÔNG dùng
         //    "sản phẩm tương tự" vì nó cùng loại -> sẽ phá Kịch bản 2 (loại trừ trùng công năng).
         if ($chosenIds === null) {
-            return $candidates->take($limit)->values();
+            $result = $this->rebalanceOutfitSlots($candidates->take($limit)->values(), $candidates, $primaryTypes, $limit);
+            $result = $this->applyStylePreference($result, $candidates, $anchorStyleGroup);
+            return $result;
         }
 
         // 4) Chỉ giữ ID hợp lệ nằm trong tập ứng viên (chống AI "bịa" ID).
@@ -113,11 +167,221 @@ class AiStylistService
         //    đúng luật loại trừ. (Trước đây bù bằng fallbackSimilar -> lòi ra đồ cùng loại.)
         $result = $this->topUp($products, fn () => $candidates, $limit);
 
+        // 5b) Cân bằng lại nhóm: đảm bảo có nhóm chủ lực (áo <-> quần/chân váy) và
+        //     GIỚI HẠN các nhóm phụ (VD áo khoác) — chúng là "điểm nhấn thêm" chứ
+        //     không phải trọng tâm bộ đồ. Cả AI lẫn topUp() (sắp theo views_count)
+        //     đều có thể vô tình dồn quá nhiều áo khoác và bỏ sót áo/quần còn hàng.
+        $result = $this->rebalanceOutfitSlots($result, $candidates, $primaryTypes, $limit);
+
+        // 5c) Ưu tiên phong cách khớp gu (không chỉ né xung đột — xem 1c/1d): AI đôi
+        //    khi vẫn chọn món "không xung đột nhưng lệch gu" (VD quần tây formal lại
+        //    chọn áo len casual dù có áo sơ mi smart_casual sẵn có, do model chọn
+        //    theo views_count/độ phổ biến chứ không theo độ trang trọng). Ép lại
+        //    bằng code để đảm bảo kết quả luôn ưu tiên món khớp gu nhất hiện có.
+        $result = $this->applyStylePreference($result, $candidates, $anchorStyleGroup);
+
         // 6) Chỉ cache khi AI thật sự chạy (không cache kết quả fallback, để lần
         //    sau còn thử gọi lại Gemini khi quota hồi phục).
         $this->putCache($cacheKey, $result, now()->addHours(6));
 
         return $result;
+    }
+
+    /**
+     * "Khoảng cách" phong cách giữa 2 style_group — dùng để SẮP XẾP (không phải loại
+     * trừ, xem 1c) ứng viên theo mức độ trang trọng gần với sản phẩm neo nhất.
+     * Thang trang trọng: formal - smart_casual - casual (0,1,2). Style rỗng (danh mục
+     * chưa gắn style_group) coi là khoảng cách trung bình vì đi được với mọi gu.
+     */
+    protected function styleDistance(?string $anchorStyle, ?string $candidateStyle): int
+    {
+        $scale = ['formal' => 0, 'smart_casual' => 1, 'casual' => 2];
+
+        if ($candidateStyle === null) {
+            return 1;
+        }
+        if (!isset($scale[$anchorStyle]) || !isset($scale[$candidateStyle])) {
+            return 1;
+        }
+
+        return abs($scale[$anchorStyle] - $scale[$candidateStyle]);
+    }
+
+    /**
+     * Với MỖI outfit_type có mặt trong $result, nếu tồn tại ứng viên CHƯA được chọn
+     * cùng outfit_type nhưng có khoảng cách phong cách (styleDistance) TỐT HƠN món
+     * tệ nhất hiện tại thuộc type đó, thay thế nó. Đây là bước ÉP CỨNG bằng code vì
+     * AI chỉ tránh xung đột rõ ràng (1c) chứ không tự tối ưu độ khớp gu — dễ chọn
+     * theo views_count/phổ biến hơn là theo độ trang trọng tương đồng.
+     *
+     * @param  Collection<int, Product>  $result
+     * @param  Collection<int, Product>  $candidates  Đã được sắp theo styleDistance tăng dần (xem 1d).
+     * @return Collection<int, Product>
+     */
+    protected function applyStylePreference(Collection $result, Collection $candidates, ?string $anchorStyleGroup): Collection
+    {
+        if (!$anchorStyleGroup || $result->isEmpty()) {
+            return $result;
+        }
+
+        $distanceOf = fn (Product $p) => $this->styleDistance($anchorStyleGroup, $p->category->style_group ?? null);
+        $typeOf = fn (Product $p) => $p->category->outfit_type ?? null;
+
+        $items = $result->values()->all();
+        $existingIds = $result->pluck('id')->all();
+
+        foreach ($candidates as $candidate) {
+            if (in_array($candidate->id, $existingIds, true)) {
+                continue;
+            }
+            $candidateType = $typeOf($candidate);
+            $candidateDist = $distanceOf($candidate);
+
+            // Tìm món hiện tại CÙNG outfit_type nhưng khoảng cách phong cách TỆ HƠN.
+            $worstIndex = null;
+            $worstDist = -1;
+            foreach ($items as $i => $item) {
+                if ($typeOf($item) !== $candidateType) {
+                    continue;
+                }
+                $dist = $distanceOf($item);
+                if ($dist > $candidateDist && $dist > $worstDist) {
+                    $worstDist = $dist;
+                    $worstIndex = $i;
+                }
+            }
+
+            if ($worstIndex !== null) {
+                $existingIds = array_values(array_diff($existingIds, [$items[$worstIndex]->id]));
+                $items[$worstIndex] = $candidate;
+                $existingIds[] = $candidate->id;
+            }
+        }
+
+        return collect($items)->values();
+    }
+
+    /**
+     * Nhóm trang phục "chủ lực" — nhóm được BÙ ĐẦY ĐỦ số lượng, không bị giới hạn
+     * "tối đa 1 món/nhóm" như nhóm phụ (xem rebalanceOutfitSlots()). VD: xem áo thì
+     * chủ lực là quần/chân váy; xem đầm thì chủ lực là ÁO KHOÁC (đầm đã là 1 bộ
+     * hoàn chỉnh nên không cần thêm áo/quần, nhưng áo khoác vẫn là món "phối cùng"
+     * chính — không nên bị giới hạn như một nhóm phụ chỉ để lấp chỗ trống).
+     */
+    protected function primaryComplementTypes(?string $anchorOutfitType): array
+    {
+        return match ($anchorOutfitType) {
+            'top'             => ['bottom', 'skirt'],
+            'bottom', 'skirt' => ['top'],
+            'dress'           => ['outerwear'],
+            default           => [],
+        };
+    }
+
+    /**
+     * Cân bằng lại danh sách gợi ý cuối cùng theo 2 luật:
+     *  a) NHÓM PHỤ (mọi outfit_type KHÔNG thuộc $primaryTypes — VD áo khoác khi neo
+     *     là quần/váy) CHỈ được xuất hiện khi nhóm chủ lực KHÔNG ĐỦ hàng để lấp đầy
+     *     toàn bộ $limit — và khi đó mỗi nhóm phụ tối đa 1 món để làm điểm nhấn.
+     *     Nếu kho còn đủ áo (top) để lấp đầy hết slot thì KHÔNG ép thêm áo khoác nào
+     *     cả — dù nó đúng loại/đúng mùa, khách xem quần kỳ vọng thấy nhiều LỰA CHỌN
+     *     ÁO đa dạng hơn là 1 áo khoác lấp chỗ trống. (Bug đã gặp trước đây: dồn
+     *     toàn áo khoác; hệ quả còn sót: vẫn CHO PHÉP 1 món phụ dù chủ lực dư hàng.)
+     *  b) Đảm bảo có ít nhất 1 món thuộc nhóm chủ lực ($primaryTypes) nếu tập ứng
+     *     viên có hàng.
+     * Áp dụng SAU CÙNG (sau cả AI lẫn topUp) vì cả hai đều có thể vô tình dồn lệch
+     * nhóm — AI không tuân thủ tuyệt đối prompt, còn topUp() chỉ sắp theo views_count
+     * nên không phân biệt loại.
+     *
+     * @param  Collection<int, Product>  $result
+     * @param  Collection<int, Product>  $candidates
+     * @param  string[]                  $primaryTypes
+     * @return Collection<int, Product>
+     */
+    protected function rebalanceOutfitSlots(Collection $result, Collection $candidates, array $primaryTypes, int $limit): Collection
+    {
+        if ($result->isEmpty() || $limit <= 0) {
+            return $result;
+        }
+
+        $typeOf = fn (Product $p) => $p->category->outfit_type ?? null;
+        $isPrimary = fn (Product $p) => in_array($typeOf($p), $primaryTypes, true);
+
+        // Kho còn đủ (>= $limit) sản phẩm thuộc nhóm chủ lực -> không cần "điểm nhấn"
+        // phụ nào cả, dồn hết slot cho nhóm chủ lực. Ngược lại, mỗi nhóm phụ được
+        // phép góp tối đa 1 món để bù chỗ trống khi nhóm chủ lực không đủ hàng.
+        $primaryCandidateCount = $candidates->filter($isPrimary)->count();
+        $maxPerSecondaryType = empty($primaryTypes)
+            ? 1
+            : ($primaryCandidateCount >= $limit ? 0 : 1);
+
+        // a) Bỏ bớt món dư của TỪNG nhóm phụ (giữ tối đa 1 món/nhóm), giữ nguyên
+        //    thứ tự ưu tiên ban đầu. Nhóm chủ lực không bị giới hạn ở bước này.
+        $kept = collect();
+        $secondaryCounts = [];
+        foreach ($result as $item) {
+            $type = $typeOf($item);
+            if (!$isPrimary($item) && $type !== null) {
+                $count = $secondaryCounts[$type] ?? 0;
+                if ($count >= $maxPerSecondaryType) {
+                    continue;
+                }
+                $secondaryCounts[$type] = $count + 1;
+            }
+            $kept->push($item);
+        }
+
+        // Bù chỗ trống do vừa bỏ bớt: ưu tiên ứng viên thuộc nhóm chủ lực trước, các
+        // nhóm phụ khác vẫn phải tôn trọng giới hạn 1 món/nhóm ở trên.
+        if ($kept->count() < $limit) {
+            $existingIds = $kept->pluck('id')->all();
+            $fillers = $candidates
+                ->reject(fn (Product $p) => in_array($p->id, $existingIds, true))
+                ->sortByDesc($isPrimary)
+                ->values();
+
+            foreach ($fillers as $f) {
+                if ($kept->count() >= $limit) {
+                    break;
+                }
+                $type = $typeOf($f);
+                if (!$isPrimary($f) && $type !== null) {
+                    $count = $secondaryCounts[$type] ?? 0;
+                    if ($count >= $maxPerSecondaryType) {
+                        continue;
+                    }
+                    $secondaryCounts[$type] = $count + 1;
+                }
+                $kept->push($f);
+            }
+        }
+
+        // Vẫn còn thiếu (không đủ hàng chủ lực + các nhóm phụ đã đạt giới hạn) ->
+        // đành nới giới hạn, lấy thêm bất kỳ ứng viên còn lại cho đủ số lượng.
+        if ($kept->count() < $limit) {
+            $existingIds = $kept->pluck('id')->all();
+            $more = $candidates->reject(fn (Product $p) => in_array($p->id, $existingIds, true));
+            foreach ($more as $f) {
+                if ($kept->count() >= $limit) {
+                    break;
+                }
+                $kept->push($f);
+            }
+        }
+
+        // b) Đảm bảo có ít nhất 1 món thuộc nhóm chủ lực, nếu tập ứng viên có hàng.
+        if (!empty($primaryTypes) && !$kept->contains($isPrimary)) {
+            $existingIds = $kept->pluck('id')->all();
+            $primaryCandidate = $candidates->first(
+                fn (Product $p) => $isPrimary($p) && !in_array($p->id, $existingIds, true)
+            );
+            if ($primaryCandidate) {
+                $kept = $kept->count() >= $limit ? $kept->slice(0, $limit - 1) : $kept;
+                $kept->push($primaryCandidate);
+            }
+        }
+
+        return $kept->values();
     }
 
     /* =========================================================================
@@ -232,6 +496,8 @@ class AiStylistService
 
         return <<<PROMPT
         Bạn là một STYLIST (chuyên gia phối đồ) thời trang chuyên nghiệp cho một shop quần áo tại Việt Nam.
+        Shop CHỈ bán QUẦN ÁO (áo, quần, chân váy, đầm, áo khoác) — KHÔNG kinh doanh phụ kiện
+        (túi, mũ, kính, thắt lưng) hay giày dép, nên tuyệt đối không nhắc tới các món đó.
         Nhiệm vụ: từ sản phẩm khách đang chọn, hãy chọn ra tối đa {$limit} sản phẩm trong DANH SÁCH ỨNG VIÊN
         để phối cùng tạo thành MỘT BỘ TRANG PHỤC HOÀN CHỈNH, hài hòa, có gu.
 
@@ -239,7 +505,11 @@ class AiStylistService
 
         BẠN PHẢI TUÂN THỦ NGHIÊM NGẶT CÁC LUẬT SAU:
         1. LUẬT BỔ TRỢ (Mix & Match): Chọn các món KHÁC CÔNG NĂNG để ghép thành bộ.
-           Ví dụ: áo thun -> phối quần short / quần jeans / áo khoác / phụ kiện.
+           Ví dụ: áo thun -> phối quần short / quần jeans / áo khoác.
+           ƯU TIÊN BẮT BUỘC: nếu danh sách ứng viên có sản phẩm QUẦN hoặc CHÂN VÁY
+           (khi sản phẩm khách chọn là áo), hoặc có sản phẩm ÁO (khi sản phẩm khách
+           chọn là quần/chân váy), PHẢI chọn ít nhất 1 món thuộc nhóm đó trước, rồi
+           mới bổ sung áo khoác cho đủ số lượng.
         2. LUẬT LOẠI TRỪ (Style Conflict):
            - TUYỆT ĐỐI KHÔNG chọn món trùng công năng với sản phẩm khách đã chọn
              (khách đã có quần dài thì KHÔNG gợi thêm một quần dài khác).
@@ -270,8 +540,9 @@ class AiStylistService
         Khách hàng này là KHÁCH MỚI, chưa có lịch sử mua/xem, nên chưa biết sở thích.
 
         Nhiệm vụ: chọn ra tối đa {$limit} sản phẩm HẤP DẪN NHẤT, ĐA DẠNG danh mục
-        (đủ áo/quần/phụ kiện...) và PHÙ HỢP với mùa "{$season}" để trưng ở trang chủ,
-        tạo ấn tượng đầu tiên tốt và có khả năng chốt đơn cao.
+        (đủ áo/quần/chân váy/đầm/áo khoác — shop chỉ bán quần áo, không có phụ kiện)
+        và PHÙ HỢP với mùa "{$season}" để trưng ở trang chủ, tạo ấn tượng đầu tiên
+        tốt và có khả năng chốt đơn cao.
 
         DANH SÁCH ỨNG VIÊN (chỉ được chọn ID trong danh sách này):
         {$this->serializeCandidates($candidates)}
