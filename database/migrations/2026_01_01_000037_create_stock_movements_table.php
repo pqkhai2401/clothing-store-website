@@ -8,6 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable('stock_movements')) {
+            return;
+        }
+
         Schema::create('stock_movements', function (Blueprint $table) {
             $table->id();
             // restrictOnDelete: xoá cứng 1 ProductVariant không được phép kéo theo mất sổ cái

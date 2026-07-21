@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasColumn('categories', 'style_group')) {
+            return;
+        }
+
         Schema::table('categories', function (Blueprint $table) {
             // Mức độ trang trọng/phong cách để loại trừ phối đồ xung đột (VD: áo sơ mi
             // "smart_casual" không nên gợi ý quần jogger/short "sporty"). Bổ sung cho

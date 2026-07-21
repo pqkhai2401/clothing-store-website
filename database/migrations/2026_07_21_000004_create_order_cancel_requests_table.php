@@ -16,6 +16,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable('order_cancel_requests')) {
+            return;
+        }
+
         Schema::create('order_cancel_requests', function (Blueprint $table) {
             $table->id();
             $table->foreignId('order_id')->constrained('orders')->cascadeOnDelete();
