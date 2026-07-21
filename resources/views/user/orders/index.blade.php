@@ -130,6 +130,18 @@
         overflow: hidden;
     }
 
+    /* Tên sản phẩm dạng link -> giữ nguyên màu, chỉ đổi màu + gạch chân khi hover */
+    .order-item-name-link {
+        color: inherit;
+        text-decoration: none;
+        transition: color 0.15s;
+    }
+
+    .order-item-name-link:hover {
+        color: #d97706;
+        text-decoration: underline;
+    }
+
     .order-item-meta {
         font-size: 12px;
         color: #6b7280;
@@ -274,6 +286,45 @@
     }
 
     #orderDetailOverlay.open { display: flex; }
+
+    /* ── Modal nhập lý do yêu cầu hủy (dùng chung kiểu overlay với modal chi tiết đơn) ── */
+    #cancelReqOverlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 1060;
+        align-items: center;
+        justify-content: center;
+        padding: 24px 16px;
+        overflow-y: auto;
+    }
+    #cancelReqOverlay.open { display: flex; }
+    .crq-modal {
+        background: #fff; border-radius: 12px; width: 100%; max-width: 460px;
+        box-shadow: 0 24px 60px rgba(0,0,0,0.18); margin: auto;
+        animation: odSlideIn 0.25s cubic-bezier(0.34,1.28,0.64,1) forwards;
+    }
+    .crq-head { padding: 16px 20px; border-bottom: 1px solid #eef0f3; font-weight: 700; font-size: 15px; color: #111827; }
+    .crq-body { padding: 18px 20px; }
+    .crq-body label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 6px; }
+    .crq-body textarea {
+        width: 100%; min-height: 92px; resize: vertical; padding: 10px 12px;
+        border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; font-family: inherit;
+    }
+    .crq-body textarea:focus { outline: none; border-color: #f59e0b; box-shadow: 0 0 0 3px rgba(245,158,11,.15); }
+    .crq-hint { font-size: 12.5px; color: #6b7280; margin-top: 8px; line-height: 1.55; }
+    .crq-err { font-size: 12.5px; color: #dc2626; margin-top: 8px; display: none; }
+    .crq-foot { padding: 14px 20px 18px; display: flex; justify-content: flex-end; gap: 10px; }
+    .crq-btn {
+        padding: 9px 18px; border-radius: 8px; font-size: 13.5px; font-weight: 700;
+        cursor: pointer; border: 1px solid transparent;
+    }
+    .crq-btn--ghost { background: #fff; border-color: #d1d5db; color: #374151; }
+    .crq-btn--ghost:hover { background: #f9fafb; }
+    .crq-btn--send { background: #dc2626; color: #fff; }
+    .crq-btn--send:hover { background: #b91c1c; }
+    .crq-btn:disabled { opacity: .6; cursor: not-allowed; }
 
     .od-modal {
         background: #fff;
@@ -468,6 +519,15 @@
     }
 
     .btn-cancel-order:hover { background: #dc2626; color: #fff; }
+    .btn-cancel-order:disabled { opacity: .6; cursor: not-allowed; }
+
+    /* Đã gửi yêu cầu hủy, đang chờ cửa hàng duyệt */
+    .ord-cancel-req-badge {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 6px 12px; border-radius: 999px;
+        background: #fff7ed; border: 1px solid #fed7aa; color: #c2410c;
+        font-size: 12px; font-weight: 600; white-space: nowrap;
+    }
 
     .od-btn-cancel {
         font-size: 13px;
@@ -721,11 +781,19 @@
                             </div>
                         @endif
                         <div class="order-item-info">
-                            <div class="order-item-name">{{ $product?->name ?? 'Sản phẩm đã xoá' }}</div>
+                            {{-- M4: tên/màu/size theo snapshot lúc đặt hàng.
+                                 Nếu sản phẩm còn tồn tại -> tên là link tới trang chi tiết. --}}
+                            <div class="order-item-name">
+                                @if($product)
+                                    <a href="{{ route('products.show', $product->slug) }}" class="order-item-name-link">{{ $item->displayName() }}</a>
+                                @else
+                                    {{ $item->displayName() }}
+                                @endif
+                            </div>
                             <div class="order-item-meta">
-                                @if($variant?->color) {{ $variant->color->name }} @endif
-                                @if($variant?->color && $variant?->size) · @endif
-                                @if($variant?->size) {{ $variant->size->name }} @endif
+                                @if($item->displayColor()) {{ $item->displayColor() }} @endif
+                                @if($item->displayColor() && $item->displaySize()) · @endif
+                                @if($item->displaySize()) {{ $item->displaySize() }} @endif
                             </div>
                             <div class="order-item-qty">Số lượng: <span>{{ $item->quantity }}</span></div>
                         </div>
@@ -734,14 +802,17 @@
                                 {{ number_format($item->unit_price * $item->quantity, 0, ',', '.') }} đ
                             </div>
 
-                            {{-- Nút đánh giá: chỉ hiện với đơn ĐÃ GIAO (completed) --}}
+                            {{-- Nút đánh giá: chỉ hiện với đơn ĐÃ GIAO (completed).
+                                 Trạng thái "đã đánh giá" xét theo TỪNG ĐƠN (order_id_product_id)
+                                 nên mua lại ở đơn khác vẫn hiện nút để đánh giá tiếp. --}}
                             @if($order->status === 'completed' && $product)
-                                @if(in_array($product->id, $reviewedProductIds))
+                                @if(in_array($order->id.'_'.$product->id, $reviewedKeys))
                                     <span class="review-done"><i class="bi bi-check-circle-fill"></i> Đã đánh giá</span>
                                 @else
                                     <button type="button" class="btn-review-product"
                                             data-review-product-id="{{ $product->id }}"
                                             data-review-product-name="{{ $product->name }}"
+                                            data-review-order-id="{{ $order->id }}"
                                             data-review-image="{{ $image ? asset($image) : '' }}">
                                         <i class="bi bi-star"></i> Đánh giá
                                     </button>
@@ -771,6 +842,22 @@
                                     data-cancel-order="{{ $order->id }}">
                                 <i class="bi bi-x-circle"></i> Hủy đơn
                             </button>
+                        @elseif(in_array($order->status, \App\Models\OrderCancelRequest::REQUESTABLE_ORDER_STATUSES, true))
+                            {{-- Đơn đã xác nhận/đang giao: không tự hủy được (kéo theo hoàn kho + hoàn tiền)
+                                 nên khách gửi yêu cầu để cửa hàng duyệt. --}}
+                            @php $pendingReq = $order->pendingCancelRequest; @endphp
+                            @if($pendingReq)
+                                <span class="ord-cancel-req-badge" title="Gửi lúc {{ $pendingReq->created_at->format('H:i d/m/Y') }}">
+                                    <i class="bi bi-hourglass-split"></i> Đã gửi yêu cầu hủy — chờ duyệt
+                                </span>
+                            @else
+                                <button type="button" class="btn-cancel-order"
+                                        data-cancel-request="{{ $order->id }}"
+                                        data-order-code="{{ $order->order_code ?? ('#'.$order->id) }}"
+                                        data-order-paid="{{ $order->payment_status === 'paid' ? '1' : '0' }}">
+                                    <i class="bi bi-x-circle"></i> Yêu cầu hủy
+                                </button>
+                            @endif
                         @elseif($order->status !== 'cancelled')
                             <span style="font-size:12px; color:#9ca3af;">Không thể hủy đơn này</span>
                         @endif
@@ -789,6 +876,27 @@
         @endif
     @endif
 
+</div>
+
+{{-- Modal nhập lý do yêu cầu hủy đơn (đơn đã xác nhận/đang giao — cần cửa hàng duyệt) --}}
+<div id="cancelReqOverlay">
+    <div class="crq-modal">
+        <div class="crq-head">Yêu cầu hủy đơn <span id="crqOrderCode"></span></div>
+        <div class="crq-body">
+            <label for="crqReason">Lý do bạn muốn hủy <span style="color:#dc2626;">*</span></label>
+            <textarea id="crqReason" maxlength="500"
+                placeholder="Ví dụ: Tôi đặt nhầm size, muốn đặt lại đơn khác..."></textarea>
+            <div class="crq-hint">
+                Đơn đã được cửa hàng xác nhận nên cần cửa hàng duyệt yêu cầu.
+                <span id="crqPaidHint" style="display:none;">Đơn đã thanh toán sẽ được hoàn tiền sau khi yêu cầu được duyệt.</span>
+            </div>
+            <div class="crq-err" id="crqError"></div>
+        </div>
+        <div class="crq-foot">
+            <button type="button" class="crq-btn crq-btn--ghost" id="crqCancel">Đóng</button>
+            <button type="button" class="crq-btn crq-btn--send" id="crqSend">Gửi yêu cầu</button>
+        </div>
+    </div>
 </div>
 
 {{-- Order detail modal --}}
@@ -949,8 +1057,14 @@
             ? `<div class="od-summary-row"><span>Giảm giá:</span><span class="val discount">-${fmt(discount)}</span></div>`
             : '';
 
-        const payStatusColor = d.payment_status === 'paid' ? '#16a34a' : '#d97706';
-        const payStatusLabel = d.payment_status === 'paid' ? 'Đã thanh toán' : 'Chưa thanh toán';
+        // 3 trạng thái: chưa trả (cam) / đã trả (xanh lá) / đã được hoàn tiền (xanh dương).
+        const payMap = {
+            paid:     { color: '#16a34a', label: 'Đã thanh toán' },
+            refunded: { color: '#2563eb', label: 'Đã hoàn tiền' },
+        };
+        const payInfo = payMap[d.payment_status] ?? { color: '#d97706', label: 'Chưa thanh toán' };
+        const payStatusColor = payInfo.color;
+        const payStatusLabel = payInfo.label;
 
         body.innerHTML = `
             <div class="od-info-grid">
@@ -1010,7 +1124,8 @@
 
     /* ── Cancel logic ── */
     async function doCancel(orderId) {
-        if (!confirm('Bạn có chắc muốn hủy đơn hàng này? Thao tác không thể hoàn tác.')) return;
+        const ok = await window.showConfirm({ title: 'Hủy đơn hàng', message: 'Bạn có chắc muốn hủy đơn hàng này? Thao tác không thể hoàn tác.', type: 'danger', confirmText: 'Hủy đơn' });
+        if (!ok) return;
 
         try {
             const res  = await fetch(`/don-hang/${orderId}/huy`, {
@@ -1020,7 +1135,7 @@
             const data = await res.json();
 
             if (!res.ok) {
-                alert(data.message || 'Không thể hủy đơn hàng.');
+                window.showAlert(data.message || 'Không thể hủy đơn hàng.', 'Lỗi', 'danger');
                 return;
             }
 
@@ -1051,7 +1166,7 @@
             }
 
         } catch {
-            alert('Không thể kết nối. Vui lòng thử lại.');
+            window.showAlert('Không thể kết nối. Vui lòng thử lại.', 'Lỗi', 'danger');
         }
     }
 
@@ -1061,6 +1176,94 @@
             doCancel(this.dataset.cancelOrder);
         });
     });
+
+    /* ── Yêu cầu hủy (đơn đã xác nhận / đang giao) ──
+       Đơn này không tự hủy được vì kéo theo hoàn kho và hoàn tiền → gửi yêu cầu cho cửa hàng duyệt.
+       Dùng modal riêng thay cho prompt() để đồng bộ giao diện với modal chi tiết đơn. */
+    (function () {
+        const crqOverlay = document.getElementById('cancelReqOverlay');
+        if (!crqOverlay) return;
+
+        const crqCode   = document.getElementById('crqOrderCode');
+        const crqReason = document.getElementById('crqReason');
+        const crqError  = document.getElementById('crqError');
+        const crqPaid   = document.getElementById('crqPaidHint');
+        const crqSend   = document.getElementById('crqSend');
+        const crqClose  = document.getElementById('crqCancel');
+        let crqOrderId  = null;
+
+        function openCrq(orderId, code, isPaid) {
+            crqOrderId = orderId;
+            crqCode.textContent = code ? `(${code})` : '';
+            crqReason.value = '';
+            crqError.style.display = 'none';
+            crqPaid.style.display = isPaid ? 'inline' : 'none';
+            crqSend.disabled = false;
+            crqSend.textContent = 'Gửi yêu cầu';
+            crqOverlay.classList.add('open');
+            document.body.style.overflow = 'hidden';
+            setTimeout(() => crqReason.focus(), 50);
+        }
+
+        function closeCrq() {
+            crqOverlay.classList.remove('open');
+            document.body.style.overflow = '';
+        }
+
+        crqClose.addEventListener('click', closeCrq);
+        crqOverlay.addEventListener('click', e => { if (e.target === crqOverlay) closeCrq(); });
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape' && crqOverlay.classList.contains('open')) closeCrq();
+        });
+
+        document.querySelectorAll('[data-cancel-request]').forEach(btn => {
+            btn.addEventListener('click', function () {
+                openCrq(this.dataset.cancelRequest, this.dataset.orderCode || '', this.dataset.orderPaid === '1');
+            });
+        });
+
+        crqSend.addEventListener('click', async function () {
+            const reason = crqReason.value.trim();
+            if (!reason) {
+                crqError.textContent = 'Vui lòng nhập lý do muốn hủy đơn.';
+                crqError.style.display = 'block';
+                crqReason.focus();
+                return;
+            }
+
+            crqError.style.display = 'none';
+            crqSend.disabled = true;
+            crqSend.textContent = 'Đang gửi...';
+
+            try {
+                const res = await fetch(`/don-hang/${crqOrderId}/yeu-cau-huy`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrf,
+                    },
+                    body: JSON.stringify({ reason }),
+                });
+                const data = await res.json().catch(() => ({}));
+
+                if (!res.ok) {
+                    crqError.textContent = data.message || 'Không gửi được yêu cầu hủy.';
+                    crqError.style.display = 'block';
+                    crqSend.disabled = false;
+                    crqSend.textContent = 'Gửi yêu cầu';
+                    return;
+                }
+
+                window.location.reload();
+            } catch {
+                crqError.textContent = 'Không thể kết nối. Vui lòng thử lại.';
+                crqError.style.display = 'block';
+                crqSend.disabled = false;
+                crqSend.textContent = 'Gửi yêu cầu';
+            }
+        });
+    })();
 
     /* ── Modal cancel button ── */
     odCancelBtn.addEventListener('click', function () {
@@ -1104,6 +1307,7 @@
     const csrf      = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
 
     let currentProductId = null;   // sản phẩm đang được đánh giá
+    let currentOrderId   = null;   // đơn hàng tương ứng của lần đánh giá này
     let currentButton    = null;   // nút "Đánh giá" vừa bấm (để thay bằng "Đã đánh giá")
 
     function openModal() { overlay.classList.add('open'); document.body.style.overflow = 'hidden'; }
@@ -1112,6 +1316,7 @@
         overlay.classList.remove('open');
         document.body.style.overflow = '';
         currentProductId = null;
+        currentOrderId   = null;
         currentButton    = null;
     }
 
@@ -1124,6 +1329,7 @@
     document.querySelectorAll('.btn-review-product').forEach(btn => {
         btn.addEventListener('click', function () {
             currentProductId = this.dataset.reviewProductId;
+            currentOrderId   = this.dataset.reviewOrderId || null;
             currentButton    = this;
 
             // Điền thông tin sản phẩm vào modal
@@ -1166,7 +1372,7 @@
                     'Accept': 'application/json',
                     'X-CSRF-TOKEN': csrf,
                 },
-                body: JSON.stringify({ rating, comment }),
+                body: JSON.stringify({ rating, comment, order_id: currentOrderId }),
             });
 
             const data = await res.json().catch(() => ({}));

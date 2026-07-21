@@ -26,6 +26,10 @@ class ActivityLog extends Audit
         'password_reset' => 'Reset mật khẩu',
         'login'          => 'Đăng nhập',
         'logout'         => 'Đăng xuất',
+        // Cảnh báo tiền bạc cần con người xử lý (xem PaymentReconciliationService).
+        'refund_required'   => 'Cần hoàn tiền',
+        'refund_completed'  => 'Đã hoàn tiền',
+        'payment_reconcile' => 'Đối soát thanh toán',
     ];
 
     /**
@@ -40,6 +44,9 @@ class ActivityLog extends Audit
         'password_reset' => 'warning',
         'login'          => 'neutral',
         'logout'         => 'muted',
+        'refund_required'   => 'danger',
+        'refund_completed'  => 'success',
+        'payment_reconcile' => 'danger',
     ];
 
     /**

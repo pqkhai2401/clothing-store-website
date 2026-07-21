@@ -93,6 +93,47 @@ class InventoryBatchService
 
         $available = (int) $batches->sum('quantity_remaining');
         if ($available < $quantity) {
+            // Self-healing: Nếu tồn kho hiển thị (cached stock) lớn hơn tổng tồn kho thực tế của các lô,
+            // nghĩa là có sự lệch dữ liệu do thao tác database trực tiếp (seeder/phpMyAdmin/thao tác ngoài).
+            // Ta tự động tạo một lô bù đắp (backfill batch) để giao dịch mua hàng/xuất kho diễn ra bình thường.
+            $mismatchQty = (int) $variant->stock - $available;
+            if ($mismatchQty > 0) {
+                $backfillBatch = ProductBatch::create([
+                    'batch_code'            => 'AUTO-BACKFILL-' . $variant->id . '-' . now()->format('YmdHis'),
+                    'product_variant_id'    => $variant->id,
+                    'goods_receipt_item_id' => null,
+                    'quantity_import'       => $mismatchQty,
+                    'quantity_remaining'    => $mismatchQty,
+                    'cost_price'            => (float) $variant->cost_price,
+                    'received_at'           => now(),
+                    'status'                => ProductBatch::STATUS_ACTIVE,
+                ]);
+
+                StockMovement::create([
+                    'product_variant_id' => $variant->id,
+                    'product_batch_id'   => $backfillBatch->id,
+                    'reference_type'     => 'auto_backfill',
+                    'reference_id'       => $variant->id,
+                    'movement_type'      => 'import',
+                    'quantity'           => $mismatchQty,
+                    'unit_cost'          => (float) $variant->cost_price,
+                    'before_quantity'    => $available,
+                    'after_quantity'     => $available + $mismatchQty,
+                    'created_by'         => $userId,
+                ]);
+
+                // Truy vấn lại danh sách lô hàng sau khi đã tự động bù đắp
+                $batches = ProductBatch::query()
+                    ->where('product_variant_id', $variant->id)
+                    ->sellable()
+                    ->fifo()
+                    ->lockForUpdate()
+                    ->get();
+                $available = (int) $batches->sum('quantity_remaining');
+            }
+        }
+
+        if ($available < $quantity) {
             throw ValidationException::withMessages([
                 'stock' => ["Không đủ tồn kho theo lô cho SKU \"{$variant->sku}\" (còn {$available}, cần {$quantity})."],
             ]);
@@ -157,11 +198,17 @@ class InventoryBatchService
         int $newReferenceId,
         ?int $userId = null
     ): void {
+        // orderBy product_batch_id: PHẢI khóa lô theo cùng 1 thứ tự cố định trên MỌI đường (khớp
+        // hướng tăng dần của consumeFifo() qua received_at/id) — nếu không, 1 giao dịch consumeFifo
+        // và 1 giao dịch restore chạy đồng thời trên cùng biến thể có thể khóa lô theo thứ tự
+        // ngược nhau và gây deadlock. Không có ORDER BY tường minh thì thứ tự trả về của
+        // GROUP BY/không GROUP BY không được đảm bảo.
         $exports = StockMovement::query()
             ->where('reference_type', $referenceType)
             ->where('reference_id', $referenceId)
             ->where('movement_type', 'export')
             ->whereNotNull('product_batch_id')
+            ->orderBy('product_batch_id')
             ->get();
 
         $touchedVariantIds = [];
@@ -202,6 +249,78 @@ class InventoryBatchService
             ]);
 
             // Cập nhật cache ngay để before/after của bút toán kế tiếp (nếu trùng biến thể) đúng.
+            $variant->update(['stock' => $after]);
+            $touchedVariantIds[$variant->id] = true;
+        }
+
+        foreach (array_keys($touchedVariantIds) as $variantId) {
+            $this->recalcVariantStock($variantId);
+        }
+    }
+
+    /**
+     * HOÀN KHO THEO SỐ DƯ (net) của 1 chứng từ: chỉ cộng trả phần ĐANG CÒN GIỮ trên mỗi lô
+     * = (tổng đã xuất − tổng đã hoàn) của chính chứng từ đó.
+     *
+     * Khác với restoreByReference() (đảo từng bút toán export), hàm này:
+     *  - IDEMPOTENT: gọi nhiều lần cũng không cộng khống (lần sau số dư = 0 → bỏ qua).
+     *  - Đúng khi chứng từ được SỬA NỘI DUNG: nhả hold cũ rồi giữ hold mới trên cùng
+     *    reference (xem OrderController::updateContent) — số dư luôn phản ánh hold hiện tại.
+     *
+     * Dùng cho hold của đơn hàng (reference_type='order'). Phải nằm trong transaction.
+     */
+    public function restoreOutstandingByReference(
+        string $referenceType,
+        int $referenceId,
+        ?int $userId = null
+    ): void {
+        // orderBy product_batch_id: cùng lý do như restoreByReference() — khóa lô theo thứ tự cố
+        // định để không deadlock với consumeFifo() chạy đồng thời trên cùng biến thể.
+        $rows = StockMovement::query()
+            ->where('reference_type', $referenceType)
+            ->where('reference_id', $referenceId)
+            ->whereNotNull('product_batch_id')
+            ->selectRaw("product_batch_id, product_variant_id,
+                SUM(CASE WHEN movement_type = 'export' THEN ABS(quantity) ELSE 0 END)
+              - SUM(CASE WHEN movement_type = 'import' THEN ABS(quantity) ELSE 0 END) AS outstanding")
+            ->groupBy('product_batch_id', 'product_variant_id')
+            ->having('outstanding', '>', 0)
+            ->orderBy('product_batch_id')
+            ->get();
+
+        $touchedVariantIds = [];
+
+        foreach ($rows as $row) {
+            $qty = (int) $row->outstanding;
+            $batch = ProductBatch::lockForUpdate()->find($row->product_batch_id);
+            $variant = ProductVariant::lockForUpdate()->find($row->product_variant_id);
+            if (! $batch || ! $variant) {
+                continue;
+            }
+
+            $batch->update([
+                'quantity_remaining' => (int) $batch->quantity_remaining + $qty,
+                'status' => $batch->status === ProductBatch::STATUS_DEPLETED
+                    ? ProductBatch::STATUS_ACTIVE
+                    : $batch->status,
+            ]);
+
+            $before = (int) $variant->stock;
+            $after  = $before + $qty;
+
+            StockMovement::create([
+                'product_variant_id' => $variant->id,
+                'product_batch_id'   => $batch->id,
+                'reference_type'     => $referenceType,
+                'reference_id'       => $referenceId,
+                'movement_type'      => 'import',
+                'quantity'           => $qty,
+                'unit_cost'          => (float) $batch->cost_price,
+                'before_quantity'    => $before,
+                'after_quantity'     => $after,
+                'created_by'         => $userId,
+            ]);
+
             $variant->update(['stock' => $after]);
             $touchedVariantIds[$variant->id] = true;
         }

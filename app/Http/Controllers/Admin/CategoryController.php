@@ -54,7 +54,7 @@ class CategoryController extends Controller
     {
         $validated = $request->validate([
             'name'      => ['required', 'string', 'max:255'],
-            'parent_id' => ['nullable', 'integer', Rule::exists('categories', 'id')],
+            'parent_id' => ['nullable', 'integer', Rule::exists('categories', 'id'), $this->parentMustBeRoot()],
             'status'    => ['required', Rule::in([0, 1, '0', '1'])],
         ], [
             'name.required'    => 'Tên danh mục không được để trống.',
@@ -103,7 +103,7 @@ class CategoryController extends Controller
         $validated = $request->validate([
             'name'      => ['required', 'string', 'max:255'],
             'slug'      => ['nullable', 'string', 'max:255', Rule::unique('categories', 'slug')->ignore($id)],
-            'parent_id' => ['nullable', 'integer', Rule::exists('categories', 'id'), Rule::notIn([$id])],
+            'parent_id' => ['nullable', 'integer', Rule::exists('categories', 'id'), Rule::notIn([$id]), $this->parentMustBeRoot()],
         ], [
             'name.required'      => 'Tên danh mục không được để trống.',
             'name.max'           => 'Tên danh mục không được quá 255 ký tự.',
@@ -317,5 +317,27 @@ class CategoryController extends Controller
         }
 
         return $candidate;
+    }
+
+    /**
+     * Hệ thống chỉ hỗ trợ tối đa 2 cấp danh mục (gốc -> con) — UI (dropdown "Danh mục cha" ở
+     * cả create/edit) đã ngầm giả định điều này bằng cách chỉ liệt kê category gốc làm lựa chọn,
+     * nhưng trước đây server không hề enforce nên gửi thẳng request (Postman/devtools) với
+     * parent_id trỏ tới 1 category đã có cha vẫn tạo được cây 3+ cấp. Hậu quả không chỉ là UI —
+     * ProductController::getProductsByCategory() (storefront) giả định cây chỉ 2 cấp, sản phẩm
+     * gán vào category cấp 3 sẽ "biến mất" khỏi trang duyệt danh mục của khách hàng. Rule này
+     * chặn thẳng ở nguồn: parent_id (nếu có) bắt buộc phải là category gốc.
+     */
+    private function parentMustBeRoot(): \Closure
+    {
+        return function (string $attribute, mixed $value, \Closure $fail): void {
+            if ($value === null) {
+                return;
+            }
+
+            if (Category::whereKey($value)->whereNotNull('parent_id')->exists()) {
+                $fail('Danh mục cha phải là danh mục gốc — hệ thống chỉ hỗ trợ tối đa 2 cấp danh mục (không được chọn danh mục con làm cha).');
+            }
+        };
     }
 }

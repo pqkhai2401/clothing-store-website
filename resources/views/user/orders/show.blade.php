@@ -224,6 +224,7 @@
 
     .pay--paid   { background: #dcfce7; color: #166534; }
     .pay--unpaid { background: #fef9c3; color: #92400e; }
+    .pay--refunded { background: #dbeafe; color: #1d4ed8; }
 </style>
 @endsection
 
@@ -277,15 +278,16 @@
                         @endif
 
                         <div class="order-item-info">
+                            {{-- M4: tên hiển thị theo snapshot lúc đặt hàng; link vẫn trỏ sản phẩm hiện tại nếu còn --}}
                             @if($slug)
-                                <a href="{{ route('products.show', $slug) }}" class="order-item-name">{{ $product->name }}</a>
+                                <a href="{{ route('products.show', $slug) }}" class="order-item-name">{{ $item->displayName() }}</a>
                             @else
-                                <div class="order-item-name" style="cursor:default;">{{ $product?->name ?? 'Sản phẩm đã xoá' }}</div>
+                                <div class="order-item-name" style="cursor:default;">{{ $item->displayName() }}</div>
                             @endif
                             <div class="order-item-meta">
-                                @if($variant?->color) {{ $variant->color->name }} @endif
-                                @if($variant?->color && $variant?->size) · @endif
-                                @if($variant?->size) {{ $variant->size->name }} @endif
+                                @if($item->displayColor()) {{ $item->displayColor() }} @endif
+                                @if($item->displayColor() && $item->displaySize()) · @endif
+                                @if($item->displaySize()) {{ $item->displaySize() }} @endif
                             </div>
                             <span class="order-item-qty">x{{ $item->quantity }}</span>
                         </div>
@@ -347,9 +349,15 @@
                     </div>
                     <div class="info-row">
                         <span class="info-row-label">Thanh toán</span>
-                        <span class="payment-status-badge {{ $order->payment_status === 'paid' ? 'pay--paid' : 'pay--unpaid' }}">
-                            {{ $order->payment_status === 'paid' ? 'Đã thanh toán' : 'Chưa thanh toán' }}
-                        </span>
+                        @php
+                            // 3 trạng thái: chưa trả / đã trả / đã được hoàn tiền (đơn hủy sau khi đã trả).
+                            [$payClass, $payLabel] = match ($order->payment_status) {
+                                'paid'     => ['pay--paid', 'Đã thanh toán'],
+                                'refunded' => ['pay--refunded', 'Đã hoàn tiền'],
+                                default    => ['pay--unpaid', 'Chưa thanh toán'],
+                            };
+                        @endphp
+                        <span class="payment-status-badge {{ $payClass }}">{{ $payLabel }}</span>
                     </div>
                     <div class="info-row">
                         <span class="info-row-label">Phương thức</span>

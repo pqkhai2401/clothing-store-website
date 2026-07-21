@@ -30,6 +30,7 @@ class DocumentSequenceService
     public const TYPE_STOCK_ISSUE   = 'STOCK_ISSUE';
     public const TYPE_RETURN        = 'RETURN';
     public const TYPE_BATCH         = 'BATCH';
+    public const TYPE_STOCKTAKE     = 'STOCKTAKE';
 
     public const RESET_NONE    = 'NONE';
     public const RESET_DAILY   = 'DAILY';
@@ -43,6 +44,7 @@ class DocumentSequenceService
         self::TYPE_STOCK_ISSUE   => 'PX',
         self::TYPE_RETURN        => 'PTH',
         self::TYPE_BATCH         => 'LOT',
+        self::TYPE_STOCKTAKE     => 'PKK',
     ];
 
     /** Hiện tại mọi loại đều reset theo NGÀY (đồng nhất). */
@@ -52,6 +54,7 @@ class DocumentSequenceService
         self::TYPE_STOCK_ISSUE   => self::RESET_DAILY,
         self::TYPE_RETURN        => self::RESET_DAILY,
         self::TYPE_BATCH         => self::RESET_DAILY,
+        self::TYPE_STOCKTAKE     => self::RESET_DAILY,
     ];
 
     public function generateOrderCode(): string
@@ -77,6 +80,33 @@ class DocumentSequenceService
     public function generateBatchCode(): string
     {
         return $this->build(self::TYPE_BATCH);
+    }
+
+    public function generateStocktakeCode(): string
+    {
+        return $this->build(self::TYPE_STOCKTAKE);
+    }
+
+    /**
+     * Xem trước mã kế tiếp SẼ được cấp cho 1 loại chứng từ, KHÔNG tăng số đếm
+     * (chỉ đọc, dùng để hiển thị gợi ý "Mã phiếu sẽ là: ..." trên UI trước khi
+     * submit). Không cần khoá/atomic vì chỉ là preview — mã thật vẫn được cấp
+     * qua build() lúc submit thật, đảm bảo không trùng dù preview có bị stale
+     * do 2 người cùng mở form cùng lúc.
+     */
+    public function peekNextCode(string $documentType): string
+    {
+        $resetType = self::RESET_TYPES[$documentType];
+        $periodKey = self::periodKey($resetType);
+
+        $current = DocumentSequence::query()
+            ->where('document_type', $documentType)
+            ->where('period_key', $periodKey)
+            ->value('current_number') ?? 0;
+
+        return self::PREFIXES[$documentType]
+            . $periodKey
+            . str_pad((string) ($current + 1), 4, '0', STR_PAD_LEFT);
     }
 
     /**

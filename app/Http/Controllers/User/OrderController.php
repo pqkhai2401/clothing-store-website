@@ -31,6 +31,8 @@ class OrderController extends Controller
             ->excludingUnpaidOnline()
             ->with([
                 'paymentMethod',
+                // Để biết đơn nào đã gửi yêu cầu hủy đang chờ duyệt (tránh N+1 khi render danh sách).
+                'pendingCancelRequest',
                 'orderItems.productVariant.product',
                 'orderItems.productVariant.color',
                 'orderItems.productVariant.size',
@@ -45,13 +47,16 @@ class OrderController extends Controller
         $statusTabs = self::STATUS_TABS;
         $activeTab  = $status;
 
-        // Danh sách ID sản phẩm mà user ĐÃ đánh giá -> dùng để ẩn/hiện nút
-        // "Đánh giá sản phẩm" trên từng dòng sản phẩm của đơn đã giao.
-        $reviewedProductIds = Review::where('user_id', $request->user()->id)
-            ->pluck('product_id')
+        // Các cặp "đơn hàng - sản phẩm" mà user ĐÃ đánh giá -> dùng để ẩn/hiện nút
+        // "Đánh giá" trên từng dòng sản phẩm. Khóa theo đơn (order_id_product_id)
+        // để khi mua lại (đơn mới) vẫn hiện nút đánh giá cho đơn đó.
+        $reviewedKeys = Review::where('user_id', $request->user()->id)
+            ->whereNotNull('order_id')
+            ->get(['order_id', 'product_id'])
+            ->map(fn ($r) => $r->order_id . '_' . $r->product_id)
             ->all();
 
-        return view('user.orders.index', compact('orders', 'statusTabs', 'activeTab', 'reviewedProductIds'));
+        return view('user.orders.index', compact('orders', 'statusTabs', 'activeTab', 'reviewedKeys'));
     }
 
     public function show(Request $request, int $id): View
@@ -74,6 +79,48 @@ class OrderController extends Controller
      * Chỉ cho phép khi đơn ở trạng thái 'pending' VÀ chưa thanh toán ('unpaid').
      * Sau khi hủy: hoàn lại tồn kho cho từng biến thể sản phẩm trong đơn.
      */
+    /**
+     * Khách GỬI YÊU CẦU HỦY cho đơn đã được xác nhận / đang giao.
+     *
+     * Không tự hủy được vì hủy các đơn này kéo theo hoàn kho và (nếu đã trả tiền) HOÀN TIỀN —
+     * phải để admin duyệt. Mỗi đơn chỉ có tối đa 1 yêu cầu đang chờ.
+     */
+    public function requestCancel(Request $request, int $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'reason' => ['required', 'string', 'max:500'],
+        ], [
+            'reason.required' => 'Vui lòng nhập lý do muốn hủy đơn.',
+            'reason.max'      => 'Lý do không được quá 500 ký tự.',
+        ]);
+
+        $order = Order::where('user_id', $request->user()->id)->findOrFail($id);
+
+        if (! in_array($order->status, \App\Models\OrderCancelRequest::REQUESTABLE_ORDER_STATUSES, true)) {
+            return response()->json([
+                'message' => 'Đơn hàng này không thể gửi yêu cầu hủy (chỉ áp dụng cho đơn đã xác nhận hoặc đang giao).',
+            ], 403);
+        }
+
+        if ($order->cancelRequests()->pending()->exists()) {
+            return response()->json([
+                'message' => 'Bạn đã gửi yêu cầu hủy cho đơn này rồi, vui lòng chờ cửa hàng xử lý.',
+            ], 409);
+        }
+
+        \App\Models\OrderCancelRequest::create([
+            'order_id' => $order->id,
+            'user_id'  => $request->user()->id,
+            'reason'   => $validated['reason'],
+            'status'   => \App\Models\OrderCancelRequest::STATUS_PENDING,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Đã gửi yêu cầu hủy đơn. Cửa hàng sẽ xem xét và phản hồi sớm nhất.',
+        ]);
+    }
+
     public function cancelOrder(Request $request, int $id): JsonResponse
     {
         // Lấy đơn hàng, chỉ cho phép đúng chủ sở hữu
@@ -89,14 +136,17 @@ class OrderController extends Controller
         }
 
         try {
-            DB::beginTransaction();
+            // Dưới mô hình "Hold & Release", đơn pending ĐANG GIỮ KHO (đã trừ FIFO từ lúc
+            // checkout) nên hủy phải nhả kho về đúng lô + nhả voucher. Service xử lý atomic
+            // và idempotent (khóa đơn, kiểm tra lại trạng thái) → không lo hoàn kho 2 lần.
+            $cancelled = app(\App\Services\OrderCancellationService::class)
+                ->cancelPendingUnpaid($order, 'Khách hàng tự hủy đơn');
 
-            // Chỉ cho hủy đơn ở trạng thái pending/unpaid (đã chặn ở trên). Đơn pending CHƯA bị
-            // trừ kho (kho chỉ trừ khi admin chuyển sang 'processing'), nên KHÔNG cộng lại tồn —
-            // cộng lại sẽ tạo tồn kho ảo.
-            $order->update(['status' => 'cancelled']);
-
-            DB::commit();
+            if (! $cancelled) {
+                return response()->json([
+                    'message' => 'Không thể hủy đơn hàng này. Đơn vừa được xử lý hoặc đã thanh toán.',
+                ], 403);
+            }
 
             return response()->json([
                 'success' => true,
@@ -104,9 +154,6 @@ class OrderController extends Controller
             ]);
 
         } catch (\Throwable $e) {
-            // Xảy ra lỗi — rollback toàn bộ để đảm bảo dữ liệu nguyên vẹn
-            DB::rollBack();
-
             return response()->json([
                 'message' => 'Có lỗi xảy ra: ' . $e->getMessage(),
             ], 500);

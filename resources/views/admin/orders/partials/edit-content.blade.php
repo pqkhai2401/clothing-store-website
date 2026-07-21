@@ -181,19 +181,33 @@
                         <div class="row g-3">
                             <div class="col-md-6 edit-field mb-0">
                                 <label>Tỉnh/Thành phố <span class="text-danger">*</span></label>
-                                <input type="text" name="new_address[city]" class="form-control form-control-sm @error('new_address.city') is-invalid @enderror" value="{{ old('new_address.city') }}">
-                                @error('new_address.city') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                            </div>
-                            <div class="col-md-6 edit-field mb-0">
-                                <label>Quận/Huyện</label>
-                                <input type="text" name="new_address[district]" class="form-control form-control-sm" value="{{ old('new_address.district') }}">
+                                <input type="hidden" name="new_address[city]" id="oeProvinceHidden" value="{{ old('new_address.city') }}">
+                                <div class="hk-cat-filter oc-dropdown @error('new_address.city') is-invalid @enderror" id="oeProvinceDrop">
+                                    <button type="button" class="hk-cat-trigger" id="oeProvinceTrigger" aria-haspopup="listbox" aria-expanded="false">
+                                        <span class="hk-cat-trigger-label" id="oeProvinceLabel">{{ old('new_address.city') ?: '— Chọn tỉnh/thành phố —' }}</span>
+                                        <i class="fa-solid fa-chevron-down hk-cat-arrow"></i>
+                                    </button>
+                                    <div class="hk-cat-panel" id="oeProvincePanel" hidden>
+                                        <div class="hk-cat-list" id="oeProvinceList" role="listbox"></div>
+                                    </div>
+                                </div>
+                                @error('new_address.city') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                             </div>
                             <div class="col-md-6 edit-field mb-0">
                                 <label>Phường/Xã <span class="text-danger">*</span></label>
-                                <input type="text" name="new_address[ward]" class="form-control form-control-sm @error('new_address.ward') is-invalid @enderror" value="{{ old('new_address.ward') }}">
-                                @error('new_address.ward') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                <input type="hidden" name="new_address[ward]" id="oeWardHidden" value="{{ old('new_address.ward') }}">
+                                <div class="hk-cat-filter oc-dropdown @error('new_address.ward') is-invalid @enderror" id="oeWardDrop">
+                                    <button type="button" class="hk-cat-trigger" id="oeWardTrigger" aria-haspopup="listbox" aria-expanded="false" disabled>
+                                        <span class="hk-cat-trigger-label" id="oeWardLabel">— Chọn tỉnh/thành trước —</span>
+                                        <i class="fa-solid fa-chevron-down hk-cat-arrow"></i>
+                                    </button>
+                                    <div class="hk-cat-panel" id="oeWardPanel" hidden>
+                                        <div class="hk-cat-list" id="oeWardList" role="listbox"></div>
+                                    </div>
+                                </div>
+                                @error('new_address.ward') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                             </div>
-                            <div class="col-md-6 edit-field mb-0">
+                            <div class="col-md-12 edit-field mb-0">
                                 <label>Địa chỉ cụ thể <span class="text-danger">*</span></label>
                                 <input type="text" name="new_address[apartment_number]" class="form-control form-control-sm @error('new_address.apartment_number') is-invalid @enderror" value="{{ old('new_address.apartment_number') }}">
                                 @error('new_address.apartment_number') <div class="invalid-feedback">{{ $message }}</div> @enderror
@@ -372,6 +386,90 @@
         if (!hidden.value) newFields.classList.remove('d-none');
     }());
 
+    /* ── Dropdown bo viền dùng chung, tối giản (giống wireDropdown ở trang Thêm đơn hàng) ── */
+    function wireSimpleDropdown(root, trigger, panel, label, list, hidden, onSelect) {
+        const rootEl = document.getElementById(root);
+        const triggerEl = document.getElementById(trigger);
+        const panelEl = document.getElementById(panel);
+        const labelEl = document.getElementById(label);
+        const listEl = document.getElementById(list);
+        const hiddenEl = document.getElementById(hidden);
+        if (!rootEl || !triggerEl) return null;
+
+        function open()  { if (triggerEl.disabled) return; panelEl.hidden = false; triggerEl.classList.add('is-open'); triggerEl.setAttribute('aria-expanded', 'true'); }
+        function close() { panelEl.hidden = true; triggerEl.classList.remove('is-open'); triggerEl.setAttribute('aria-expanded', 'false'); }
+
+        triggerEl.addEventListener('click', () => panelEl.hidden ? open() : close());
+
+        listEl.addEventListener('click', function (e) {
+            const btn = e.target.closest('.hk-cat-item');
+            if (!btn) return;
+            listEl.querySelectorAll('.hk-cat-item').forEach(b => b.classList.remove('is-active'));
+            btn.classList.add('is-active');
+            labelEl.textContent = btn.dataset.label;
+            hiddenEl.value = btn.dataset.value;
+            close();
+            if (onSelect) onSelect(btn.dataset.value, btn.dataset.label, btn);
+        });
+
+        document.addEventListener('click', function (e) {
+            if (!panelEl.hidden && !rootEl.contains(e.target)) close();
+        });
+
+        return { setOptions(html) { listEl.innerHTML = html; }, enable() { triggerEl.disabled = false; }, disable() { triggerEl.disabled = true; } };
+    }
+
+    /* ── Chọn Tỉnh/Thành phố + Phường/Xã cho địa chỉ mới qua API địa giới hành chính,
+       bỏ hẳn trường Quận/Huyện (cơ cấu hành chính mới chỉ còn 2 cấp Tỉnh → Phường/Xã). ── */
+    (function () {
+        const provinceHiddenEl = document.getElementById('oeProvinceHidden');
+        if (!provinceHiddenEl) return;
+        const wardHiddenEl = document.getElementById('oeWardHidden');
+        const oldCityName = provinceHiddenEl.value;
+
+        const provinceDropdown = wireSimpleDropdown('oeProvinceDrop', 'oeProvinceTrigger', 'oeProvincePanel', 'oeProvinceLabel', 'oeProvinceList', 'oeProvinceHidden',
+            function (value, label, btn) {
+                wardHiddenEl.value = '';
+                document.getElementById('oeWardLabel').textContent = '— Chọn phường/xã —';
+                loadWards(btn.dataset.code);
+            });
+
+        const wardDropdown = wireSimpleDropdown('oeWardDrop', 'oeWardTrigger', 'oeWardPanel', 'oeWardLabel', 'oeWardList', 'oeWardHidden');
+
+        function loadWards(code) {
+            if (!code) { wardDropdown.disable(); return; }
+            wardDropdown.disable();
+            document.getElementById('oeWardLabel').textContent = 'Đang tải...';
+            fetch(`/api/location/provinces/${code}/wards`, { headers: { Accept: 'application/json' } })
+                .then(r => r.json())
+                .then(wards => {
+                    const html = (wards || []).map(w =>
+                        `<button type="button" class="hk-cat-item" data-value="${w.name}" data-label="${w.name}">${w.name}</button>`
+                    ).join('');
+                    wardDropdown.setOptions(html);
+                    wardDropdown.enable();
+                    document.getElementById('oeWardLabel').textContent = '— Chọn phường/xã —';
+                });
+        }
+
+        fetch('{{ route('location.provinces') }}', { headers: { Accept: 'application/json' } })
+            .then(r => r.json())
+            .then(provinces => {
+                const html = (provinces || []).map(p =>
+                    `<button type="button" class="hk-cat-item" data-value="${p.name}" data-label="${p.name}" data-code="${p.code}">${p.name}</button>`
+                ).join('');
+                provinceDropdown.setOptions(html);
+
+                if (oldCityName) {
+                    const match = (provinces || []).find(p => p.name === oldCityName);
+                    if (match) {
+                        document.querySelector(`#oeProvinceList .hk-cat-item[data-value="${oldCityName}"]`)?.classList.add('is-active');
+                        loadWards(match.code);
+                    }
+                }
+            });
+    }());
+
     if (scope !== 'full') return;
 
     /* ── Danh sách sản phẩm trong đơn (thêm/xóa/đổi số lượng) ── */
@@ -428,7 +526,7 @@
         body.innerHTML = items.map((item, idx) => {
             const sub = [item.color, item.size, item.sku].filter(Boolean).join(' · ');
             return `
-            <tr>
+            <tr data-idx="${idx}">
                 <td>
                     <div class="oe-row-product">
                         ${thumbHtml(item.thumbnail, 'oe-row-thumb')}
@@ -444,29 +542,55 @@
                 <td class="text-muted">${item.stock ?? '—'}</td>
                 <td class="fw-semibold">${money(item.unit_price)}</td>
                 <td><input type="number" class="oe-num-input" data-idx="${idx}" min="1" max="${item.stock || item.quantity}" value="${item.quantity}"></td>
-                <td class="fw-bold" style="color:#174761;">${money(item.unit_price * item.quantity)}</td>
+                <td class="fw-bold oe-item-total" style="color:#174761;">${money(item.unit_price * item.quantity)}</td>
                 <td><button type="button" class="btn btn-sm btn-light border oe-remove-item" data-idx="${idx}"><i class="fa-solid fa-trash"></i></button></td>
             </tr>
         `;
         }).join('');
 
-        hiddenWrap.innerHTML = items.map((item, idx) => `
-            <input type="hidden" name="items[${idx}][product_variant_id]" value="${item.id}">
-            <input type="hidden" name="items[${idx}][quantity]" value="${item.quantity}">
-        `).join('');
-
+        updateHiddenItemInputs();
         updateSummary();
     }
 
+    function updateHiddenItemInputs() {
+        document.getElementById('oeItemsHidden').innerHTML = items.map((item, idx) => `
+            <input type="hidden" name="items[${idx}][product_variant_id]" value="${item.id}">
+            <input type="hidden" name="items[${idx}][quantity]" value="${item.quantity}">
+        `).join('');
+    }
+
+    // Cập nhật tại chỗ, không renderItems() lại toàn bảng — tránh việc thay input đang focus
+    // làm mất con trỏ, khiến gõ số lượng từ 2 chữ số trở lên bị bung khỏi ô sau mỗi phím bấm.
     document.getElementById('oeItemsBody').addEventListener('input', function (e) {
         if (!e.target.matches('.oe-num-input')) return;
         const idx = Number(e.target.dataset.idx);
-        let qty = parseInt(e.target.value, 10) || 1;
+        const qty = parseInt(e.target.value, 10);
+        if (!Number.isFinite(qty)) return;
+
         const max = items[idx].stock || qty;
-        qty = Math.max(1, Math.min(qty, max));
-        items[idx].quantity = qty;
-        renderItems();
+        const clamped = Math.min(qty, max);
+        if (clamped !== qty) e.target.value = clamped;
+        items[idx].quantity = clamped;
+
+        document.querySelector(`#oeItemsBody tr[data-idx="${idx}"] .oe-item-total`).textContent = money(items[idx].unit_price * clamped);
+        updateHiddenItemInputs();
+        updateSummary();
     });
+
+    document.getElementById('oeItemsBody').addEventListener('blur', function (e) {
+        if (!e.target.matches('.oe-num-input')) return;
+        const idx = Number(e.target.dataset.idx);
+        let qty = parseInt(e.target.value, 10);
+        if (!Number.isFinite(qty) || qty < 1) qty = 1;
+        const max = items[idx].stock || qty;
+        qty = Math.min(qty, max);
+        e.target.value = qty;
+        items[idx].quantity = qty;
+
+        document.querySelector(`#oeItemsBody tr[data-idx="${idx}"] .oe-item-total`).textContent = money(items[idx].unit_price * qty);
+        updateHiddenItemInputs();
+        updateSummary();
+    }, true);
 
     document.getElementById('oeItemsBody').addEventListener('click', function (e) {
         const btn = e.target.closest('.oe-remove-item');
@@ -577,7 +701,7 @@
             }
 
             if (!res.ok || !data) {
-                alert((data && data.message) || 'Không thể cập nhật đơn hàng.');
+                window.showAlert((data && data.message) || 'Không thể cập nhật đơn hàng.', 'Lỗi', 'danger');
                 return;
             }
 
@@ -589,7 +713,7 @@
                 window.location.reload();
             }
         } catch (err) {
-            alert('Không thể kết nối tới máy chủ. Vui lòng thử lại.');
+            window.showAlert('Không thể kết nối tới máy chủ. Vui lòng thử lại.', 'Lỗi', 'danger');
         } finally {
             submitBtn?.removeAttribute('disabled');
         }

@@ -31,9 +31,9 @@ class DatabaseSeeder extends Seeder
             ProductSeeder::class,
 
             // ── Tương tác người dùng ────────────
-            ReviewSeeder::class,
-            WishlistSeeder::class,
             OrderSeeder::class,
+            ReviewSeeder::class,       // cần đơn hàng đã hoàn tất từ OrderSeeder
+            WishlistSeeder::class,
             CollectionSeeder::class,
             VoucherSeeder::class,
             InventorySeeder::class,

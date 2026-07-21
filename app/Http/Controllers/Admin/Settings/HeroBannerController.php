@@ -31,6 +31,8 @@ class HeroBannerController extends Controller
             'image' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
             'is_active' => 'nullable|boolean',
             'sort_order' => 'nullable|integer|min:0',
+            'start_date' => 'nullable|date',
+            'end_date' => 'nullable|date|after:start_date',
         ]);
 
         $path = $request->file('image')->store('hero-banners', 'public');
@@ -43,6 +45,8 @@ class HeroBannerController extends Controller
             'image_path' => 'storage/' . $path,
             'is_active' => $request->boolean('is_active'),
             'sort_order' => $request->input('sort_order', 0),
+            'start_date' => $request->input('start_date'),
+            'end_date' => $request->input('end_date'),
         ]);
 
         return redirect()
@@ -69,6 +73,8 @@ class HeroBannerController extends Controller
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
             'is_active' => 'nullable|boolean',
             'sort_order' => 'nullable|integer|min:0',
+            'start_date' => 'nullable|date',
+            'end_date' => 'nullable|date|after:start_date',
         ]);
 
         $imagePath = $heroBanner->image_path;
@@ -89,6 +95,8 @@ class HeroBannerController extends Controller
             'image_path' => $imagePath,
             'is_active' => $request->boolean('is_active'),
             'sort_order' => $request->input('sort_order', 0),
+            'start_date' => $request->input('start_date'),
+            'end_date' => $request->input('end_date'),
         ]);
 
         return redirect()

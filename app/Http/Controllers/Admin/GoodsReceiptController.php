@@ -76,14 +76,14 @@ class GoodsReceiptController extends Controller
 
         if ($request->ajax()) {
             return response()->json([
-                'html' => view('admin.goods-receipts.partials.stocktake-table', compact('stocktakes'))->render(),
+                'html' => view('admin.inventory.stocktakes.partials.table', compact('stocktakes'))->render(),
             ]);
         }
 
         $stocktakeVariants = $this->stockIssueVariants();
         $stocktakeCodePreview = $this->stocktakeCodePreview();
 
-        return view('admin.goods-receipts.index', compact('stocktakes', 'keyword', 'status', 'perPage', 'stocktakeVariants', 'stocktakeCodePreview') + ['tab' => 'stocktake']);
+        return view('admin.inventory.index', compact('stocktakes', 'keyword', 'status', 'perPage', 'stocktakeVariants', 'stocktakeCodePreview') + ['tab' => 'stocktake']);
     }
 
     private function outboundIndex(Request $request)
@@ -120,7 +120,7 @@ class GoodsReceiptController extends Controller
 
         if ($request->ajax()) {
             return response()->json([
-                'html' => view('admin.goods-receipts.partials.outbound-table', compact('stockIssues'))->render(),
+                'html' => view('admin.inventory.stock-issues.partials.outbound-table', compact('stockIssues'))->render(),
             ]);
         }
 
@@ -128,7 +128,7 @@ class GoodsReceiptController extends Controller
         $warehouses = Warehouse::where('status', true)->orderBy('is_default', 'desc')->orderBy('name')->get();
         $orders = Order::orderByDesc('id')->get(['id', 'order_code']);
 
-        return view('admin.goods-receipts.index', compact('stockIssues', 'keyword', 'status', 'perPage', 'stockIssueVariants', 'warehouses', 'orders') + ['tab' => 'outbound']);
+        return view('admin.inventory.index', compact('stockIssues', 'keyword', 'status', 'perPage', 'stockIssueVariants', 'warehouses', 'orders') + ['tab' => 'outbound']);
     }
 
     private function overviewIndex(Request $request)
@@ -180,7 +180,7 @@ class GoodsReceiptController extends Controller
 
         if ($request->ajax()) {
             return response()->json([
-                'html' => view('admin.goods-receipts.partials.overview-table', compact('variants'))->render(),
+                'html' => view('admin.inventory.goods-receipts.partials.overview-table', compact('variants'))->render(),
             ]);
         }
 
@@ -188,7 +188,7 @@ class GoodsReceiptController extends Controller
 
         $activeVariants = ProductVariant::whereHas('product', fn ($q) => $q->whereNull('deleted_at'));
 
-        return view('admin.goods-receipts.index', [
+        return view('admin.inventory.index', [
             'tab'               => 'overview',
             'variants'          => $variants,
             'keyword'           => $keyword,
@@ -235,7 +235,7 @@ class GoodsReceiptController extends Controller
 
         if ($request->ajax()) {
             return response()->json([
-                'html' => view('admin.goods-receipts.partials.table', compact('goodsReceipts'))->render(),
+                'html' => view('admin.inventory.goods-receipts.partials.table', compact('goodsReceipts'))->render(),
             ]);
         }
 
@@ -244,7 +244,7 @@ class GoodsReceiptController extends Controller
         $warehouses = Warehouse::where('status', true)->orderBy('is_default', 'desc')->orderBy('name')->get();
         $quickCreateData = $this->quickCreateFormData();
 
-        return view('admin.goods-receipts.index', compact(
+        return view('admin.inventory.index', compact(
             'goodsReceipts',
             'keyword',
             'perPage',
@@ -261,7 +261,7 @@ class GoodsReceiptController extends Controller
         $variants   = $this->goodsReceiptVariants();
         $warehouses = Warehouse::where('status', true)->orderBy('is_default', 'desc')->orderBy('name')->get();
 
-        return view('admin.goods-receipts.create', compact('suppliers', 'variants', 'warehouses')
+        return view('admin.inventory.goods-receipts.create', compact('suppliers', 'variants', 'warehouses')
             + $this->quickCreateFormData());
     }
 
@@ -283,107 +283,45 @@ class GoodsReceiptController extends Controller
     {
         $variant->load(['product:id,name,thumbnail', 'color:id,name,hex_code', 'size:id,name']);
 
-        $transactions = collect();
-
-        // Phiếu nhập/xuất tự sinh từ kiểm kê chỉ là chứng từ đối ứng của bút toán điều chỉnh;
-        // loại chúng khỏi thẻ kho để tránh cộng trùng với dòng "Điều chỉnh kho" bên dưới.
-        $stocktakeReceiptIds = Stocktake::whereNotNull('goods_receipt_id')->pluck('goods_receipt_id')->all();
-        $stocktakeIssueIds   = Stocktake::whereNotNull('stock_issue_id')->pluck('stock_issue_id')->all();
-
-        GoodsReceiptItem::query()
-            ->with(['goodsReceipt.creator'])
+        // Đọc THẲNG từ sổ cái stock_movements — nguồn sự thật duy nhất của mọi biến động kho, có
+        // sẵn before_quantity/after_quantity chính xác cho TỪNG dòng (kể cả hold của đơn đang giao
+        // dở). Cách cũ gom lại từ 4 bảng chứng từ rồi TÍNH LÙI từ tồn hiện tại: sai khi có đơn
+        // in-flight (đã trừ kho nhưng chưa completed/cancelled nên không có dòng chứng từ tương ứng)
+        // → toàn bộ cột "tồn cuối" lệch đúng bằng lượng đang giữ. Đọc sổ cái loại bỏ hẳn lỗi này,
+        // đồng thời không cần loại trừ thủ công chứng từ đối ứng tự sinh từ kiểm kê nữa (những
+        // chứng từ đó chỉ là giấy tờ, bút toán kho thật đã ghi dưới reference_type='stocktake').
+        $movements = StockMovement::query()
             ->where('product_variant_id', $variant->id)
-            ->when($stocktakeReceiptIds, fn ($query) => $query->whereNotIn('goods_receipt_id', $stocktakeReceiptIds))
-            ->whereHas('goodsReceipt', fn ($query) => $query->whereIn('status', [
-                GoodsReceipt::STATUS_COMPLETED,
-                GoodsReceipt::STATUS_ADJUSTED,
-            ]))
-            ->get()
-            ->each(function (GoodsReceiptItem $item) use ($transactions) {
-                $receipt = $item->goodsReceipt;
-                $transactions->push([
-                    'at' => $receipt?->completed_at ?? $receipt?->created_at,
-                    'type' => 'nhap_kho',
-                    'type_label' => 'Nhập kho',
-                    'document_code' => $receipt?->code,
-                    'document_url' => $receipt ? route('admin.goods-receipts.show', $receipt->id) : null,
-                    'quantity_change' => (int) $item->quantity,
-                    'user' => $receipt?->creator?->username ?? 'N/A',
-                ]);
-            });
+            ->with('creator')
+            ->orderBy('id') // id auto-increment = đúng thứ tự thời gian tuyệt đối của các bút toán
+            ->get();
 
-        StockIssueItem::query()
-            ->with(['stockIssue.creator'])
-            ->where('product_variant_id', $variant->id)
-            ->when($stocktakeIssueIds, fn ($query) => $query->whereNotIn('stock_issue_id', $stocktakeIssueIds))
-            ->whereHas('stockIssue', fn ($query) => $query->where('status', StockIssue::STATUS_COMPLETED))
-            ->get()
-            ->each(function (StockIssueItem $item) use ($transactions) {
-                $issue = $item->stockIssue;
-                $transactions->push([
-                    'at' => $issue?->issued_at ?? $issue?->created_at,
-                    'type' => 'xuat_kho',
-                    'type_label' => 'Xuất kho',
-                    'document_code' => $issue?->code,
-                    'document_url' => $issue ? route('admin.stock-issues.show', $issue->id) : null,
-                    'quantity_change' => -1 * (int) $item->quantity,
-                    'user' => $issue?->creator?->username ?? 'N/A',
-                ]);
-            });
+        // 1 chứng từ có thể sinh NHIỀU dòng ledger (mỗi lô bị trừ FIFO = 1 dòng). Gom theo
+        // (reference_type, reference_id, movement_type) để hiện 1 dòng/sự-kiện. Phải tách theo
+        // movement_type vì đơn hàng hold (export) và hoàn kho khi hủy (import) DÙNG CHUNG
+        // reference (order + order_id) — nếu gom chung sẽ triệt tiêu thành 0, mất cả 2 sự kiện.
+        $transactions = $movements
+            ->groupBy(fn (StockMovement $m) => $m->reference_type.'#'.$m->reference_id.'#'.$m->movement_type)
+            ->map(function ($group) {
+                $last = $group->last(); // đã sort id tăng dần → last = bút toán mới nhất của nhóm
+                $totalChange = (int) $group->sum('quantity'); // export lưu số âm, import số dương
+                $meta = $this->stockCardDocumentMeta($last->reference_type, (int) $last->reference_id, $last->movement_type);
 
-        StocktakeItem::query()
-            ->with(['stocktake.processor', 'stocktake.creator'])
-            ->where('product_variant_id', $variant->id)
-            ->whereHas('stocktake', fn ($query) => $query->where('status', Stocktake::STATUS_APPROVED))
-            ->get()
-            ->each(function (StocktakeItem $item) use ($transactions) {
-                $diff = $item->diff();
-                if ($diff === 0) {
-                    return;
-                }
-
-                $stocktake = $item->stocktake;
-                $transactions->push([
-                    'at' => $stocktake?->processed_at ?? $stocktake?->created_at,
-                    'type' => 'dieu_chinh_kho',
-                    'type_label' => 'Điều chỉnh kho',
-                    'document_code' => $stocktake?->code,
-                    'document_url' => null,
-                    'quantity_change' => $diff,
-                    'user' => $stocktake?->processor?->username ?? $stocktake?->creator?->username ?? 'N/A',
-                ]);
-            });
-
-        OrderItem::query()
-            ->with(['order.user'])
-            ->where('product_variant_id', $variant->id)
-            ->whereHas('order', fn ($query) => $query->whereIn('status', ['completed', 'cancelled']))
-            ->get()
-            ->each(function (OrderItem $item) use ($transactions) {
-                $order = $item->order;
-                $isCancelled = $order?->status === 'cancelled';
-                $transactions->push([
-                    'at' => $order?->updated_at ?? $order?->created_at,
-                    'type' => $isCancelled ? 'order_cancelled' : 'xuat_kho',
-                    'type_label' => $isCancelled ? 'Order Cancelled' : 'Xuất kho',
-                    'document_code' => $order?->order_code,
-                    'document_url' => $order ? route('admin.orders.detail', $order->id) : null,
-                    'quantity_change' => ($isCancelled ? 1 : -1) * (int) $item->quantity,
-                    'user' => $order?->user?->username ?? 'Hệ thống',
-                ]);
-            });
-
-        $runningStock = (int) $variant->stock;
-        $transactions = $transactions
-            ->filter(fn ($transaction) => ! empty($transaction['at']))
-            ->sortByDesc('at')
-            ->values()
-            ->map(function (array $transaction) use (&$runningStock) {
-                $transaction['ending_stock'] = $runningStock;
-                $runningStock -= (int) $transaction['quantity_change'];
-
-                return $transaction;
-            });
+                return [
+                    'at'              => $last->created_at,
+                    'sort_id'         => (int) $last->id,
+                    'type'            => $meta['type'],
+                    'type_label'      => $meta['type_label'],
+                    'document_code'   => $meta['document_code'],
+                    'document_url'    => $meta['document_url'],
+                    'quantity_change' => $totalChange,
+                    // Tồn cuối lấy SẴN từ after_quantity của bút toán cuối nhóm — KHÔNG tính lùi.
+                    'ending_stock'    => (int) $last->after_quantity,
+                    'user'            => $last->creator?->username ?? $meta['fallback_user'],
+                ];
+            })
+            ->sortByDesc('sort_id') // mới nhất lên đầu, đúng thứ tự tuyệt đối theo id
+            ->values();
 
         // Tồn theo LÔ (batch) — nguồn sự thật: lô còn hàng lên trước (FIFO), lô đã hết xuống dưới.
         $batches = \App\Models\ProductBatch::where('product_variant_id', $variant->id)
@@ -393,8 +331,70 @@ class GoodsReceiptController extends Controller
             ->get();
 
         return response()->json([
-            'html' => view('admin.goods-receipts.partials.stock-card', compact('variant', 'transactions', 'batches'))->render(),
+            'html' => view('admin.inventory.goods-receipts.partials.stock-card', compact('variant', 'transactions', 'batches'))->render(),
         ]);
+    }
+
+    /**
+     * Suy ra nhãn/mã/link hiển thị của 1 nhóm bút toán kho trên thẻ kho từ (reference_type,
+     * reference_id, movement_type). Chỉ dùng cho hiển thị — số liệu tồn luôn lấy từ sổ cái.
+     *
+     * @return array{type:string,type_label:string,document_code:?string,document_url:?string,fallback_user:string}
+     */
+    private function stockCardDocumentMeta(string $referenceType, int $referenceId, string $movementType): array
+    {
+        return match ($referenceType) {
+            'goods_receipt' => (function () use ($referenceId) {
+                $doc = GoodsReceipt::find($referenceId);
+                return [
+                    'type' => 'nhap_kho',
+                    'type_label' => 'Nhập kho',
+                    'document_code' => $doc?->code,
+                    'document_url' => $doc ? route('admin.goods-receipts.show', $doc->id) : null,
+                    'fallback_user' => 'Hệ thống',
+                ];
+            })(),
+            'stock_issue' => (function () use ($referenceId) {
+                $doc = StockIssue::find($referenceId);
+                return [
+                    'type' => 'xuat_kho',
+                    'type_label' => 'Xuất kho',
+                    'document_code' => $doc?->code,
+                    'document_url' => $doc ? route('admin.stock-issues.show', $doc->id) : null,
+                    'fallback_user' => 'Hệ thống',
+                ];
+            })(),
+            'stocktake' => (function () use ($referenceId) {
+                $doc = Stocktake::find($referenceId);
+                return [
+                    'type' => 'dieu_chinh_kho',
+                    'type_label' => 'Điều chỉnh kho',
+                    'document_code' => $doc?->code,
+                    'document_url' => null,
+                    'fallback_user' => 'Hệ thống',
+                ];
+            })(),
+            'order' => (function () use ($referenceId, $movementType) {
+                $doc = Order::find($referenceId);
+                // export = giữ hàng lúc đặt; import = hoàn kho khi hủy/đổi trả.
+                $isReturn = $movementType === 'import';
+                return [
+                    'type' => $isReturn ? 'huy_don' : 'xuat_kho',
+                    'type_label' => $isReturn ? 'Hủy đơn / hoàn kho' : 'Xuất kho (đơn hàng)',
+                    'document_code' => $doc?->order_code,
+                    'document_url' => $doc ? route('admin.orders.detail', $doc->id) : null,
+                    'fallback_user' => 'Hệ thống',
+                ];
+            })(),
+            default => [
+                // auto_backfill và mọi reference_type khác: bút toán điều chỉnh hệ thống, không có chứng từ.
+                'type' => 'dieu_chinh_kho',
+                'type_label' => 'Điều chỉnh hệ thống',
+                'document_code' => '—',
+                'document_url' => null,
+                'fallback_user' => 'Hệ thống',
+            ],
+        };
     }
 
     private function activeSuppliers()
@@ -446,11 +446,8 @@ class GoodsReceiptController extends Controller
 
     private function stocktakeCodePreview(): string
     {
-        $prefix = 'PKK' . now()->format('Ymd');
-        $lastToday = Stocktake::where('code', 'like', "{$prefix}%")->orderByDesc('code')->first();
-        $sequence = $lastToday ? ((int) substr($lastToday->code, -3)) + 1 : 1;
-
-        return $prefix . str_pad((string) $sequence, 3, '0', STR_PAD_LEFT);
+        return app(\App\Services\DocumentSequenceService::class)
+            ->peekNextCode(\App\Services\DocumentSequenceService::TYPE_STOCKTAKE);
     }
 
     public function store(Request $request)
@@ -486,12 +483,12 @@ class GoodsReceiptController extends Controller
             $rules['items'] = ['required', 'array', 'min:1'];
             $rules['items.*.product_variant_id'] = ['required', 'integer', Rule::exists('product_variants', 'id')];
             $rules['items.*.quantity'] = ['required', 'integer', 'min:1'];
-            $rules['items.*.cost_price'] = ['required', 'numeric', 'min:0'];
+            $rules['items.*.cost_price'] = ['required', 'numeric', 'gt:0'];
         } else {
             $rules['items'] = ['nullable', 'array'];
             $rules['items.*.product_variant_id'] = ['required', 'integer', Rule::exists('product_variants', 'id')];
             $rules['items.*.quantity'] = ['required', 'integer', 'min:1'];
-            $rules['items.*.cost_price'] = ['required', 'numeric', 'min:0'];
+            $rules['items.*.cost_price'] = ['required', 'numeric', 'gt:0'];
         }
 
         $validated = $request->validate($rules, [
@@ -501,6 +498,7 @@ class GoodsReceiptController extends Controller
             'receipt_reason.required' => 'Vui lòng nhập lý do nhập kho.',
             'items.required'       => 'Vui lòng chọn ít nhất một sản phẩm để nhập kho.',
             'items.min'            => 'Vui lòng chọn ít nhất một sản phẩm để nhập kho.',
+            'items.*.cost_price.gt' => 'Giá nhập kho phải lớn hơn 0 (không được để trống hoặc bằng 0).',
         ]);
 
         if (!empty($validated['items'])) {
@@ -582,11 +580,27 @@ class GoodsReceiptController extends Controller
 
         if ($request->expectsJson()) {
             return response()->json([
-                'html' => view('admin.goods-receipts.partials.show-content', compact('goodsReceipt'))->render(),
+                'html' => view('admin.inventory.goods-receipts.partials.show-content', compact('goodsReceipt'))->render(),
             ]);
         }
 
-        return view('admin.goods-receipts.show', compact('goodsReceipt'));
+        return view('admin.inventory.goods-receipts.show', compact('goodsReceipt'));
+    }
+
+    /**
+     * Trang in phiếu nhập kho (khổ A4, HTML + window.print()). Số hiệu = mã phiếu.
+     * Trang in độc lập (không layout admin), nhúng vào modal xem trước qua iframe.
+     */
+    public function print(string $id)
+    {
+        $goodsReceipt = GoodsReceipt::with([
+            'supplier', 'creator', 'warehouse',
+            'items.productVariant.product:id,name',
+            'items.productVariant.color:id,name',
+            'items.productVariant.size:id,name',
+        ])->findOrFail($id);
+
+        return view('admin.inventory.goods-receipts.print', compact('goodsReceipt'));
     }
 
     public function complete(string $id)
@@ -656,11 +670,11 @@ class GoodsReceiptController extends Controller
 
         if ($request->expectsJson() || $request->ajax()) {
             return response()->json([
-                'html' => view('admin.goods-receipts.partials.edit-content', compact('goodsReceipt', 'suppliers', 'variants', 'warehouses', 'selectedItems'))->render(),
+                'html' => view('admin.inventory.goods-receipts.partials.edit-content', compact('goodsReceipt', 'suppliers', 'variants', 'warehouses', 'selectedItems'))->render(),
             ]);
         }
 
-        return view('admin.goods-receipts.edit', compact('goodsReceipt', 'suppliers', 'variants', 'warehouses', 'selectedItems'));
+        return view('admin.inventory.goods-receipts.edit', compact('goodsReceipt', 'suppliers', 'variants', 'warehouses', 'selectedItems'));
     }
 
     public function update(Request $request, string $id)
@@ -709,12 +723,12 @@ class GoodsReceiptController extends Controller
             $rules['items'] = ['required', 'array', 'min:1'];
             $rules['items.*.product_variant_id'] = ['required', 'integer', Rule::exists('product_variants', 'id')];
             $rules['items.*.quantity'] = ['required', 'integer', 'min:1'];
-            $rules['items.*.cost_price'] = ['required', 'numeric', 'min:0'];
+            $rules['items.*.cost_price'] = ['required', 'numeric', 'gt:0'];
         } else {
             $rules['items'] = ['nullable', 'array'];
             $rules['items.*.product_variant_id'] = ['required', 'integer', Rule::exists('product_variants', 'id')];
             $rules['items.*.quantity'] = ['required', 'integer', 'min:1'];
-            $rules['items.*.cost_price'] = ['required', 'numeric', 'min:0'];
+            $rules['items.*.cost_price'] = ['required', 'numeric', 'gt:0'];
         }
 
         $validated = $request->validate($rules, [
@@ -724,6 +738,7 @@ class GoodsReceiptController extends Controller
             'receipt_reason.required' => 'Vui lòng nhập lý do nhập kho.',
             'items.required'       => 'Vui lòng chọn ít nhất một sản phẩm để nhập kho.',
             'items.min'            => 'Vui lòng chọn ít nhất một sản phẩm để nhập kho.',
+            'items.*.cost_price.gt' => 'Giá nhập kho phải lớn hơn 0 (không được để trống hoặc bằng 0).',
         ]);
 
         if (!empty($validated['items'])) {
@@ -838,6 +853,20 @@ class GoodsReceiptController extends Controller
         return back()->with('success', "Đã hủy {$count} phiếu nhập kho thành công.");
     }
 
+    /**
+     * Chuyển phiếu nhập kho đã hủy vào thùng rác (soft-delete) — an toàn, có thể khôi phục.
+     * Chỉ cho phép với phiếu ở trạng thái "Đã hủy" (đã chốt không còn thao tác gì khác).
+     */
+    public function trashDelete(string $id)
+    {
+        $goodsReceipt = GoodsReceipt::where('status', GoodsReceipt::STATUS_CANCELLED)->findOrFail($id);
+        $goodsReceipt->update(['deleted_by' => Auth::id()]);
+        $goodsReceipt->delete();
+
+        return redirect()->route('admin.goods-receipts.list', ['tab' => 'inbound'])
+            ->with('success', "Đã chuyển phiếu nhập kho \"{$goodsReceipt->code}\" vào thùng rác.");
+    }
+
     public function trash(Request $request)
     {
         $keyword = trim((string) $request->input('search', $request->input('keyword')));
@@ -860,11 +889,11 @@ class GoodsReceiptController extends Controller
 
         if ($request->ajax()) {
             return response()->json([
-                'html' => view('admin.goods-receipts.partials.trash-table', compact('goodsReceipts'))->render(),
+                'html' => view('admin.inventory.goods-receipts.partials.trash-table', compact('goodsReceipts'))->render(),
             ]);
         }
 
-        return view('admin.goods-receipts.trash', compact('goodsReceipts', 'keyword', 'perPage'));
+        return view('admin.inventory.goods-receipts.trash', compact('goodsReceipts', 'keyword', 'perPage'));
     }
 
     public function restore(string $id)

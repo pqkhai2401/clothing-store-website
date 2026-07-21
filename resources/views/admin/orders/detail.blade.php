@@ -8,6 +8,9 @@
 
 @section('content')
     <main class="app-main container-fluid py-4">
+        {{-- Vùng chứa toast: hiện thông báo flash của server VÀ toast từ JS (showAdminToast). --}}
+        <x-notification />
+
         <div class="d-flex align-items-center justify-content-between gap-3 mb-4 flex-wrap">
             <div>
                 <h1 class="h4 fw-bold mb-0" style="color:#174761;">
@@ -33,6 +36,12 @@
                 <a href="{{ route('admin.orders.list') }}" class="btn btn-outline-secondary btn-sm fw-semibold">
                     <i class="fa-solid fa-arrow-left me-1"></i> Quay lại
                 </a>
+                <a href="{{ route('admin.orders.invoice', $order->id) }}" target="_blank"
+                    data-print-url="{{ route('admin.orders.invoice', $order->id) }}"
+                    data-print-title="Hóa đơn {{ $order->order_code ?? ('#'.$order->id) }}"
+                    class="btn btn-outline-dark btn-sm fw-semibold">
+                    <i class="fa-solid fa-print me-1"></i> In hóa đơn
+                </a>
                 @if(\App\Http\Controllers\Admin\OrderController::canOpenEditPanel($order))
                     <button type="button" class="btn btn-outline-primary btn-sm fw-semibold"
                         data-order-edit-trigger
@@ -57,9 +66,13 @@
     </main>
 
     @include('admin.orders.partials.edit-offcanvas')
+    @include('admin.partials.print-preview-modal')
+    @include('admin.orders.partials.refund-lookup-script')
 
     @push('modals')
         @include('layouts.components.confirm.delete')
+        {{-- Hộp xác nhận dùng chung (openUpdateConfirmModal) — thay confirm() mặc định của trình duyệt --}}
+        @include('layouts.components.confirm.update')
     @endpush
 
     @push('scripts')

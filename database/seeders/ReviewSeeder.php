@@ -2,125 +2,134 @@
 
 namespace Database\Seeders;
 
-use App\Models\Product;
+use App\Enums\OrderStatus;
+use App\Models\OrderItem;
 use App\Models\Review;
-use App\Models\User;
 use Illuminate\Database\Seeder;
 
+/**
+ * Sinh đánh giá sản phẩm dựa trên các ĐƠN HÀNG ĐÃ HOÀN TẤT thật (OrderSeeder
+ * chạy trước seeder này) — đúng luồng nghiệp vụ thật: chỉ khách đã mua và
+ * nhận hàng mới được review. Không phải khách nào mua xong cũng review nên
+ * chỉ ~55% dòng đơn hoàn tất được chọn ngẫu nhiên để sinh đánh giá.
+ *
+ * status/ai_score/ai_reason được set thẳng để mô phỏng kết quả sau khi đã
+ * qua lớp kiểm duyệt — phần lớn approved, một số nhỏ pending/flagged/rejected
+ * cho đúng phân bố thật.
+ */
 class ReviewSeeder extends Seeder
 {
+    /** @var array<int, string[]> Mẫu bình luận theo số sao — chèn %s = tên sản phẩm. */
+    private array $templatesByRating = [
+        5 => [
+            '%s chất lượng rất tốt, đúng như mô tả, đường may chắc chắn. Chắc chắn sẽ ủng hộ shop dài dài!',
+            'Quá ưng ý với %s! Vải mát, form chuẩn, giao hàng nhanh và đóng gói cẩn thận.',
+            'Đây là lần thứ 2 mình mua %s, chất lượng vẫn ổn định như lần đầu. 5 sao xứng đáng.',
+            '%s đẹp hơn cả ảnh trên web, mặc lên rất ưng. Nhân viên tư vấn nhiệt tình nữa.',
+        ],
+        4 => [
+            '%s ổn, chất liệu tốt, chỉ hơi lâu giao một chút nhưng đóng gói kỹ.',
+            'Nhìn chung hài lòng với %s, form đẹp. Trừ 1 sao vì màu thực tế nhạt hơn ảnh chút xíu.',
+            '%s mặc thoải mái, đáng tiền. Sẽ cân nhắc mua thêm màu khác.',
+        ],
+        3 => [
+            '%s tạm ổn, đúng mô tả nhưng chất vải mỏng hơn mình nghĩ.',
+            'Bình thường, %s không có gì nổi bật nhưng cũng không tệ so với giá tiền.',
+        ],
+        2 => [
+            '%s hơi thất vọng, size lệch so với bảng size trên web, phải đổi lại.',
+            'Chất lượng %s chưa như kỳ vọng, đường chỉ có vài chỗ chưa gọn.',
+        ],
+        1 => [
+            '%s không giống hình, chất vải khác hẳn mô tả. Rất tiếc vì đã đặt.',
+        ],
+    ];
+
+    /** @var array<int, int> Trọng số phân bố rating (tổng 100). */
+    private array $ratingWeights = [5 => 45, 4 => 32, 3 => 13, 2 => 7, 1 => 3];
+
     public function run(): void
     {
-        $reviews = [
-            // ── Customer 1 ──────────────────────────────────────────────────────
-            [
-                'user'       => 'customer1@example.com',
-                'product'    => 'ao-thun-nam-basic-uniqlo',
-                'rating'     => 5,
-                'comment'    => 'Áo rất mềm, chất liệu cotton tốt, mặc thoáng mát cả ngày. Đúng size, đường may chắc chắn không bị xổ. Đã mua lần 2 và sẽ tiếp tục ủng hộ!',
-            ],
-            [
-                'user'       => 'customer1@example.com',
-                'product'    => 'ao-polo-nam-dri-fit-nike',
-                'rating'     => 4,
-                'comment'    => 'Vải Dri-FIT thấm hút mồ hôi tốt, mặc đi thể thao hoặc dạo phố đều ổn. Giao hàng nhanh, đóng gói cẩn thận. Màu thực tế đẹp hơn ảnh một chút.',
-            ],
-            [
-                'user'       => 'customer1@example.com',
-                'product'    => 'quan-jeans-nam-slim-511-levis',
-                'rating'     => 5,
-                'comment'    => "Jeans Levi's 511 chất lượng luôn không cần bàn cãi. Form slim fit chuẩn, vải dày dặn bền chắc. Đây là lần thứ 3 tôi mua model này, không bao giờ thất vọng.",
-            ],
-            [
-                'user'       => 'customer1@example.com',
-                'product'    => 'ao-hoodie-classic-champion',
-                'rating'     => 4,
-                'comment'    => 'Hoodie ấm và mềm, mặc rất thoải mái. Logo thêu nổi đẹp, không bong tróc sau giặt. Lưu ý: size hơi to hơn bình thường, nên xuống 1 size.',
-            ],
-            [
-                'user'       => 'customer1@example.com',
-                'product'    => 'ao-khoac-gio-chong-nuoc-tnf',
-                'rating'     => 5,
-                'comment'    => 'Áo khoác nhẹ nhàng nhưng chắn gió và mưa nhỏ rất tốt. Đã mặc leo núi ở Sapa, không thấm nước dù mưa phùn cả ngày. Rất đáng tiền!',
-            ],
+        if (Review::count() > 0) {
+            return;
+        }
 
-            // ── Customer 2 ──────────────────────────────────────────────────────
-            [
-                'user'       => 'customer2@example.com',
-                'product'    => 'dam-maxi-hoa-nhi-zara',
-                'rating'     => 5,
-                'comment'    => 'Đầm đẹp hơn ảnh rất nhiều! Vải viscose mềm mịn, rũ đẹp, không nhăn. Mặc đi biển nhận được vô số lời khen. Shop giao hàng nhanh, đóng gói kỹ.',
-            ],
-            [
-                'user'       => 'customer2@example.com',
-                'product'    => 'ao-croptop-nu-cuc-boc-hm',
-                'rating'     => 4,
-                'comment'    => 'Áo xinh xắn, chất cotton linen mát mẻ rất phù hợp mùa hè. Cúc bọc tuy hơi khó cài nhưng tạo điểm nhấn thời trang. Phối với jeans trông cực trendy.',
-            ],
-            [
-                'user'       => 'customer2@example.com',
-                'product'    => 'quan-jeans-nu-skinny-721-levis',
-                'rating'     => 5,
-                'comment'    => "Levi's 721 là model jeans yêu thích của mình! Cạp cao tôn dáng và che được vòng 2. Co giãn tốt, dễ di chuyển suốt ngày dài. Màu wash không phai sau nhiều lần giặt.",
-            ],
-            [
-                'user'       => 'customer2@example.com',
-                'product'    => 'vay-tennis-nu-adidas',
-                'rating'     => 4,
-                'comment'    => 'Váy thiết kế đẹp, có quần short bên trong tiện dụng khi vận động. Vải thoáng mát, phù hợp tập tennis và yoga. Giao hàng đúng hẹn, sản phẩm y hình.',
-            ],
-            [
-                'user'       => 'customer2@example.com',
-                'product'    => 'quan-jogger-tech-fleece-nike',
-                'rating'     => 5,
-                'comment'    => 'Quần chất lượng cao, form tapered đẹp tôn dáng. Vải tech fleece nhẹ mà vẫn ấm, không bị nặng nề. Túi zip sau tiện lợi đựng điện thoại khi chạy bộ.',
-            ],
+        $completedItems = OrderItem::whereHas('order', fn ($q) => $q->where('status', OrderStatus::COMPLETED->value))
+            ->with(['order:id,user_id', 'productVariant.product:id,name'])
+            ->get();
 
-            // ── Customer 3 ──────────────────────────────────────────────────────
-            [
-                'user'       => 'customer3@example.com',
-                'product'    => 'ao-thun-tron-unisex-uniqlo',
-                'rating'     => 5,
-                'comment'    => 'Áo thun Uniqlo không bao giờ làm thất vọng. Cotton supima mịn như lụa, không nhăn, không phai màu sau giặt máy. Đã mua cả 5 màu, giá rất hợp lý.',
-            ],
-            [
-                'user'       => 'customer3@example.com',
-                'product'    => 'ao-khoac-bomber-nam-adidas',
-                'rating'     => 4,
-                'comment'    => 'Áo bomber đẹp, chất nylon nhẹ và chống gió tốt. Logo 3 sọc Adidas trên tay áo nổi bật. Lưu ý: nên giặt tay hoặc cho vào túi lưới khi giặt máy.',
-            ],
-            [
-                'user'       => 'customer3@example.com',
-                'product'    => 'ao-sweatshirt-trefoil-adidas',
-                'rating'     => 5,
-                'comment'    => 'Adidas Originals luôn đảm bảo chất lượng xứng tầm thương hiệu. Logo Trefoil thêu sắc nét, vải french terry dày đẹp, bo cổ và gấu không giãn. Mua thêm màu trắng nữa!',
-            ],
-            [
-                'user'       => 'customer3@example.com',
-                'product'    => 'ao-blazer-nam-slim-zara',
-                'rating'     => 4,
-                'comment'    => 'Blazer form slim đẹp, chất liệu pha len kháng nhăn tốt. Mặc đi làm và đi ăn nhận được nhiều lời khen. Lưu ý: không giặt máy, phải giặt khô hoặc tay.',
-            ],
-            [
-                'user'       => 'customer3@example.com',
-                'product'    => 'ao-phao-nu-ultra-light-uniqlo',
-                'rating'     => 5,
-                'comment'    => 'Sản phẩm xuất sắc! Cực kỳ nhẹ chỉ 200g mà ấm vô cùng nhờ lông vũ goose down. Gấp gọn vào túi nhỏ kèm theo rất tiện. Đã mua thêm 1 chiếc làm quà tặng.',
-            ],
-        ];
+        if ($completedItems->isEmpty()) {
+            return;
+        }
 
-        foreach ($reviews as $data) {
-            $user    = User::where('email', $data['user'])->first();
-            $product = Product::where('slug', $data['product'])->first();
+        // Gộp theo (user_id, product_id) để không vi phạm unique(user_id, product_id).
+        $pairs = $completedItems
+            ->filter(fn (OrderItem $item) => $item->productVariant && $item->productVariant->product)
+            ->unique(fn (OrderItem $item) => $item->order->user_id.'-'.$item->productVariant->product_id)
+            ->values();
 
-            if (! $user || ! $product) {
+        foreach ($pairs as $item) {
+            // ~55% đơn hoàn tất thực sự được khách quay lại đánh giá.
+            if (random_int(1, 100) > 55) {
                 continue;
             }
 
+            $rating = $this->randomRating();
+            $productName = $item->productVariant->product->name;
+            $templates = $this->templatesByRating[$rating];
+            $comment = sprintf($templates[array_rand($templates)], $productName);
+
+            [$status, $aiScore, $aiReason] = $this->moderationOutcome($rating);
+
             Review::firstOrCreate(
-                ['user_id' => $user->id, 'product_id' => $product->id],
-                ['rating' => $data['rating'], 'comment' => $data['comment']]
+                ['user_id' => $item->order->user_id, 'product_id' => $item->productVariant->product_id],
+                [
+                    'order_id' => $item->order_id,
+                    'rating' => $rating,
+                    'comment' => $comment,
+                    'status' => $status,
+                    'ai_score' => $aiScore,
+                    'ai_reason' => $aiReason,
+                ]
             );
         }
+    }
+
+    private function randomRating(): int
+    {
+        $total = array_sum($this->ratingWeights);
+        $roll = random_int(1, $total);
+        $cumulative = 0;
+
+        foreach ($this->ratingWeights as $rating => $weight) {
+            $cumulative += $weight;
+            if ($roll <= $cumulative) {
+                return $rating;
+            }
+        }
+
+        return 5;
+    }
+
+    /**
+     * @return array{0: string, 1: int, 2: ?string}
+     */
+    private function moderationOutcome(int $rating): array
+    {
+        $roll = random_int(1, 100);
+
+        if ($roll <= 90) {
+            return [Review::STATUS_APPROVED, random_int(80, 100), null];
+        }
+
+        if ($roll <= 95) {
+            return [Review::STATUS_PENDING, null, null];
+        }
+
+        if ($roll <= 98) {
+            return [Review::STATUS_FLAGGED, random_int(40, 65), 'Nội dung nghi ngờ chứa từ ngữ không phù hợp, chờ admin duyệt tay.'];
+        }
+
+        return [Review::STATUS_REJECTED, random_int(0, 30), 'Nội dung không liên quan đến sản phẩm hoặc vi phạm quy định bình luận.'];
     }
 }

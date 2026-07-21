@@ -277,7 +277,7 @@
     </section>
 
     <!-- 4. Trending Now (Sản phẩm nổi bật) -->
-    @if($trendingNow->isNotEmpty())
+    <!-- @if($trendingNow->isNotEmpty())
         <section class="py-5 bg-light my-5">
             <div class="container-fluid px-lg-5">
                 <div class="section-header text-center">
@@ -288,7 +288,7 @@
                 @include('partials.product-grid', ['products' => $trendingNow, 'cols' => 'col-6 col-md-3'])
             </div>
         </section>
-    @endif
+    @endif -->
 
     <!-- 5. Recommended Products (AI Integrated) -->
     @include('partials.recommended-products', ['products' => $recommendedProducts->all()])

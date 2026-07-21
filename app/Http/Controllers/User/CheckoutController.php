@@ -5,6 +5,7 @@ namespace App\Http\Controllers\User;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
 use App\Http\Controllers\Controller;
+use App\Jobs\CancelUnpaidOrderJob;
 use App\Models\Address;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -13,10 +14,14 @@ use App\Models\ProductVariant;
 use App\Models\Voucher;
 use App\Models\VoucherHistory;
 use App\Services\CartPricingService;
+use App\Services\InventoryBatchService;
+use App\Services\OrderCancellationService;
+use App\Services\PayosService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class CheckoutController extends Controller
@@ -32,8 +37,10 @@ class CheckoutController extends Controller
 
         // Xóa sản phẩm đã bị ẩn khỏi giỏ và báo user (cả sản phẩm và biến thể).
         // Lưu ý: status của ProductVariant là chuỗi 'Active'/'Inactive' (không phải boolean như Product).
+        // product() dùng withTrashed() nên phải check trashed() riêng: sản phẩm bị xóa mềm có thể vẫn còn status=true.
         $inactive = $cartItems->filter(fn ($item) => $item->productVariant?->status !== 'Active'
-            || ! (bool) ($item->productVariant?->product?->status));
+            || ! (bool) ($item->productVariant?->product?->status)
+            || (bool) $item->productVariant?->product?->trashed());
         if ($inactive->isNotEmpty()) {
             $inactive->each(fn ($item) => $item->delete());
             return redirect()->route('cart.index')
@@ -47,7 +54,7 @@ class CheckoutController extends Controller
             'subtotal'       => $subtotal,
             'shippingFee'    => $shippingFee,
             'total'          => $total,
-            'address'        => $user->addresses()->latest()->first(),
+            'address'        => $user->addresses()->orderByDesc('is_default')->orderByDesc('id')->first(),
             'paymentMethods' => PaymentMethod::where('status', true)->orderBy('id')->get(),
         ]);
     }
@@ -83,6 +90,28 @@ class CheckoutController extends Controller
             return back()->withErrors(['payment_method_id' => 'Phương thức thanh toán không hợp lệ.'])->withInput();
         }
 
+        // Supersede đơn online cũ TRƯỚC KHI xác thực voucher của đơn mới: nếu không nhả voucher
+        // đơn cũ trước, khách đặt lại đúng voucher đang dùng dở sẽ bị hệ thống âm thầm BỎ voucher
+        // (do vẫn thấy VoucherHistory đơn cũ còn sống → coi là "đã dùng mã này rồi") — đơn vẫn tạo
+        // thành công (không còn chặn cứng như trước) nhưng khách mất oan phần giảm giá đáng lẽ được
+        // hưởng. Làm sớm ở đây để giữ đúng trải nghiệm "đặt lại thì vẫn còn ưu đãi".
+        // cancelPendingUnpaid() tự mở transaction riêng cho từng đơn (atomic + idempotent), không
+        // cần bọc thêm transaction ở đây.
+        if ($paymentMethod->isOnlineGateway()) {
+            $staleOrders = Order::where('user_id', $user->id)
+                ->where('status', OrderStatus::PENDING->value)
+                ->where('payment_status', PaymentStatus::UNPAID->value)
+                ->whereIn('payment_method_id', $this->onlinePaymentMethodIds())
+                ->get();
+
+            foreach ($staleOrders as $staleOrder) {
+                app(OrderCancellationService::class)->cancelPendingUnpaid(
+                    $staleOrder,
+                    'Bị thay thế bởi đơn thanh toán online mới'
+                );
+            }
+        }
+
         $cartItems = $this->cartItems($user);
 
         if ($cartItems->isEmpty()) {
@@ -91,31 +120,24 @@ class CheckoutController extends Controller
 
         // Backend recheck: từ chối nếu có sản phẩm/biến thể bị ẩn (tránh bypass qua Postman)
         $hasInactive = $cartItems->contains(fn ($item) => $item->productVariant?->status !== 'Active'
-            || ! (bool) ($item->productVariant?->product?->status));
+            || ! (bool) ($item->productVariant?->product?->status)
+            || (bool) $item->productVariant?->product?->trashed());
         if ($hasInactive) {
             return redirect()->route('checkout.index')
                 ->with('warning', 'Một số sản phẩm không còn hoạt động. Vui lòng kiểm tra lại giỏ hàng.');
         }
 
-        [$subtotal, $shippingFee, $total] = CartPricingService::totals($cartItems);
+        [$subtotal, $shippingFee, ] = CartPricingService::totals($cartItems);
 
-        // Xác thực lại voucher ở backend (không tin dữ liệu discount từ client) để tránh bypass qua Postman.
-        $voucher = null;
-        $discountAmount = 0.0;
-
-        if (! empty($validated['voucher_code'])) {
-            $voucher = $this->validateVoucher($validated['voucher_code'], $subtotal, $user);
-
-            if ($voucher instanceof \Illuminate\Http\RedirectResponse) {
-                return $voucher;
-            }
-
-            $discountAmount = $this->calculateDiscount($voucher, $subtotal);
-            $total -= $discountAmount;
-        }
+        $voucherCode = trim((string) ($validated['voucher_code'] ?? ''));
+        // Khi voucher không còn hợp lệ LÚC ĐẶT HÀNG THẬT (khác lúc "áp mã" ở UI — có thể khách đã
+        // đổi số lượng/giỏ hàng sau đó khiến subtotal không còn đạt min_order_amount, hoặc mã bị
+        // người khác dùng hết/admin tắt giữa chừng): KHÔNG chặn cả đơn, chỉ âm thầm bỏ voucher và
+        // vẫn cho đặt hàng theo giá gốc — báo cho khách biết lý do qua $voucherDroppedReason.
+        $voucherDroppedReason = null;
 
         try {
-            $order = DB::transaction(function () use ($user, $validated, $paymentMethod, $cartItems, $shippingFee, $total, $voucher, $discountAmount) {
+            $order = DB::transaction(function () use ($user, $validated, $paymentMethod, $cartItems, $subtotal, $shippingFee, $voucherCode, &$voucherDroppedReason) {
             $address = Address::firstOrCreate([
                 'user_id'          => $user->id,
                 'city'             => $validated['city'],
@@ -124,6 +146,36 @@ class CheckoutController extends Controller
             ]);
 
             $orderCode = app(\App\Services\DocumentSequenceService::class)->generateOrderCode();
+
+            // Xác thực voucher NGAY TỪ ĐẦU trong transaction (khóa dòng voucher ngay khi đọc) —
+            // gộp luôn bước "validate" và "recheck chống race" cũ thành MỘT lần duy nhất, không còn
+            // cửa sổ race giữa validate (ngoài transaction, không lock) và ghi nhận (trong transaction)
+            // như thiết kế trước đây.
+            $finalVoucher = null;
+            $discountAmount = 0.0;
+
+            if ($voucherCode !== '') {
+                $voucher = Voucher::where('code', $voucherCode)->lockForUpdate()->first();
+                $now = Carbon::now();
+
+                $reason = match (true) {
+                    ! $voucher || ! $voucher->status => 'Mã giảm giá không tồn tại hoặc đã bị vô hiệu hóa.',
+                    $now->lt($voucher->start_date) || $now->gt($voucher->end_date) => 'Mã giảm giá đã hết hạn hoặc chưa đến thời gian sử dụng.',
+                    $voucher->used_count >= $voucher->quantity => 'Mã giảm giá đã hết lượt sử dụng.',
+                    $subtotal < (float) $voucher->min_order_amount => 'Đơn hàng chưa đạt giá trị tối thiểu để áp dụng mã giảm giá này.',
+                    VoucherHistory::where('user_id', $user->id)->where('voucher_id', $voucher->id)->exists() => 'Bạn đã sử dụng mã giảm giá này rồi.',
+                    default => null,
+                };
+
+                if ($reason === null) {
+                    $finalVoucher = $voucher;
+                    $discountAmount = $this->calculateDiscount($voucher, $subtotal);
+                } else {
+                    $voucherDroppedReason = $reason;
+                }
+            }
+
+            $total = $subtotal + $shippingFee - $discountAmount;
 
             $order = Order::create([
                 'user_id'           => $user->id,
@@ -134,44 +186,27 @@ class CheckoutController extends Controller
                 'note'              => $validated['note'] ?? null,
                 'total_money'       => $total,
                 'shipping_fee'      => $shippingFee,
-                'voucher_id'        => $voucher?->id,
+                'voucher_id'        => $finalVoucher?->id,
                 'discount_amount'   => $discountAmount,
                 'status'            => OrderStatus::PENDING->value,
                 'payment_status'    => PaymentStatus::UNPAID->value,
             ]);
 
-            if ($voucher) {
-                // Khóa dòng voucher + recheck trong transaction để chống race-condition:
-                // 2 checkout đồng thời có thể cùng vượt qua validateVoucher() (chạy ngoài transaction,
-                // không lock) rồi cùng increment -> dùng quá số lượng / cùng user dùng lại 1 mã.
-                $lockedVoucher = Voucher::whereKey($voucher->id)->lockForUpdate()->first();
-
-                if (! $lockedVoucher || $lockedVoucher->used_count >= $lockedVoucher->quantity) {
-                    throw new \RuntimeException('Mã giảm giá đã hết lượt sử dụng.');
-                }
-
-                $alreadyUsed = VoucherHistory::where('user_id', $user->id)
-                    ->where('voucher_id', $lockedVoucher->id)
-                    ->exists();
-
-                if ($alreadyUsed) {
-                    throw new \RuntimeException('Bạn đã sử dụng mã giảm giá này rồi.');
-                }
-
+            if ($finalVoucher) {
                 VoucherHistory::create([
                     'user_id'   => $user->id,
-                    'voucher_id' => $lockedVoucher->id,
+                    'voucher_id' => $finalVoucher->id,
                     'order_id'  => $order->id,
                     'used_at'   => now(),
                 ]);
 
-                $lockedVoucher->increment('used_count');
+                $finalVoucher->increment('used_count');
             }
 
             foreach ($cartItems as $item) {
                 // Khóa + recheck lại status/tồn kho ngay trước khi tạo đơn (chống race-condition
                 // giữa lúc user xem giỏ hàng và lúc bấm đặt hàng — 2 tab, 2 user cùng mua...).
-                $variant = ProductVariant::lockForUpdate()->with('product')->find($item->product_variant_id);
+                $variant = ProductVariant::lockForUpdate()->with(['product', 'color', 'size'])->find($item->product_variant_id);
 
                 if (! $variant || $variant->status !== 'Active' || ! $variant->product?->status) {
                     throw new \RuntimeException('Một số sản phẩm trong giỏ hàng đã ngừng bán. Vui lòng kiểm tra lại giỏ hàng.');
@@ -184,14 +219,31 @@ class CheckoutController extends Controller
 
                 $unitPrice = (float) $variant->final_price;
 
-                // Giá vốn được snapshot qua StockIssueItem lúc admin xuất kho, không lưu ở order_items
+                // Giá vốn được snapshot qua StockIssueItem lúc xuất kho, không lưu ở order_items
                 // (cột này không tồn tại + không fillable nên trước đây bị Eloquent bỏ im lặng).
                 OrderItem::create([
                     'order_id'           => $order->id,
                     'product_variant_id' => $item->product_variant_id,
+                    // Snapshot thông tin sản phẩm lúc đặt hàng (M4) — hóa đơn không đổi theo
+                    // catalog khi admin sửa tên/SKU về sau.
+                    'product_name'       => $variant->product?->name,
+                    'variant_sku'        => $variant->sku,
+                    'color_name'         => $variant->color?->name,
+                    'size_name'          => $variant->size?->name,
                     'unit_price'         => $unitPrice,
                     'quantity'           => $item->quantity,
                 ]);
+
+                // HOLD: giữ hàng ngay lúc đặt — trừ tồn theo FIFO qua các lô, ghi sổ cái với
+                // reference_type='order'. Mọi đường hủy sau này nhả kho qua đúng reference này
+                // (OrderCancellationService::releaseHold). Áp dụng cho cả COD để chống oversell.
+                app(InventoryBatchService::class)->consumeFifo(
+                    $variant,
+                    (int) $item->quantity,
+                    'order',
+                    $order->id,
+                    $user->id
+                );
             }
 
             // Đơn online (PayOS/MoMo) giữ nguyên giỏ hàng để người dùng có thể "Tiếp tục thanh toán"
@@ -201,22 +253,32 @@ class CheckoutController extends Controller
                 $cartItems->each(fn ($item) => $item->delete());
             }
 
-            // Đơn online (PayOS/MoMo) mới thay thế các đơn online chưa thanh toán cũ của user:
-            // hủy chúng để tránh đơn treo tích tụ (chỉ đổi status, KHÔNG hoàn kho vì
-            // đơn pending/unpaid chưa từng bị trừ kho — xem OrderController::cancelOrder).
-            if ($paymentMethod->isOnlineGateway()) {
-                Order::where('user_id', $user->id)
-                    ->where('id', '!=', $order->id)
-                    ->where('status', OrderStatus::PENDING->value)
-                    ->where('payment_status', PaymentStatus::UNPAID->value)
-                    ->whereIn('payment_method_id', $this->onlinePaymentMethodIds())
-                    ->update(['status' => OrderStatus::CANCELLED->value]);
-            }
-
             return $order;
             });
         } catch (\RuntimeException $e) {
             return redirect()->route('cart.index')->with('warning', $e->getMessage());
+        } catch (ValidationException $e) {
+            // consumeFifo ném ValidationException key 'stock' khi lô không đủ hàng.
+            $message = collect($e->errors())->flatten()->first()
+                ?? 'Sản phẩm vừa hết hàng. Vui lòng kiểm tra lại giỏ hàng.';
+
+            return redirect()->route('cart.index')->with('warning', $message);
+        }
+
+        // RELEASE: hẹn job nhả kho nếu đơn online không được thanh toán đúng hạn.
+        // Mốc trễ = ĐÚNG hạn sống của mã QR (30') — hủy sớm hơn sẽ khiến khách thanh toán
+        // ở phút cuối trả tiền cho đơn đã hủy. Đơn COD KHÔNG hẹn job (COD luôn 'unpaid'
+        // tới khi giao xong, hẹn job sẽ tự hủy oan).
+        if ($paymentMethod->isOnlineGateway()) {
+            CancelUnpaidOrderJob::dispatch($order)
+                ->delay(now()->addMinutes(PayosService::EXPIRE_MINUTES));
+        }
+
+        // Voucher bị âm thầm bỏ lúc tạo đơn (xem $voucherDroppedReason ở trên): đơn vẫn đặt thành
+        // công theo giá gốc, chỉ cần báo cho khách biết vì sao không thấy giảm giá — không chặn
+        // luồng thanh toán (kể cả khi chuyển tiếp sang trang QR online).
+        if ($voucherDroppedReason) {
+            session()->flash('warning', 'Mã giảm giá không được áp dụng: '.$voucherDroppedReason.' Đơn hàng vẫn được tạo theo giá gốc.');
         }
 
         // Cổng online: chuyển sang trang QR để thanh toán ngay thay vì kết thúc.
@@ -233,39 +295,73 @@ class CheckoutController extends Controller
     }
 
     /**
-     * Xác thực mã giảm giá ở backend trước khi đặt hàng (đồng bộ luật với Api\VoucherController::apply).
-     * Trả về Voucher hợp lệ, hoặc RedirectResponse kèm lỗi nếu không hợp lệ.
+     * Đổi phương thức thanh toán của một đơn "Chờ xác nhận, chưa thanh toán" — ĐỔI TRÊN CÙNG
+     * ĐƠN (giống Coolmate/Shopee: "thanh toán lại" chọn cổng khác), KHÔNG tạo đơn mới. Nhờ vậy
+     * kho đang giữ + voucher đã ghi nhận của đơn không bị đụng tới (không supersede, không
+     * double-hold, không bị chặn "đã dùng mã này rồi" khi đổi qua đổi lại phương thức).
      */
-    private function validateVoucher(string $code, float $subtotal, $user)
+    public function changePaymentMethod(Request $request, Order $order): RedirectResponse
     {
-        $voucher = Voucher::where('code', $code)->first();
+        abort_if($order->user_id !== $request->user()->id, 403);
 
-        if (! $voucher || ! $voucher->status) {
-            return back()->withErrors(['voucher_code' => 'Mã giảm giá không tồn tại hoặc đã bị vô hiệu hóa.'])->withInput();
+        $validated = $request->validate([
+            'payment_method_id' => ['required', 'integer', 'exists:payment_methods,id'],
+        ], [
+            'payment_method_id.required' => 'Vui lòng chọn phương thức thanh toán.',
+            'payment_method_id.exists'   => 'Phương thức thanh toán không hợp lệ.',
+        ]);
+
+        $newMethod = PaymentMethod::where('id', $validated['payment_method_id'])->where('status', true)->first();
+
+        if (! $newMethod) {
+            return back()->withErrors(['payment_method_id' => 'Phương thức thanh toán không hợp lệ.']);
         }
 
-        $now = Carbon::now();
-        if ($now->lt($voucher->start_date) || $now->gt($voucher->end_date)) {
-            return back()->withErrors(['voucher_code' => 'Mã giảm giá đã hết hạn hoặc chưa đến thời gian sử dụng.'])->withInput();
+        try {
+            DB::transaction(function () use ($order, $newMethod) {
+                // Khóa + kiểm tra lại trong transaction: đơn có thể vừa được webhook xác nhận
+                // thanh toán, admin xử lý, hoặc job 30' hủy ngay trước khi request này chạy tới.
+                $locked = Order::whereKey($order->id)->lockForUpdate()->firstOrFail();
+
+                if ($locked->status !== OrderStatus::PENDING->value || $locked->payment_status !== PaymentStatus::UNPAID->value) {
+                    throw new \App\Exceptions\StaleOrderStateException();
+                }
+
+                if ((int) $locked->payment_method_id === (int) $newMethod->id) {
+                    return; // không đổi gì — giữ nguyên mã/link đang có, tránh sinh lại vô ích
+                }
+
+                $wasOnline = $locked->paymentMethod?->isOnlineGateway() ?? false;
+                $isOnline  = $newMethod->isOnlineGateway();
+
+                $locked->payment_method_id = $newMethod->id;
+
+                // Xóa mã cổng cũ: mỗi lần đổi cổng phải sinh lại link mới ở lần mở trang sau,
+                // không được để mã cũ "sống" song song (webhook đến trễ tra theo mã cũ sẽ
+                // đối soát nhầm đơn, hoặc trang mới hiển thị QR/link của cổng không còn dùng).
+                $locked->payos_order_code = null;
+                $locked->payos_payload    = null;
+                $locked->momo_order_id    = null;
+                $locked->momo_payload     = null;
+                $locked->save();
+
+                // Chuyển từ online sang COD/chuyển khoản (offline): đơn coi như đã chốt ngay,
+                // xóa giỏ hàng giống hệt hành vi lúc tạo đơn offline ở store(). Chiều ngược lại
+                // (offline -> online) KHÔNG khôi phục giỏ — giỏ đã bị xóa từ trước, chấp nhận
+                // không đối xứng vì hiếm khi xảy ra (đơn offline coi như đã chốt).
+                if ($wasOnline && ! $isOnline) {
+                    $locked->clearPurchasedItemsFromCart();
+                }
+            });
+        } catch (\App\Exceptions\StaleOrderStateException) {
+            return redirect()->route('orders.show', $order->id)
+                ->with('warning', 'Đơn hàng vừa được xử lý/thanh toán, không thể đổi phương thức thanh toán nữa.');
         }
 
-        if ($voucher->used_count >= $voucher->quantity) {
-            return back()->withErrors(['voucher_code' => 'Mã giảm giá đã hết lượt sử dụng.'])->withInput();
-        }
+        $order->refresh();
 
-        if ($subtotal < (float) $voucher->min_order_amount) {
-            return back()->withErrors(['voucher_code' => 'Đơn hàng chưa đạt giá trị tối thiểu để áp dụng mã giảm giá này.'])->withInput();
-        }
-
-        $alreadyUsed = VoucherHistory::where('user_id', $user->id)
-            ->where('voucher_id', $voucher->id)
-            ->exists();
-
-        if ($alreadyUsed) {
-            return back()->withErrors(['voucher_code' => 'Bạn đã sử dụng mã giảm giá này rồi.'])->withInput();
-        }
-
-        return $voucher;
+        return redirect($order->paymentResumeUrl() ?? route('orders.show', $order->id))
+            ->with('success', 'Đã đổi phương thức thanh toán sang "'.$newMethod->name.'".');
     }
 
     private function calculateDiscount(Voucher $voucher, float $subtotal): float

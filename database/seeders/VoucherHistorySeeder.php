@@ -27,6 +27,7 @@ class VoucherHistorySeeder extends Seeder
         }
 
         $rows = [];
+        $usedPairs = []; // "user_id-voucher_id" đã dùng — tránh vi phạm unique(user_id, voucher_id).
 
         foreach ($orders as $order) {
             // Khoảng 60% đơn được coi là có dùng voucher.
@@ -34,9 +35,20 @@ class VoucherHistorySeeder extends Seeder
                 continue;
             }
 
+            $availableVouchers = $vouchers->reject(
+                fn ($voucherId) => in_array("{$order->user_id}-{$voucherId}", $usedPairs, true)
+            );
+
+            if ($availableVouchers->isEmpty()) {
+                continue;
+            }
+
+            $voucherId = $availableVouchers->random();
+            $usedPairs[] = "{$order->user_id}-{$voucherId}";
+
             $rows[] = [
                 'user_id'    => $order->user_id,
-                'voucher_id' => $vouchers->random(),
+                'voucher_id' => $voucherId,
                 'order_id'   => $order->id,
                 'used_at'    => now()->subDays(random_int(0, 30)),
             ];

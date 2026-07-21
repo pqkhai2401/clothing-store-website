@@ -275,6 +275,36 @@
 
     .payos-cancel-btn:hover { border-color: #9ca3af; color: #374151; }
 
+    .payos-switch-form { display: flex; align-items: center; gap: 8px; }
+
+    .payos-switch-select {
+        font-size: 13px;
+        font-weight: 600;
+        color: #374151;
+        border: 1.5px solid #d1d5db;
+        border-radius: 8px;
+        padding: 9px 12px;
+        background: #fff;
+        cursor: pointer;
+    }
+
+    .payos-switch-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        font-weight: 600;
+        color: #fff;
+        border: none;
+        background: #111;
+        border-radius: 8px;
+        padding: 10px 20px;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+
+    .payos-switch-btn:hover { background: #333; }
+
     /* ── Success overlay ── */
     .payos-success-overlay {
         position: fixed;
@@ -450,6 +480,20 @@
             <a href="{{ route('orders.show', $order->id) }}" class="payos-cancel-btn">
                 <i class="bi bi-clock-history"></i> Để sau · Xem đơn hàng
             </a>
+
+            @if($paymentMethods->count() > 1)
+                <form action="{{ route('checkout.changePaymentMethod', $order->id) }}" method="POST" class="payos-switch-form">
+                    @csrf
+                    <select name="payment_method_id" class="payos-switch-select">
+                        @foreach($paymentMethods as $method)
+                            <option value="{{ $method->id }}" @selected($method->id === $order->payment_method_id)>{{ $method->name }}</option>
+                        @endforeach
+                    </select>
+                    <button type="submit" class="payos-switch-btn">
+                        <i class="bi bi-arrow-left-right"></i> Đổi phương thức
+                    </button>
+                </form>
+            @endif
         </div>
     </div>
 </div>

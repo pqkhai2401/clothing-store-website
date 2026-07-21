@@ -31,18 +31,18 @@
     .dash-filter { padding:22px; margin-bottom:20px; }
     .dash-filter-head { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; margin-bottom:18px; flex-wrap:wrap; }
     .dash-sec-title { font-size:18px; font-weight:700; color:var(--hk-text-1); margin:0; }
-    .dash-fgrid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
     .dash-field { display:flex; flex-direction:column; gap:6px; }
     .dash-field label { font-size:11px; font-weight:700; color:var(--hk-text-2); text-transform:uppercase; letter-spacing:.06em; }
     .dash-field .form-select, .dash-field .form-control { height:40px; border-radius:10px; font-size:13px; }
-    .dash-field-actions { display:flex; align-items:flex-end; gap:8px; }
-    .dash-field-actions .dash-btn { flex:1; justify-content:center; }
-    .dash-custom-date { display:none; gap:14px; align-items:flex-end; margin-top:16px; padding-top:16px; border-top:1px solid var(--hk-border); flex-wrap:wrap; }
-    .dash-custom-date.show { display:flex; }
+    .dash-inline-dates { display:none; gap:12px; align-items:flex-end; }
+    .dash-inline-dates.show { display:flex; }
 
     /* ── Primary KPI (6 thẻ, 3/hàng) ── */
     .dash-kpi { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:14px; }
-    .dash-kpi-card { padding:14px 16px; }
+    .dash-kpi-card { padding:14px 16px; display:block; text-decoration:none; color:inherit; cursor:pointer;
+        transition: box-shadow .15s ease, transform .15s ease; }
+    .dash-kpi-card:hover { box-shadow:0 10px 24px rgba(15,23,42,.1); transform:translateY(-2px); color:inherit; }
+    [data-theme="dark"] .dash-kpi-card:hover { box-shadow:0 10px 24px rgba(0,0,0,.35); }
     .dash-kpi-card.is-warn { border-left:3px solid #D97706 !important; }
     .dash-kpi-card.is-danger { border-left:3px solid #DC2626 !important; }
     [data-theme="dark"] .dash-kpi-card.is-warn { border-left-color:#FBBF24 !important; }
@@ -81,13 +81,8 @@
     [data-theme="dark"] .dash-kpi-sub.warns { color:#FBBF24; }
     [data-theme="dark"] .dash-kpi-sub.dangers { color:#F87171; }
 
-    /* ── Filter: hàng nút + bộ lọc nâng cao ── */
+    /* ── Filter: hàng nút ── */
     .dash-filter-actions { display:flex; align-items:center; gap:8px; margin-top:14px; }
-    .dash-adv-toggle { margin-left:auto; }
-    .dash-adv-toggle .fa-chevron-down { transition:transform .2s; font-size:11px; }
-    .dash-adv-toggle.open .fa-chevron-down { transform:rotate(180deg); }
-    .dash-advanced { display:none; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:16px; padding-top:16px; border-top:1px solid var(--hk-border); }
-    .dash-advanced.show { display:grid; }
 
     /* ── Thống kê phụ (thu gọn) ── */
     .dash-extra { margin-bottom:14px; }
@@ -184,10 +179,10 @@
     @media (max-width:1200px) {
         .dash-kpi { grid-template-columns:repeat(2,1fr); }
         .dash-charts, .dash-bottom { grid-template-columns:1fr; }
-        .dash-fgrid, .dash-advanced, .dash-extra-body { grid-template-columns:repeat(2,1fr); }
+        .dash-extra-body { grid-template-columns:repeat(2,1fr); }
     }
     @media (max-width:640px) {
-        .dash-kpi, .dash-fgrid, .dash-advanced, .dash-extra-body, .dash-rev-list { grid-template-columns:1fr; }
+        .dash-kpi, .dash-extra-body, .dash-rev-list { grid-template-columns:1fr; }
         .dash-page { padding:16px; }
     }
 </style>
@@ -206,108 +201,58 @@
             </div>
             <a href="#" class="dash-btn dash-btn-ghost"><i class="fa-solid fa-download"></i> Xuất báo cáo</a>
         </div>
-        <div class="dash-fgrid">
-            <div class="dash-field"><label>Chỉ số</label>
-                <select class="form-select" name="metric">
-                    @foreach($metricLabels as $value => $label)
-                        <option value="{{ $value }}" @selected($metric === $value)>{{ $label }}</option>
-                    @endforeach
-                </select></div>
-            <div class="dash-field"><label>Thời gian</label>
+        <div class="dash-filter-actions" style="align-items:flex-end; flex-wrap:wrap; gap:12px;">
+            <div class="dash-field" style="min-width:200px; max-width:240px;">
+                <label>Thời gian</label>
                 <select class="form-select" id="dashTimeSel" name="range">
                     @foreach($rangeLabels as $value => $label)
                         <option value="{{ $value }}" @selected($range === $value)>{{ $label }}</option>
                     @endforeach
-                </select></div>
-            <div class="dash-field"><label>Hiển thị theo</label>
-                <select class="form-select" name="group_by">
-                    @foreach($groupByLabels as $value => $label)
-                        <option value="{{ $value }}" @selected($groupBy === $value)>{{ $label }}</option>
-                    @endforeach
-                </select></div>
-            <div class="dash-field"><label>Loại biểu đồ</label>
-                <select class="form-select" name="chart_type">
-                    @foreach($chartTypeLabels as $value => $label)
-                        <option value="{{ $value }}" @selected($chartType === $value)>{{ $label }}</option>
-                    @endforeach
-                </select></div>
-        </div>
-
-        <div class="dash-advanced @if($statusFilter || $paymentFilter || $methodFilter) show @endif" id="dashAdvanced">
-            <div class="dash-field"><label>Trạng thái đơn</label>
-                <select class="form-select" name="status">
-                    <option value="" @selected($statusFilter === '')>Tất cả</option>
-                    @foreach($statusLabels as $value => $label)
-                        <option value="{{ $value }}" @selected($statusFilter === $value)>{{ $label }}</option>
-                    @endforeach
-                </select></div>
-            <div class="dash-field"><label>Thanh toán</label>
-                <select class="form-select" name="payment_status">
-                    <option value="" @selected($paymentFilter === '')>Tất cả</option>
-                    @foreach($paymentStatusLabels as $value => $label)
-                        <option value="{{ $value }}" @selected($paymentFilter === $value)>{{ $label }}</option>
-                    @endforeach
-                </select></div>
-            <div class="dash-field"><label>Phương thức</label>
-                <select class="form-select" name="payment_method_id">
-                    <option value="" @selected($methodFilter === '')>Tất cả</option>
-                    @foreach($paymentMethods as $method)
-                        <option value="{{ $method->id }}" @selected($methodFilter === (string) $method->id)>{{ $method->name }}</option>
-                    @endforeach
-                </select></div>
-        </div>
-
-        <div class="dash-custom-date @if($range === 'custom') show @endif" id="dashCustomDate">
-            <div class="dash-field"><label>Từ ngày</label><input type="date" name="date_from" class="form-control" value="{{ $dateFrom }}"></div>
-            <div class="dash-field"><label>Đến ngày</label><input type="date" name="date_to" class="form-control" value="{{ $dateTo }}"></div>
-        </div>
-
-        <div class="dash-filter-actions">
+                </select>
+            </div>
+            <div class="dash-inline-dates @if($range === 'custom') show @endif" id="dashCustomDate">
+                <div class="dash-field" style="min-width:150px; max-width:180px;"><label>Từ ngày</label><input type="date" name="date_from" class="form-control" value="{{ $dateFrom }}"></div>
+                <div class="dash-field" style="min-width:150px; max-width:180px;"><label>Đến ngày</label><input type="date" name="date_to" class="form-control" value="{{ $dateTo }}"></div>
+            </div>
             <button type="submit" class="dash-btn dash-btn-primary"><i class="fa-solid fa-rotate"></i> Áp dụng</button>
             <a href="{{ route('admin.dashboard') }}" class="dash-btn">Đặt lại</a>
-            <button type="button" class="dash-btn dash-adv-toggle @if($statusFilter || $paymentFilter || $methodFilter) open @endif" id="dashAdvToggle" aria-expanded="{{ ($statusFilter || $paymentFilter || $methodFilter) ? 'true' : 'false' }}">
-                <i class="fa-solid fa-sliders"></i> Bộ lọc nâng cao <i class="fa-solid fa-chevron-down"></i>
-            </button>
         </div>
         </form>
     </div>
 
     {{-- PRIMARY KPI — 6 thẻ quan trọng nhất --}}
     <div class="dash-kpi">
-        <div class="card dash-kpi-card">
+        <a href="{{ route('admin.revenue.index') }}" class="card dash-kpi-card">
             <div class="dash-kpi-main">
                 <div class="dash-chip g"><i class="fa-solid fa-money-bill-wave"></i></div>
                 <div class="dash-kpi-body">
                     <p class="dash-kpi-label">Doanh thu thực thu</p>
                     <p class="dash-kpi-value">{{ number_format($stats['revenue'], 0, ',', '.') }} ₫</p>
                 </div>
-                <div class="dash-delta"><span class="dash-pct {{ $stats['revenueDelta'] >= 0 ? 'up' : 'down' }}">{{ $stats['revenueDelta'] >= 0 ? '+' : '' }}{{ $stats['revenueDelta'] }}%</span><small>vs kỳ trước</small></div>
             </div>
-            <p class="dash-kpi-sub">Chỉ tính đơn đã thanh toán, không gồm đơn đã hủy.</p>
-        </div>
-        <div class="card dash-kpi-card">
+            <p class="dash-kpi-sub">Chỉ tính đơn đã hoàn thành, không gồm đơn đã hủy.</p>
+        </a>
+        <a href="{{ route('admin.orders.list') }}" class="card dash-kpi-card">
             <div class="dash-kpi-main">
                 <div class="dash-chip b"><i class="fa-solid fa-cart-shopping"></i></div>
                 <div class="dash-kpi-body">
                     <p class="dash-kpi-label">Tổng đơn hàng</p>
                     <p class="dash-kpi-value">{{ number_format($stats['orders'], 0, ',', '.') }}</p>
                 </div>
-                <div class="dash-delta"><span class="dash-pct {{ $stats['ordersDelta'] >= 0 ? 'info' : 'down' }}">{{ $stats['ordersDelta'] >= 0 ? '+' : '' }}{{ $stats['ordersDelta'] }}%</span><small>vs kỳ trước</small></div>
             </div>
             <p class="dash-kpi-sub">Tất cả đơn hàng trong kỳ đang chọn</p>
-        </div>
-        <div class="card dash-kpi-card is-warn">
+        </a>
+        <a href="{{ route('admin.orders.list', ['status' => 'pending']) }}" class="card dash-kpi-card is-warn">
             <div class="dash-kpi-main">
                 <div class="dash-chip a"><i class="fa-solid fa-clock"></i></div>
                 <div class="dash-kpi-body">
                     <p class="dash-kpi-label">Đơn chờ xử lý</p>
                     <p class="dash-kpi-value warnv">{{ number_format($stats['pending'], 0, ',', '.') }}</p>
                 </div>
-                <div class="dash-delta"><span class="dash-pct {{ $stats['pendingDelta'] >= 0 ? 'up' : 'down' }}">{{ $stats['pendingDelta'] >= 0 ? '+' : '' }}{{ $stats['pendingDelta'] }}%</span><small>vs kỳ trước</small></div>
             </div>
             <p class="dash-kpi-sub warns">Cần xử lý ngay</p>
-        </div>
-        <div class="card dash-kpi-card">
+        </a>
+        <a href="{{ route('admin.orders.list', ['status' => 'shipping']) }}" class="card dash-kpi-card">
             <div class="dash-kpi-main">
                 <div class="dash-chip p"><i class="fa-solid fa-truck"></i></div>
                 <div class="dash-kpi-body">
@@ -316,8 +261,8 @@
                 </div>
             </div>
             <p class="dash-kpi-sub">Đơn đang được vận chuyển</p>
-        </div>
-        <div class="card dash-kpi-card is-danger">
+        </a>
+        <a href="{{ route('admin.goods-receipts.list', ['stock_status' => 'low_stock']) }}" class="card dash-kpi-card is-danger">
             <div class="dash-kpi-main">
                 <div class="dash-chip r"><i class="fa-solid fa-triangle-exclamation"></i></div>
                 <div class="dash-kpi-body">
@@ -326,8 +271,8 @@
                 </div>
             </div>
             <p class="dash-kpi-sub dangers">Tồn kho thấp, cần nhập thêm</p>
-        </div>
-        <div class="card dash-kpi-card">
+        </a>
+        <a href="{{ route('admin.customers.list') }}" class="card dash-kpi-card">
             <div class="dash-kpi-main">
                 <div class="dash-chip g"><i class="fa-solid fa-user-plus"></i></div>
                 <div class="dash-kpi-body">
@@ -336,7 +281,7 @@
                 </div>
             </div>
             <p class="dash-kpi-sub">Khách mới trong kỳ đang chọn</p>
-        </div>
+        </a>
     </div>
 
     {{-- Thống kê phụ — thu gọn, mặc định đóng --}}
@@ -360,7 +305,6 @@
         <div class="card dash-panel">
             <div class="dash-panel-head">
                 <h2 class="dash-sec-title">{{ $revenueChart['title'] }}</h2>
-                <div class="dash-legend"><span><i class="dash-sw cur"></i> Kỳ này</span><span><i class="dash-sw prev"></i> Kỳ trước</span></div>
             </div>
             <div id="dashRevenueChart"></div>
         </div>
@@ -463,35 +407,16 @@
 @push('scripts')
 <script>
 (function () {
-    // ── Toggle ô ngày tùy chỉnh ──
-    var timeSel = document.getElementById('dashTimeSel');
+    // ── Hiện/ẩn ô ngày khi chọn "Tùy chỉnh…" ở Thời gian ──
+    var filterForm = document.querySelector('.dash-filter form');
+    var timeSel    = document.getElementById('dashTimeSel');
     var customDate = document.getElementById('dashCustomDate');
-    if (timeSel) {
+
+    if (timeSel && customDate) {
         timeSel.addEventListener('change', function () {
             customDate.classList.toggle('show', timeSel.value === 'custom');
-        });
-    }
-
-    // ── Tự động áp dụng bộ lọc ngay khi đổi lựa chọn (không cần bấm "Áp dụng"),
-    //    trừ khi chọn "Tùy chỉnh…" — lúc đó chờ người dùng nhập ngày rồi tự bấm Áp dụng ──
-    var filterForm = document.querySelector('.dash-filter form');
-    if (filterForm) {
-        filterForm.querySelectorAll('select').forEach(function (sel) {
-            sel.addEventListener('change', function () {
-                if (sel === timeSel && sel.value === 'custom') return;
-                filterForm.submit();
-            });
-        });
-    }
-
-    // ── Toggle bộ lọc nâng cao ──
-    var advToggle = document.getElementById('dashAdvToggle');
-    var advPanel = document.getElementById('dashAdvanced');
-    if (advToggle && advPanel) {
-        advToggle.addEventListener('click', function () {
-            var open = advPanel.classList.toggle('show');
-            advToggle.classList.toggle('open', open);
-            advToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+            // Đổi kỳ (khác "Tùy chỉnh") thì áp dụng ngay; "Tùy chỉnh" thì chờ nhập ngày rồi bấm Áp dụng.
+            if (timeSel.value !== 'custom') filterForm.submit();
         });
     }
 
@@ -515,24 +440,15 @@
     var axisColor = isDark ? '#94A3B8' : '#64748B';
     var gridColor = isDark ? '#22324D' : '#EEF3F1';
 
-    // ── Biểu đồ chỉ số đã chọn (đường/cột/vùng, kỳ này vs kỳ trước) ──
-    var isMoney   = @json($revenueChart['isMoney']);
-    var chartType = @json($chartType); // 'line' | 'bar' | 'area'
-    var isArea    = chartType === 'area';
-    var isBar     = chartType === 'bar';
+    // ── Biểu đồ Doanh thu theo kỳ (dạng vùng) ──
+    var isMoney = @json($revenueChart['isMoney']);
 
     var revenueChart = new ApexCharts(document.getElementById('dashRevenueChart'), {
-        chart: { type: isBar ? 'bar' : (isArea ? 'area' : 'line'), height: 300, toolbar: { show: false }, fontFamily: 'inherit', zoom: { enabled: false } },
-        series: [
-            { name: 'Kỳ này',  data: @json($revenueChart['current']) },
-            { name: 'Kỳ trước', data: @json($revenueChart['previous']) }
-        ],
-        colors: ['#16A34A', '#94A3B8'],
-        stroke: isBar ? { width: 0 } : { curve: 'smooth', width: [3, 2], dashArray: [0, 5] },
-        fill: (isBar || !isArea)
-            ? { type: 'solid', opacity: 1 }
-            : { type: ['gradient', 'solid'], opacity: [0.18, 0], gradient: { opacityFrom: 0.28, opacityTo: 0.02 } },
-        plotOptions: { bar: { borderRadius: 4, columnWidth: '55%' } },
+        chart: { type: 'area', height: 300, toolbar: { show: false }, fontFamily: 'inherit', zoom: { enabled: false } },
+        series: [{ name: 'Doanh thu', data: @json($revenueChart['current']) }],
+        colors: ['#16A34A'],
+        stroke: { curve: 'smooth', width: 3 },
+        fill: { type: 'gradient', gradient: { opacityFrom: 0.28, opacityTo: 0.02 } },
         dataLabels: { enabled: false },
         legend: { show: false },
         xaxis: {

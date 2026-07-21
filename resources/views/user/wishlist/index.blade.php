@@ -792,7 +792,9 @@
                         $pCategory = $prod->category->name ?? 'Thời trang';
                         $pUrl      = url('/san-pham/' . $pSlug);
                         $pImage    = $prod->thumbnail
-                            ? (str_starts_with($prod->thumbnail, 'http') ? $prod->thumbnail : asset('storage/' . $prod->thumbnail))
+                            ? (str_starts_with($prod->thumbnail, 'http')
+                                ? $prod->thumbnail
+                                : (str_starts_with($prod->thumbnail, 'storage/') ? asset($prod->thumbnail) : asset('storage/' . $prod->thumbnail)))
                             : 'https://placehold.co/400x533?text=No+Image';
                         $colors    = $prod->colors ?? collect([]);
                         $sizes     = $prod->sizes ?? collect([]);
@@ -968,7 +970,9 @@
                         $rCategory = $recProduct->category->name ?? 'Thời trang';
                         $rUrl      = url('/san-pham/' . $rSlug);
                         $rImage    = $recProduct->thumbnail
-                            ? (str_starts_with($recProduct->thumbnail, 'http') ? $recProduct->thumbnail : asset('storage/' . $recProduct->thumbnail))
+                            ? (str_starts_with($recProduct->thumbnail, 'http')
+                                ? $recProduct->thumbnail
+                                : (str_starts_with($recProduct->thumbnail, 'storage/') ? asset($recProduct->thumbnail) : asset('storage/' . $recProduct->thumbnail)))
                             : 'https://placehold.co/400x533?text=No+Image';
                         $matchScore = $recProduct->match_score ?? null;
                     @endphp
@@ -1077,7 +1081,7 @@
        Cập nhật badge header (Wishlist & Cart)
        ================================================ */
     function updateWishlistBadge(count) {
-        document.querySelectorAll('.utility-icons a[href*="wishlist"] .badge-count').forEach(el => {
+        document.querySelectorAll('#wishlistCountBadge').forEach(el => {
             el.textContent = count;
         });
         const chip = document.getElementById('headerCountChip');
@@ -1097,7 +1101,7 @@
     }
 
     function updateCartBadge(count) {
-        document.querySelectorAll('.utility-icons a[href*="cart"] .badge-count').forEach(el => {
+        document.querySelectorAll('#cartCountBadge').forEach(el => {
             el.textContent = count;
         });
     }
@@ -1222,39 +1226,46 @@
     const btnClearAll = document.getElementById('btnClearAll');
     if (btnClearAll) {
         btnClearAll.addEventListener('click', function () {
-            if (!confirm('Bạn có chắc muốn xóa toàn bộ danh sách yêu thích không?')) return;
+            window.showConfirm({
+                title: 'Xóa danh sách yêu thích',
+                message: 'Bạn có chắc muốn xóa toàn bộ danh sách yêu thích không?',
+                type: 'danger',
+                confirmText: 'Xóa tất cả'
+            }).then(function(ok) {
+                if (!ok) return;
 
-            fetch('/yeu-thich/xoa-tat-ca', {
-                method: 'DELETE',
-                headers: {
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': getCsrf()
-                }
-            })
-            .then(r => r.json())
-            .then(() => {
-                const grid = document.getElementById('wishlistGrid');
-                if (grid) {
-                    grid.querySelectorAll('.wishlist-card').forEach(card => {
-                        card.style.transition = 'opacity 0.25s ease';
-                        card.style.opacity    = '0';
-                    });
-                    setTimeout(() => {
-                        grid.innerHTML = '';
-                        toggleEmptyState();
-                        updateWishlistBadge(0);
-                        updateInPageCount(0);
-                        // Reset tất cả icon trái tim trong AI rec grid
-                        document.querySelectorAll('.ai-wishlist-btn').forEach(btn => {
-                            btn.innerHTML = '<i class="bi bi-heart"></i>';
-                            btn.dataset.added = 'false';
-                            btn.title = 'Thêm vào yêu thích';
+                fetch('/yeu-thich/xoa-tat-ca', {
+                    method: 'DELETE',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': getCsrf()
+                    }
+                })
+                .then(r => r.json())
+                .then(() => {
+                    const grid = document.getElementById('wishlistGrid');
+                    if (grid) {
+                        grid.querySelectorAll('.wishlist-card').forEach(card => {
+                            card.style.transition = 'opacity 0.25s ease';
+                            card.style.opacity    = '0';
                         });
-                        showToast('Đã xóa toàn bộ danh sách yêu thích', 'success');
-                    }, 300);
-                }
-            })
-            .catch(() => showToast('Có lỗi xảy ra. Vui lòng thử lại.', 'error'));
+                        setTimeout(() => {
+                            grid.innerHTML = '';
+                            toggleEmptyState();
+                            updateWishlistBadge(0);
+                            updateInPageCount(0);
+                            // Reset tất cả icon trái tim trong AI rec grid
+                            document.querySelectorAll('.ai-wishlist-btn').forEach(btn => {
+                                btn.innerHTML = '<i class="bi bi-heart"></i>';
+                                btn.dataset.added = 'false';
+                                btn.title = 'Thêm vào yêu thích';
+                            });
+                            showToast('Đã xóa toàn bộ danh sách yêu thích', 'success');
+                        }, 300);
+                    }
+                })
+                .catch(() => showToast('Có lỗi xảy ra. Vui lòng thử lại.', 'error'));
+            });
         });
     }
 
