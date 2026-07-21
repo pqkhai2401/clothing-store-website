@@ -23,6 +23,12 @@ return new class extends Migration
         /**
          * See `docs/prerequisites.md` for suggested lengths on 'name' and 'guard_name' if "1071 Specified key was too long" errors are encountered.
          */
+        // Idempotent: nếu các bảng phân quyền đã tồn tại (DB đã migrate trước đó,
+        // hoặc migration bị chạy lại do lệch trạng thái), bỏ qua để không lỗi 1050.
+        if (Schema::hasTable($tableNames['permissions']) && Schema::hasTable($tableNames['roles'])) {
+            return;
+        }
+
         Schema::create($tableNames['permissions'], static function (Blueprint $table) {
             $table->id(); // permission id
             $table->string('name');

@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
@@ -17,13 +18,33 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Idempotent: nếu unique mới đã tồn tại (migration đã chạy trước đó) thì bỏ qua,
+        // tránh lỗi "Duplicate key name" khi migrate bị chạy lại do lệch trạng thái.
+        if ($this->indexExists('reviews', 'reviews_user_id_product_id_order_id_unique')) {
+            return;
+        }
+
         Schema::table('reviews', function (Blueprint $table) {
             // Thêm unique mới TRƯỚC. Vì cũng bắt đầu bằng user_id nên nó có thể
             // thay index cũ phục vụ khóa ngoại user_id -> mới drop được index cũ.
             $table->unique(['user_id', 'product_id', 'order_id']);
-            // Gỡ unique cũ (user_id, product_id).
-            $table->dropUnique(['user_id', 'product_id']);
         });
+
+        // Chỉ gỡ unique cũ nếu còn tồn tại.
+        if ($this->indexExists('reviews', 'reviews_user_id_product_id_unique')) {
+            Schema::table('reviews', function (Blueprint $table) {
+                $table->dropUnique(['user_id', 'product_id']);
+            });
+        }
+    }
+
+    private function indexExists(string $table, string $index): bool
+    {
+        return DB::table('information_schema.statistics')
+            ->where('table_schema', DB::raw('DATABASE()'))
+            ->where('table_name', $table)
+            ->where('index_name', $index)
+            ->exists();
     }
 
     public function down(): void

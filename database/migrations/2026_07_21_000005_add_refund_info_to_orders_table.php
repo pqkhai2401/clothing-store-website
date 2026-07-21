@@ -15,6 +15,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasColumn('orders', 'refund_amount')) {
+            return;
+        }
+
         Schema::table('orders', function (Blueprint $table) {
             $table->decimal('refund_amount', 12, 2)->nullable()->after('payment_status');
             $table->timestamp('refunded_at')->nullable()->after('refund_amount');
