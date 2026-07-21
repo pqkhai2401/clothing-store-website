@@ -266,8 +266,8 @@
 
             <form method="POST" action="{{ route('admin.goods-receipts.complete', $goodsReceipt->id) }}" class="mb-0 d-inline-flex">
                 @csrf @method('PATCH')
-                <button type="submit" class="sid-btn sid-btn--success"
-                    onclick="return confirm('Xác nhận nhập kho phiếu {{ $goodsReceipt->code }}? Tồn kho sẽ được cập nhật ngay lập tức.')">
+                <button type="button" class="sid-btn sid-btn--success"
+                    onclick="window.showConfirm({title: 'Xác nhận', message: 'Xác nhận nhập kho phiếu {{ $goodsReceipt->code }}? Tồn kho sẽ được cập nhật ngay lập tức.', type: 'warning'}).then(ok => { if(ok) this.closest('form').submit(); })">
                     <i class="fa-solid fa-circle-check"></i> Xác nhận nhập kho
                 </button>
             </form>

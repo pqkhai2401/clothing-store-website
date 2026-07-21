@@ -238,10 +238,16 @@
                 item.addEventListener('click', function () {
                     const days = this.dataset.days;
                     panel.hidden = true;
-                    if (window.confirm('Bạn có chắc chắn muốn xóa toàn bộ nhật ký cũ hơn ' + this.textContent.trim() + ' không? Hành động này không thể hoàn tác.')) {
-                        daysInp.value = days;
-                        form.submit();
-                    }
+                    window.showConfirm({
+                        title: 'Xác nhận xóa',
+                        message: 'Bạn có chắc chắn muốn xóa toàn bộ nhật ký cũ hơn ' + this.textContent.trim() + ' không? Hành động này không thể hoàn tác.',
+                        type: 'danger'
+                    }).then(function(ok) {
+                        if (ok) {
+                            daysInp.value = days;
+                            form.submit();
+                        }
+                    });
                 });
             });
         }());

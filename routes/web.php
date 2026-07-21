@@ -96,6 +96,7 @@ Route::middleware(['auth', 'active.account', 'auth.session'])->group(function ()
     Route::get('/don-hang', [OrderController::class, 'index'])->name('orders.index');
     Route::get('/don-hang/{id}/chi-tiet', [OrderController::class, 'detail'])->name('orders.detail');
     Route::patch('/don-hang/{id}/huy', [OrderController::class, 'cancelOrder'])->name('orders.cancel');
+    Route::post('/don-hang/{id}/yeu-cau-huy', [OrderController::class, 'requestCancel'])->name('orders.requestCancel');
     Route::get('/don-hang/{id}', [OrderController::class, 'show'])->name('orders.show');
 });
 

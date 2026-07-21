@@ -224,6 +224,7 @@
 
     .pay--paid   { background: #dcfce7; color: #166534; }
     .pay--unpaid { background: #fef9c3; color: #92400e; }
+    .pay--refunded { background: #dbeafe; color: #1d4ed8; }
 </style>
 @endsection
 
@@ -348,9 +349,15 @@
                     </div>
                     <div class="info-row">
                         <span class="info-row-label">Thanh toán</span>
-                        <span class="payment-status-badge {{ $order->payment_status === 'paid' ? 'pay--paid' : 'pay--unpaid' }}">
-                            {{ $order->payment_status === 'paid' ? 'Đã thanh toán' : 'Chưa thanh toán' }}
-                        </span>
+                        @php
+                            // 3 trạng thái: chưa trả / đã trả / đã được hoàn tiền (đơn hủy sau khi đã trả).
+                            [$payClass, $payLabel] = match ($order->payment_status) {
+                                'paid'     => ['pay--paid', 'Đã thanh toán'],
+                                'refunded' => ['pay--refunded', 'Đã hoàn tiền'],
+                                default    => ['pay--unpaid', 'Chưa thanh toán'],
+                            };
+                        @endphp
+                        <span class="payment-status-badge {{ $payClass }}">{{ $payLabel }}</span>
                     </div>
                     <div class="info-row">
                         <span class="info-row-label">Phương thức</span>

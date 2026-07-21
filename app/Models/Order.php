@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Order extends Model implements \OwenIt\Auditing\Contracts\Auditable
@@ -35,6 +36,8 @@ class Order extends Model implements \OwenIt\Auditing\Contracts\Auditable
         'discount_amount',
         'status',
         'payment_status',
+        'refund_amount',
+        'refunded_at',
         'completed_at',
     ];
 
@@ -42,9 +45,11 @@ class Order extends Model implements \OwenIt\Auditing\Contracts\Auditable
         'total_money' => 'decimal:2',
         'shipping_fee' => 'decimal:2',
         'discount_amount' => 'decimal:2',
+        'refund_amount' => 'decimal:2',
         'payos_payload' => 'array',
         'momo_payload' => 'array',
         'completed_at' => 'datetime',
+        'refunded_at' => 'datetime',
     ];
 
     /**
@@ -77,6 +82,22 @@ class Order extends Model implements \OwenIt\Auditing\Contracts\Auditable
     public function orderItems(): HasMany
     {
         return $this->hasMany(OrderItem::class);
+    }
+
+    /**
+     * Các yêu cầu hủy đơn do khách gửi (đơn đã xác nhận/đang giao thì không tự hủy được).
+     */
+    public function cancelRequests(): HasMany
+    {
+        return $this->hasMany(OrderCancelRequest::class);
+    }
+
+    /** Yêu cầu hủy đang chờ admin duyệt (nếu có) — mỗi đơn chỉ có tối đa 1. */
+    public function pendingCancelRequest(): HasOne
+    {
+        return $this->hasOne(OrderCancelRequest::class)
+            ->where('status', OrderCancelRequest::STATUS_PENDING)
+            ->latestOfMany();
     }
 
     /**

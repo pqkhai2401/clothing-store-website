@@ -460,7 +460,7 @@
         if (!variant) return;
 
         if (selected[variantId]) {
-            alert('Sản phẩm này đã có trong phiếu nhập.');
+            window.showAlert('Sản phẩm này đã có trong phiếu nhập.', 'Thông báo', 'info');
             return;
         }
 
@@ -776,22 +776,25 @@
         // Validate nhà cung cấp khi source_type = supplier
         if (!isInternal && !supplierSelect.value) {
             e.preventDefault();
-            alert('Vui lòng chọn nhà cung cấp.');
-            supplierSelect.focus();
+            window.showAlert('Vui lòng chọn nhà cung cấp.', 'Thông báo', 'warning').then(() => supplierSelect.focus());
             return;
         }
 
         if (action === 'complete') {
             if (Object.keys(selected).length === 0) {
                 e.preventDefault();
-                alert('Vui lòng thêm ít nhất một sản phẩm vào phiếu nhập kho.');
+                window.showAlert('Vui lòng thêm ít nhất một sản phẩm vào phiếu nhập kho.', 'Thông báo', 'warning');
                 return;
             }
 
-            const isConfirmed = confirm('Bạn có chắc chắn muốn hoàn tất nhập kho? Sau khi hoàn tất, phiếu sẽ được cộng tồn kho và không thể chỉnh sửa trực tiếp.');
-            if (!isConfirmed) {
-                e.preventDefault();
-            }
+            e.preventDefault();
+            window.showConfirm({
+                title: 'Xác nhận hoàn tất',
+                message: 'Bạn có chắc chắn muốn hoàn tất nhập kho? Sau khi hoàn tất, phiếu sẽ được cộng tồn kho và không thể chỉnh sửa trực tiếp.',
+                type: 'warning'
+            }).then(isConfirmed => {
+                if (isConfirmed) form.submit();
+            });
         }
     });
 })();

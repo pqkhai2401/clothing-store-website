@@ -875,12 +875,12 @@
         const hasNewCustomerName  = document.getElementById('ocCustomerName').value.trim() !== '';
         if (!hasExistingCustomer && !hasNewCustomerName) {
             e.preventDefault();
-            alert('Vui lòng nhập hoặc chọn khách hàng.');
+            window.showAlert('Vui lòng nhập hoặc chọn khách hàng.', 'Thiếu thông tin', 'info');
             return;
         }
         if (!items.length) {
             e.preventDefault();
-            alert('Vui lòng thêm ít nhất một sản phẩm.');
+            window.showAlert('Vui lòng thêm ít nhất một sản phẩm.', 'Thiếu thông tin', 'info');
         }
     });
 

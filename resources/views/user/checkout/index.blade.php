@@ -1778,7 +1778,8 @@
                 item.style.transform  = 'translateX(-6px)';
                 setTimeout(() => item.style.transform = 'translateX(0)', 120);
 
-                if (!confirm('Xóa địa chỉ này?')) return;
+                const ok = await window.showConfirm({ title: 'Xóa địa chỉ', message: 'Bạn có chắc chắn muốn xóa địa chỉ này?', type: 'danger', confirmText: 'Xóa' });
+                if (!ok) return;
 
                 btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
                 btn.disabled  = true;

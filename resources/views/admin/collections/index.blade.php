@@ -71,7 +71,7 @@
                                                 <i class="fa-solid fa-pen-clip"></i>
                                             </a>
                                             <form action="{{ route('admin.collections.destroy', $collection->id) }}" method="POST"
-                                                  onsubmit="return confirm('Bạn có chắc chắn muốn xóa bộ sưu tập này không?');" class="d-inline">
+                                                  onsubmit="event.preventDefault(); window.showConfirm({title: 'Xác nhận xóa', message: 'Bạn có chắc chắn muốn xóa bộ sưu tập này không?', type: 'danger'}).then(ok => { if(ok) this.submit(); });" class="d-inline">
                                                 @csrf
                                                 @method('DELETE')
                                                 <button type="submit" class="cl-row-action-btn text-danger" title="Xóa">

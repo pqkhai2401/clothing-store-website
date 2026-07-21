@@ -8,6 +8,9 @@
 
 @section('content')
     <main class="app-main container-fluid py-4">
+        {{-- Vùng chứa toast: hiện thông báo flash của server VÀ toast từ JS (showAdminToast). --}}
+        <x-notification />
+
         <div class="d-flex align-items-center justify-content-between gap-3 mb-4 flex-wrap">
             <div>
                 <h1 class="h4 fw-bold mb-0" style="color:#174761;">
@@ -64,9 +67,12 @@
 
     @include('admin.orders.partials.edit-offcanvas')
     @include('admin.partials.print-preview-modal')
+    @include('admin.orders.partials.refund-lookup-script')
 
     @push('modals')
         @include('layouts.components.confirm.delete')
+        {{-- Hộp xác nhận dùng chung (openUpdateConfirmModal) — thay confirm() mặc định của trình duyệt --}}
+        @include('layouts.components.confirm.update')
     @endpush
 
     @push('scripts')

@@ -91,7 +91,7 @@
                                 {{-- Nút DUYỆT: hiện khi review chưa ở trạng thái approved --}}
                                 @if($review->status !== 'approved')
                                     <form action="{{ route('admin.reviews.approve', $review->id) }}" method="POST"
-                                          onsubmit="return confirm('Duyệt và hiển thị công khai đánh giá này?');" class="d-inline">
+                                          onsubmit="event.preventDefault(); window.showConfirm({title: 'Xác nhận', message: 'Duyệt và hiển thị công khai đánh giá này?', type: 'info'}).then(ok => { if(ok) this.submit(); });" class="d-inline">
                                         @csrf
                                         @method('PATCH')
                                         <button type="submit" class="rv-row-action-btn text-success" title="Duyệt">
@@ -103,7 +103,7 @@
                                 {{-- Nút TỪ CHỐI: hiện khi review chưa ở trạng thái rejected --}}
                                 @if($review->status !== 'rejected')
                                     <form action="{{ route('admin.reviews.reject', $review->id) }}" method="POST"
-                                          onsubmit="return confirm('Từ chối và ẩn đánh giá này khỏi website?');" class="d-inline">
+                                          onsubmit="event.preventDefault(); window.showConfirm({title: 'Xác nhận', message: 'Từ chối và ẩn đánh giá này khỏi website?', type: 'warning'}).then(ok => { if(ok) this.submit(); });" class="d-inline">
                                         @csrf
                                         @method('PATCH')
                                         <button type="submit" class="rv-row-action-btn text-warning" title="Từ chối">

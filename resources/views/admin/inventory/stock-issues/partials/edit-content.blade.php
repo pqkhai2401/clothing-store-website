@@ -352,7 +352,7 @@
                         qtyInput.value = newQty;
                         qtyInput.dispatchEvent(new Event('input'));
                     } else {
-                        alert(`Không thể vượt quá số lượng tồn kho (${v.stock}) của biến thể này.`);
+                        window.showAlert(`Không thể vượt quá số lượng tồn kho (${v.stock}) của biến thể này.`, 'Tồn kho không đủ', 'warning');
                     }
                 } else {
                     selectedItems[v.id] = { variant: v, quantity: 1, cost_price: v.cost_price, sale_price: v.sale_price };
@@ -547,11 +547,11 @@
                             if (errorEl) {
                                 errorEl.textContent = errors[key][0];
                             } else {
-                                alert(errors[key][0]);
+                                window.showAlert(errors[key][0], 'Lỗi', 'danger');
                             }
                         }
                     } else {
-                        alert(data.message || 'Có lỗi xảy ra, vui lòng thử lại.');
+                        window.showAlert(data.message || 'Có lỗi xảy ra, vui lòng thử lại.', 'Lỗi', 'danger');
                     }
                     throw new Error('validation-failed');
                 }
@@ -559,7 +559,7 @@
             });
         })
         .then(data => {
-            alert(data.message);
+            window.showAlert(data.message, 'Thông báo', 'success');
             window.location.href = data.table_url || window.location.href;
         })
         .catch(err => {

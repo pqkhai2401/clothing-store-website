@@ -151,6 +151,19 @@
                 </div>
             </form>
 
+            @if($cancelRequestFilter ?? false)
+                {{-- Bộ lọc "khách xin hủy" không nằm trong thanh lọc thường nên phải báo rõ đang bật,
+                     kèm nút tắt (bỏ query cancel_request, giữ nguyên các bộ lọc khác đang áp dụng). --}}
+                <div class="ord-filter-chip">
+                    <i class="fa-regular fa-hand"></i>
+                    <span>Đang lọc: <b>đơn khách yêu cầu hủy</b> — {{ $orders->total() }} đơn</span>
+                    <a href="{{ route('admin.orders.list', array_merge(request()->except(['cancel_request', 'page']), [])) }}"
+                       class="ord-filter-chip-clear" title="Bỏ bộ lọc này">
+                        Bỏ lọc <i class="fa-solid fa-xmark"></i>
+                    </a>
+                </div>
+            @endif
+
             <div data-admin-table-area>
                 @include('admin.orders.partials.table')
             </div>
@@ -183,9 +196,12 @@
 </div>
 
 @include('admin.partials.print-preview-modal')
+@include('admin.orders.partials.refund-lookup-script')
 
 @push('modals')
     @include('layouts.components.confirm.delete')
+    {{-- Hộp xác nhận dùng chung (openUpdateConfirmModal) — thay confirm() mặc định của trình duyệt --}}
+    @include('layouts.components.confirm.update')
 @endpush
 @endsection
 
@@ -325,7 +341,7 @@
                         const data = await res.json().catch(() => ({}));
 
                         if (!res.ok) {
-                            alert(data.message || 'Không thể cập nhật. Vui lòng thử lại.');
+                            window.showAlert(data.message || 'Không thể cập nhật. Vui lòng thử lại.', 'Lỗi', 'danger');
                             rowTrigger.className = (field === 'status' ? 'order-badge' : 'payment-badge') + ' oc-row-trigger ' + (previousCss ?? '');
                             rowTrigger.dataset.value = previousValue;
                             return;
@@ -338,7 +354,7 @@
                         }
                         return;
                     } catch {
-                        alert('Không thể kết nối. Vui lòng thử lại.');
+                        window.showAlert('Không thể kết nối. Vui lòng thử lại.', 'Lỗi', 'danger');
                         rowTrigger.className = (field === 'status' ? 'order-badge' : 'payment-badge') + ' oc-row-trigger ' + (previousCss ?? '');
                         rowTrigger.dataset.value = previousValue;
                     } finally {

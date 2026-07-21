@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Enums\OrderSource;
+use App\Enums\PaymentStatus;
 use App\Enums\UserRole;
 use App\Exports\OrdersExport;
 use App\Http\Controllers\Controller;
@@ -36,6 +37,7 @@ class OrderController extends Controller
     public const PAYMENT_STATUS_LABELS = [
         'unpaid' => 'Chưa thanh toán',
         'paid' => 'Đã thanh toán',
+        'refunded' => 'Đã hoàn tiền',
     ];
 
     public const STATUS_BADGE = [
@@ -201,6 +203,12 @@ class OrderController extends Controller
                 ->sum('total_money'),
             'cancelledOrders' => $rangeQuery()->where('status', 'cancelled')->count(),
             'pendingOrders'   => Order::where('status', 'pending')->count(),
+            // Đơn ĐÃ THU TIỀN nhưng bị hủy → còn nợ khách tiền, admin phải hoàn thủ công.
+            // Suy ra trực tiếp từ trạng thái, không cần lưu thêm cột/bảng nào.
+            'refundPending'       => Order::where('status', 'cancelled')->where('payment_status', 'paid')->count(),
+            'refundPendingAmount' => (float) Order::where('status', 'cancelled')->where('payment_status', 'paid')->sum('total_money'),
+            // Yêu cầu hủy đơn do khách gửi, đang chờ admin duyệt.
+            'cancelRequests'      => \App\Models\OrderCancelRequest::pending()->count(),
         ];
     }
 
@@ -219,7 +227,14 @@ class OrderController extends Controller
         // Ẩn đơn online (PayOS/MoMo) chưa thanh toán khỏi danh sách xử lý (và file xuất): đây là
         // đơn "đang chờ thanh toán", chưa chốt — admin không xử lý được (canAdvanceOnlineOrder chặn)
         // và sẽ tự supersede/hết hạn. Đơn online đã thanh toán / COD / chuyển khoản vẫn hiển thị.
-        $query = Order::with(['user', 'paymentMethod'])->excludingUnpaidOnline();
+        // pendingCancelRequest: để bảng hiện nhãn "Khách xin hủy" ngay trên dòng (tránh N+1).
+        $query = Order::with(['user', 'paymentMethod', 'pendingCancelRequest'])->excludingUnpaidOnline();
+
+        // Lọc đúng các đơn KHÁCH ĐANG XIN HỦY (không phải mọi đơn "đang xử lý"): yêu cầu có thể
+        // nằm ở đơn 'processing' lẫn 'shipping' nên phải lọc theo chính bản ghi yêu cầu.
+        if ($request->boolean('cancel_request')) {
+            $query->whereHas('cancelRequests', fn ($q) => $q->pending());
+        }
 
         if ($search !== '') {
             $query->where(function ($q) use ($search) {
@@ -299,6 +314,8 @@ class OrderController extends Controller
             'dateFrom'      => $dateFrom,
             'dateTo'        => $dateTo,
             'perPage'       => $perPage,
+            // Đang lọc "khách xin hủy" → hiện chip để admin biết và tắt được.
+            'cancelRequestFilter' => $request->boolean('cancel_request'),
         ]));
     }
 
@@ -786,6 +803,219 @@ class OrderController extends Controller
         }
 
         return view('admin.orders.detail', $data);
+    }
+
+    /**
+     * Tra cứu thông tin để HOÀN TIỀN cho một đơn đã thu tiền nhưng bị hủy.
+     *
+     * Hệ thống không tự chuyển tiền. Việc admin cần là biết "hoàn cho ai, vào đâu":
+     *  - Đơn thanh toán online THẬT (có payos_order_code/momo_order_id) → hỏi cổng để lấy
+     *    thông tin giao dịch. PayOS trả về tài khoản NGƯỜI CHUYỂN (counterAccount*) → đủ để
+     *    chuyển khoản lại. MoMo là ví nên chỉ có mã giao dịch, phải hoàn qua dashboard MoMo.
+     *  - Đơn được đánh dấu "đã thanh toán" thủ công / COD → KHÔNG có giao dịch để tra,
+     *    chỉ còn cách liên hệ khách qua SĐT/email trên đơn.
+     */
+    public function refundInfo(string $id)
+    {
+        $order = Order::with(['user', 'paymentMethod'])->findOrFail($id);
+
+        $payload = [
+            'order_code' => $order->order_code,
+            'amount'     => (float) $order->total_money,
+            'gateway'    => null,
+            'reference'  => null,
+            'payers'     => [],
+            'customer'   => [
+                'name'  => $order->user?->username,
+                'phone' => collect([$order->phone, $order->user?->phone_number])
+                    ->first(fn ($p) => $p && $p !== '0'),
+                'email' => $order->user?->email,
+            ],
+            'message'    => null,
+        ];
+
+        if ($order->payos_order_code) {
+            $payload['gateway']   = 'PayOS';
+            $payload['reference'] = (string) $order->payos_order_code;
+
+            try {
+                $info = app(\App\Services\PayosService::class)->getPaymentInfo((int) $order->payos_order_code);
+
+                foreach (($info['transactions'] ?? []) as $tx) {
+                    $payload['payers'][] = [
+                        'name'      => $tx['counterAccountName'] ?? null,
+                        'account'   => $tx['counterAccountNumber'] ?? null,
+                        'bank'      => $tx['counterAccountBankId'] ?? ($tx['counterAccountBankName'] ?? null),
+                        'amount'    => $tx['amount'] ?? null,
+                        'paid_at'   => $tx['transactionDateTime'] ?? null,
+                        'reference' => $tx['reference'] ?? null,
+                    ];
+                }
+
+                if (empty($payload['payers'])) {
+                    $payload['message'] = $info
+                        ? 'Cổng không trả về giao dịch nào cho mã này — hãy tra thủ công trong dashboard PayOS.'
+                        : 'Không tra cứu được từ PayOS (mã không tồn tại hoặc kết nối lỗi).';
+                }
+            } catch (\Throwable $e) {
+                $payload['message'] = 'Lỗi khi gọi PayOS: ' . $e->getMessage();
+            }
+        } elseif ($order->momo_order_id) {
+            $payload['gateway']   = 'MoMo';
+            $payload['reference'] = (string) $order->momo_order_id;
+
+            try {
+                $info = app(\App\Services\MomoService::class)->queryPayment((string) $order->momo_order_id);
+                $payload['message'] = $info
+                    ? 'MoMo là ví điện tử nên không trả về số tài khoản người trả. Dùng mã giao dịch '
+                      . ($info['transId'] ?? $order->momo_order_id) . ' để hoàn tiền trong dashboard MoMo.'
+                    : 'Không tra cứu được từ MoMo (mã không tồn tại hoặc kết nối lỗi).';
+            } catch (\Throwable $e) {
+                $payload['message'] = 'Lỗi khi gọi MoMo: ' . $e->getMessage();
+            }
+        } else {
+            $payload['message'] = 'Đơn này KHÔNG có giao dịch qua cổng thanh toán (được đánh dấu '
+                . 'đã thanh toán thủ công hoặc thu tiền mặt) — không thể tra cứu tự động. '
+                . 'Vui lòng liên hệ khách theo SĐT/email bên dưới để lấy thông tin nhận tiền.';
+        }
+
+        return response()->json($payload);
+    }
+
+    /**
+     * Đánh dấu ĐÃ HOÀN TIỀN cho đơn đã thu tiền nhưng bị hủy.
+     *
+     * Đi đường riêng (không qua form cập nhật đơn) vì applyStatusChange() cố tình KHÓA
+     * payment_status với đơn dùng cổng online — chỉ webhook mới được đổi. Việc hoàn tiền là
+     * thao tác tay của admin nên cần một lối vào tường minh, có ghi vết ai làm/lúc nào.
+     *
+     * Sau khi đổi sang 'refunded': cảnh báo "Cần hoàn tiền" tự tắt (điều kiện là cancelled+paid),
+     * và đơn không còn được tính vào doanh thu.
+     */
+    public function markRefunded(Request $request, string $id)
+    {
+        $order = Order::with('paymentMethod')->findOrFail($id);
+
+        $validated = $request->validate([
+            'note'          => ['nullable', 'string', 'max:500'],
+            'refund_amount' => ['nullable', 'numeric', 'gt:0', 'max:' . $order->total_money],
+        ], [
+            'note.max'              => 'Ghi chú hoàn tiền không được quá 500 ký tự.',
+            'refund_amount.numeric' => 'Số tiền hoàn không hợp lệ.',
+            'refund_amount.gt'      => 'Số tiền hoàn phải lớn hơn 0.',
+            'refund_amount.max'     => 'Số tiền hoàn không được vượt quá tổng tiền đơn (' . number_format($order->total_money, 0, ',', '.') . '₫).',
+        ]);
+
+        // Chỉ đơn ĐÃ HỦY + ĐÃ THU TIỀN mới có tiền để hoàn. Khóa dòng + kiểm tra lại để 2 admin
+        // bấm cùng lúc không ghi đè nhau.
+        $done = DB::transaction(function () use ($order, $validated) {
+            $fresh = Order::whereKey($order->id)->lockForUpdate()->first();
+
+            if (! $fresh
+                || $fresh->status !== 'cancelled'
+                || $fresh->payment_status !== PaymentStatus::PAID->value
+            ) {
+                return false;
+            }
+
+            // Mặc định hoàn đủ total_money — admin chỉ cần nhập số khác khi hoàn 1 phần
+            // (ví dụ trừ phí giao dịch của cổng thanh toán).
+            $refundAmount = $validated['refund_amount'] ?? $fresh->total_money;
+
+            $fresh->update([
+                'payment_status' => PaymentStatus::REFUNDED->value,
+                'refund_amount'  => $refundAmount,
+                'refunded_at'    => now(),
+            ]);
+
+            app(\App\Services\PaymentReconciliationService::class)
+                ->logRefundCompleted($fresh, $validated['note'] ?? null);
+
+            return true;
+        });
+
+        if (! $done) {
+            $message = 'Đơn này không ở trạng thái cần hoàn tiền (phải là đơn đã hủy và đã thanh toán).';
+
+            return $request->expectsJson()
+                ? response()->json(['success' => false, 'message' => $message], 422)
+                : back()->with('error', $message);
+        }
+
+        $message = 'Đã ghi nhận hoàn tiền cho đơn ' . ($order->order_code ?? '#' . $order->id) . '.';
+
+        return $request->expectsJson()
+            ? response()->json(['success' => true, 'message' => $message])
+            : back()->with('success', $message);
+    }
+
+    /**
+     * Admin DUYỆT hoặc TỪ CHỐI yêu cầu hủy đơn do khách gửi.
+     *
+     * Duyệt = hủy đơn theo đúng luồng chuẩn: nhả kho về đúng lô (releaseHold), nhả voucher, và
+     * nếu đơn đã thu tiền thì tự bật cờ "Cần hoàn tiền" để admin hoàn lại cho khách.
+     */
+    public function processCancelRequest(Request $request, string $id)
+    {
+        $validated = $request->validate([
+            'action'     => ['required', Rule::in(['approve', 'reject'])],
+            'admin_note' => ['nullable', 'string', 'max:500'],
+        ], [
+            'action.required' => 'Thiếu hành động cần thực hiện.',
+            'admin_note.max'  => 'Ghi chú không được quá 500 ký tự.',
+        ]);
+
+        $cancelRequest = \App\Models\OrderCancelRequest::with('order')->findOrFail($id);
+
+        $done = DB::transaction(function () use ($cancelRequest, $validated) {
+            // Khóa để 2 admin bấm cùng lúc không xử lý trùng.
+            $fresh = \App\Models\OrderCancelRequest::whereKey($cancelRequest->id)->lockForUpdate()->first();
+            if (! $fresh || ! $fresh->isPending()) {
+                return false;
+            }
+
+            if ($validated['action'] === 'approve') {
+                $order = Order::whereKey($fresh->order_id)->lockForUpdate()->first();
+
+                // Đơn có thể đã bị hủy/hoàn tất bởi luồng khác trong lúc chờ duyệt.
+                if (! $order || ! in_array($order->status, \App\Models\OrderCancelRequest::REQUESTABLE_ORDER_STATUSES, true)) {
+                    return false;
+                }
+
+                $order->update(['status' => 'cancelled']);
+
+                // Nhả kho về đúng lô + bật cờ "Cần hoàn tiền" nếu đơn đã thu tiền.
+                app(\App\Services\OrderCancellationService::class)->releaseHold($order->fresh());
+                VoucherService::releaseUsage($order->id);
+            }
+
+            $fresh->update([
+                'status'       => $validated['action'] === 'approve'
+                    ? \App\Models\OrderCancelRequest::STATUS_APPROVED
+                    : \App\Models\OrderCancelRequest::STATUS_REJECTED,
+                'admin_note'   => $validated['admin_note'] ?? null,
+                'processed_by' => Auth::id(),
+                'processed_at' => now(),
+            ]);
+
+            return true;
+        });
+
+        if (! $done) {
+            $message = 'Yêu cầu này đã được xử lý trước đó hoặc đơn hàng không còn ở trạng thái có thể hủy.';
+
+            return $request->expectsJson()
+                ? response()->json(['success' => false, 'message' => $message], 422)
+                : back()->with('error', $message);
+        }
+
+        $message = $validated['action'] === 'approve'
+            ? 'Đã duyệt yêu cầu hủy — đơn đã được hủy và hoàn kho.'
+            : 'Đã từ chối yêu cầu hủy đơn.';
+
+        return $request->expectsJson()
+            ? response()->json(['success' => true, 'message' => $message])
+            : back()->with('success', $message);
     }
 
     /**

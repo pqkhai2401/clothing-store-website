@@ -43,8 +43,8 @@
             @if($goodsReceipt->isDraft())
                 <form method="POST" action="{{ route('admin.goods-receipts.complete', $goodsReceipt->id) }}">
                     @csrf @method('PATCH')
-                    <button type="submit" class="btn btn-primary fw-bold"
-                        onclick="return confirm('Hoàn tất phiếu nhập kho này sẽ cộng tồn kho ngay lập tức. Tiếp tục?')">
+                    <button type="button" class="btn btn-primary fw-bold"
+                        onclick="window.showConfirm({title: 'Xác nhận', message: 'Hoàn tất phiếu nhập kho này sẽ cộng tồn kho ngay lập tức. Tiếp tục?', type: 'warning'}).then(ok => { if(ok) this.closest('form').submit(); })">
                         <i class="fa-solid fa-check me-1"></i> Hoàn tất nhập kho
                     </button>
                 </form>

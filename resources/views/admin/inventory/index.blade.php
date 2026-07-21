@@ -964,16 +964,19 @@
                         const url = isGenericAction ? item.dataset.statusUrl : actionBtn.dataset.statusUrl;
                         const message = (isGenericAction ? item.dataset.statusConfirm : actionBtn.dataset.statusConfirm)
                             || 'Bạn có chắc chắn muốn cập nhật trạng thái phiếu này?';
-                        if (url && confirm(message)) {
-                            const form = document.createElement('form');
-                            form.method = 'POST';
-                            form.action = url;
-                            form.innerHTML = `
-                                <input type="hidden" name="_token" value="${document.querySelector('meta[name="csrf-token"]')?.content || ''}">
-                                <input type="hidden" name="_method" value="PATCH">
-                            `;
-                            document.body.appendChild(form);
-                            form.submit();
+                        if (url) {
+                            window.showConfirm({ message: message, type: 'warning' }).then(function(ok) {
+                                if (!ok) return;
+                                const form = document.createElement('form');
+                                form.method = 'POST';
+                                form.action = url;
+                                form.innerHTML = `
+                                    <input type="hidden" name="_token" value="${document.querySelector('meta[name="csrf-token"]')?.content || ''}">
+                                    <input type="hidden" name="_method" value="PATCH">
+                                `;
+                                document.body.appendChild(form);
+                                form.submit();
+                            });
                         }
                     }
                     closePanel();

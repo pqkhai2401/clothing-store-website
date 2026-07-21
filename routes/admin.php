@@ -246,6 +246,9 @@ Route::middleware(['auth.login', 'active.account', 'admin', 'force.password.chan
             $trashRoutes(OrderController::class)();
             Route::get('/{id}/detail', [OrderController::class, 'detail'])->name('detail');
             Route::get('/{id}/invoice', [OrderController::class, 'invoice'])->name('invoice');
+            Route::get('/{id}/refund-info', [OrderController::class, 'refundInfo'])->name('refundInfo');
+            Route::patch('/{id}/mark-refunded', [OrderController::class, 'markRefunded'])->name('markRefunded');
+            Route::patch('/cancel-requests/{id}', [OrderController::class, 'processCancelRequest'])->name('processCancelRequest');
             Route::get('/{id}/edit-content', [OrderController::class, 'editContent'])->name('editContent');
             Route::put('/{id}/edit-content', [OrderController::class, 'updateContent'])->name('updateContent');
             Route::patch('/{id}/quick-status', [OrderController::class, 'quickUpdateStatus'])->name('quickUpdateStatus');

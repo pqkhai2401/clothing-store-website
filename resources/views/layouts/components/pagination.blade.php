@@ -472,25 +472,30 @@ tr.hk-row-selected { background-color: #f0f7ff !important; }
 
                 if (!ids.length) return;
 
-                var confirmed = window.confirm(
-                    'Bạn có chắc chắn muốn xóa ' + ids.length + ' ' + label + ' đã chọn không?'
-                );
-                if (!confirmed) return;
+                window.showConfirm({
+                    title: 'Xóa ' + ids.length + ' ' + label,
+                    message: 'Bạn có chắc chắn muốn xóa ' + ids.length + ' ' + label + ' đã chọn không?',
+                    type: 'danger',
+                    confirmText: 'Xóa'
+                }).then(function(confirmed) {
+                    if (!confirmed) return;
 
-                if (form) {
-                    /* Remove previously appended inputs */
-                    form.querySelectorAll('input[name="ids[]"]').forEach(function (el) { el.remove(); });
+                    if (form) {
+                        /* Remove previously appended inputs */
+                        form.querySelectorAll('input[name="ids[]"]').forEach(function (el) { el.remove(); });
 
-                    ids.forEach(function (id) {
-                        var input   = document.createElement('input');
-                        input.type  = 'hidden';
-                        input.name  = 'ids[]';
-                        input.value = id;
-                        form.appendChild(input);
-                    });
+                        ids.forEach(function (id) {
+                            var input   = document.createElement('input');
+                            input.type  = 'hidden';
+                            input.name  = 'ids[]';
+                            input.value = id;
+                            form.appendChild(input);
+                        });
 
-                    form.submit();
-                }
+                        form.submit();
+                    }
+                });
+                return;
             }
 
             function selectedIds() {
@@ -505,28 +510,33 @@ tr.hk-row-selected { background-color: #f0f7ff !important; }
                 if (!ids.length || !statusForm) return;
 
                 const labelText = status === '1' ? 'kích hoạt' : 'ngưng hoạt động';
-                var confirmed = window.confirm(
-                    'Bạn có chắc chắn muốn ' + labelText + ' ' + ids.length + ' ' + label + ' đã chọn không?'
-                );
-                if (!confirmed) return;
+                window.showConfirm({
+                    title: (status === '1' ? 'Kích hoạt ' : 'Ngưng hoạt động ') + ids.length + ' ' + label,
+                    message: 'Bạn có chắc chắn muốn ' + labelText + ' ' + ids.length + ' ' + label + ' đã chọn không?',
+                    type: status === '1' ? 'info' : 'warning',
+                    confirmText: 'Đồng ý'
+                }).then(function(confirmed) {
+                    if (!confirmed) return;
 
-                statusForm.querySelectorAll('input[name="ids[]"], input[name="is_active"]').forEach(function (el) { el.remove(); });
+                    statusForm.querySelectorAll('input[name="ids[]"], input[name="is_active"]').forEach(function (el) { el.remove(); });
 
-                ids.forEach(function (id) {
-                    var input = document.createElement('input');
-                    input.type = 'hidden';
-                    input.name = 'ids[]';
-                    input.value = id;
-                    statusForm.appendChild(input);
+                    ids.forEach(function (id) {
+                        var input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = 'ids[]';
+                        input.value = id;
+                        statusForm.appendChild(input);
+                    });
+
+                    var statusInput = document.createElement('input');
+                    statusInput.type = 'hidden';
+                    statusInput.name = 'is_active';
+                    statusInput.value = status;
+                    statusForm.appendChild(statusInput);
+
+                    statusForm.submit();
                 });
-
-                var statusInput = document.createElement('input');
-                statusInput.type = 'hidden';
-                statusInput.name = 'is_active';
-                statusInput.value = status;
-                statusForm.appendChild(statusInput);
-
-                statusForm.submit();
+                return;
             }
 
             /* ─── Wire up events ───────────────────────────── */
@@ -542,14 +552,22 @@ tr.hk-row-selected { background-color: #f0f7ff !important; }
                     .filter(function (cb) { return cb.checked; })
                     .map(function (cb) { return cb.value; });
                 if (!ids.length || !restoreForm) return;
-                if (!window.confirm('Bạn có chắc chắn muốn khôi phục ' + ids.length + ' ' + label + ' đã chọn không?')) return;
-                restoreForm.querySelectorAll('input[name="ids[]"]').forEach(function (el) { el.remove(); });
-                ids.forEach(function (id) {
-                    var input = document.createElement('input');
-                    input.type = 'hidden'; input.name = 'ids[]'; input.value = id;
-                    restoreForm.appendChild(input);
+                window.showConfirm({
+                    title: 'Khôi phục ' + ids.length + ' ' + label,
+                    message: 'Bạn có chắc chắn muốn khôi phục ' + ids.length + ' ' + label + ' đã chọn không?',
+                    type: 'info',
+                    confirmText: 'Khôi phục'
+                }).then(function(confirmed) {
+                    if (!confirmed) return;
+                    restoreForm.querySelectorAll('input[name="ids[]"]').forEach(function (el) { el.remove(); });
+                    ids.forEach(function (id) {
+                        var input = document.createElement('input');
+                        input.type = 'hidden'; input.name = 'ids[]'; input.value = id;
+                        restoreForm.appendChild(input);
+                    });
+                    restoreForm.submit();
                 });
-                restoreForm.submit();
+                return;
             }
 
             if (cbAll)  cbAll.addEventListener('change', handleSelectAll);

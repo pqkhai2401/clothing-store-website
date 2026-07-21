@@ -248,16 +248,16 @@
 
             <form method="POST" action="{{ route('admin.stock-issues.issue', $stockIssue->id) }}" class="mb-0 d-inline-flex">
                 @csrf @method('PATCH')
-                <button type="submit" class="sid-btn sid-btn--success"
-                    onclick="return confirm('Xác nhận hoàn tất xuất kho? Tồn kho thực tế sẽ bị trừ lập tức.')">
+                <button type="button" class="sid-btn sid-btn--success"
+                    onclick="window.showConfirm({title: 'Xác nhận', message: 'Xác nhận hoàn tất xuất kho? Tồn kho thực tế sẽ bị trừ lập tức.', type: 'warning'}).then(ok => { if(ok) this.closest('form').submit(); })">
                     <i class="fa-solid fa-circle-check"></i> Hoàn tất xuất kho
                 </button>
             </form>
 
             <form method="POST" action="{{ route('admin.stock-issues.cancel', $stockIssue->id) }}" class="mb-0 d-inline-flex">
                 @csrf @method('PATCH')
-                <button type="submit" class="sid-btn sid-btn--danger"
-                    onclick="return confirm('Bạn có chắc chắn muốn hủy phiếu xuất kho này? Trạng thái sẽ không thể thay đổi sau khi hủy.')">
+                <button type="button" class="sid-btn sid-btn--danger"
+                    onclick="window.showConfirm({title: 'Xác nhận hủy', message: 'Bạn có chắc chắn muốn hủy phiếu xuất kho này? Trạng thái sẽ không thể thay đổi sau khi hủy.', type: 'danger'}).then(ok => { if(ok) this.closest('form').submit(); })">
                     <i class="fa-regular fa-circle-xmark"></i> Huỷ phiếu
                 </button>
             </form>

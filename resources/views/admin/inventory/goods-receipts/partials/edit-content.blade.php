@@ -491,7 +491,7 @@
         if (!variant) return;
 
         if (selected[variantId]) {
-            alert('Sản phẩm này đã có trong phiếu nhập.');
+            window.showAlert('Sản phẩm này đã có trong phiếu nhập.', 'Thông báo', 'info');
             return;
         }
 
@@ -662,7 +662,11 @@
         }
 
         if (action === 'complete') {
-            const isConfirmed = confirm('Bạn có chắc chắn muốn hoàn tất nhập kho? Sau khi hoàn tất, phiếu sẽ được cộng tồn kho và không thể chỉnh sửa trực tiếp.');
+            const isConfirmed = await window.showConfirm({
+                title: 'Xác nhận hoàn tất',
+                message: 'Bạn có chắc chắn muốn hoàn tất nhập kho? Sau khi hoàn tất, phiếu sẽ được cộng tồn kho và không thể chỉnh sửa trực tiếp.',
+                type: 'warning'
+            });
             if (!isConfirmed) {
                 return;
             }

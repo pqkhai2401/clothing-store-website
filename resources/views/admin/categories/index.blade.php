@@ -429,7 +429,7 @@
                         b.classList.toggle('is-active', b === item);
                     });
                 } catch {
-                    alert('Không thể cập nhật trạng thái. Vui lòng thử lại.');
+                    window.showAlert('Không thể cập nhật trạng thái. Vui lòng thử lại.', 'Lỗi', 'danger');
                     btn.className = 'status-badge category-status-trigger ' + (previousCss ?? '');
                     btn.dataset.value = previousValue;
                 } finally {

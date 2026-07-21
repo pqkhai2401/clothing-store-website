@@ -82,7 +82,7 @@ document.addEventListener('DOMContentLoaded', function () {
             .catch(function (error) {
                 if (error.name !== 'AbortError') {
                     console.error(error);
-                    alert('Có lỗi xảy ra khi tải dữ liệu.');
+                    window.showAlert('Có lỗi xảy ra khi tải dữ liệu.', 'Lỗi', 'danger');
                 }
             })
             .finally(function () {
@@ -246,8 +246,13 @@ document.addEventListener('DOMContentLoaded', function () {
             const form  = tableArea.querySelector('form[id$="_brf"]');
             const label = tableArea.querySelector('.hk-pagination')?.dataset.label || 'mục';
             const count = selectedRows().length;
-            if (count && confirm('Bạn có chắc chắn muốn khôi phục ' + count + ' ' + label + ' đã chọn không?')) {
-                submitBulk(form);
+            if (count) {
+                window.showConfirm({
+                    title: 'Khôi phục ' + count + ' ' + label,
+                    message: 'Bạn có chắc chắn muốn khôi phục ' + count + ' ' + label + ' đã chọn không?',
+                    type: 'info',
+                    confirmText: 'Khôi phục'
+                }).then(function(ok) { if (ok) submitBulk(form); });
             }
             return;
         }
@@ -257,8 +262,13 @@ document.addEventListener('DOMContentLoaded', function () {
             const form = tableArea.querySelector('form[id$="_bdf"]');
             const label = tableArea.querySelector('.hk-pagination')?.dataset.label || 'mục';
             const count = selectedRows().length;
-            if (count && confirm('Bạn có chắc chắn muốn xóa ' + count + ' ' + label + ' đã chọn không?')) {
-                submitBulk(form);
+            if (count) {
+                window.showConfirm({
+                    title: 'Xóa ' + count + ' ' + label,
+                    message: 'Bạn có chắc chắn muốn xóa ' + count + ' ' + label + ' đã chọn không?',
+                    type: 'danger',
+                    confirmText: 'Xóa'
+                }).then(function(ok) { if (ok) submitBulk(form); });
             }
             return;
         }
@@ -271,8 +281,13 @@ document.addEventListener('DOMContentLoaded', function () {
             const label = tableArea.querySelector('.hk-pagination')?.dataset.label || 'mục';
             const actionLabel = customActionButton.textContent.trim();
             const count = selectedRows().length;
-            if (count && confirm('Bạn có chắc chắn muốn "' + actionLabel + '" cho ' + count + ' ' + label + ' đã chọn không?')) {
-                submitBulk(form, { [field]: value });
+            if (count) {
+                window.showConfirm({
+                    title: actionLabel + ' ' + count + ' ' + label,
+                    message: 'Bạn có chắc chắn muốn "' + actionLabel + '" cho ' + count + ' ' + label + ' đã chọn không?',
+                    type: 'info',
+                    confirmText: 'Đồng ý'
+                }).then(function(ok) { if (ok) submitBulk(form, { [field]: value }); });
             }
             return;
         }
@@ -284,8 +299,13 @@ document.addEventListener('DOMContentLoaded', function () {
             const label = tableArea.querySelector('.hk-pagination')?.dataset.label || 'mục';
             const count = selectedRows().length;
             const action = status === '1' ? 'kích hoạt' : 'ngưng hoạt động';
-            if (count && confirm('Bạn có chắc chắn muốn ' + action + ' ' + count + ' ' + label + ' đã chọn không?')) {
-                submitBulk(form, { is_active: status });
+            if (count) {
+                window.showConfirm({
+                    title: (status === '1' ? 'Kích hoạt ' : 'Ngưng hoạt động ') + count + ' ' + label,
+                    message: 'Bạn có chắc chắn muốn ' + action + ' ' + count + ' ' + label + ' đã chọn không?',
+                    type: status === '1' ? 'info' : 'warning',
+                    confirmText: 'Đồng ý'
+                }).then(function(ok) { if (ok) submitBulk(form, { is_active: status }); });
             }
         }
     });

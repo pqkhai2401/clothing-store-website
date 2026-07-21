@@ -1226,39 +1226,46 @@
     const btnClearAll = document.getElementById('btnClearAll');
     if (btnClearAll) {
         btnClearAll.addEventListener('click', function () {
-            if (!confirm('Bạn có chắc muốn xóa toàn bộ danh sách yêu thích không?')) return;
+            window.showConfirm({
+                title: 'Xóa danh sách yêu thích',
+                message: 'Bạn có chắc muốn xóa toàn bộ danh sách yêu thích không?',
+                type: 'danger',
+                confirmText: 'Xóa tất cả'
+            }).then(function(ok) {
+                if (!ok) return;
 
-            fetch('/yeu-thich/xoa-tat-ca', {
-                method: 'DELETE',
-                headers: {
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': getCsrf()
-                }
-            })
-            .then(r => r.json())
-            .then(() => {
-                const grid = document.getElementById('wishlistGrid');
-                if (grid) {
-                    grid.querySelectorAll('.wishlist-card').forEach(card => {
-                        card.style.transition = 'opacity 0.25s ease';
-                        card.style.opacity    = '0';
-                    });
-                    setTimeout(() => {
-                        grid.innerHTML = '';
-                        toggleEmptyState();
-                        updateWishlistBadge(0);
-                        updateInPageCount(0);
-                        // Reset tất cả icon trái tim trong AI rec grid
-                        document.querySelectorAll('.ai-wishlist-btn').forEach(btn => {
-                            btn.innerHTML = '<i class="bi bi-heart"></i>';
-                            btn.dataset.added = 'false';
-                            btn.title = 'Thêm vào yêu thích';
+                fetch('/yeu-thich/xoa-tat-ca', {
+                    method: 'DELETE',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': getCsrf()
+                    }
+                })
+                .then(r => r.json())
+                .then(() => {
+                    const grid = document.getElementById('wishlistGrid');
+                    if (grid) {
+                        grid.querySelectorAll('.wishlist-card').forEach(card => {
+                            card.style.transition = 'opacity 0.25s ease';
+                            card.style.opacity    = '0';
                         });
-                        showToast('Đã xóa toàn bộ danh sách yêu thích', 'success');
-                    }, 300);
-                }
-            })
-            .catch(() => showToast('Có lỗi xảy ra. Vui lòng thử lại.', 'error'));
+                        setTimeout(() => {
+                            grid.innerHTML = '';
+                            toggleEmptyState();
+                            updateWishlistBadge(0);
+                            updateInPageCount(0);
+                            // Reset tất cả icon trái tim trong AI rec grid
+                            document.querySelectorAll('.ai-wishlist-btn').forEach(btn => {
+                                btn.innerHTML = '<i class="bi bi-heart"></i>';
+                                btn.dataset.added = 'false';
+                                btn.title = 'Thêm vào yêu thích';
+                            });
+                            showToast('Đã xóa toàn bộ danh sách yêu thích', 'success');
+                        }, 300);
+                    }
+                })
+                .catch(() => showToast('Có lỗi xảy ra. Vui lòng thử lại.', 'error'));
+            });
         });
     }
 

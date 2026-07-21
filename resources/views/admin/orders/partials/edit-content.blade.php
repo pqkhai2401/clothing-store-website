@@ -701,7 +701,7 @@
             }
 
             if (!res.ok || !data) {
-                alert((data && data.message) || 'Không thể cập nhật đơn hàng.');
+                window.showAlert((data && data.message) || 'Không thể cập nhật đơn hàng.', 'Lỗi', 'danger');
                 return;
             }
 
@@ -713,7 +713,7 @@
                 window.location.reload();
             }
         } catch (err) {
-            alert('Không thể kết nối tới máy chủ. Vui lòng thử lại.');
+            window.showAlert('Không thể kết nối tới máy chủ. Vui lòng thử lại.', 'Lỗi', 'danger');
         } finally {
             submitBtn?.removeAttribute('disabled');
         }

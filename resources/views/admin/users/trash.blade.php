@@ -90,7 +90,7 @@
                                         </form>
                                         <form method="POST"
                                             action="{{ route(($routePrefix ?? 'admin.users') . '.forceDelete', $user->id) }}"
-                                            onsubmit="return confirm('Xóa vĩnh viễn {{ $itemLabelLower ?? 'tài khoản' }} này? Hành động này không thể hoàn tác.')">
+                                            onsubmit="event.preventDefault(); window.showConfirm({title: 'Xác nhận xóa', message: 'Xóa vĩnh viễn {{ $itemLabelLower ?? \'tài khoản\' }} này? Hành động này không thể hoàn tác.', type: 'danger'}).then(ok => { if(ok) this.submit(); });">
                                             @csrf @method('DELETE')
                                             <button type="submit" class="btn btn-sm btn-outline-danger fw-semibold">
                                                 <i class="fa-solid fa-trash me-1"></i> Xóa vĩnh viễn

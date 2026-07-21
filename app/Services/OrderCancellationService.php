@@ -77,6 +77,16 @@ class OrderCancellationService
         $batchService = app(InventoryBatchService::class);
         $userId = Auth::id() ?? $order->created_by;
 
+        // TIỀN: đơn đã thu tiền mà bị hủy thì kho được nhả nhưng tiền vẫn đang giữ của khách.
+        // Hệ thống không tự chuyển tiền — ghi nhận "cần hoàn tiền" để admin không bỏ quên.
+        // Đặt ở đầu hàm vì bên dưới có return sớm khi đơn chưa có phiếu xuất kho.
+        if ($order->payment_status === PaymentStatus::PAID->value) {
+            app(PaymentReconciliationService::class)->flagRefundRequired(
+                $order,
+                'Đơn đã thanh toán nhưng bị hủy'
+            );
+        }
+
         // Kho giữ từ lúc checkout. Dùng bản tính theo SỐ DƯ (đã xuất − đã hoàn) để:
         //  - idempotent (gọi 2 lần không cộng khống),
         //  - đúng cả khi đơn từng được sửa nội dung (nhả hold cũ → giữ hold mới cùng reference).
