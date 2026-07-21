@@ -98,6 +98,10 @@
             Giá bán của từng biến thể được nhập tại đây. Dùng ô áp dụng nhanh để gán cùng một giá bán cho tất cả biến thể, sau đó chỉnh riêng từng dòng nếu cần.
         </p>
 
+        @error('variants')
+            <div class="alert alert-danger py-2 px-3 small mb-3">{{ $message }}</div>
+        @enderror
+
         {{-- Bulk apply bar --}}
         <div class="vm-bulk-bar">
             <span class="vm-bulk-label">Áp dụng nhanh:</span>
@@ -626,6 +630,12 @@ window.__VM_EXISTING__ = @json($existingVariants);
                 const costPrice  = data.cost_price ?? '';
                 const price      = data.price ?? data.sale_price ?? '';
                 const stock      = data.stock      ?? '';
+                const hasBatches = data.has_batches ?? false;
+                const skuLockedClass = hasBatches ? 'is-locked' : '';
+                const skuReadonly    = hasBatches ? 'readonly' : '';
+                const skuTitle       = hasBatches
+                    ? 'Đã phát sinh Lô nhập kho — không thể đổi SKU để tránh mất khả năng đối chiếu với tem/mã vạch đã in.'
+                    : '';
 
                 const tr = document.createElement('tr');
                 tr.dataset.colorId = color.id;
@@ -638,8 +648,9 @@ window.__VM_EXISTING__ = @json($existingVariants);
                         </div>
                     </td>
                     <td>
-                        <input type="text" class="vm-matrix-input" data-field="sku"
-                               name="variants[${color.id}][${size.id}][sku]" value="${esc(sku)}">
+                        <input type="text" class="vm-matrix-input ${skuLockedClass}" data-field="sku"
+                               name="variants[${color.id}][${size.id}][sku]" value="${esc(sku)}"
+                               title="${skuTitle}" ${skuReadonly}>
                     </td>
                     <td>
                         <input type="number" min="0" step="1000" class="vm-matrix-input is-locked" data-field="cost_price"

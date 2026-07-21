@@ -1271,7 +1271,6 @@ class ProductSeeder extends Seeder
                 'sizes'  => ['XS', 'S', 'M', 'L'],
                 'tags'   => ['casual', 'dao-pho'],
             ],
-
             // ═══════════════════════════════════════════════════════════════════
             // BỘ SƯU TẬP MÙA XUÂN — sắc sáng, chất liệu nhẹ, phom thanh lịch
             // ═══════════════════════════════════════════════════════════════════

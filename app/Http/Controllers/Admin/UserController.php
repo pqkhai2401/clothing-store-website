@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use OwenIt\Auditing\Events\AuditCustom;
 use Spatie\Permission\Models\Role;
@@ -149,27 +150,41 @@ class UserController extends Controller
             $avatarPath = $request->file('avatar')->store('avatars', 'public');
         }
 
-        $user = User::create([
-            'username'     => $validated['username'],
-            'email'        => $validated['email'],
-            'phone_number' => $validated['phone_number'] ?? null,
-            'gender'       => $validated['gender'] ?? null,
-            'avatar_url'   => $avatarPath,
-            'is_active'    => (bool) $validated['is_active'],
-            'password'     => Hash::make($validated['password']),
-            'is_protected' => false,
-        ]);
+        // Bọc tạo user + gán vai trò + tạo địa chỉ trong 1 transaction để không sinh ra
+        // user "lỗi dở" (đã tạo nhưng chưa có vai trò/địa chỉ) khi 1 bước bất kỳ thất bại.
+        // Ảnh avatar đã upload trước transaction: nếu DB lỗi thì xóa ảnh rác đã ghi lên đĩa.
+        try {
+            $user = DB::transaction(function () use ($validated, $avatarPath, $roleForUser) {
+                $user = User::create([
+                    'username'     => $validated['username'],
+                    'email'        => $validated['email'],
+                    'phone_number' => $validated['phone_number'] ?? null,
+                    'gender'       => $validated['gender'] ?? null,
+                    'avatar_url'   => $avatarPath,
+                    'is_active'    => (bool) $validated['is_active'],
+                    'password'     => Hash::make($validated['password']),
+                    'is_protected' => false,
+                ]);
 
-        if ($roleForUser) {
-            $user->syncRoles([$roleForUser->name]);
-        }
+                if ($roleForUser) {
+                    $user->syncRoles([$roleForUser->name]);
+                }
 
-        if ($this->hasAddressInput($validated)) {
-            $user->addresses()->create([
-                'city' => $validated['city'] ?? '',
-                'ward' => $validated['ward'] ?? '',
-                'apartment_number' => $validated['apartment_number'] ?? '',
-            ]);
+                if ($this->hasAddressInput($validated)) {
+                    $user->addresses()->create([
+                        'city' => $validated['city'] ?? '',
+                        'ward' => $validated['ward'] ?? '',
+                        'apartment_number' => $validated['apartment_number'] ?? '',
+                    ]);
+                }
+
+                return $user;
+            });
+        } catch (\Throwable $e) {
+            if ($avatarPath) {
+                Storage::disk('public')->delete($avatarPath);
+            }
+            throw $e;
         }
 
         return redirect()->route($context['routePrefix'].'.list')->with('success', 'Tạo '.$context['itemLabelLower'].' thành công');
@@ -552,6 +567,14 @@ class UserController extends Controller
                 ->with('error', 'Không thể xóa admin hệ thống.');
         }
 
+        // Tương đương rule 9 của update(): admin thường không được xóa admin khác (kể cả admin
+        // thường khác, không riêng gì admin hệ thống đã chặn ở check is_protected phía trên).
+        $currentIsNormalAdmin = auth()->user()->isAdmin() && ! (bool) auth()->user()->is_protected;
+        if ($currentIsNormalAdmin && $user->isAdmin()) {
+            return redirect()->route($context['routePrefix'].'.list')
+                ->with('error', 'Quản trị viên thường không có quyền xóa quản trị viên khác.');
+        }
+
         $user->delete();
 
         return redirect()->route($context['routePrefix'].'.list')->with('success', 'Xóa '.$context['itemLabelLower'].' thành công');
@@ -565,7 +588,7 @@ class UserController extends Controller
         $context = $this->resolveContext($request);
         $this->authorizeContext($request, $context['type']);
 
-        if (in_array($context['type'], ['staff', 'customer'], true)) {
+        if ($context['type'] === 'staff') {
             return redirect()->route($context['routePrefix'].'.list')
                 ->with('error', 'Chức năng thùng rác không áp dụng cho khu vực này.');
         }
@@ -615,6 +638,15 @@ class UserController extends Controller
 
         $query = User::whereIn('id', $ids)->where('is_protected', false);
         $this->applyTypeFilter($query, $context['type']);
+
+        // Cùng rule 9 của update()/destroy(): admin thường không được đụng tới tài khoản admin
+        // khác qua đường bulk-delete — trước đây chỉ where('is_protected', false) nên vẫn lọt
+        // được admin thường khác (chưa is_protected) khi type === 'all'.
+        $currentIsNormalAdmin = $request->user()->isAdmin() && ! (bool) $request->user()->is_protected;
+        if ($currentIsNormalAdmin) {
+            $query->whereDoesntHave('roles', fn ($q) => $q->where('name', UserRole::ADMIN->value));
+        }
+
         $deleted = $query->delete();
 
         return back()->with('success', "Đã xóa {$deleted} {$context['itemLabelLower']} thành công.");
@@ -663,7 +695,7 @@ class UserController extends Controller
         $user = User::onlyTrashed()->findOrFail($id);
         $context = $this->resolveContext(request(), $user);
         $this->authorizeContext(request(), $context['type'], $user);
-        if (in_array($context['type'], ['staff', 'customer'], true)) {
+        if ($context['type'] === 'staff') {
             return redirect()->route($context['routePrefix'].'.list')
                 ->with('error', 'Chức năng thùng rác không áp dụng cho khu vực này.');
         }
@@ -680,10 +712,18 @@ class UserController extends Controller
         $user = User::onlyTrashed()->findOrFail($id);
         $context = $this->resolveContext(request(), $user);
         $this->authorizeContext(request(), $context['type'], $user);
-        if (in_array($context['type'], ['staff', 'customer'], true) || $user->is_protected) {
+        if ($context['type'] === 'staff' || $user->is_protected) {
             return redirect()->route($context['routePrefix'].'.list')
                 ->with('error', 'Không thể xóa vĩnh viễn tài khoản này.');
         }
+
+        // Đơn hàng (orders.user_id) là FK RESTRICT — xóa cứng khách còn đơn sẽ lỗi CSDL.
+        // Giữ tài khoản trong thùng rác để bảo toàn lịch sử đơn hàng.
+        if ($user->orders()->exists()) {
+            return redirect()->route($context['routePrefix'].'.trash')
+                ->with('error', 'Không thể xóa vĩnh viễn khách hàng này vì vẫn còn đơn hàng liên kết. Tài khoản được giữ trong thùng rác.');
+        }
+
         $user->forceDelete();
 
         return redirect()->route($context['routePrefix'].'.trash')->with('success', 'Xóa vĩnh viễn '.$context['itemLabelLower'].' thành công');

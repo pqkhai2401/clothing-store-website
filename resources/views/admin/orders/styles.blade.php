@@ -5,6 +5,11 @@
            để cột "Khách hàng" không bị kéo dãn ra khoảng trắng thừa không cần thiết */
         #orderTable { min-width: 1260px; }
 
+        /* .hk-cat-filter mặc định rộng cố định 220px (dùng cho filter trên toolbar) — trong form
+           Sửa đơn hàng/Thêm đơn hàng nó nằm trong 1 cột của .row nên phải giãn hết cỡ theo cột đó,
+           không được giữ 220px cố định (làm ô "Địa chỉ đã lưu" bị cắt ngắn, trông rất hẹp). */
+        .edit-field .oc-dropdown.hk-cat-filter { width: 100%; flex: none; }
+
         /* ── Order status chips (đơn hàng + thanh toán dùng chung khung, khác màu variant) ── */
         .order-badge,
         .payment-badge {
@@ -27,6 +32,13 @@
 
         .payment-badge--paid   { background: #ECFDF5; border: 1.5px solid #86EFAC; color: #16A34A; }
         .payment-badge--unpaid { background: #FEF2F2; border: 1.5px solid #FECACA; color: #DC2626; }
+        .payment-badge--refunded { background: #EFF6FF; border: 1.5px solid #BFDBFE; color: #2563EB; }
+        /* Nhãn "Khách xin hủy" trên dòng đơn — để admin thấy ngay mà không cần mở từng đơn */
+        .order-badge--cancelreq { background: #FFFBEB; border: 1.5px solid #FDE68A; color: #B45309; }
+
+        /* Đơn admin tạo thủ công (vd. đặt hộ khách qua điện thoại), khác với đơn khách tự đặt
+           trên website — dùng tông tím trung tính để không lẫn với các trạng thái xanh/đỏ/vàng ở trên. */
+        .order-badge--manual { background: #F5F3FF; border: 1.5px solid #DDD6FE; color: #6D28D9; font-size: 10.5px; padding: 2px 9px; min-height: auto; }
 
         .order-code {
             display: inline-block;
@@ -39,6 +51,36 @@
             border-radius: 5px;
             white-space: nowrap;
         }
+
+        /* ── Sổ xuống chọn nhanh trạng thái đơn/thanh toán ngay trong bảng ── */
+        .oc-row-dropdown { position: relative; display: inline-block; width: auto; }
+        .oc-row-trigger {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border-width: 1.5px;
+            border-style: solid;
+            cursor: pointer;
+        }
+        .oc-row-trigger:hover { filter: brightness(0.97); }
+        .oc-row-trigger:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.15);
+        }
+        .oc-row-caret {
+            font-size: 9px;
+            opacity: .65;
+            transition: transform .15s;
+        }
+        .oc-row-trigger.is-open .oc-row-caret { transform: rotate(180deg); }
+
+        /* Mở từ trái qua phải, rộng vừa nội dung thay vì lệch phải/quá cứng như select mặc định */
+        .oc-row-dropdown .hk-cat-panel {
+            left: 0;
+            right: auto;
+            width: 190px;
+        }
+        .oc-row-panel .hk-cat-list .hk-cat-item { font-size: 13px; }
 
         /* ── Nút Xem/Sửa hiển thị trực tiếp, không cần mở menu "..." ── */
         .order-row-action-btn {
@@ -183,12 +225,90 @@
         [data-theme="dark"] .order-badge--processing { background: rgba(59,130,246,0.12) !important; border-color: rgba(59,130,246,0.3) !important; color: #93C5FD !important; }
         [data-theme="dark"] .order-badge--shipping  { background: rgba(14,165,233,0.12) !important; border-color: rgba(14,165,233,0.3) !important; color: #7DD3FC !important; }
         [data-theme="dark"] .order-badge--completed { background: rgba(34,197,94,0.12) !important; border-color: rgba(34,197,94,0.3) !important; color: #86EFAC !important; }
+        /* ── Chip báo đang bật bộ lọc "khách xin hủy" ── */
+        .ord-filter-chip {
+            display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+            margin-bottom: 12px; padding: 9px 14px;
+            background: #FFFBEB; border: 1.5px solid #FDE68A; border-radius: 10px;
+            color: #B45309; font-size: 13px;
+        }
+        .ord-filter-chip-clear {
+            margin-left: auto; font-weight: 800; color: #B45309; text-decoration: none;
+            padding: 3px 10px; border-radius: 999px; border: 1px solid #FDE68A; background: #fff;
+        }
+        .ord-filter-chip-clear:hover { background: #FEF3C7; color: #92400E; }
+        [data-theme="dark"] .ord-filter-chip { background: rgba(245,158,11,0.10) !important; border-color: rgba(245,158,11,0.35) !important; color: #FCD34D !important; }
+        [data-theme="dark"] .ord-filter-chip-clear { background: transparent !important; border-color: rgba(245,158,11,0.35) !important; color: #FCD34D !important; }
+
+        /* ── Khối "Khách yêu cầu hủy đơn" ở chi tiết đơn ── */
+        .ord-cancelreq-card { border-color: #FDE68A !important; }
+        .ord-cancelreq-card .card-header { background: #FFFBEB !important; }
+        .ord-cancelreq-reason {
+            background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 8px;
+            padding: 10px 12px; color: #92400E; font-size: 13px; white-space: pre-wrap;
+        }
+        [data-theme="dark"] .ord-cancelreq-card { border-color: rgba(245,158,11,0.35) !important; }
+        [data-theme="dark"] .ord-cancelreq-card .card-header { background: rgba(245,158,11,0.10) !important; }
+        [data-theme="dark"] .ord-cancelreq-reason { background: rgba(245,158,11,0.10) !important; border-color: rgba(245,158,11,0.3) !important; color: #FCD34D !important; }
+
+        /* ── Khối "Cần hoàn tiền" ở chi tiết đơn ── */
+        .ord-refund-card { border-color: #FCA5A5 !important; }
+        .ord-refund-card .card-header { background: #FEF2F2 !important; }
+        .ord-refund-note {
+            background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 8px;
+            padding: 10px 12px; color: #92400E; font-size: 12.5px;
+        }
+        .ord-refund-payer {
+            background: #F0FDF4; border: 1px solid #86EFAC; border-radius: 8px;
+            padding: 12px 14px; font-size: 13px;
+        }
+        .ord-refund-payer-row { display: grid; gap: 4px; }
+        .ord-refund-payer-row + .ord-refund-payer-row { margin-top: 10px; padding-top: 10px; border-top: 1px dashed #86EFAC; }
+        [data-theme="dark"] .ord-refund-card { border-color: rgba(239,68,68,0.35) !important; }
+        [data-theme="dark"] .ord-refund-card .card-header { background: rgba(239,68,68,0.10) !important; }
+        [data-theme="dark"] .ord-refund-note { background: rgba(245,158,11,0.10) !important; border-color: rgba(245,158,11,0.3) !important; color: #FCD34D !important; }
+        [data-theme="dark"] .ord-refund-payer { background: rgba(34,197,94,0.10) !important; border-color: rgba(34,197,94,0.3) !important; color: #E2E8F0 !important; }
+        [data-theme="dark"] .ord-refund-payer-row + .ord-refund-payer-row { border-top-color: rgba(34,197,94,0.3) !important; }
+
+        /* ── Cảnh báo "cần hoàn tiền" (đơn đã thu tiền nhưng bị hủy) ── */
+        .ord-refund-alert {
+            display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+            margin-bottom: 14px; padding: 12px 16px;
+            background: #FEF2F2; border: 1.5px solid #FCA5A5; border-radius: 12px;
+            color: #B91C1C; font-size: 13px; text-decoration: none;
+        }
+        .ord-refund-alert:hover { background: #FEE2E2; border-color: #F87171; color: #991B1B; }
+        .ord-refund-alert b { font-weight: 800; }
+        .ord-refund-alert-cta { margin-left: auto; font-weight: 800; white-space: nowrap; }
+        /* Biến thể vàng cho cảnh báo "yêu cầu hủy đơn" (cần duyệt, chưa phải mất tiền) */
+        .ord-cancelreq-alert { background: #FFFBEB; border-color: #FDE68A; color: #B45309; }
+        .ord-cancelreq-alert:hover { background: #FEF3C7; border-color: #FCD34D; color: #92400E; }
+        [data-theme="dark"] .ord-cancelreq-alert { background: rgba(245,158,11,0.10) !important; border-color: rgba(245,158,11,0.35) !important; color: #FCD34D !important; }
+        [data-theme="dark"] .ord-cancelreq-alert:hover { background: rgba(245,158,11,0.16) !important; color: #FDE68A !important; }
+        [data-theme="dark"] .ord-refund-alert {
+            background: rgba(239,68,68,0.10) !important; border-color: rgba(239,68,68,0.35) !important; color: #FCA5A5 !important;
+        }
+        [data-theme="dark"] .ord-refund-alert:hover { background: rgba(239,68,68,0.16) !important; color: #FECACA !important; }
+
         [data-theme="dark"] .order-badge--cancelled { background: rgba(239,68,68,0.12) !important; border-color: rgba(239,68,68,0.3) !important; color: #FCA5A5 !important; }
         [data-theme="dark"] .payment-badge--paid    { background: rgba(34,197,94,0.12) !important; border-color: rgba(34,197,94,0.3) !important; color: #86EFAC !important; }
         [data-theme="dark"] .payment-badge--unpaid  { background: rgba(239,68,68,0.12) !important; border-color: rgba(239,68,68,0.3) !important; color: #FCA5A5 !important; }
+        [data-theme="dark"] .payment-badge--refunded { background: rgba(59,130,246,0.12) !important; border-color: rgba(59,130,246,0.3) !important; color: #93C5FD !important; }
+        [data-theme="dark"] .order-badge--cancelreq { background: rgba(245,158,11,0.12) !important; border-color: rgba(245,158,11,0.3) !important; color: #FCD34D !important; }
+        [data-theme="dark"] .order-badge--manual    { background: rgba(139,92,246,0.12) !important; border-color: rgba(139,92,246,0.3) !important; color: #C4B5FD !important; }
         [data-theme="dark"] .order-code {
             background: #162843 !important;
             color: #CBD5E1 !important;
+        }
+        [data-theme="dark"] .oc-row-panel {
+            background: #101C33 !important;
+            border-color: #2A3B59 !important;
+        }
+        [data-theme="dark"] .oc-row-panel .hk-cat-item {
+            color: #E2E8F0 !important;
+        }
+        [data-theme="dark"] .oc-row-panel .hk-cat-item:hover {
+            background: #162843 !important;
         }
         [data-theme="dark"] .order-row-action-btn {
             background: #101C33 !important;

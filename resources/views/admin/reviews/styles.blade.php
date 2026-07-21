@@ -1,11 +1,8 @@
+{{-- Kế thừa toàn bộ design system dùng chung của admin (header, toolbar, dropdown, product-table) --}}
+@include('admin.products.styles')
+
 {{-- Styles extracted from index.blade.php --}}
 <style>
-        .mgmt-table thead th {
-            background: #ffffff; color: #111827;
-            font-size: 12px; font-weight: 800; white-space: nowrap;
-        }
-        .mgmt-table tbody td { color: #374151; font-size: 13px; }
-        .mgmt-table tbody tr:nth-child(odd) { background: #f3f3f3; }
         .stars { color: #f59e0b; font-size: 13px; letter-spacing: 1px; }
         .stars .empty { color: #d1d5db; }
         .product-thumb {

@@ -4,6 +4,7 @@
 
 @push('styles')
 @include('admin.products.styles')
+@include('admin.orders.styles')
 <style>
     /* Trang Thống kê doanh thu — dùng biến --hk-* của theme để tự đổi sáng/tối theo nút
        "Giao diện tối" (không dùng @media prefers-color-scheme, có thể lệch trạng thái thật). */
@@ -29,7 +30,7 @@
     @media (max-width: 1200px) { .rev-fgrid { grid-template-columns:repeat(3,1fr); } }
     @media (max-width: 640px) { .rev-fgrid { grid-template-columns:1fr; } }
 
-    .rev-stat-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:14px; margin-bottom:18px; }
+    .rev-stat-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:10px; margin-bottom:18px; }
     .rev-stat { background: var(--hk-bg-card); border:1px solid var(--hk-border); border-radius:14px; padding:16px 18px; }
     .rev-stat-label { font-size:11px; font-weight:700; color: var(--hk-text-2); text-transform:uppercase; letter-spacing:.03em; }
     .rev-stat-value { font-size:21px; font-weight:850; color: var(--hk-text-1); margin-top:6px; }
@@ -61,6 +62,10 @@
     .rev-table thead th a { color:inherit; text-decoration:none; display:flex; align-items:center; gap:4px; }
     .rev-table tbody td { padding:12px 14px; border-bottom:1px solid var(--hk-border); vertical-align:middle; color: var(--hk-text-1); }
     .rev-table tbody tr:hover { background: var(--hk-bg-th); }
+    .rev-stat-rows-wide { display:flex; gap:28px; flex-wrap:wrap; margin-top:6px; }
+    .rev-stat-row { display:flex; align-items:baseline; gap:6px; font-size:14px; }
+    .rev-stat-row span:first-child { color: var(--hk-text-2); }
+    .rev-stat-row span:last-child { font-weight:800; color: var(--hk-text-1); }
     .rev-num { text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums; }
     .rev-profit-pos { color:#15803d; font-weight:800; }
     .rev-profit-neg { color:#dc2626; font-weight:800; }
@@ -147,6 +152,14 @@
     </p>
 
     {{-- Thẻ tổng hợp --}}
+    <div class="rev-stat" style="margin-bottom:10px;">
+        <div class="rev-stat-label">Đơn đặt · Hoàn thành · Hủy</div>
+        <div class="rev-stat-rows-wide">
+            <div class="rev-stat-row"><span>Đơn đặt:</span> <span>{{ number_format($summary['total_placed']) }}</span></div>
+            <div class="rev-stat-row"><span>Hoàn thành:</span> <span>{{ number_format($summary['orders']) }}</span></div>
+            <div class="rev-stat-row"><span>Hủy:</span> <span>{{ number_format($summary['cancelled']) }}</span></div>
+        </div>
+    </div>
     <div class="rev-stat-grid">
         <div class="rev-stat">
             <div class="rev-stat-label">Tổng doanh thu</div>
@@ -167,18 +180,6 @@
         <div class="rev-stat rev-stat--profit {{ $summary['margin'] >= 0 ? 'is-pos' : 'is-neg' }}">
             <div class="rev-stat-label">Biên lợi nhuận gộp</div>
             <div class="rev-stat-value">{{ number_format($summary['margin'], 1) }}%</div>
-        </div>
-        <div class="rev-stat">
-            <div class="rev-stat-label">Giá trị đơn TB (AOV)</div>
-            <div class="rev-stat-value">{{ number_format($summary['aov'], 0, ',', '.') }}đ</div>
-        </div>
-        <div class="rev-stat">
-            <div class="rev-stat-label">Đơn đặt · Hoàn thành · Hủy</div>
-            <div class="rev-stat-value" style="font-size:17px;">{{ number_format($summary['total_placed']) }} · {{ number_format($summary['orders']) }} · {{ number_format($summary['cancelled']) }}</div>
-        </div>
-        <div class="rev-stat">
-            <div class="rev-stat-label">Tỷ lệ chuyển đổi thanh toán</div>
-            <div class="rev-stat-value">{{ number_format($summary['conversion_rate'], 1) }}%</div>
         </div>
     </div>
 

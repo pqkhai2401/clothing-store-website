@@ -4,6 +4,7 @@ namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -47,7 +48,12 @@ class ProfileController extends Controller
 
         $phoneNumber = $this->normalizeVietnamesePhone($request->input('phone_number'));
 
-        $existingPhone = User::where('phone_number', $phoneNumber)
+        // Chỉ loại trừ user đã xóa mềm khỏi check này — SĐT của 1 tài khoản đã soft-delete
+        // vẫn còn UNIQUE ở tầng DB (cột phone_number), nên nếu bỏ qua sẽ lọt qua đây rồi vỡ ở
+        // update() bên dưới. withTrashed() để bắt đúng trường hợp đó ngay từ đầu, thông báo rõ
+        // ràng thay vì để rơi xuống catch QueryException (vốn chỉ là lưới an toàn cuối).
+        $existingPhone = User::withTrashed()
+            ->where('phone_number', $phoneNumber)
             ->where('id', '!=', $user->id)
             ->exists();
 
@@ -76,7 +82,17 @@ class ProfileController extends Controller
             $updateData['avatar_url'] = $avatarPath;
         }
 
-        $user->update($updateData);
+        try {
+            $user->update($updateData);
+        } catch (QueryException $e) {
+            // Lưới an toàn cuối cho race condition: 2 request đồng thời có thể cùng vượt qua
+            // check exists() ở trên (chưa ai commit) rồi cùng đụng UNIQUE constraint DB thật.
+            if ((int) $e->getCode() === 23000 && str_contains(strtolower($e->getMessage()), 'phone_number')) {
+                return back()->withErrors(['phone_number' => 'Số điện thoại đã được sử dụng.'])->withInput();
+            }
+
+            throw $e;
+        }
 
         return back()->with('success', 'Cập nhật thông tin thành công!');
     }
@@ -109,6 +125,16 @@ class ProfileController extends Controller
         $user->update([
             'password' => Hash::make($request->input('new_password')),
         ]);
+
+        // logoutOtherDevices($password) tự kiểm tra $password phải KHỚP với password ĐANG LƯU
+        // trong DB tại thời điểm gọi (Hash::check bên trong SessionGuard) — nên bắt buộc phải
+        // update() mật khẩu mới ở trên TRƯỚC, rồi mới gọi với đúng mật khẩu mới đó ở đây, không
+        // thể gộp/gọi trước được. Tác dụng: buộc đăng xuất mọi phiên/thiết bị khác đang đăng nhập
+        // bằng mật khẩu cũ (vd session bị đánh cắp qua XSS, hoặc quên đăng xuất trên máy công cộng)
+        // — chỉ phiên vừa đổi mật khẩu mới tiếp tục hoạt động. Cần middleware 'auth.session' áp
+        // trên các route đã đăng nhập (routes/web.php) để cơ chế này thực sự kiểm tra lại ở request
+        // kế tiếp của các phiên khác.
+        Auth::logoutOtherDevices($request->input('new_password'));
 
         return back()->with('success', 'Đổi mật khẩu thành công!');
     }

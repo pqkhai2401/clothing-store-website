@@ -30,6 +30,10 @@ $accountRoutes = function (string $accountType): void {
     Route::post('/', [UserController::class, 'store'])->name('store')->defaults('account_type', $accountType);
     if ($accountType === 'customer') {
         Route::patch('/bulk-update-status', [UserController::class, 'bulkUpdateStatus'])->name('bulkUpdateStatus')->defaults('account_type', $accountType);
+        // Thùng rác khách hàng: xem tài khoản đã xóa mềm, khôi phục hoặc xóa vĩnh viễn.
+        Route::get('/trash', [UserController::class, 'trash'])->name('trash')->defaults('account_type', $accountType);
+        Route::patch('/{id}/restore', [UserController::class, 'restore'])->name('restore')->defaults('account_type', $accountType);
+        Route::delete('/{id}/force-delete', [UserController::class, 'forceDelete'])->name('forceDelete')->defaults('account_type', $accountType);
     } elseif ($accountType === 'all') {
         Route::get('/trash', [UserController::class, 'trash'])->name('trash')->defaults('account_type', $accountType);
         Route::post('/bulk-delete', [UserController::class, 'bulkDelete'])->name('bulkDelete')->defaults('account_type', $accountType);
@@ -72,7 +76,8 @@ Route::middleware(['auth.login', 'active.account', 'admin', 'force.password.chan
                 Route::prefix('users')->name('staff.')->group(fn () => $accountRoutes('staff'));
             });
 
-        Route::prefix('products')->name('products.')->group(function () use ($trashRoutes) {
+        Route::middleware('permission:manage-products')
+            ->prefix('products')->name('products.')->group(function () use ($trashRoutes) {
             Route::get('/', [ProductController::class, 'index'])->name('list');
             Route::get('/export', [ProductController::class, 'export'])->name('export');
             Route::get('/create', [ProductController::class, 'create'])->name('create');
@@ -91,7 +96,8 @@ Route::middleware(['auth.login', 'active.account', 'admin', 'force.password.chan
             $trashRoutes(ProductController::class)();
         });
 
-        Route::prefix('categories')->name('categories.')->group(function () use ($trashRoutes) {
+        Route::middleware('permission:manage-categories')
+            ->prefix('categories')->name('categories.')->group(function () use ($trashRoutes) {
             Route::get('/', [CategoryController::class, 'index'])->name('list');
             Route::post('/', [CategoryController::class, 'store'])->name('store');
             Route::get('/{id}/edit', [CategoryController::class, 'edit'])->name('edit');
@@ -104,7 +110,8 @@ Route::middleware(['auth.login', 'active.account', 'admin', 'force.password.chan
             $trashRoutes(CategoryController::class)();
         });
 
-        Route::prefix('brands')->name('brands.')->group(function () use ($trashRoutes) {
+        Route::middleware('permission:manage-brands')
+            ->prefix('brands')->name('brands.')->group(function () use ($trashRoutes) {
             Route::get('/', [BrandController::class, 'index'])->name('list');
             Route::post('/', [BrandController::class, 'store'])->name('store');
             Route::get('/{id}/edit', [BrandController::class, 'edit'])->name('edit');
@@ -117,7 +124,8 @@ Route::middleware(['auth.login', 'active.account', 'admin', 'force.password.chan
             $trashRoutes(BrandController::class)();
         });
 
-        Route::prefix('colors')->name('colors.')->group(function () use ($trashRoutes) {
+        Route::middleware('permission:manage-colors')
+            ->prefix('colors')->name('colors.')->group(function () use ($trashRoutes) {
             Route::get('/', [ColorController::class, 'index'])->name('list');
             Route::post('/', [ColorController::class, 'store'])->name('store');
             Route::get('/{id}/edit', [ColorController::class, 'edit'])->name('edit');
@@ -130,7 +138,8 @@ Route::middleware(['auth.login', 'active.account', 'admin', 'force.password.chan
             $trashRoutes(ColorController::class)();
         });
 
-        Route::prefix('sizes')->name('sizes.')->group(function () use ($trashRoutes) {
+        Route::middleware('permission:manage-sizes')
+            ->prefix('sizes')->name('sizes.')->group(function () use ($trashRoutes){
             Route::get('/', [SizeController::class, 'index'])->name('list');
             Route::post('/', [SizeController::class, 'store'])->name('store');
             Route::get('/{id}/edit', [SizeController::class, 'edit'])->name('edit');
@@ -168,12 +177,14 @@ Route::middleware(['auth.login', 'active.account', 'admin', 'force.password.chan
                 Route::post('/trash/bulk-force-delete', [GoodsReceiptController::class, 'bulkForceDelete'])->name('bulkForceDelete');
                 Route::get('/trash', [GoodsReceiptController::class, 'trash'])->name('trash');
                 Route::get('/{id}/edit', [GoodsReceiptController::class, 'edit'])->name('edit');
+                Route::get('/{id}/print', [GoodsReceiptController::class, 'print'])->name('print');
                 Route::put('/{id}', [GoodsReceiptController::class, 'update'])->name('update');
                 Route::get('/{id}', [GoodsReceiptController::class, 'show'])->name('show');
                 Route::patch('/{id}/complete', [GoodsReceiptController::class, 'complete'])->name('complete');
                 Route::patch('/{id}/adjust', [GoodsReceiptController::class, 'adjust'])->name('adjust');
                 Route::patch('/{id}/restore', [GoodsReceiptController::class, 'restore'])->name('restore');
                 Route::delete('/{id}/force-delete', [GoodsReceiptController::class, 'forceDelete'])->name('forceDelete');
+                Route::delete('/{id}/trash', [GoodsReceiptController::class, 'trashDelete'])->name('trashDelete');
                 Route::delete('/{id}', [GoodsReceiptController::class, 'destroy'])->name('destroy');
             });
 
@@ -197,6 +208,7 @@ Route::middleware(['auth.login', 'active.account', 'admin', 'force.password.chan
                 Route::post('/trash/bulk-force-delete', [StockIssueController::class, 'bulkForceDelete'])->name('bulkForceDelete');
                 $trashRoutes(StockIssueController::class)();
                 Route::get('/{id}', [StockIssueController::class, 'show'])->name('show');
+                Route::get('/{id}/print', [StockIssueController::class, 'print'])->name('print');
                 Route::get('/{id}/edit', [StockIssueController::class, 'edit'])->name('edit');
                 Route::put('/{id}', [StockIssueController::class, 'update'])->name('update');
                 Route::patch('/{id}/issue', [StockIssueController::class, 'confirm'])->name('issue');
@@ -228,12 +240,18 @@ Route::middleware(['auth.login', 'active.account', 'admin', 'force.password.chan
             Route::get('/search-customers', [OrderController::class, 'searchCustomers'])->name('searchCustomers');
             Route::get('/search-variants', [OrderController::class, 'searchVariants'])->name('searchVariants');
             Route::get('/customers/{user}/addresses', [OrderController::class, 'customerAddresses'])->name('customerAddresses');
+            Route::get('/check-voucher', [OrderController::class, 'checkVoucher'])->name('checkVoucher');
             Route::post('/trash/bulk-restore', [OrderController::class, 'bulkRestore'])->name('bulkRestore');
             Route::post('/trash/bulk-force-delete', [OrderController::class, 'bulkForceDelete'])->name('bulkForceDelete');
             $trashRoutes(OrderController::class)();
             Route::get('/{id}/detail', [OrderController::class, 'detail'])->name('detail');
+            Route::get('/{id}/invoice', [OrderController::class, 'invoice'])->name('invoice');
+            Route::get('/{id}/refund-info', [OrderController::class, 'refundInfo'])->name('refundInfo');
+            Route::patch('/{id}/mark-refunded', [OrderController::class, 'markRefunded'])->name('markRefunded');
+            Route::patch('/cancel-requests/{id}', [OrderController::class, 'processCancelRequest'])->name('processCancelRequest');
             Route::get('/{id}/edit-content', [OrderController::class, 'editContent'])->name('editContent');
             Route::put('/{id}/edit-content', [OrderController::class, 'updateContent'])->name('updateContent');
+            Route::patch('/{id}/quick-status', [OrderController::class, 'quickUpdateStatus'])->name('quickUpdateStatus');
             Route::delete('/{id}', [OrderController::class, 'destroy'])->name('destroy');
             });
 

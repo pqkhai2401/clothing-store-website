@@ -125,5 +125,6 @@
     <script src="{{ asset('js/back-to-top.js') }}"></script>
 
     @stack('scripts')
+    @include('layouts.components.confirm.global')
 </body>
 </html>

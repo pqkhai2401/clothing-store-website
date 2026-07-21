@@ -728,6 +728,15 @@
             formData.delete('current_password');
         }
 
+        // Nhân viên không được đổi email nên ô này ở chế độ readonly. Trình duyệt
+        // vẫn gửi kèm giá trị readonly, mà backend lại validate 'prohibited' cho
+        // non-admin → mọi lần lưu đều 422 "email field is prohibited", khiến họ
+        // không thể tự đổi mật khẩu sau khi bị admin reset. Bỏ hẳn field khi readonly.
+        const emailInput = document.getElementById('profile_email');
+        if (emailInput && emailInput.hasAttribute('readonly')) {
+            formData.delete('email');
+        }
+
         // PHP không tự parse được body multipart/form-data trên request PATCH thật sự,
         // nên phải gửi bằng POST kèm _method=PATCH để Laravel spoof lại đúng route.
         formData.append('_method', 'PATCH');

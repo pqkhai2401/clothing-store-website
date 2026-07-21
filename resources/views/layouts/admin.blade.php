@@ -18,6 +18,7 @@
     @stack('scripts')
     @stack('modals')
     @include('admin.partials.profile-modal')
+    @include('layouts.components.confirm.global')
 </body>
 
 </html>

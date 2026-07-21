@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\OrderSource;
+use App\Enums\PaymentStatus;
 use App\Enums\UserRole;
 use App\Exports\OrdersExport;
 use App\Http\Controllers\Controller;
@@ -11,6 +13,7 @@ use App\Models\OrderItem;
 use App\Models\PaymentMethod;
 use App\Models\ProductVariant;
 use App\Models\User;
+use App\Services\VoucherService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -34,6 +37,7 @@ class OrderController extends Controller
     public const PAYMENT_STATUS_LABELS = [
         'unpaid' => 'Chưa thanh toán',
         'paid' => 'Đã thanh toán',
+        'refunded' => 'Đã hoàn tiền',
     ];
 
     public const STATUS_BADGE = [
@@ -51,7 +55,7 @@ class OrderController extends Controller
     public const STATUS_TRANSITIONS = [
         'pending'    => ['processing', 'cancelled'],
         'processing' => ['shipping', 'cancelled'],
-        'shipping'   => ['completed'],
+        'shipping'   => ['completed', 'cancelled'],
         'completed'  => [],
         'cancelled'  => [],
     ];
@@ -199,6 +203,12 @@ class OrderController extends Controller
                 ->sum('total_money'),
             'cancelledOrders' => $rangeQuery()->where('status', 'cancelled')->count(),
             'pendingOrders'   => Order::where('status', 'pending')->count(),
+            // Đơn ĐÃ THU TIỀN nhưng bị hủy → còn nợ khách tiền, admin phải hoàn thủ công.
+            // Suy ra trực tiếp từ trạng thái, không cần lưu thêm cột/bảng nào.
+            'refundPending'       => Order::where('status', 'cancelled')->where('payment_status', 'paid')->count(),
+            'refundPendingAmount' => (float) Order::where('status', 'cancelled')->where('payment_status', 'paid')->sum('total_money'),
+            // Yêu cầu hủy đơn do khách gửi, đang chờ admin duyệt.
+            'cancelRequests'      => \App\Models\OrderCancelRequest::pending()->count(),
         ];
     }
 
@@ -217,7 +227,14 @@ class OrderController extends Controller
         // Ẩn đơn online (PayOS/MoMo) chưa thanh toán khỏi danh sách xử lý (và file xuất): đây là
         // đơn "đang chờ thanh toán", chưa chốt — admin không xử lý được (canAdvanceOnlineOrder chặn)
         // và sẽ tự supersede/hết hạn. Đơn online đã thanh toán / COD / chuyển khoản vẫn hiển thị.
-        $query = Order::with(['user', 'paymentMethod'])->excludingUnpaidOnline();
+        // pendingCancelRequest: để bảng hiện nhãn "Khách xin hủy" ngay trên dòng (tránh N+1).
+        $query = Order::with(['user', 'paymentMethod', 'pendingCancelRequest'])->excludingUnpaidOnline();
+
+        // Lọc đúng các đơn KHÁCH ĐANG XIN HỦY (không phải mọi đơn "đang xử lý"): yêu cầu có thể
+        // nằm ở đơn 'processing' lẫn 'shipping' nên phải lọc theo chính bản ghi yêu cầu.
+        if ($request->boolean('cancel_request')) {
+            $query->whereHas('cancelRequests', fn ($q) => $q->pending());
+        }
 
         if ($search !== '') {
             $query->where(function ($q) use ($search) {
@@ -297,6 +314,8 @@ class OrderController extends Controller
             'dateFrom'      => $dateFrom,
             'dateTo'        => $dateTo,
             'perPage'       => $perPage,
+            // Đang lọc "khách xin hủy" → hiện chip để admin biết và tắt được.
+            'cancelRequestFilter' => $request->boolean('cancel_request'),
         ]));
     }
 
@@ -326,11 +345,21 @@ class OrderController extends Controller
         foreach ($eligibleOrders as $order) {
             try {
                 DB::transaction(function () use ($order, $validated) {
-                    $order->update(['status' => $validated['status']]);
+                    // Khóa + kiểm tra lại trong transaction: đơn có thể vừa bị luồng khác đổi
+                    // trạng thái sau bước lọc eligibleOrders (đọc không khóa) ở trên.
+                    $locked = Order::with('paymentMethod')->whereKey($order->id)->lockForUpdate()->firstOrFail();
+
+                    if (! self::isValidStatusTransition($locked->status, $validated['status'])
+                        || ! self::canAdvanceOnlineOrder($locked, $validated['status'])) {
+                        throw new \App\Exceptions\StaleOrderStateException();
+                    }
+
+                    $locked->update(['status' => $validated['status']]);
                     if (in_array($validated['status'], ['processing', 'shipping'], true)) {
-                        $this->autoGenerateStockIssueForOrder($order);
+                        $this->autoGenerateStockIssueForOrder($locked);
                     } elseif ($validated['status'] === 'cancelled') {
-                        $this->restoreStockForCancelledOrder($order);
+                        $this->restoreStockForCancelledOrder($locked);
+                        \App\Services\VoucherService::releaseUsage($locked->id);
                     }
                 });
                 $updated++;
@@ -364,7 +393,54 @@ class OrderController extends Controller
             'paymentMethods' => PaymentMethod::where('status', true)->orderBy('name')->get(),
             'statusLabels'   => self::STATUS_LABELS,
             'paymentStatusLabels' => self::PAYMENT_STATUS_LABELS,
+            // Khi validate() ở store() thất bại (vd. trùng SĐT), Laravel redirect back() +
+            // withInput() về chính trang này — nhưng danh sách sản phẩm đã thêm chỉ tồn tại
+            // trong biến JS `items` phía client, KHÔNG có input <select multiple> nào giữ lại
+            // nên reload xong sẽ mất trắng. Dựng lại đầy đủ dữ liệu hiển thị (tên, ảnh, giá...)
+            // từ old('items') (chỉ có product_variant_id + quantity) để JS bootstrap lại bảng.
+            'oldItems'       => $this->buildOldItemsForDisplay(old('items', [])),
         ]);
+    }
+
+    /**
+     * Dựng lại dữ liệu hiển thị đầy đủ (tên, ảnh, màu, size, giá, tồn) cho các sản phẩm đã
+     * chọn trước đó từ old('items') (chỉ có product_variant_id + quantity) — dùng khi trang
+     * "Thêm đơn hàng" reload lại sau một lần submit thất bại, để bảng sản phẩm không bị mất.
+     */
+    private function buildOldItemsForDisplay(array $oldItemsRaw): array
+    {
+        if (empty($oldItemsRaw)) {
+            return [];
+        }
+
+        $variantIds = collect($oldItemsRaw)->pluck('product_variant_id')->filter()->all();
+        $variants = ProductVariant::with(['product:id,name,thumbnail', 'color:id,name,hex_code', 'size:id,name'])
+            ->whereIn('id', $variantIds)
+            ->get()
+            ->keyBy('id');
+
+        return collect($oldItemsRaw)
+            ->map(function ($item) use ($variants) {
+                $variant = $variants[$item['product_variant_id'] ?? null] ?? null;
+                if (! $variant) {
+                    return null;
+                }
+
+                return [
+                    'id'         => $variant->id,
+                    'name'       => $variant->product->name ?? '',
+                    'thumbnail'  => $variant->product->thumbnail ?? null,
+                    'color'      => $variant->color->name ?? '',
+                    'color_hex'  => $variant->color?->display_hex_code ?? '#ccc',
+                    'size'       => $variant->size->name ?? '',
+                    'unit_price' => (float) $variant->final_price,
+                    'stock'      => $variant->stock,
+                    'quantity'   => (int) ($item['quantity'] ?? 1),
+                ];
+            })
+            ->filter()
+            ->values()
+            ->all();
     }
 
     public function searchCustomers(Request $request)
@@ -398,7 +474,7 @@ class OrderController extends Controller
         $q = trim((string) $request->input('q'));
 
         $variants = ProductVariant::query()
-            ->with(['product:id,name', 'color:id,name', 'size:id,name'])
+            ->with(['product:id,name,thumbnail', 'color:id,name,hex_code', 'size:id,name'])
             ->whereHas('product', fn ($p) => $p->where('status', true))
             ->where('stock', '>', 0)
             ->when($q !== '', function ($query) use ($q) {
@@ -413,7 +489,9 @@ class OrderController extends Controller
             ->map(fn (ProductVariant $variant) => [
                 'id'          => $variant->id,
                 'product_name' => $variant->product->name,
+                'thumbnail'   => $variant->product->thumbnail,
                 'color'       => $variant->color->name ?? '',
+                'color_hex'   => $variant->color?->display_hex_code ?? '#ccc',
                 'size'        => $variant->size->name ?? '',
                 'sku'         => $variant->sku,
                 'stock'       => $variant->stock,
@@ -423,21 +501,72 @@ class OrderController extends Controller
         return response()->json(['variants' => $variants]);
     }
 
+    /**
+     * Xem trước mã giảm giá khi admin đang nhập ở trang Thêm đơn hàng — chỉ để hiển thị số
+     * tiền được giảm ngay lúc gõ, KHÔNG khóa dòng/ghi lượt dùng (việc đó chỉ xảy ra thật sự
+     * lúc store() tạo đơn, xem VoucherService::lockAndRecordUsage()).
+     */
+    public function checkVoucher(Request $request)
+    {
+        $request->validate([
+            'code'     => ['required', 'string', 'max:255'],
+            'subtotal' => ['required', 'numeric', 'min:0'],
+            'user_id'  => ['nullable', 'integer'],
+        ]);
+
+        $subtotal = (float) $request->input('subtotal');
+
+        try {
+            $voucher = VoucherService::validate(
+                $request->input('code'),
+                $subtotal,
+                $request->input('user_id') ? (int) $request->input('user_id') : null
+            );
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->errors()['voucher_code'][0] ?? 'Mã giảm giá không hợp lệ.',
+            ], 422);
+        }
+
+        $discountAmount = VoucherService::calculateDiscount($voucher, $subtotal);
+
+        return response()->json([
+            'success'         => true,
+            'discount_amount' => round($discountAmount, 2),
+        ]);
+    }
+
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'user_id'           => ['nullable', 'integer', Rule::exists('users', 'id')],
+        $validator = Validator::make($request->all(), [
+            // Chỉ kiểm tra user_id tồn tại VÀ có role customer — tránh gán nhầm đơn cho một
+            // tài khoản nhân sự/admin nếu request bị chỉnh sửa tay (id đó vẫn "tồn tại" nhưng
+            // không phải khách hàng). Dùng closure vì scope role() cần Eloquent builder, không
+            // gọi được qua Rule::exists() (chỉ có query builder thô).
+            'user_id'           => ['nullable', 'integer', function ($attribute, $value, $fail) {
+                if ($value && ! User::role(UserRole::CUSTOMER->value)->where('id', $value)->exists()) {
+                    $fail('Khách hàng đã chọn không hợp lệ.');
+                }
+            }],
             'customer_name'     => ['required_without:user_id', 'nullable', 'string', 'max:255'],
+            // Không tự ràng buộc address_id thuộc đúng user_id ở đây được (Rule::exists không so
+            // sánh chéo cột từ input khác) — việc đó nằm ở closure after() bên dưới, để trả lỗi rõ
+            // ràng thay vì để Address::firstOrFail() trong transaction ném 404 xấu.
             'address_id'        => ['nullable', 'integer', Rule::exists('addresses', 'id')],
             'new_address.city'              => ['required_without:address_id', 'nullable', 'string', 'max:255'],
-            'new_address.district'          => ['nullable', 'string', 'max:255'],
             'new_address.ward'              => ['required_without:address_id', 'nullable', 'string', 'max:255'],
             'new_address.apartment_number'  => ['required_without:address_id', 'nullable', 'string', 'max:255'],
-            'phone'              => ['required', 'string', 'max:20'],
+            // Khi tạo khách hàng mới (user_id trống), SĐT sẽ được dùng làm phone_number của tài
+            // khoản mới → phải duy nhất, nếu không sẽ vỡ unique constraint ở tầng DB (500 lỗi xấu
+            // thay vì thông báo rõ ràng cho admin). ignore(user_id) để khi ĐÃ chọn khách có sẵn thì
+            // không tự chặn nhầm chính SĐT của họ.
+            'phone'              => ['required', 'string', 'max:20', Rule::unique('users', 'phone_number')->ignore($request->input('user_id'))],
             'payment_method_id' => ['required', 'integer', Rule::exists('payment_methods', 'id')],
             'status'             => ['required', Rule::in(array_keys(self::STATUS_LABELS))],
             'payment_status'     => ['required', Rule::in(array_keys(self::PAYMENT_STATUS_LABELS))],
             'shipping_fee'       => ['required', 'numeric', 'min:0'],
+            'voucher_code'       => ['nullable', 'string', 'max:255'],
             'note'               => ['nullable', 'string', 'max:1000'],
             'items'              => ['required', 'array', 'min:1'],
             'items.*.product_variant_id' => ['required', 'integer', Rule::exists('product_variants', 'id')],
@@ -448,10 +577,54 @@ class OrderController extends Controller
             'new_address.ward.required_without' => 'Vui lòng nhập phường/xã cho địa chỉ mới.',
             'new_address.apartment_number.required_without' => 'Vui lòng nhập địa chỉ cụ thể cho địa chỉ mới.',
             'phone.required' => 'Vui lòng nhập số điện thoại.',
+            'phone.unique' => 'Số điện thoại này đã được dùng bởi một khách hàng khác — vui lòng tìm và chọn khách hàng đó thay vì tạo mới.',
             'payment_method_id.required' => 'Vui lòng chọn phương thức thanh toán.',
             'items.required' => 'Vui lòng thêm ít nhất một sản phẩm vào đơn hàng.',
             'items.*.quantity.min' => 'Số lượng sản phẩm phải lớn hơn 0.',
         ]);
+
+        $validator->after(function ($validator) use ($request) {
+            $userId    = $request->input('user_id');
+            $addressId = $request->input('address_id');
+
+            // address_id phải thuộc đúng khách hàng đã chọn — nếu không, đó là dữ liệu bị
+            // lệch (customer đã đổi mà address cũ chưa được reset) chứ không phải lỗi hệ thống.
+            if ($addressId) {
+                if (! $userId) {
+                    $validator->errors()->add('address_id', 'Không thể chọn địa chỉ đã lưu khi chưa chọn khách hàng có sẵn.');
+                } elseif (! Address::where('id', $addressId)->where('user_id', $userId)->exists()) {
+                    $validator->errors()->add('address_id', 'Địa chỉ đã chọn không thuộc về khách hàng này.');
+                }
+            }
+
+            // Chặn đặt số lượng vượt tồn kho ngay lúc tạo đơn — trước đây chỉ được kiểm ở
+            // autoGenerateStockIssueForOrder() nên đơn "Chờ xác nhận"/"Đã hủy" vẫn lưu được số
+            // lượng vô lý (vượt tồn thực tế), chỉ vỡ ra khi ai đó chuyển đơn sang "Đang xử lý".
+            // Giới hạn max=stock trên input chỉ ở phía client, dễ bị qua mặt nếu gửi thẳng request.
+            $items = $request->input('items', []);
+            if (is_array($items)) {
+                $variantIds = collect($items)->pluck('product_variant_id')->filter()->all();
+                $variants = ProductVariant::with('product:id,name')->whereIn('id', $variantIds)->get()->keyBy('id');
+
+                foreach ($items as $idx => $item) {
+                    $variant = $variants[$item['product_variant_id'] ?? null] ?? null;
+                    if (! $variant) continue;
+
+                    if ((int) ($item['quantity'] ?? 0) > $variant->stock) {
+                        $productName = $variant->product->name ?? 'Sản phẩm';
+                        // Bảng sản phẩm ở giao diện được JS dựng lại từ mảng rỗng mỗi lần tải trang
+                        // (không phục hồi lại danh sách cũ khi validate lỗi), nên nêu rõ tên sản
+                        // phẩm trong lỗi — nếu không admin sẽ không biết items.{idx} nào bị sai.
+                        $validator->errors()->add(
+                            "items.{$idx}.quantity",
+                            "Số lượng sản phẩm \"{$productName}\" ({$item['quantity']}) vượt quá tồn kho hiện có ({$variant->stock})."
+                        );
+                    }
+                }
+            }
+        });
+
+        $validated = $validator->validate();
 
         $order = DB::transaction(function () use ($validated) {
             // Không chọn khách có sẵn (user_id trống) → tự tạo khách hàng mới từ Tên + SĐT đã nhập.
@@ -475,34 +648,52 @@ class OrderController extends Controller
                 : Address::create([
                     'user_id'          => $userId,
                     'city'             => $validated['new_address']['city'],
-                    'district'         => $validated['new_address']['district'] ?? null,
                     'ward'             => $validated['new_address']['ward'],
                     'apartment_number' => $validated['new_address']['apartment_number'],
                 ]);
 
             $orderCode = app(\App\Services\DocumentSequenceService::class)->generateOrderCode();
 
-            $variants = ProductVariant::with('product')
+            $variants = ProductVariant::with(['product', 'color', 'size'])
                 ->whereIn('id', collect($validated['items'])->pluck('product_variant_id'))
                 ->get()
                 ->keyBy('id');
 
-            $totalMoney = 0;
+            $subtotal = 0;
             foreach ($validated['items'] as $item) {
                 $variant = $variants[$item['product_variant_id']];
-                $totalMoney += $variant->final_price * $item['quantity'];
+                $subtotal += $variant->final_price * $item['quantity'];
             }
-            $totalMoney += (float) $validated['shipping_fee'];
+
+            // Voucher: validate lại đúng luật dùng chung với checkout khách hàng (VoucherService) —
+            // không tin discount từ client. $userId ở đây có thể là khách vừa tạo mới trong chính
+            // transaction này nên không thể pre-check trước transaction như checkout (nơi user đã
+            // đăng nhập sẵn) — validate ngay tại đây, và lockAndRecordUsage() bên dưới mới là bước
+            // chống race-condition thật sự (2 request cùng dùng 1 mã cùng lúc).
+            $voucher = null;
+            $discountAmount = 0.0;
+            if (! empty($validated['voucher_code'])) {
+                $voucher = VoucherService::validate($validated['voucher_code'], $subtotal, $userId);
+                $discountAmount = VoucherService::calculateDiscount($voucher, $subtotal);
+            }
+
+            $totalMoney = $subtotal - $discountAmount + (float) $validated['shipping_fee'];
 
             $order = Order::create([
                 'user_id'           => $userId,
                 'address_id'        => $address->id,
                 'payment_method_id' => $validated['payment_method_id'],
+                // Phân biệt với đơn khách tự đặt qua website (mặc định 'online' theo cột DB) —
+                // ghi lại luôn nhân sự đã tạo để tra soát khi cần.
+                'source'            => OrderSource::ADMIN->value,
+                'created_by'        => Auth::id(),
                 'order_code'        => $orderCode,
                 'phone'             => $validated['phone'],
                 'note'              => $validated['note'] ?? null,
                 'total_money'       => $totalMoney,
                 'shipping_fee'      => $validated['shipping_fee'],
+                'voucher_id'        => $voucher?->id,
+                'discount_amount'   => $discountAmount,
                 'status'            => $validated['status'],
                 // Đơn tạo thẳng ở trạng thái "Hoàn thành" coi như đã thu tiền → tự đánh dấu đã thanh toán.
                 'payment_status'    => $validated['status'] === 'completed' ? 'paid' : $validated['payment_status'],
@@ -511,19 +702,44 @@ class OrderController extends Controller
                 'completed_at'      => $validated['status'] === 'completed' ? now() : null,
             ]);
 
+            // "status" cho phép tạo thẳng đơn ở trạng thái "Đã hủy" ngay từ đầu — đơn này chưa từng
+            // thật sự tồn tại/giao dịch nên KHÔNG được tính là một lượt dùng mã (nếu không, huỷ nó
+            // sau đó không giải phóng được lượt dùng vì không có bước chuyển trạng thái nào chạy
+            // qua releaseUsage(), khiến voucher bị "mất" một lượt vĩnh viễn oan uổng).
+            if ($voucher && $validated['status'] !== 'cancelled') {
+                VoucherService::lockAndRecordUsage($voucher->id, $userId, $order->id);
+            }
+
             foreach ($validated['items'] as $item) {
                 $variant = $variants[$item['product_variant_id']];
                 OrderItem::create([
                     'order_id'           => $order->id,
                     'product_variant_id' => $variant->id,
+                    // Snapshot thông tin sản phẩm lúc tạo đơn (M4).
+                    'product_name'       => $variant->product?->name,
+                    'variant_sku'        => $variant->sku,
+                    'color_name'         => $variant->color?->name,
+                    'size_name'          => $variant->size?->name,
                     'unit_price'         => $variant->final_price,
                     'quantity'           => $item['quantity'],
                 ]);
+
+                // HOLD: giữ hàng ngay khi tạo đơn (mọi trạng thái, giống luồng khách checkout).
+                // consumeFifo tự khóa lô + ném ValidationException nếu thiếu → nằm trong
+                // transaction nên rollback cả đơn. Đơn tạo thẳng ở trạng thái "Đã hủy" thì bỏ qua.
+                if ($order->status !== 'cancelled') {
+                    app(\App\Services\InventoryBatchService::class)->consumeFifo(
+                        \App\Models\ProductVariant::lockForUpdate()->find($variant->id),
+                        (int) $item['quantity'],
+                        'order',
+                        $order->id,
+                        $userId
+                    );
+                }
             }
 
-            // Nếu tạo đơn ở trạng thái đã "xuất hàng" thì trừ kho ngay (giống luồng update).
-            // autoGenerateStockIssueForOrder tự khóa + kiểm tra tồn từng biến thể và ném
-            // ValidationException nếu thiếu → nằm trong transaction nên rollback cả đơn.
+            // Đơn tạo thẳng ở trạng thái đã "xuất hàng" thì sinh luôn phiếu xuất kho (chứng từ).
+            // Kho đã được giữ ở trên nên bước này KHÔNG trừ lại.
             if (in_array($order->status, ['processing', 'shipping', 'completed'], true)) {
                 $this->autoGenerateStockIssueForOrder($order);
             }
@@ -555,12 +771,13 @@ class OrderController extends Controller
         return "khach.{$phone}.{$suffix}@khachhang.local";
     }
 
-    public function detail(string $id)
+    public function detail(Request $request, string $id)
     {
         $order = Order::with([
             'user',
             'address',
             'paymentMethod',
+            'createdBy',
             'orderItems.productVariant.product',
             'orderItems.productVariant.color',
             'orderItems.productVariant.size',
@@ -581,10 +798,248 @@ class OrderController extends Controller
                 'status'       => $order->status,
                 'status_label' => self::STATUS_LABELS[$order->status] ?? $order->status,
                 'status_css'   => self::STATUS_BADGE[$order->status] ?? '',
+                'invoice_url'  => route('admin.orders.invoice', $order->id),
             ]);
         }
 
         return view('admin.orders.detail', $data);
+    }
+
+    /**
+     * Tra cứu thông tin để HOÀN TIỀN cho một đơn đã thu tiền nhưng bị hủy.
+     *
+     * Hệ thống không tự chuyển tiền. Việc admin cần là biết "hoàn cho ai, vào đâu":
+     *  - Đơn thanh toán online THẬT (có payos_order_code/momo_order_id) → hỏi cổng để lấy
+     *    thông tin giao dịch. PayOS trả về tài khoản NGƯỜI CHUYỂN (counterAccount*) → đủ để
+     *    chuyển khoản lại. MoMo là ví nên chỉ có mã giao dịch, phải hoàn qua dashboard MoMo.
+     *  - Đơn được đánh dấu "đã thanh toán" thủ công / COD → KHÔNG có giao dịch để tra,
+     *    chỉ còn cách liên hệ khách qua SĐT/email trên đơn.
+     */
+    public function refundInfo(string $id)
+    {
+        $order = Order::with(['user', 'paymentMethod'])->findOrFail($id);
+
+        $payload = [
+            'order_code' => $order->order_code,
+            'amount'     => (float) $order->total_money,
+            'gateway'    => null,
+            'reference'  => null,
+            'payers'     => [],
+            'customer'   => [
+                'name'  => $order->user?->username,
+                'phone' => collect([$order->phone, $order->user?->phone_number])
+                    ->first(fn ($p) => $p && $p !== '0'),
+                'email' => $order->user?->email,
+            ],
+            'message'    => null,
+        ];
+
+        if ($order->payos_order_code) {
+            $payload['gateway']   = 'PayOS';
+            $payload['reference'] = (string) $order->payos_order_code;
+
+            try {
+                $info = app(\App\Services\PayosService::class)->getPaymentInfo((int) $order->payos_order_code);
+
+                foreach (($info['transactions'] ?? []) as $tx) {
+                    $payload['payers'][] = [
+                        'name'      => $tx['counterAccountName'] ?? null,
+                        'account'   => $tx['counterAccountNumber'] ?? null,
+                        'bank'      => $tx['counterAccountBankId'] ?? ($tx['counterAccountBankName'] ?? null),
+                        'amount'    => $tx['amount'] ?? null,
+                        'paid_at'   => $tx['transactionDateTime'] ?? null,
+                        'reference' => $tx['reference'] ?? null,
+                    ];
+                }
+
+                if (empty($payload['payers'])) {
+                    $payload['message'] = $info
+                        ? 'Cổng không trả về giao dịch nào cho mã này — hãy tra thủ công trong dashboard PayOS.'
+                        : 'Không tra cứu được từ PayOS (mã không tồn tại hoặc kết nối lỗi).';
+                }
+            } catch (\Throwable $e) {
+                $payload['message'] = 'Lỗi khi gọi PayOS: ' . $e->getMessage();
+            }
+        } elseif ($order->momo_order_id) {
+            $payload['gateway']   = 'MoMo';
+            $payload['reference'] = (string) $order->momo_order_id;
+
+            try {
+                $info = app(\App\Services\MomoService::class)->queryPayment((string) $order->momo_order_id);
+                $payload['message'] = $info
+                    ? 'MoMo là ví điện tử nên không trả về số tài khoản người trả. Dùng mã giao dịch '
+                      . ($info['transId'] ?? $order->momo_order_id) . ' để hoàn tiền trong dashboard MoMo.'
+                    : 'Không tra cứu được từ MoMo (mã không tồn tại hoặc kết nối lỗi).';
+            } catch (\Throwable $e) {
+                $payload['message'] = 'Lỗi khi gọi MoMo: ' . $e->getMessage();
+            }
+        } else {
+            $payload['message'] = 'Đơn này KHÔNG có giao dịch qua cổng thanh toán (được đánh dấu '
+                . 'đã thanh toán thủ công hoặc thu tiền mặt) — không thể tra cứu tự động. '
+                . 'Vui lòng liên hệ khách theo SĐT/email bên dưới để lấy thông tin nhận tiền.';
+        }
+
+        return response()->json($payload);
+    }
+
+    /**
+     * Đánh dấu ĐÃ HOÀN TIỀN cho đơn đã thu tiền nhưng bị hủy.
+     *
+     * Đi đường riêng (không qua form cập nhật đơn) vì applyStatusChange() cố tình KHÓA
+     * payment_status với đơn dùng cổng online — chỉ webhook mới được đổi. Việc hoàn tiền là
+     * thao tác tay của admin nên cần một lối vào tường minh, có ghi vết ai làm/lúc nào.
+     *
+     * Sau khi đổi sang 'refunded': cảnh báo "Cần hoàn tiền" tự tắt (điều kiện là cancelled+paid),
+     * và đơn không còn được tính vào doanh thu.
+     */
+    public function markRefunded(Request $request, string $id)
+    {
+        $order = Order::with('paymentMethod')->findOrFail($id);
+
+        $validated = $request->validate([
+            'note'          => ['nullable', 'string', 'max:500'],
+            'refund_amount' => ['nullable', 'numeric', 'gt:0', 'max:' . $order->total_money],
+        ], [
+            'note.max'              => 'Ghi chú hoàn tiền không được quá 500 ký tự.',
+            'refund_amount.numeric' => 'Số tiền hoàn không hợp lệ.',
+            'refund_amount.gt'      => 'Số tiền hoàn phải lớn hơn 0.',
+            'refund_amount.max'     => 'Số tiền hoàn không được vượt quá tổng tiền đơn (' . number_format($order->total_money, 0, ',', '.') . '₫).',
+        ]);
+
+        // Chỉ đơn ĐÃ HỦY + ĐÃ THU TIỀN mới có tiền để hoàn. Khóa dòng + kiểm tra lại để 2 admin
+        // bấm cùng lúc không ghi đè nhau.
+        $done = DB::transaction(function () use ($order, $validated) {
+            $fresh = Order::whereKey($order->id)->lockForUpdate()->first();
+
+            if (! $fresh
+                || $fresh->status !== 'cancelled'
+                || $fresh->payment_status !== PaymentStatus::PAID->value
+            ) {
+                return false;
+            }
+
+            // Mặc định hoàn đủ total_money — admin chỉ cần nhập số khác khi hoàn 1 phần
+            // (ví dụ trừ phí giao dịch của cổng thanh toán).
+            $refundAmount = $validated['refund_amount'] ?? $fresh->total_money;
+
+            $fresh->update([
+                'payment_status' => PaymentStatus::REFUNDED->value,
+                'refund_amount'  => $refundAmount,
+                'refunded_at'    => now(),
+            ]);
+
+            app(\App\Services\PaymentReconciliationService::class)
+                ->logRefundCompleted($fresh, $validated['note'] ?? null);
+
+            return true;
+        });
+
+        if (! $done) {
+            $message = 'Đơn này không ở trạng thái cần hoàn tiền (phải là đơn đã hủy và đã thanh toán).';
+
+            return $request->expectsJson()
+                ? response()->json(['success' => false, 'message' => $message], 422)
+                : back()->with('error', $message);
+        }
+
+        $message = 'Đã ghi nhận hoàn tiền cho đơn ' . ($order->order_code ?? '#' . $order->id) . '.';
+
+        return $request->expectsJson()
+            ? response()->json(['success' => true, 'message' => $message])
+            : back()->with('success', $message);
+    }
+
+    /**
+     * Admin DUYỆT hoặc TỪ CHỐI yêu cầu hủy đơn do khách gửi.
+     *
+     * Duyệt = hủy đơn theo đúng luồng chuẩn: nhả kho về đúng lô (releaseHold), nhả voucher, và
+     * nếu đơn đã thu tiền thì tự bật cờ "Cần hoàn tiền" để admin hoàn lại cho khách.
+     */
+    public function processCancelRequest(Request $request, string $id)
+    {
+        $validated = $request->validate([
+            'action'     => ['required', Rule::in(['approve', 'reject'])],
+            'admin_note' => ['nullable', 'string', 'max:500'],
+        ], [
+            'action.required' => 'Thiếu hành động cần thực hiện.',
+            'admin_note.max'  => 'Ghi chú không được quá 500 ký tự.',
+        ]);
+
+        $cancelRequest = \App\Models\OrderCancelRequest::with('order')->findOrFail($id);
+
+        $done = DB::transaction(function () use ($cancelRequest, $validated) {
+            // Khóa để 2 admin bấm cùng lúc không xử lý trùng.
+            $fresh = \App\Models\OrderCancelRequest::whereKey($cancelRequest->id)->lockForUpdate()->first();
+            if (! $fresh || ! $fresh->isPending()) {
+                return false;
+            }
+
+            if ($validated['action'] === 'approve') {
+                $order = Order::whereKey($fresh->order_id)->lockForUpdate()->first();
+
+                // Đơn có thể đã bị hủy/hoàn tất bởi luồng khác trong lúc chờ duyệt.
+                if (! $order || ! in_array($order->status, \App\Models\OrderCancelRequest::REQUESTABLE_ORDER_STATUSES, true)) {
+                    return false;
+                }
+
+                $order->update(['status' => 'cancelled']);
+
+                // Nhả kho về đúng lô + bật cờ "Cần hoàn tiền" nếu đơn đã thu tiền.
+                app(\App\Services\OrderCancellationService::class)->releaseHold($order->fresh());
+                VoucherService::releaseUsage($order->id);
+            }
+
+            $fresh->update([
+                'status'       => $validated['action'] === 'approve'
+                    ? \App\Models\OrderCancelRequest::STATUS_APPROVED
+                    : \App\Models\OrderCancelRequest::STATUS_REJECTED,
+                'admin_note'   => $validated['admin_note'] ?? null,
+                'processed_by' => Auth::id(),
+                'processed_at' => now(),
+            ]);
+
+            return true;
+        });
+
+        if (! $done) {
+            $message = 'Yêu cầu này đã được xử lý trước đó hoặc đơn hàng không còn ở trạng thái có thể hủy.';
+
+            return $request->expectsJson()
+                ? response()->json(['success' => false, 'message' => $message], 422)
+                : back()->with('error', $message);
+        }
+
+        $message = $validated['action'] === 'approve'
+            ? 'Đã duyệt yêu cầu hủy — đơn đã được hủy và hoàn kho.'
+            : 'Đã từ chối yêu cầu hủy đơn.';
+
+        return $request->expectsJson()
+            ? response()->json(['success' => true, 'message' => $message])
+            : back()->with('success', $message);
+    }
+
+    /**
+     * Hóa đơn bán hàng dạng in (khổ A4, HTML + window.print()). Số hiệu dùng lại order_code.
+     * Trả về trang in độc lập (không dùng layout admin) — đơn đã hủy vẫn in được (đóng dấu "ĐÃ HỦY").
+     */
+    public function invoice(string $id)
+    {
+        $order = Order::with([
+            'user',
+            'address',
+            'paymentMethod',
+            'voucher',
+            'orderItems.productVariant.product',
+            'orderItems.productVariant.color',
+            'orderItems.productVariant.size',
+        ])->findOrFail($id);
+
+        return view('admin.orders.invoice', [
+            'order'               => $order,
+            'setting'             => \App\Models\Setting::current(),
+            'statusLabels'        => self::STATUS_LABELS,
+            'paymentStatusLabels' => self::PAYMENT_STATUS_LABELS,
+        ]);
     }
 
     /**
@@ -630,7 +1085,9 @@ class OrderController extends Controller
         $items = $order->orderItems->map(fn (OrderItem $item) => [
             'product_variant_id' => $item->product_variant_id,
             'product_name'       => $item->productVariant->product->name ?? '—',
+            'thumbnail'          => $item->productVariant->product->thumbnail ?? null,
             'color'              => $item->productVariant->color->name ?? '',
+            'color_hex'          => $item->productVariant->color?->display_hex_code ?? '#ccc',
             'size'               => $item->productVariant->size->name ?? '',
             'sku'                => $item->productVariant->sku ?? '',
             'unit_price'         => (float) $item->unit_price,
@@ -683,7 +1140,6 @@ class OrderController extends Controller
         if ($scope !== 'none') {
             $rules['address_id']                   = ['nullable', 'integer', Rule::exists('addresses', 'id')];
             $rules['new_address.city']              = ['required_without:address_id', 'nullable', 'string', 'max:255'];
-            $rules['new_address.district']          = ['nullable', 'string', 'max:255'];
             $rules['new_address.ward']              = ['required_without:address_id', 'nullable', 'string', 'max:255'];
             $rules['new_address.apartment_number']  = ['required_without:address_id', 'nullable', 'string', 'max:255'];
             $rules['phone']                         = ['required', 'string', 'max:20'];
@@ -752,28 +1208,21 @@ class OrderController extends Controller
             return back()->withErrors(['status' => $message]);
         }
 
-        DB::transaction(function () use ($order, $validated, $scope, $newStatus) {
-            $oldStatus = $order->status;
+        try {
+            DB::transaction(function () use ($order, $validated, $scope, $newStatus) {
+            // Khóa + kiểm tra lại trong transaction (xem quickUpdateStatus): chống 2 admin/2 tab
+            // sửa đồng thời gây ghi đè trạng thái, và đảm bảo phạm vi sửa nội dung (editableScope)
+            // vẫn đúng với thực tế đơn — nếu đơn vừa được luồng khác đẩy sang trạng thái khác thì
+            // dừng để không xử lý kho/sản phẩm sai.
+            $order = Order::with('paymentMethod')->whereKey($order->id)->lockForUpdate()->firstOrFail();
 
-            // Đơn online-gateway (PayOS/MoMo): payment_status chỉ do webhook/IPN đồng bộ, admin
-            // không sửa tay được — bỏ qua giá trị form gửi lên, giữ nguyên giá trị hiện tại.
-            // Đơn COD/thủ công: admin toàn quyền, và "Hoàn thành" coi như đã thu tiền (COD thu
-            // khi giao xong) → tự đánh dấu đã thanh toán.
-            $isOnlineGateway = $order->paymentMethod?->isOnlineGateway() ?? false;
-            $paymentStatus = match (true) {
-                $isOnlineGateway => $order->payment_status,
-                $newStatus === 'completed' => 'paid',
-                default => $validated['payment_status'],
-            };
+            if (! self::isValidStatusTransition($order->status, $newStatus)
+                || ! self::canAdvanceOnlineOrder($order, $newStatus)
+                || self::editableScope($order) !== $scope) {
+                throw new \App\Exceptions\StaleOrderStateException();
+            }
 
-            $updateData = [
-                'status'         => $newStatus,
-                'payment_status' => $paymentStatus,
-                'note'           => $validated['note'] ?? null,
-                // Mốc ghi nhận doanh thu: chỉ set lần đầu đơn chuyển sang "Hoàn thành" (completed
-                // là trạng thái cuối nên không có chuyện đơn quay lại rồi hoàn tất lần 2).
-                'completed_at'   => $newStatus === 'completed' ? now() : $order->completed_at,
-            ];
+            $order->note = $validated['note'] ?? null;
 
             if ($scope !== 'none') {
                 $address = ($validated['address_id'] ?? null)
@@ -781,17 +1230,16 @@ class OrderController extends Controller
                     : Address::create([
                         'user_id'          => $order->user_id,
                         'city'             => $validated['new_address']['city'],
-                        'district'         => $validated['new_address']['district'] ?? null,
                         'ward'             => $validated['new_address']['ward'],
                         'apartment_number' => $validated['new_address']['apartment_number'],
                     ]);
 
-                $updateData['address_id'] = $address->id;
-                $updateData['phone']      = $validated['phone'];
+                $order->address_id = $address->id;
+                $order->phone      = $validated['phone'];
             }
 
             if ($scope === 'full') {
-                $variants = ProductVariant::with('product')
+                $variants = ProductVariant::with(['product', 'color', 'size'])
                     ->whereIn('id', collect($validated['items'])->pluck('product_variant_id'))
                     ->get()
                     ->keyBy('id');
@@ -802,29 +1250,52 @@ class OrderController extends Controller
                     $itemsTotal += $variant->final_price * $item['quantity'];
                 }
 
+                // Đơn đang "Chờ xác nhận" ĐANG GIỮ KHO (hold FIFO từ lúc đặt). Sửa danh sách sản
+                // phẩm ⇒ phải nhả hold cũ rồi giữ lại theo danh sách mới, nếu không kho sẽ lệch
+                // (hàng cũ bị giữ vĩnh viễn, hàng mới không được giữ).
+                $batchService = app(\App\Services\InventoryBatchService::class);
+                $batchService->restoreOutstandingByReference('order', $order->id, Auth::id());
+
                 $order->orderItems()->delete();
                 foreach ($validated['items'] as $item) {
                     $variant = $variants[$item['product_variant_id']];
                     OrderItem::create([
                         'order_id'           => $order->id,
                         'product_variant_id' => $variant->id,
+                        // Snapshot thông tin sản phẩm lúc sửa đơn (M4).
+                        'product_name'       => $variant->product?->name,
+                        'variant_sku'        => $variant->sku,
+                        'color_name'         => $variant->color?->name,
+                        'size_name'          => $variant->size?->name,
                         'unit_price'         => $variant->final_price,
                         'quantity'           => $item['quantity'],
                     ]);
+
+                    // Giữ lại kho theo số lượng mới (ném ValidationException nếu thiếu → rollback).
+                    $batchService->consumeFifo(
+                        ProductVariant::lockForUpdate()->find($variant->id),
+                        (int) $item['quantity'],
+                        'order',
+                        $order->id,
+                        Auth::id()
+                    );
                 }
 
-                $updateData['shipping_fee'] = $validated['shipping_fee'];
-                $updateData['total_money']  = $itemsTotal + (float) $validated['shipping_fee'] - (float) $order->discount_amount;
+                $order->shipping_fee = $validated['shipping_fee'];
+                $order->total_money  = $itemsTotal + (float) $validated['shipping_fee'] - (float) $order->discount_amount;
             }
 
-            $order->update($updateData);
+            $this->applyStatusChange($order, $newStatus, $validated['payment_status']);
+            });
+        } catch (\App\Exceptions\StaleOrderStateException) {
+            $message = 'Đơn hàng vừa được cập nhật bởi thao tác khác. Vui lòng tải lại trang.';
 
-            if (in_array($newStatus, ['processing', 'shipping'], true) && !in_array($oldStatus, ['processing', 'shipping'], true)) {
-                $this->autoGenerateStockIssueForOrder($order);
-            } elseif ($newStatus === 'cancelled') {
-                $this->restoreStockForCancelledOrder($order);
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['message' => $message], 409);
             }
-        });
+
+            return back()->withErrors(['status' => $message]);
+        }
 
         $message = 'Cập nhật đơn hàng thành công.';
 
@@ -836,15 +1307,122 @@ class OrderController extends Controller
     }
 
     /**
-     * Chỉ cho xóa đơn hàng còn ở trạng thái "Chờ xác nhận" (chưa từng trừ kho/xuất kho).
-     * Đơn đã được xử lý (processing trở đi) phải hủy (cancelled) để hoàn kho đúng quy trình,
-     * không xóa thẳng vì sẽ làm lệch sổ kho/báo cáo doanh thu.
+     * Đổi nhanh trạng thái giao hàng/thanh toán ngay từ dropdown trong bảng danh sách — không đụng
+     * tới địa chỉ/SĐT/sản phẩm (khác với updateContent()). Dùng chung các quy tắc chuyển trạng thái
+     * với updateContent() qua applyStatusChange().
+     */
+    public function quickUpdateStatus(Request $request, string $id)
+    {
+        $order = Order::with('paymentMethod')->findOrFail($id);
+
+        $validated = $request->validate([
+            'status'         => ['required', Rule::in(array_keys(self::STATUS_LABELS))],
+            'payment_status' => ['required', Rule::in(array_keys(self::PAYMENT_STATUS_LABELS))],
+        ], [
+            'status.required' => 'Vui lòng chọn trạng thái đơn hàng.',
+            'payment_status.required' => 'Vui lòng chọn trạng thái thanh toán.',
+        ]);
+
+        $newStatus = $validated['status'];
+
+        if (! self::isValidStatusTransition($order->status, $newStatus)) {
+            $message = "Không thể chuyển đơn hàng từ \"" . (self::STATUS_LABELS[$order->status] ?? $order->status)
+                . "\" sang \"" . (self::STATUS_LABELS[$newStatus] ?? $newStatus) . "\".";
+
+            return response()->json(['success' => false, 'message' => $message], 422);
+        }
+
+        if (! self::canAdvanceOnlineOrder($order, $newStatus)) {
+            $message = "Đơn hàng thanh toán online (PayOS/MoMo) chưa được xác nhận thanh toán, "
+                . "không thể chuyển sang \"" . (self::STATUS_LABELS[$newStatus] ?? $newStatus) . "\".";
+
+            return response()->json(['success' => false, 'message' => $message], 422);
+        }
+
+        try {
+            DB::transaction(function () use ($order, $validated, $newStatus) {
+                // Khóa dòng đơn rồi KIỂM TRA LẠI trong transaction: một luồng khác (admin khác,
+                // 2 tab, webhook) có thể đã đổi trạng thái sau lần đọc ở trên. Nếu vậy thì dừng
+                // để không ghi đè lên thay đổi đó (tránh oversell / trạng thái lệch với hiệu ứng kho).
+                $locked = Order::with('paymentMethod')->whereKey($order->id)->lockForUpdate()->firstOrFail();
+
+                if (! self::isValidStatusTransition($locked->status, $newStatus)
+                    || ! self::canAdvanceOnlineOrder($locked, $newStatus)) {
+                    throw new \App\Exceptions\StaleOrderStateException();
+                }
+
+                $this->applyStatusChange($locked, $newStatus, $validated['payment_status']);
+            });
+        } catch (\App\Exceptions\StaleOrderStateException) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Trạng thái đơn hàng vừa được cập nhật bởi thao tác khác. Vui lòng tải lại trang.',
+            ], 409);
+        }
+
+        return response()->json(['success' => true, 'message' => 'Cập nhật trạng thái đơn hàng thành công.']);
+    }
+
+    /**
+     * Áp dụng đổi status + tính lại payment_status theo đúng quy tắc (khóa thanh toán online,
+     * "Hoàn thành" tự đánh dấu đã trả cho COD) + hiệu ứng kho (trừ/hoàn) — dùng chung bởi
+     * updateContent() (đổi kèm nội dung) và quickUpdateStatus() (đổi nhanh từ danh sách).
+     */
+    private function applyStatusChange(Order $order, string $newStatus, string $submittedPaymentStatus): void
+    {
+        $oldStatus = $order->status;
+
+        $isOnlineGateway = $order->paymentMethod?->isOnlineGateway() ?? false;
+        $order->payment_status = match (true) {
+            $isOnlineGateway => $order->payment_status,
+            $newStatus === 'completed' => 'paid',
+            default => $submittedPaymentStatus,
+        };
+
+        $order->status = $newStatus;
+        // Mốc ghi nhận doanh thu: chỉ set lần đầu đơn chuyển sang "Hoàn thành" (completed là trạng
+        // thái cuối nên không có chuyện đơn quay lại rồi hoàn tất lần 2).
+        $order->completed_at = $newStatus === 'completed' ? now() : $order->completed_at;
+
+        $order->save();
+
+        if (in_array($newStatus, ['processing', 'shipping'], true) && ! in_array($oldStatus, ['processing', 'shipping'], true)) {
+            $this->autoGenerateStockIssueForOrder($order);
+        } elseif ($newStatus === 'cancelled') {
+            $this->restoreStockForCancelledOrder($order);
+            \App\Services\VoucherService::releaseUsage($order->id);
+        }
+    }
+
+    /**
+     * Chỉ cho xóa đơn hàng còn ở trạng thái "Chờ xác nhận". Đơn "pending" vẫn ĐANG GIỮ KHO
+     * (hold FIFO từ lúc checkout, xem OrderCancellationService) và có thể đã ghi nhận lượt dùng
+     * voucher, nên phải nhả kho + nhả voucher giống hệt luồng hủy đơn trước khi xóa mềm, nếu
+     * không hàng sẽ bị giữ vĩnh viễn và voucher mất lượt oan (đơn đã xử lý processing trở đi
+     * vẫn phải hủy (cancelled) trước, không xóa thẳng, vì sẽ làm lệch sổ kho/báo cáo doanh thu).
      */
     public function destroy(Request $request, string $id)
     {
-        $order = Order::findOrFail($id);
+        $orderLabel = null;
 
-        if ($order->status !== 'pending') {
+        $deleted = DB::transaction(function () use ($id, &$orderLabel) {
+            $order = Order::whereKey($id)->lockForUpdate()->firstOrFail();
+
+            if ($order->status !== 'pending') {
+                return false;
+            }
+
+            $orderLabel = $order->order_code ?? '#' . $order->id;
+
+            app(\App\Services\OrderCancellationService::class)->releaseHold($order);
+            \App\Services\VoucherService::releaseUsage($order->id);
+
+            $order->delete();
+
+            return true;
+        });
+
+        if (! $deleted) {
             $message = 'Chỉ có thể xóa đơn hàng đang ở trạng thái "Chờ xác nhận". '
                 . 'Vui lòng hủy đơn hàng nếu đơn đã được xử lý.';
 
@@ -854,9 +1432,6 @@ class OrderController extends Controller
 
             return back()->withErrors(['status' => $message]);
         }
-
-        $orderLabel = $order->order_code ?? '#' . $order->id;
-        $order->delete();
 
         $message = "Đã xóa đơn hàng \"{$orderLabel}\" thành công.";
 
@@ -942,142 +1517,24 @@ class OrderController extends Controller
         return back()->with('success', "Đã xóa vĩnh viễn {$count} đơn hàng.");
     }
 
+    /**
+     * Sinh phiếu xuất kho cho đơn khi đơn được xử lý.
+     *
+     * KHÔNG trừ kho ở đây: từ khi áp dụng "Hold & Release", hàng đã được giữ theo FIFO
+     * ngay lúc đặt đơn (CheckoutController::store / store() của admin). Phiếu xuất kho
+     * chỉ là chứng từ — trừ lại sẽ thành trừ HAI LẦN.
+     */
     private function autoGenerateStockIssueForOrder(Order $order): void
     {
-        $exists = \App\Models\StockIssue::where('order_id', $order->id)
-            ->where('status', \App\Models\StockIssue::STATUS_COMPLETED)
-            ->exists();
-        if ($exists) {
-            return;
-        }
-
-        $orderItems = $order->orderItems()->with('productVariant.product')->get();
-        if ($orderItems->isEmpty()) {
-            return;
-        }
-
-        $warehouse = \App\Models\Warehouse::where('is_default', true)->where('status', true)->first()
-            ?? \App\Models\Warehouse::where('status', true)->first();
-        if (!$warehouse) {
-            throw new \Exception("Không tìm thấy kho hàng hoạt động nào trong hệ thống.");
-        }
-
-        // Mã phiếu xuất kho: dùng DocumentSequenceService (có lock chống trùng) để đồng nhất
-        // định dạng với phiếu tạo tay ở StockIssueController — không tự chế generator.
-        $code = app(\App\Services\DocumentSequenceService::class)->generateStockIssueCode();
-
-        $totalQty = $orderItems->sum('quantity');
-        $totalCost = $orderItems->sum(fn ($item) => $item->quantity * ($item->productVariant->cost_price ?? 0));
-        $totalSale = $orderItems->sum(fn ($item) => $item->quantity * $item->unit_price);
-
-        $stockIssue = \App\Models\StockIssue::create([
-            'code' => $code,
-            'issue_type' => \App\Models\StockIssue::ISSUE_TYPE_SALE,
-            'warehouse_id' => $warehouse->id,
-            'order_id' => $order->id,
-            'reason' => "Xuất kho tự động cho đơn hàng #" . ($order->order_code ?? $order->id),
-            'note' => $order->note,
-            'status' => \App\Models\StockIssue::STATUS_DRAFT,
-            'total_quantity' => $totalQty,
-            'total_cost_amount' => $totalCost,
-            'total_sale_amount' => $totalSale,
-            'total_amount' => $totalSale,
-            'created_by' => Auth::id() ?? 1, // Fallback if CLI/system
-        ]);
-
-        foreach ($orderItems as $item) {
-            $variant = $item->productVariant;
-            if (!$variant) continue;
-
-            $lockedVariant = \App\Models\ProductVariant::lockForUpdate()->find($variant->id);
-            if ($lockedVariant->stock < $item->quantity) {
-                $variantName = ($lockedVariant->product->name ?? 'Sản phẩm') 
-                    . ' - ' . ($lockedVariant->color->name ?? 'Không màu') 
-                    . ' - Size ' . ($lockedVariant->size->name ?? 'Không size') 
-                    . ' - SKU ' . ($lockedVariant->sku ?? 'N/A');
-                throw ValidationException::withMessages([
-                    'status' => ["Không đủ tồn kho để xuất. Sản phẩm [{$variantName}] hiện chỉ còn [{$lockedVariant->stock}] sản phẩm."]
-                ]);
-            }
-
-            $stockIssue->items()->create([
-                'product_id' => $lockedVariant->product_id,
-                'product_variant_id' => $lockedVariant->id,
-                'quantity' => $item->quantity,
-                'cost_price' => $lockedVariant->cost_price,
-                'sale_price' => $item->unit_price,
-                'total_cost' => $lockedVariant->cost_price * $item->quantity,
-                'total_sale' => $item->unit_price * $item->quantity,
-            ]);
-
-            // Trừ tồn theo FIFO qua các lô — service ghi sổ cái + đồng bộ cache tồn.
-            app(\App\Services\InventoryBatchService::class)->consumeFifo(
-                $lockedVariant,
-                (int) $item->quantity,
-                'stock_issue',
-                $stockIssue->id,
-                Auth::id()
-            );
-        }
-
-        $stockIssue->update([
-            'status' => \App\Models\StockIssue::STATUS_COMPLETED,
-            'confirmed_by' => Auth::id() ?? 1,
-            'confirmed_at' => now(),
-            'issued_at' => now(),
-        ]);
-
-        \App\Models\StockIssueLog::create([
-            'stock_issue_id' => $stockIssue->id,
-            'user_id' => Auth::id() ?? 1,
-            'action' => 'created',
-            'message' => 'Tạo phiếu xuất kho tự động từ đơn hàng #' . ($order->order_code ?? $order->id),
-        ]);
-
-        \App\Models\StockIssueLog::create([
-            'stock_issue_id' => $stockIssue->id,
-            'user_id' => Auth::id() ?? 1,
-            'action' => 'confirmed',
-            'message' => 'Hoàn tất xuất kho tự động',
-        ]);
+        app(\App\Services\OrderFulfillmentService::class)->generateSaleStockIssue($order);
     }
 
     /**
-     * Hoàn kho khi hủy đơn đã trừ kho: đảo ngược phiếu xuất kho tự động (issue_type = sale,
-     * status = completed) gắn với đơn — cộng lại tồn, ghi StockMovement 'import' và đánh dấu
-     * phiếu xuất kho là đã hủy. Nếu đơn chưa từng trừ kho (vd pending → cancelled) thì bỏ qua.
+     * Nhả kho đang giữ khi hủy đơn: cộng trả về ĐÚNG lô đã trừ, đúng giá vốn gốc,
+     * và đánh dấu phiếu xuất kho (nếu có) là đã hủy.
      */
     private function restoreStockForCancelledOrder(Order $order): void
     {
-        $stockIssue = \App\Models\StockIssue::with('items')
-            ->where('order_id', $order->id)
-            ->where('issue_type', \App\Models\StockIssue::ISSUE_TYPE_SALE)
-            ->where('status', \App\Models\StockIssue::STATUS_COMPLETED)
-            ->first();
-        if (!$stockIssue) {
-            return;
-        }
-
-        // Hoàn trả về ĐÚNG lô đã trừ (đọc ngược các bút toán export của phiếu xuất) — giá vốn không méo.
-        app(\App\Services\InventoryBatchService::class)->restoreByReference(
-            'stock_issue',
-            $stockIssue->id,
-            'stock_issue',
-            $stockIssue->id,
-            Auth::id()
-        );
-
-        $stockIssue->update([
-            'status' => \App\Models\StockIssue::STATUS_CANCELLED,
-            'cancelled_by' => Auth::id() ?? 1,
-            'cancelled_at' => now(),
-        ]);
-
-        \App\Models\StockIssueLog::create([
-            'stock_issue_id' => $stockIssue->id,
-            'user_id' => Auth::id() ?? 1,
-            'action' => 'cancelled',
-            'message' => 'Hoàn kho tự động do hủy đơn hàng #' . ($order->order_code ?? $order->id),
-        ]);
+        app(\App\Services\OrderCancellationService::class)->releaseHold($order);
     }
 }

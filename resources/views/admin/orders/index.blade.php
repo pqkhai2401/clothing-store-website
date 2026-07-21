@@ -151,6 +151,19 @@
                 </div>
             </form>
 
+            @if($cancelRequestFilter ?? false)
+                {{-- Bộ lọc "khách xin hủy" không nằm trong thanh lọc thường nên phải báo rõ đang bật,
+                     kèm nút tắt (bỏ query cancel_request, giữ nguyên các bộ lọc khác đang áp dụng). --}}
+                <div class="ord-filter-chip">
+                    <i class="fa-regular fa-hand"></i>
+                    <span>Đang lọc: <b>đơn khách yêu cầu hủy</b> — {{ $orders->total() }} đơn</span>
+                    <a href="{{ route('admin.orders.list', array_merge(request()->except(['cancel_request', 'page']), [])) }}"
+                       class="ord-filter-chip-clear" title="Bỏ bộ lọc này">
+                        Bỏ lọc <i class="fa-solid fa-xmark"></i>
+                    </a>
+                </div>
+            @endif
+
             <div data-admin-table-area>
                 @include('admin.orders.partials.table')
             </div>
@@ -172,15 +185,23 @@
                     <span class="spinner-border spinner-border-sm me-2"></span> Đang tải...
                 </div>
             </div>
-            <div class="modal-footer justify-content-end pb-4 px-4">
+            <div class="modal-footer justify-content-end pb-4 px-4 gap-2">
+                <button type="button" class="btn account-action-btn btn-dark" id="orderDetailPrintBtn" style="display:none;">
+                    <i class="fa-solid fa-print me-1"></i> In hóa đơn
+                </button>
                 <button type="button" class="btn account-action-btn btn-light" data-bs-dismiss="modal">Đóng</button>
             </div>
         </div>
     </div>
 </div>
 
+@include('admin.partials.print-preview-modal')
+@include('admin.orders.partials.refund-lookup-script')
+
 @push('modals')
     @include('layouts.components.confirm.delete')
+    {{-- Hộp xác nhận dùng chung (openUpdateConfirmModal) — thay confirm() mặc định của trình duyệt --}}
+    @include('layouts.components.confirm.update')
 @endpush
 @endsection
 
@@ -191,9 +212,10 @@
         (function () {
             const modalEl = document.getElementById('orderDetailModal');
             if (!modalEl) return;
-            const modal   = new bootstrap.Modal(modalEl);
-            const body    = document.getElementById('orderDetailBody');
-            const titleEl = document.getElementById('orderDetailModalLabel');
+            const modal    = new bootstrap.Modal(modalEl);
+            const body     = document.getElementById('orderDetailBody');
+            const titleEl  = document.getElementById('orderDetailModalLabel');
+            const printBtn = document.getElementById('orderDetailPrintBtn');
             const loadingHtml = '<div class="text-center py-5 text-muted"><span class="spinner-border spinner-border-sm me-2"></span> Đang tải...</div>';
 
             document.addEventListener('click', async function (e) {
@@ -204,6 +226,7 @@
                 const url = link.getAttribute('href');
                 titleEl.textContent = 'Chi tiết đơn hàng';
                 body.innerHTML = loadingHtml;
+                printBtn.style.display = 'none';
                 modal.show();
 
                 try {
@@ -214,8 +237,134 @@
                     const data = await res.json();
                     body.innerHTML = data.html || '';
                     titleEl.textContent = 'Chi tiết đơn hàng ' + (data.code || '');
+                    if (data.invoice_url) {
+                        printBtn.dataset.printUrl = data.invoice_url;
+                        printBtn.dataset.printTitle = 'Hóa đơn ' + (data.code || '');
+                        printBtn.style.display = '';
+                    }
                 } catch {
                     body.innerHTML = '<div class="text-center py-5 text-danger">Không tải được chi tiết đơn hàng. Vui lòng thử lại.</div>';
+                }
+            });
+        }());
+
+        /* ── Sổ xuống chọn nhanh trạng thái đơn/thanh toán ngay trong bảng ── */
+        (function () {
+            const csrf = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+
+            function closeAllPanels(except) {
+                document.querySelectorAll('.oc-row-panel').forEach(function (p) {
+                    if (p === except) return;
+                    p.hidden = true;
+                    // Bỏ toạ độ fixed đã gán để lần mở sau tính lại từ đầu.
+                    p.style.position = p.style.top = p.style.left = p.style.right = '';
+                    p.closest('.oc-row-dropdown')?.querySelector('.oc-row-trigger')?.classList.remove('is-open');
+                });
+            }
+
+            /* Panel nằm trong .table-responsive (overflow) nên position:absolute sẽ bị cắt ở đáy bảng.
+               Đưa panel ra ngoài bằng position:fixed tính theo nút trigger, tự lật lên nếu thiếu chỗ dưới. */
+            function positionRowPanel(trigger, panel) {
+                const rect = trigger.getBoundingClientRect();
+                panel.style.position = 'fixed';
+                panel.style.right = 'auto';
+                panel.style.top = (rect.bottom + 6) + 'px';
+                panel.style.left = rect.left + 'px';
+
+                const panelH = panel.offsetHeight;
+                const panelW = panel.offsetWidth;
+                const spaceBelow = window.innerHeight - rect.bottom;
+                if (spaceBelow < panelH + 12 && rect.top > panelH + 12) {
+                    panel.style.top = (rect.top - panelH - 6) + 'px'; // lật lên
+                }
+                let left = rect.left;
+                if (left + panelW > window.innerWidth - 8) left = window.innerWidth - panelW - 8;
+                panel.style.left = Math.max(8, left) + 'px';
+            }
+
+            // Panel fixed không cuộn theo bảng → đóng lại khi cuộn/đổi kích thước để không bị lệch.
+            ['scroll', 'resize'].forEach(function (ev) {
+                window.addEventListener(ev, function () { closeAllPanels(); }, true);
+            });
+
+            document.addEventListener('click', async function (e) {
+                const trigger = e.target.closest('.oc-row-trigger');
+                if (trigger) {
+                    const dropdown = trigger.closest('.oc-row-dropdown');
+                    const panel = dropdown.querySelector('.oc-row-panel');
+                    const willOpen = panel.hidden;
+                    closeAllPanels();
+                    if (willOpen) {
+                        panel.hidden = false;
+                        positionRowPanel(trigger, panel);
+                    }
+                    trigger.classList.toggle('is-open', willOpen);
+                    return;
+                }
+
+                const item = e.target.closest('.oc-row-panel .hk-cat-item');
+                if (item) {
+                    const dropdown = item.closest('.oc-row-dropdown');
+                    const row       = dropdown.closest('tr');
+                    const orderId   = dropdown.dataset.orderId;
+                    const field     = dropdown.dataset.field;
+                    const newValue  = item.dataset.value;
+
+                    // Dùng data-value ở phần tử [data-field] (dropdown tương tác hoặc badge tĩnh
+                    // khi trạng thái/thanh toán bị khoá) để lấy giá trị hiện tại của field còn lại.
+                    const statusDrop  = row.querySelector('[data-field="status"]');
+                    const paymentDrop = row.querySelector('[data-field="payment_status"]');
+
+                    const payload = {
+                        status:         field === 'status' ? newValue : (statusDrop?.dataset.value ?? ''),
+                        payment_status: field === 'payment_status' ? newValue : (paymentDrop?.dataset.value ?? ''),
+                    };
+
+                    closeAllPanels();
+
+                    const rowTrigger = dropdown.querySelector('.oc-row-trigger');
+                    const previousValue = rowTrigger.dataset.value;
+                    const previousCss   = Array.from(rowTrigger.classList).find(c => c.startsWith('order-badge--') || c.startsWith('payment-badge--'));
+                    rowTrigger.disabled = true;
+
+                    try {
+                        const res = await fetch(`/admin/orders/${orderId}/quick-status`, {
+                            method: 'PATCH',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': csrf,
+                            },
+                            body: JSON.stringify(payload),
+                        });
+
+                        const data = await res.json().catch(() => ({}));
+
+                        if (!res.ok) {
+                            window.showAlert(data.message || 'Không thể cập nhật. Vui lòng thử lại.', 'Lỗi', 'danger');
+                            rowTrigger.className = (field === 'status' ? 'order-badge' : 'payment-badge') + ' oc-row-trigger ' + (previousCss ?? '');
+                            rowTrigger.dataset.value = previousValue;
+                            return;
+                        }
+
+                        if (window.reloadAdminTable) {
+                            window.reloadAdminTable();
+                        } else {
+                            window.location.reload();
+                        }
+                        return;
+                    } catch {
+                        window.showAlert('Không thể kết nối. Vui lòng thử lại.', 'Lỗi', 'danger');
+                        rowTrigger.className = (field === 'status' ? 'order-badge' : 'payment-badge') + ' oc-row-trigger ' + (previousCss ?? '');
+                        rowTrigger.dataset.value = previousValue;
+                    } finally {
+                        rowTrigger.disabled = false;
+                    }
+                    return;
+                }
+
+                if (!e.target.closest('.oc-row-dropdown')) {
+                    closeAllPanels();
                 }
             });
         }());

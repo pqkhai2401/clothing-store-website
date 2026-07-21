@@ -119,6 +119,11 @@
                                             @endif
                                         </button>
                                     </form>
+                                    @if($banner->isExpired())
+                                        <span class="status-badge status-badge--draft mt-1 d-inline-block" title="end_date đã qua — trang chủ tự ẩn banner này dù đang bật">
+                                            <i class="fa-solid fa-clock me-1"></i>Đã hết hạn
+                                        </span>
+                                    @endif
                                 </td>
                                 <td class="text-center">
                                     <div class="d-flex align-items-center justify-content-center gap-1">

@@ -306,7 +306,7 @@
                             b.classList.toggle('is-active', b === item);
                         });
                     } catch {
-                        alert('Không thể cập nhật trạng thái. Vui lòng thử lại.');
+                        window.showAlert('Không thể cập nhật trạng thái. Vui lòng thử lại.', 'Lỗi', 'danger');
                         btn.className = 'status-badge voucher-status-trigger ' + (previousCss ?? '');
                         btn.dataset.value = previousValue;
                     } finally {
@@ -437,7 +437,7 @@
                             }
                         }
                     } catch {
-                        alert('KhÃ´ng thá»ƒ cáº­p nháº­t tráº¡ng thÃ¡i. Vui lÃ²ng thá»­ láº¡i.');
+                        window.showAlert('Không thể cập nhật trạng thái. Vui lòng thử lại.', 'Lỗi', 'danger');
                         btn.className = 'status-badge voucher-status-trigger ' + (previousCss ?? '');
                         btn.dataset.value = previousValue;
                         btn.querySelector('.voucher-status-trigger-label').textContent = previousLabel;
@@ -464,7 +464,7 @@
                 const tableArea = document.querySelector('[data-admin-table-area]');
                 const checked = Array.from(tableArea?.querySelectorAll('.hk-cb-row:checked') || []);
                 if (!checked.length) {
-                    alert('Vui long chon it nhat mot voucher de xoa.');
+                    window.showAlert('Vui lòng chọn ít nhất một voucher để xóa.', 'Thông báo', 'info');
                     return;
                 }
 
@@ -581,6 +581,9 @@
                         const data = await res.json();
                         closeModal();
                         showAdminToast(data.message || 'Cập nhật voucher thành công.', 'success');
+                        if (data.warning) {
+                            setTimeout(() => showAdminToast(data.warning, 'warning'), 400);
+                        }
                         setTimeout(() => window.reloadAdminTable?.(), 600);
                     } catch {
                         showAdminToast('Không thể cập nhật voucher. Vui lòng thử lại.', 'error');

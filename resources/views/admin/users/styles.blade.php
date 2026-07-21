@@ -187,6 +187,31 @@
         color: #B91C1C !important;
     }
 
+    /* Nút "Thùng rác" (btn-light) dùng chung một màu trung tính trên trang quản lý
+       tài khoản, đỏ khi hover — giống hệt trang Sản phẩm (product-action-btn.btn-light).
+       Đặc tả cao hơn nhờ có thêm .account-admin-page nên không đụng tới các nút btn-light
+       khác (vd nút "Đóng" trong modal Đơn hàng/Doanh thu dùng chung class account-action-btn). */
+    .account-admin-page .account-action-btn.btn-light {
+        background: #ffffff !important;
+        border: 1.5px solid #D8E0EA !important;
+        color: #64748B !important;
+    }
+    .account-admin-page .account-action-btn.btn-light:hover {
+        background: #FEF2F2 !important;
+        border-color: #F87171 !important;
+        color: #DC2626 !important;
+    }
+    [data-theme="dark"] .account-admin-page .account-action-btn.btn-light {
+        background: #101C33 !important;
+        border-color: #2A3B59 !important;
+        color: #94A3B8 !important;
+    }
+    [data-theme="dark"] .account-admin-page .account-action-btn.btn-light:hover {
+        background: rgba(239, 68, 68, 0.15) !important;
+        border-color: #EF4444 !important;
+        color: #F87171 !important;
+    }
+
     .account-table-wrap {
         overflow: hidden;
         background: #ffffff;

@@ -26,7 +26,7 @@
     </div>
 
     @if(isset($showPromoForm) && $showPromoForm)
-        <form class="promo-form my-4 d-flex gap-2" onsubmit="event.preventDefault(); alert('Đã áp dụng mã giảm giá!');">
+        <form class="promo-form my-4 d-flex gap-2" onsubmit="event.preventDefault(); window.showAlert('Đã áp dụng mã giảm giá!', 'Thành công', 'success');">
             <input type="text" class="form-control promo-input text-uppercase" placeholder="MÃ GIẢM GIÁ">
             <button type="submit" class="btn btn-outline-dark promo-btn">ÁP DỤNG</button>
         </form>

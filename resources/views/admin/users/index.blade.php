@@ -98,6 +98,11 @@
                     </form>
 
                     <div class="account-tool-actions">
+                        @if ($isCustomerPage)
+                            <a href="{{ route(($routePrefix ?? 'admin.users') . '.trash') }}" class="btn btn-light border account-action-btn">
+                                <i class="fa-regular fa-trash-can me-1"></i> Thùng rác
+                            </a>
+                        @endif
                         <a href="{{ route(($routePrefix ?? 'admin.users') . '.create') }}" class="btn btn-dark account-action-btn">
                             <i class="fa-solid fa-plus me-1"></i> {{ $createLabel ?? 'Thêm tài khoản' }}
                         </a>

@@ -2,51 +2,43 @@
 
 namespace Database\Seeders;
 
+use App\Enums\UserRole;
 use App\Models\Product;
 use App\Models\User;
 use App\Models\Wishlist;
 use Illuminate\Database\Seeder;
 
+/**
+ * Mỗi khách hàng có 0-6 sản phẩm yêu thích ngẫu nhiên trong số sản phẩm đang
+ * bán — phản ánh đúng việc không phải khách nào cũng dùng tính năng wishlist.
+ */
 class WishlistSeeder extends Seeder
 {
     public function run(): void
     {
-        $data = [
-            'customer1@example.com' => [
-                'ao-khoac-gio-chong-nuoc-tnf',
-                'quan-tay-nam-slim-zara',
-                'ao-blazer-nam-slim-zara',
-                'quan-jogger-tech-fleece-nike',
-            ],
-            'customer2@example.com' => [
-                'dam-body-midi-nu-zara',
-                'ao-len-co-lo-nu-uniqlo',
-                'ao-so-mi-nu-linen-zara',
-                'ao-phao-nu-ultra-light-uniqlo',
-            ],
-            'customer3@example.com' => [
-                'ao-hoodie-classic-champion',
-                'quan-jogger-tech-fleece-nike',
-                'ao-thun-tron-unisex-uniqlo',
-                'ao-khoac-bomber-nam-adidas',
-            ],
-        ];
+        if (Wishlist::count() > 0) {
+            return;
+        }
 
-        foreach ($data as $email => $productSlugs) {
-            $user = User::where('email', $email)->first();
-            if (! $user) {
+        $customers = User::role(UserRole::CUSTOMER->value)->get();
+        $productIds = Product::where('status', true)->pluck('id');
+
+        if ($customers->isEmpty() || $productIds->isEmpty()) {
+            return;
+        }
+
+        foreach ($customers as $customer) {
+            // ~20% khách chưa từng dùng wishlist.
+            if (random_int(1, 100) <= 20) {
                 continue;
             }
 
-            foreach ($productSlugs as $slug) {
-                $product = Product::where('slug', $slug)->first();
-                if (! $product) {
-                    continue;
-                }
+            $count = min($productIds->count(), random_int(2, 6));
 
+            foreach ($productIds->random($count) as $productId) {
                 Wishlist::firstOrCreate([
-                    'user_id'    => $user->id,
-                    'product_id' => $product->id,
+                    'user_id' => $customer->id,
+                    'product_id' => $productId,
                 ]);
             }
         }

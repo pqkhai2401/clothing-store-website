@@ -33,8 +33,8 @@
                                 <div class="dropdown-menu dropdown-menu-end product-row-menu">
                                     <form method="POST" action="{{ route('admin.brands.restore', $brand->id) }}">
                                         @csrf @method('PATCH')
-                                        <button type="submit" class="dropdown-item"
-                                            onclick="return confirm('Bạn có chắc chắn muốn khôi phục thương hiệu này không?')">
+                                        <button type="button" class="dropdown-item"
+                                            onclick="window.showConfirm({title: 'Xác nhận khôi phục', message: 'Bạn có chắc chắn muốn khôi phục thương hiệu này không?', type: 'warning'}).then(ok => { if(ok) this.closest('form').submit(); })">
                                             <i class="fa-solid fa-rotate-left"></i> Khôi phục
                                         </button>
                                     </form>
