@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasColumn('categories', 'outfit_type')) {
+            return;
+        }
+
         Schema::table('categories', function (Blueprint $table) {
             // Nhóm trang phục để xác định luật phối đồ (top phối với bottom/outerwear/
             // accessory, dress chỉ phối outerwear/accessory...). NULL = danh mục cha

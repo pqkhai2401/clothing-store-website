@@ -8,6 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasColumn('hero_banners', 'start_date')) {
+            return;
+        }
+
         Schema::table('hero_banners', function (Blueprint $table) {
             $table->timestamp('start_date')->nullable()->after('image_path');
             $table->timestamp('end_date')->nullable()->after('start_date');

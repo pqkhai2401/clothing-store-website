@@ -13,12 +13,14 @@ return new class extends Migration
         // đọc tên/SKU/màu/size động qua product_variant_id → admin đổi tên sản phẩm sau khi khách
         // đã mua thì hóa đơn CŨ cũng đổi theo (sai tính toàn vẹn chứng từ kế toán). Giá (unit_price)
         // vốn đã được snapshot; nay bổ sung nốt các trường mô tả.
-        Schema::table('order_items', function (Blueprint $table) {
-            $table->string('product_name')->nullable()->after('product_variant_id');
-            $table->string('variant_sku')->nullable()->after('product_name');
-            $table->string('color_name')->nullable()->after('variant_sku');
-            $table->string('size_name')->nullable()->after('color_name');
-        });
+        if (! Schema::hasColumn('order_items', 'product_name')) {
+            Schema::table('order_items', function (Blueprint $table) {
+                $table->string('product_name')->nullable()->after('product_variant_id');
+                $table->string('variant_sku')->nullable()->after('product_name');
+                $table->string('color_name')->nullable()->after('variant_sku');
+                $table->string('size_name')->nullable()->after('color_name');
+            });
+        }
 
         // Backfill đơn cũ bằng dữ liệu catalog HIỆN TẠI làm mốc (đơn cũ không có lịch sử tên nên
         // đây là snapshot trung thực nhất có thể) — từ đây về sau các trường này đóng băng, không
