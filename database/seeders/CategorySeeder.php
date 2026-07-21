@@ -43,15 +43,6 @@ class CategorySeeder extends Seeder
                     ['name' => 'Váy',        'slug' => 'nu-vay',        'outfit_type' => 'skirt',     'style_group' => 'casual'],
                 ],
             ],
-            [
-                'name'     => 'Phụ kiện',
-                'slug'     => 'phu-kien',
-                'children' => [
-                    ['name' => 'Mũ & Nón', 'slug' => 'mu-non',  'outfit_type' => 'accessory', 'style_group' => 'neutral'],
-                    ['name' => 'Túi xách', 'slug' => 'tui-xach', 'outfit_type' => 'accessory', 'style_group' => 'neutral'],
-                    ['name' => 'Kính râm', 'slug' => 'kinh-ram', 'outfit_type' => 'accessory', 'style_group' => 'neutral'],
-                ],
-            ],
         ];
 
         foreach ($structure as $parentData) {

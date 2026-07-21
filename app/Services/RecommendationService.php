@@ -54,7 +54,7 @@ class RecommendationService
 
             // 1. Trọng số cùng Danh mục (Category). Khi danh mục quá ít sản phẩm (VD chỉ
             //    có chính nó), ưu tiên "cùng LOẠI trang phục" (outfit_type: áo/quần/váy/
-            //    đầm/áo khoác/phụ kiện) trước khi rơi về "cùng danh mục cha" (Nam/Nữ) —
+            //    đầm/áo khoác) trước khi rơi về "cùng danh mục cha" (Nam/Nữ) —
             //    nếu không, mục "Sản phẩm liên quan" (danh mục Áo) sẽ lẫn cả Đầm/Váy/Quần
             //    chỉ vì chúng cùng giới tính + giá gần, dù khác hẳn loại trang phục.
             if ($candidate->category_id == $targetCategoryId) {

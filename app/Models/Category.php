@@ -26,20 +26,21 @@ class Category extends Model implements \OwenIt\Auditing\Contracts\Auditable
      * Với mỗi outfit_type, các outfit_type nào được phép gợi ý phối cùng.
      * Dùng cho khối "Phối cùng phong cách" (AiStylistService::getMixAndMatch).
      *
-     * - top/bottom: phối chéo với nhau + áo khoác + phụ kiện (không gợi lại đồ cùng slot).
+     * - top/bottom: phối chéo với nhau + áo khoác (không gợi lại đồ cùng slot).
      * - skirt (váy): phối với áo (top), khác với dress vì váy không phải bộ đồ hoàn chỉnh.
-     * - dress (đầm): đã là bộ đồ hoàn chỉnh -> chỉ gợi thêm áo khoác/phụ kiện.
-     * - outerwear/accessory: có thể khoác/đeo cùng mọi loại còn lại.
+     * - dress (đầm): đã là bộ đồ hoàn chỉnh -> chỉ gợi thêm áo khoác.
+     * - outerwear: có thể khoác cùng mọi loại còn lại.
+     *
+     * Shop chỉ bán quần áo nên KHÔNG có nhóm phụ kiện trong bảng này.
      */
     public static function outfitCompatibilityMap(): array
     {
         return [
-            'top'       => ['bottom', 'skirt', 'outerwear', 'accessory'],
-            'bottom'    => ['top', 'outerwear', 'accessory'],
-            'skirt'     => ['top', 'outerwear', 'accessory'],
-            'dress'     => ['outerwear', 'accessory'],
-            'outerwear' => ['top', 'bottom', 'skirt', 'dress', 'accessory'],
-            'accessory' => ['top', 'bottom', 'skirt', 'dress', 'outerwear'],
+            'top'       => ['bottom', 'skirt', 'outerwear'],
+            'bottom'    => ['top', 'outerwear'],
+            'skirt'     => ['top', 'outerwear'],
+            'dress'     => ['outerwear'],
+            'outerwear' => ['top', 'bottom', 'skirt', 'dress'],
         ];
     }
 
@@ -56,7 +57,7 @@ class Category extends Model implements \OwenIt\Auditing\Contracts\Auditable
      * Với mỗi style_group, các style_group nào XUNG ĐỘT (không nên phối cùng) —
      * VD: áo sơ mi/quần tây "formal" hoặc "smart_casual" không nên ghép với quần
      * jogger/short "sporty" (đúng loại trang phục nhưng sai độ trang trọng).
-     * 'neutral' (phụ kiện) và 'casual' không xung đột với ai — linh hoạt phối mọi kiểu.
+     * 'casual' không xung đột với ai — linh hoạt phối mọi kiểu.
      */
     public static function styleConflictMap(): array
     {
@@ -65,7 +66,6 @@ class Category extends Model implements \OwenIt\Auditing\Contracts\Auditable
             'smart_casual' => ['sporty'],
             'sporty'       => ['formal', 'smart_casual'],
             'casual'       => [],
-            'neutral'      => [],
         ];
     }
 
