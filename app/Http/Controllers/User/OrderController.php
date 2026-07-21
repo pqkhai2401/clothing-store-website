@@ -47,13 +47,16 @@ class OrderController extends Controller
         $statusTabs = self::STATUS_TABS;
         $activeTab  = $status;
 
-        // Danh sách ID sản phẩm mà user ĐÃ đánh giá -> dùng để ẩn/hiện nút
-        // "Đánh giá sản phẩm" trên từng dòng sản phẩm của đơn đã giao.
-        $reviewedProductIds = Review::where('user_id', $request->user()->id)
-            ->pluck('product_id')
+        // Các cặp "đơn hàng - sản phẩm" mà user ĐÃ đánh giá -> dùng để ẩn/hiện nút
+        // "Đánh giá" trên từng dòng sản phẩm. Khóa theo đơn (order_id_product_id)
+        // để khi mua lại (đơn mới) vẫn hiện nút đánh giá cho đơn đó.
+        $reviewedKeys = Review::where('user_id', $request->user()->id)
+            ->whereNotNull('order_id')
+            ->get(['order_id', 'product_id'])
+            ->map(fn ($r) => $r->order_id . '_' . $r->product_id)
             ->all();
 
-        return view('user.orders.index', compact('orders', 'statusTabs', 'activeTab', 'reviewedProductIds'));
+        return view('user.orders.index', compact('orders', 'statusTabs', 'activeTab', 'reviewedKeys'));
     }
 
     public function show(Request $request, int $id): View

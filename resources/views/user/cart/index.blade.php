@@ -565,7 +565,7 @@
                         <div class="cart-item-details">
                             <div class="cart-item-category">{{ $product->category->name ?? 'Sản phẩm' }}</div>
                             <h3 class="cart-item-name">
-                                <a href="{{ url('/products/'.$product->slug) }}">{{ $product->name }}</a>
+                                <a href="{{ route('products.show', $product->slug) }}">{{ $product->name }}</a>
                             </h3>
                             <div class="cart-item-variant" data-variant-label>
                                 @if($variant->color)<span>{{ $variant->color->name }}</span>@endif
