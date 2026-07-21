@@ -46,6 +46,297 @@ class ProductSeeder extends Seeder
         'Xanh rêu'   => 'OLV',
     ];
 
+    /**
+     * Ảnh riêng của từng màu, tra theo slug sản phẩm.
+     *
+     * Dùng làm product_variants.image -> trang chi tiết đổi ảnh khi khách chọn màu.
+     * Màu KHÔNG có trong bảng này (do bộ ảnh gốc không có ảnh của màu đó) sẽ để null,
+     * khi đó gallery tự quay về ảnh chính của sản phẩm.
+     *
+     * @var array<string, array<string, string>>
+     */
+    private array $colorImages = [
+        // Áo Thun Nam Basic Tee
+        'ao-thun-nam-basic-uniqlo' => [
+            'Trắng' => 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=800&h=1000&fit=crop&q=80',
+            'Đen' => 'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?w=800&h=1000&fit=crop&q=80',
+            'Xám' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSiiR1ZQzPjCFrzSrNYScCd4gOLFsYU9IL9a70-8g0GhQ&s=10',
+        ],
+        // Áo Thun Nam Dry-EX Thể Thao
+        'ao-thun-nam-dry-ex-uniqlo' => [
+            'Đen' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQn4NOZnRENICNqPSUhhFIzNOT-MYvpP75ihrBwycbndA&s',
+            'Trắng' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRNQSHMxeEIuKwuSVTlYrkiqmBKxxZuez-29ZFqc5ix9A&s',
+        ],
+        // Áo Thun Nam Puma Essential Logo
+        'ao-thun-nam-puma-essential-logo' => [
+            'Đỏ' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ1nc9P2fX4_zY8mu2enbFJJXCYWtmYDOjRj7kI3_Dtng&s=10',
+            'Trắng' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQN3Nsl-0gG1Rz1GM_QDnXVeC9jEihxWbgogZxy0zQi4Q&s',
+            'Đen' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ4LMJkZx7--K9ovMy2rtMqofVBOnH87Iwuo2VRtyF2Ew&s=10',
+        ],
+        // Áo Sơ Mi Nam Sợi Tre
+        'ao-so-mi-nam-soi-tre-uniqlo' => [
+            'Trắng' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTKynSujnqiafgDXV_yn2fGeluHPYmXtoG7d_Fgu6_pNg&s=10',
+            'Xanh dương' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRyZfQKZ9qDo_cvSQ0wULwtYIgB65EK8hyLf6PKjlSOGA&s=10',
+            'Đen' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTlbSfZDL7WuSZESFq6REB7Kwp6QoTsGQ6OjItUklLW8A&s=10',
+        ],
+        // Áo Sơ Mi Nam Oxford Classic
+        'ao-so-mi-nam-oxford-hm' => [
+            'Xanh dương' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRuKZDNGcIF5gsOMn76oWP7dEImIGu5s5qrpam0w7FRoQ&s=10',
+            'Trắng' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRdqScHJE1u2SXLiSxVqF4tZSxI83g0ppyxogNNPV7Dyw&s=10',
+            'Hồng' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR8eTFEcIuAalzA4W6nX3pd2T60wiPQaLb2tu66jVqWsw&s',
+        ],
+        // Áo Polo Nam Dri-FIT Piqué
+        'ao-polo-nam-dri-fit-nike' => [
+            'Trắng' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS5mbrVFMfO0RTvuMi2AIIJfWdMfkg05luDs-xGoGhPUQ&s',
+            'Đen' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQZ5wfsL7VkIXvdq39NwgF4cKOMwcwHIDG11bakvT5z5A&s=10',
+            'Xanh navy' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSLXmPZTVtsdDRHaYTsJhhHrrEMGfhucpAczhQQFh-fFA&s',
+        ],
+        // Áo Polo Nam New Balance Athletics
+        'ao-polo-nam-nb-athletics' => [
+            'Đen' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ4jXJs_hF_3odaq0vFq7RJE1pXSO1ufZa-K4zR6ZoXQg&s=10',
+            'Xanh navy' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQOp5vy4vuI4DdX33x21bEGREApqGJFkgVbCB2bfF5_1Q&s',
+        ],
+        // Áo Hoodie Classic Nam
+        'ao-hoodie-classic-nam-champion' => [
+            'Đen' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTgcoCQV99G9r1V-L1IUHrabJOXgyhgOu_pzkdS0KVvdQ&s',
+            'Xám' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSC9TyCtG5ocXsK9XgN1ur7M8yO1f1VHgNu97P9qnzNrg&s=10',
+            'Xanh navy' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQfywIjonK44_1-70FO1050l7UVXgPqMy4_GK8URH6t_A&s=10',
+        ],
+        // Áo Sweatshirt Trefoil Unisex
+        'ao-sweatshirt-trefoil-adidas' => [
+            'Đen' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSopyl9yoYDbHoKisvz_fLg_KwlxUBnlEfZpOnEfmm7eA&s=10',
+            'Xám' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSTuZ3CPVsCVfjBPYDDLU4qr60JUAI9gf6C7X7Mg-jD4g&s=10',
+            'Trắng' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR8W6ra8ivDmDevg0VBPIT6Ep-M91VfGQILuRw0e93xcA&s',
+        ],
+        // Áo Khoác Bomber Nam Essential
+        'ao-khoac-bomber-nam-adidas' => [
+            'Đen' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS_gCXb-VCy14trkOl_AMY2r9ZQbCbNwoEjk0aqVqZNPw&s=10',
+            'Xám' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRRxDINO6gfwbwZNeZD-vdFUA5-nCYS04u2bf0QMJAvzA&s=10',
+        ],
+        // Áo Khoác Gió Chống Nước Resolve
+        'ao-khoac-gio-chong-nuoc-tnf' => [
+            'Đen' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSYEMiCCYcNNgbCKR2K_-UsJzN6IiLr2E4rlcPSOnq_RA&s=10',
+            'Trắng' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTGT10Kj0UcquWpv8VX7aOc8qojCq3vhdyIR3-9ojVDZQ&s=10',
+        ],
+        // Áo Blazer Nam Slim Fit
+        'ao-blazer-nam-slim-zara' => [
+            'Đen' => 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=800&h=1000&fit=crop&q=80',
+            'Xám' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTbKzjdXztGHdVO6t0-OGIhIGTBwwR6Q37xUKb1Vo2I-g&s=10',
+            'Nâu' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTIuRvku1cAUa55eavKkmSM7u9MZQhlpX8bpA7JBrqEQg&s',
+        ],
+        // Quần Jeans Nam Slim Fit
+        'quan-jeans-nam-slim-511-levis' => [
+            'Xanh navy' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRZnjzKj_YViSj5p1nh8grb54KPsHju9Da9WWStK0x7-g&s=10',
+            'Đen' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSDxst4IB73F3d9rQOL2nu13REnoaf3wMV_gW1c3FjK4g&s=10',
+        ],
+        // Quần Jeans Nam Straight Fit
+        'quan-jeans-nam-straight-hm' => [
+            'Đen' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSK81vyP52g3P7_rOTcSm2tdo4YOeZ4Bqt8CUp4lDe8tQ&s=10',
+            'Xanh dương' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTIoIoDGsz-aja5Ho6mFjh04fD9wVnwMdFhWB02VIcU3g&s=10',
+        ],
+        // Quần Tây Nam Âu Slim Fit
+        'quan-tay-nam-slim-zara' => [
+            'Đen' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcROe_r_taf2tMqkJ8Xi76Z_UV6DZTL8H1na5VO9S_rbQA&s=10',
+            'Xám' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSkMShWIUOGpeoPLYQmO2WZa5aUHRaoy8WOr2suWbWNWA&s=10',
+            'Nâu' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTyLvjnWM_Xkm96_ezTI5aBIcvVD3klr-O-MstHJdSIdA&s=10',
+        ],
+        // Quần Short Thể Thao Dri-FIT Nam
+        'quan-short-the-thao-nam-nike' => [
+            'Đen' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT2d-Hnp5iajFX9BSQIus-8EPxB6mShSXbo519DTwrs4Q&s=10',
+            'Xám' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSqj_R7Jej5cte3K6Dt3F4fvBlFO06Ro1ucry9qorUb2Q&s=10',
+            'Xanh dương' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTTKFyIrORWfnIVIeOxiWTWhzgzdKxgDg53qAJPO-ovew&s=10',
+        ],
+        // Quần Jogger Tech Fleece Nam
+        'quan-jogger-tech-fleece-nike' => [
+            'Xám' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSkwXAjfb1LjRgRSUktbY61lvJmhiNnGj-yHjs87fNtNg&s=10',
+            'Đen' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSmLPp_TD3Th_DzSooLt6G36BBV2fcwoqt_2nsNFaym4g&s=10',
+            'Xanh dương' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSk1Q4mOgvMpMmhy-6eX4Qi4Fqf5mYc7JR4wdjrh26LHA&s=10',
+        ],
+        // Áo Thun Nữ Oversize Cotton
+        'ao-thun-nu-oversize-hm' => [
+            'Trắng' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRwaDWPPno3V9yzkR3gKD-9QYstP_vnMciCUpCKErc9Ww&s=10',
+            'Đen' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTr_e-cso9r8pN3o-dxltVvGokd5BFKNDYlN14-1GgmyA&s=10',
+            'Hồng' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQURu1VggfzjPBCGxGgtugTr6Menbq-BVajhUuv6dF6lQ&s',
+        ],
+        // Áo Croptop Nữ Cúc Bọc
+        'ao-croptop-nu-cuc-boc-hm' => [
+            'Trắng' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTCGk4eWwhbOKOz3e3t3OLEPplkCnO49p1hVjupnwR_dw&s=10',
+            'Đen' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTgTxwAcSkqYHlLTapsMiyvr6wd5_LwyX8UXoF-jTSqHA&s',
+        ],
+        // Áo Sơ Mi Lụa Cổ Đức Nữ
+        'ao-so-mi-lua-co-duc-nu-zara' => [
+            'Hồng' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTB6UCoW-iCfEIArqm2lts7sogn3zrV2LuHACLl2htunA&s=10',
+            'Trắng' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT33wLT40E2YQdqV1_RMv9Y7Q0a7SG-hFE9X9NkysozmQ&s=10',
+            'Vàng' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSbgQO-P6REgVQqO3Ib0ZjCzPZnJ0_Szzt-Yb310aFQnA&s=10',
+        ],
+        // Áo Polo Nữ Slim Fit Cổ Điển
+        'ao-polo-nu-slim-fit-uniqlo' => [
+            'Trắng' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ-zHijGJEAjhJ0JjOcDwPArscXiZp6-ghViBqlD2NQTg&s=10',
+            'Hồng' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRlv0w5eC8nKA8bHoxMyP_ShqGISIJdSxAJ9IaGHbL3yw&s',
+            'Đen' => 'https://cdn.hstatic.net/products/1000373601/clothing_poses_outdoor_resort_4k_202607101443_3f8a4f9c1096410495b951e2a5434b04_master.jpeg',
+        ],
+        // Áo Hoodie Nữ Crop Zip-Up
+        'ao-hoodie-nu-crop-zip-hm' => [
+            'Trắng' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSfEZpLxW_OnNUaQBb9kbQh34bgT0CaMeizdl8eGysnhA&s=10',
+            'Đen' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQBWB3aC-uwg3AC4R1atc6TggH5PZND7iPnOyeEEEEfwA&s=10',
+            'Nâu' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQN7qL6vbNrmwiJyv6q-u71OGBQF70dNDt3W20vB7_q0g&s',
+        ],
+        // Áo Phao Nữ Ultra Light Down
+        'ao-phao-nu-ultra-light-uniqlo' => [
+            'Đen' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTqS2y92M1nC2H2W48oMmpBe_ld_ydjsJHA7vbo5R15uw&s=10',
+            'Hồng' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQCceLFzMNQaSvaIUK0ksSxF0-m-j3p0YOAPn4L96NT5w&s=10',
+            'Be' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQUijFxN-ZIAhZS5Xa2T-ym6aE5SaO3NvNCtotb1wd0jg&s=10',
+        ],
+        // Áo Khoác Cardigan Nữ Dệt Kim Mỏng
+        'ao-khoac-cardigan-nu-det-kim-mong-hm' => [
+            'Be' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQubjDhMyCopK5LY7WkjQBHwQDSCpqtPHrChj4RcpNzaA&s=10',
+            'Trắng' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRqigpnWjaiF_XiUHTnBlN4ldmYNP7XiRHB-j4baznrIQ&s=10',
+        ],
+        // Áo Cardigan Nữ Len Cotton Cổ Tim
+        'ao-cardigan-nu-len-cotton-co-tim-zara' => [
+            'Xanh dương' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT47wxbOA1PfFlcdemO4FZaQbrQtojVcPZeQ3wSo68n8g&s=10',
+            'Trắng' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRl3ymLZ_ZaoyRuBdrJCgLFEbGMY5EACwSwQmJWFC59lw&s=10',
+        ],
+        // Áo Cardigan Nữ Kimono Voan Mỏng
+        'ao-cardigan-nu-kimono-voan-hm' => [
+            'Trắng' => 'https://down-vn.img.susercontent.com/file/vn-11134207-81ztc-mkvpkzn90l517b',
+            'Đen' => 'https://down-vn.img.susercontent.com/file/vn-11134207-81ztc-mkvpkug4bqpsa6',
+        ],
+        // Áo Blazer Nữ Oversize Thanh Lịch
+        'ao-blazer-nu-oversize-zara' => [
+            'Be' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSiCTcAHOy0IKQYzM2p-Q9tE5tgzPcywlRRy0zZ5QqpSA&s',
+            'Đen' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRgiF2Ip6ffVYA2WwLok2HahGF9v8OrNiT5kuJGpRENYw&s=10',
+            'Trắng' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQouL7L4XvGY-miLcMc3QCl17e6b7APOprkazRnEsjMlQ&s',
+        ],
+        // Áo Len Cổ Lọ Nữ Premium Lambswool
+        'ao-len-co-lo-nu-uniqlo' => [
+            'Xám' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRuj0AKIOzSyj-7HZQd9kNCREvAVfeDmERsH3EhDDLQmw&s=10',
+            'Trắng' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQYBXtnbquxhdfc0YsL5R88Kj5t9sH0WMKBNifKiYgQlA&s',
+            'Hồng' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTK1QOxTVZH5y1MS5-wuOr769g33sMi7lRmNhzJVVs4oQ&s=10',
+        ],
+        // Áo Len Cổ Tròn Merino Unisex
+        'ao-len-co-tron-merino-uniqlo' => [
+            'Xám' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRsCc-41_PULUeTP4x-SjuAcZnZ1Mcj32UKIC1beDWcVw&s=10',
+            'Nâu' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRu3xojSfEcUdLBkEAchzBeNkxumfzwuQ11R3Wa07olew&s=10',
+            'Xanh navy' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRHjwYAXrQDo7b6jBRmyu4JB1b6v6MwTDODoh4MNzKX1g&s',
+        ],
+        // Quần Jeans Nữ Skinny 721 High Rise
+        'quan-jeans-nu-skinny-721-levis' => [
+            'Đen' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSXXnmeewffBuMyETJBMZX_7P7Sa2vbhjB6ZZiCRIxBSg&s=10',
+            'Xanh navy' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQXkErsZy4vvLgyM0-_e700rMXuOVU2eX3NfXKWlrrR9A&s=10',
+        ],
+        // Quần Tây Nữ Ống Suông Công Sở
+        'quan-tay-nu-ong-suong-hm' => [
+            'Be' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ4vjtHgzYDgZbw9lXqnsQROkwMIPYqzpNXtbCI7wlGHA&s=10',
+            'Đen' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQim9Z4h7to7YVnkgeZ9S3q9vK4bXaF-E9ZIukTVEJufA&s=10',
+            'Xám' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTgnAs-xCD0QbtkDEJTmNSnOJejqqG2j7344t4Dohuoeg&s=10',
+        ],
+        // Quần Short Nữ Linen Cao Cấp
+        'quan-short-nu-linen-zara' => [
+            'Be' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRZQrJtbH66IkJ83TmdWCQQ92q8WGBYr057egv-zaMPRA&s=10',
+            'Trắng' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRLnDOPYwmUU87BpUJyU0j3Q28wYHqFfJDz_-j_6jxm7g&s=10',
+            'Xanh rêu' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTz4LCVhMRrEe5J45E2umwHTzvUR1iqms0dMRoTvHhzWw&s',
+        ],
+        // Đầm Maxi Hoa Nhí Nữ
+        'dam-maxi-hoa-nhi-zara' => [
+            'Trắng' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRvLUOZqiSkqUOuvudko2YvfrIkHfkx2xaSpBczm8aExg&s=10',
+            'Be' => 'https://mdufashion.com/wp-content/uploads/2025/04/vay-maxi-hoa-nhi-di-bien-13.jpg',
+            'Hồng' => 'https://maxi.vn/wp-content/uploads/2025/06/ee6dcaae1067a739fe76-1.jpg',
+        ],
+        // Đầm Body Midi Nữ
+        'dam-body-midi-nu-zara' => [
+            'Đen' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ200XIqXvAL57nNSKCGktwmz7IdKPl33IYo_XHSZTBUQ&s=10',
+            'Đỏ' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT4LW-auWiULSCgq5V71vCaC-Dc_Gi6OGVQaBqZJWz51w&s=10',
+        ],
+        // Đầm Wrap Nữ Hoa Vintage
+        'dam-wrap-nu-hoa-vintage-hm' => [
+            'Đỏ' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcReeH-9PwPgTCtNT9fdwxeQ7mqSaVoto3jpej0_Aixvtg&s=10',
+            'Xanh rêu' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQIJ6VA0-qjMaFO72PFMiBSXEsW2vxEjzL8-0xUvAS56A&s=10',
+        ],
+        // Váy Tennis Nữ Thể Thao
+        'vay-tennis-nu-adidas' => [
+            'Trắng' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQad-Kv_XzbwOdO9okxXbAXCt9G_DEuvZp0CIm6w8HFtQ&s=10',
+            'Đen' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRzL56Ntc4kqtEe2qRbXX_ZJMCY3rXwor4sQYp2Fw6M8w&s=10',
+            'Hồng' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcThmNGm0ZuhZcbEXBqMdFeIjrgeWfxzEIN3a_rYGshoqQ&s',
+        ],
+        // Váy Midi Xếp Ly Thanh Lịch
+        'vay-midi-xep-ly-zara' => [
+            'Trắng' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS1CoQPk36BXch_CE5rZhmreySItmL5E6Vr0PTcNk-xoA&s=10',
+            'Đen' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ4-8n2CIKdPT2XbBB5wY397yK0dx98eCd22q_Cw79pug&s=10',
+            'Xanh dương' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTLFK6eQAHJn5MPQJ_H-KtRnPqp9_OISSXHgwWd6QSo_A&s=10',
+        ],
+        // Váy Jean Chữ A Mini
+        'vay-jean-chu-a-mini-levis' => [
+            'Xanh dương' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQQBxpyIXfSfA87hDDEXBZZGRNaq0Q98LVSou6hHp7YoQ&s',
+            'Đen' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRLET1lYRqILI2iRLf1rE2362J9RoxlB1qvCB4NZuAl3Q&s=10',
+        ],
+        // Áo Sơ Mi Nam Linen Pastel
+        'ao-so-mi-nam-linen-pastel-uniqlo' => [
+            'Trắng' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRak5rY28C2sP4w01AKR2-jOsXg0HrjpSwNDgW8qUDGqg&s',
+            'Xanh dương' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSFl-Ooc_V958JTvR8wFPaUM7pCcAwhCXZ5nlSoxW9NEQ&s',
+            'Be' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT4nDxpKTNxUS60fDZCbbX7azlszOYLpY7aEsfNAhc2iA&s=10',
+        ],
+        // Đầm Hoa Nhí Cổ Vuông Nữ
+        'dam-hoa-nhi-co-vuong-nu-hm' => [
+            'Hồng' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQT9Lc_-ZlNDaHIBC8bFco1DmXvgOO8qxFiZ4pYGgh9DA&s=10',
+            'Be' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS9z_1aGcJ_5hQRqhcQ5pYJN0h_1OrgfTL-0FMzYYpGLw&s=10',
+            'Trắng' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQW-nSIgK02dNkCnsftFgGgMtU2ztXTcDxrDKdW5fyAGg&s=10',
+        ],
+        // Áo Cardigan Len Mỏng Nữ
+        'ao-cardigan-len-mong-nu-uniqlo' => [
+            'Be' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQubjDhMyCopK5LY7WkjQBHwQDSCpqtPHrChj4RcpNzaA&s=10',
+            'Trắng' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRtfBAErL28FT6785_KxhopajtJ7KHUJvwtGPK8_lMoeg&s=10',
+            'Đen' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTG7eAH0Yjjz1fYzmk7Jr0a_yukb8nakBok3lyFuCUROw&s=10',
+            'Xám' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT8yZGvC1apy2wEOjiy6uu6UJslyIsNrrVxmOfRjq9-lQ&s=10',
+        ],
+        // Áo Polo Nam Cotton Piqué Mát Lạnh
+        'ao-polo-nam-cotton-pique-mua-he-uniqlo' => [
+            'Xanh dương' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSzk_oJvBm2JC8hEXKyZRMBQ662aw9Bs6wHx09Y8fzmRA&s',
+            'Trắng' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSwmPQPfmXuRT1OozGpXiTXafU7RiFw1dKXUjPVucRe6Q&s',
+            'Xanh rêu' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSLGoFc6XOHn1BXp9oEcqGYaDubnzd7hGSxBPiTnls8NQ&s',
+        ],
+        // Váy Midi Chiffon Bay Bổng
+        'vay-midi-chiffon-mua-he-zara' => [
+            'Xanh dương' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRbt-iinRhmGd1_g07p5S3LA8gSNDh_nAxd_z4QpMtzLw&s=10',
+            'Be' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRJwzRGfNQy2jqn0_G4NsbYYWEQwcYG6ucnE4QHBrKLSQ&s=10',
+            'Đen' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT9VV0leACDlKDqHgAlgjK78m0vQgk7EMkclGWVV2GOww&s=10',
+        ],
+        // Áo Blazer Nam Tweed Mùa Thu
+        'ao-blazer-nam-tweed-mua-thu-zara' => [
+            'Xám' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS4AyMmFJ9TG8o2Sq0m5Hu2rFvDIc1vMMf_NBYYpwsH-g&s=10',
+            'Be' => 'https://krik.vn/wp-content/uploads/2025/10/20250428_PTZLFzaZ.webp',
+        ],
+        // Áo Len Cổ Tròn Nam Tông Đất
+        'ao-len-co-tron-nam-tong-dat-uniqlo' => [
+            'Be' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQh-NRA2zHcjcumtA-3fCgbRejl1KnkuHrk1-M-NUcAyw&s=10',
+            'Xanh rêu' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTRGvh2CtXWpFVKCNP9qYH2P9f_RvNRfHkUZVQr8krOIA&s=10',
+            'Nâu' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTYo-tQx-dwotHyj6FLbAG_j5J1twKC_L5dFQG2MrnMbg&s',
+        ],
+        // Áo Blazer Nữ Dạ Tweed Cổ Điển
+        'ao-blazer-nu-da-tweed-mua-thu-zara' => [
+            'Be' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQKbjxVxyyf4a8FXDP-_OlZiQpi4aBH0Rr_TabvsI7Amw&s=10',
+            'Nâu' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQBccyjLExj_oMCl2aF0Gcz7TY-xFG8KpYNV7YT24FlTw&s=10',
+            'Xám' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTy5Yy_Z2RT-qskpsm7xZpcu2IhwxJO2f65FM3u54yQ3Q&s',
+        ],
+        // Áo Blazer Nữ Linen Mỏng Mùa Hè
+        'ao-blazer-nu-linen-mong-zara' => [
+            'Trắng' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS0_8Bc25AB5u570chfQCCG-eWqsl8TVccVNfshkVa6dw&s',
+            'Be' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ4qx9VwLw-Kkmqb4WvzVp-fIlnEo_DPM2ukT9apFKf_A&s=10',
+            'Xanh dương' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRd1ucOI20JWe0BGc0WYmZsFxhmgsUd2Fr8ydFq0NkLIQ&s=10',
+        ],
+        // Áo Măng Tô Dạ Nam Oversize
+        'ao-mang-to-da-nam-oversize-zara' => [
+            'Đen' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQg7c7e4tN9gF4AnBN2nQ-FiZVQjgyG7MJkFgrdCd5jPA&s=10',
+            'Nâu' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRqfCXnaRO8MJ1eH066iWFzFvvW6Y9cyaw4uaYhostfLA&s=10',
+            'Xám' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRCnDqiazPYSKNlEpaJoxIdkaXZ4MHUCDPB_zD9jk30sg&s',
+        ],
+        // Áo Phao Nữ Lông Vũ Dày Dặn
+        'ao-phao-nu-long-vu-day-mua-dong-uniqlo' => [
+            'Trắng' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTVS1qAiJRjpbKADCnrpY9UTye8SA4qtJsfAHTvafJCAw&s=10',
+            'Đen' => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSYgjG_N0w-mmwIN3f04ol1DqzoJWjwH6R1TpDaylE3Bg&s=10',
+        ],
+    ];
+
     public function run(): void
     {
         $categories = Category::pluck('id', 'slug');
@@ -62,6 +353,9 @@ class ProductSeeder extends Seeder
         foreach ($products as $index => $data) {
             $productNum = str_pad($index + 1, 3, '0', STR_PAD_LEFT);
             $brandCode  = $this->brandAbbr[$data['brand']] ?? 'GEN';
+
+            // Ảnh riêng theo màu của sản phẩm này (rỗng nếu chưa khai báo)
+            $colorImages = $this->colorImages[$data['slug']] ?? [];
 
             $product = Product::firstOrCreate(
                 ['slug' => $data['slug']],
@@ -81,56 +375,103 @@ class ProductSeeder extends Seeder
             );
 
             if ($product->wasRecentlyCreated) {
-                foreach ($data['images'] as $imageUrl) {
-                    ProductImage::create([
-                        'product_id' => $product->id,
-                        'image'      => $imageUrl,
-                    ]);
-                }
-
                 $tagIds = collect($data['tags'])
                     ->map(fn ($slug) => $tags[$slug] ?? null)
                     ->filter()
                     ->values()
                     ->toArray();
                 $product->tags()->sync($tagIds);
+            } else {
+                // Sản phẩm đã tồn tại: cập nhật lại ảnh chính nếu link trong seeder đã đổi
+                if ($product->thumbnail !== $data['thumbnail']) {
+                    $product->update(['thumbnail' => $data['thumbnail']]);
+                }
+            }
 
-                foreach ($data['colors'] as $colorName) {
-                    $colorId   = $colors[$colorName] ?? null;
-                    $colorCode = $this->colorAbbr[$colorName] ?? 'UNK';
+            // Đồng bộ ảnh phụ đúng bằng danh sách khai báo (xóa ảnh cũ không còn dùng)
+            $product->productImages()->whereNotIn('image', $data['images'])->delete();
+            foreach ($data['images'] as $imageUrl) {
+                $product->productImages()->firstOrCreate(['image' => $imageUrl]);
+            }
 
-                    if (! $colorId) {
+            // Tạo biến thể cho mọi màu/size đang khai báo (firstOrCreate nên chạy lại vô hại)
+            foreach ($data['colors'] as $colorName) {
+                $colorId   = $colors[$colorName] ?? null;
+                $colorCode = $this->colorAbbr[$colorName] ?? 'UNK';
+
+                if (! $colorId) {
+                    continue;
+                }
+
+                foreach ($data['sizes'] as $sizeName) {
+                    if (! $clothingSizes->has($sizeName)) {
                         continue;
                     }
 
-                    foreach ($data['sizes'] as $sizeName) {
-                        if (! $clothingSizes->has($sizeName)) {
-                            continue;
-                        }
+                    $sizeId = $clothingSizes[$sizeName] ?? null;
 
-                        $sizeId = $clothingSizes[$sizeName] ?? null;
-
-                        if (! $sizeId) {
-                            continue;
-                        }
-
-                        $sku = "{$brandCode}{$productNum}-{$colorCode}-{$sizeName}";
-
-                        ProductVariant::firstOrCreate(
-                            ['sku' => $sku],
-                            [
-                                'product_id' => $product->id,
-                                'color_id'   => $colorId,
-                                'size_id'    => $sizeId,
-                                'stock'      => rand(5, 80),
-                                'image'      => $data['thumbnail'],
-                                'cost_price' => round($data['price'] * 0.6, 2),
-                                'price'      => round($data['price'], 2),
-                                'status'     => 'Active',
-                            ]
-                        );
+                    if (! $sizeId) {
+                        continue;
                     }
+
+                    $sku = "{$brandCode}{$productNum}-{$colorCode}-{$sizeName}";
+
+                    ProductVariant::firstOrCreate(
+                        ['sku' => $sku],
+                        [
+                            'product_id' => $product->id,
+                            'color_id'   => $colorId,
+                            'size_id'    => $sizeId,
+                            'stock'      => rand(5, 80),
+                            // Ảnh riêng của màu; màu chưa có ảnh riêng -> null để gallery
+                            // tự fallback về ảnh chính của sản phẩm
+                            'image'      => $colorImages[$colorName] ?? null,
+                            'cost_price' => round($data['price'] * 0.6, 2),
+                            'price'      => round($data['price'], 2),
+                            'status'     => 'Active',
+                        ]
+                    );
                 }
+            }
+
+            // Gỡ biến thể của những màu đã bị bỏ khỏi seeder. Chỉ xóa khi biến thể
+            // CHƯA phát sinh dữ liệu thật (đơn hàng / giỏ hàng / lô kho) để không phá dữ liệu.
+            $keepColorIds = collect($data['colors'])
+                ->map(fn ($name) => $colors[$name] ?? null)
+                ->filter()
+                ->all();
+
+            $staleVariants = ProductVariant::where('product_id', $product->id)
+                ->whereNotIn('color_id', $keepColorIds)
+                ->get();
+
+            foreach ($staleVariants as $stale) {
+                $inUse = $stale->orderItems()->exists()
+                    || $stale->cartItems()->exists()
+                    || $stale->batches()->exists();
+
+                if ($inUse) {
+                    $this->command?->warn("Bo qua bien the {$stale->sku}: da co du lieu lien quan.");
+                    continue;
+                }
+
+                $stale->delete();
+            }
+
+            // Đồng bộ ảnh theo màu cho CẢ sản phẩm đã tồn tại từ trước, để chạy lại
+            // seeder là cập nhật được ảnh riêng của từng màu (không bị firstOrCreate bỏ qua).
+            // Duyệt toàn bộ màu của sản phẩm chứ không chỉ các màu có trong bảng tra:
+            // màu không có ảnh riêng phải được set null để gallery fallback đúng.
+            foreach ($data['colors'] as $colorName) {
+                $colorId = $colors[$colorName] ?? null;
+
+                if (! $colorId) {
+                    continue;
+                }
+
+                ProductVariant::where('product_id', $product->id)
+                    ->where('color_id', $colorId)
+                    ->update(['image' => $colorImages[$colorName] ?? null]);
             }
         }
     }
@@ -153,9 +494,8 @@ class ProductSeeder extends Seeder
                 'is_featured' => true,
                 'views_count' => 482,
                 'images'      => [
-                    'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=800&h=1000&fit=crop&q=80',
                     'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?w=800&h=1000&fit=crop&q=80',
-                    'https://images.unsplash.com/photo-1562157873-818bc0726f68?w=800&h=1000&fit=crop&q=80',
+                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSiiR1ZQzPjCFrzSrNYScCd4gOLFsYU9IL9a70-8g0GhQ&s=10',
                 ],
                 'colors' => ['Trắng', 'Đen', 'Xám'],
                 'sizes'  => ['S', 'M', 'L', 'XL'],
@@ -166,16 +506,16 @@ class ProductSeeder extends Seeder
                 'slug'        => 'ao-thun-nam-dry-ex-uniqlo',
                 'description' => 'Áo thun thể thao Uniqlo Dry-EX với công nghệ thoát ẩm nhanh, trọng lượng siêu nhẹ chỉ 120g. Thiết kế cổ tròn, đường may phẳng không gây cọ xát khi vận động mạnh. Lý tưởng cho chạy bộ, gym hoặc các hoạt động ngoài trời.',
                 'price'       => 249000,
-                'thumbnail'   => 'https://images.unsplash.com/photo-1581655353564-df123a1eb820?w=800&h=1000&fit=crop&q=80',
+                'thumbnail'   => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQn4NOZnRENICNqPSUhhFIzNOT-MYvpP75ihrBwycbndA&s',
                 'category'    => 'nam-ao-thun',
                 'brand'       => 'Uniqlo',
                 'gender'      => 'men',
                 'is_featured' => false,
                 'views_count' => 198,
                 'images'      => [
-                    'https://images.unsplash.com/photo-1581655353564-df123a1eb820?w=800&h=1000&fit=crop&q=80',
+                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRNQSHMxeEIuKwuSVTlYrkiqmBKxxZuez-29ZFqc5ix9A&s',
                 ],
-                'colors' => ['Đen', 'Xanh navy', 'Xám'],
+                'colors' => ['Trắng', 'Đen'],
                 'sizes'  => ['S', 'M', 'L', 'XL'],
                 'tags'   => ['the-thao', 'mua-he'],
             ],
@@ -185,14 +525,15 @@ class ProductSeeder extends Seeder
                 'description' => 'Áo thun nam Puma Essential với logo Puma Cat in lớn phía trước, chất cotton pha polyester thoáng mát. Cổ tròn, tay ngắn, form regular fit thoải mái. Phù hợp cho tập luyện thể thao hoặc mặc hàng ngày.',
                 'price'       => 350000,
                 'discount'    => 20,
-                'thumbnail'   => 'https://images.unsplash.com/photo-1618354691373-d851c5c3a990?w=800&h=1000&fit=crop&q=80',
+                'thumbnail'   => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ1nc9P2fX4_zY8mu2enbFJJXCYWtmYDOjRj7kI3_Dtng&s=10',
                 'category'    => 'nam-ao-thun',
                 'brand'       => 'Puma',
                 'gender'      => 'men',
                 'is_featured' => false,
                 'views_count' => 156,
                 'images'      => [
-                    'https://images.unsplash.com/photo-1618354691373-d851c5c3a990?w=800&h=1000&fit=crop&q=80',
+                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQN3Nsl-0gG1Rz1GM_QDnXVeC9jEihxWbgogZxy0zQi4Q&s',
+                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ4LMJkZx7--K9ovMy2rtMqofVBOnH87Iwuo2VRtyF2Ew&s=10',
                 ],
                 'colors' => ['Đen', 'Trắng', 'Đỏ'],
                 'sizes'  => ['S', 'M', 'L', 'XL'],
@@ -203,21 +544,21 @@ class ProductSeeder extends Seeder
             // NAM — ÁO SƠ MI
             // ═══════════════════════════════════════════════════════════════════
             [
-                'name'        => 'Áo Sơ Mi Nam Sợi Tre Kháng Khuẩn',
+                'name'        => 'Áo Sơ Mi Nam Sợi Tre',
                 'slug'        => 'ao-so-mi-nam-soi-tre-uniqlo',
                 'description' => 'Áo sơ mi nam Uniqlo làm từ sợi tre thiên nhiên có đặc tính kháng khuẩn và khử mùi. Chất vải mềm mượt hơn cotton, thoáng khí cực tốt trong mùa hè. Thiết kế regular fit, cổ đức sang trọng, phù hợp cho cả công sở lẫn dạo phố.',
                 'price'       => 490000,
-                'thumbnail'   => 'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=800&h=1000&fit=crop&q=80',
+                'thumbnail'   => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTKynSujnqiafgDXV_yn2fGeluHPYmXtoG7d_Fgu6_pNg&s=10',
                 'category'    => 'nam-ao-so-mi',
                 'brand'       => 'Uniqlo',
                 'gender'      => 'men',
                 'is_featured' => true,
                 'views_count' => 276,
                 'images'      => [
-                    'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=800&h=1000&fit=crop&q=80',
-                    'https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=800&h=1000&fit=crop&q=80',
+                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRyZfQKZ9qDo_cvSQ0wULwtYIgB65EK8hyLf6PKjlSOGA&s=10',
+                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTlbSfZDL7WuSZESFq6REB7Kwp6QoTsGQ6OjItUklLW8A&s=10',
                 ],
-                'colors' => ['Trắng', 'Xanh dương', 'Xám'],
+                'colors' => ['Trắng', 'Xanh dương', 'Đen'],
                 'sizes'  => ['S', 'M', 'L', 'XL'],
                 'tags'   => ['cong-so', 'hang-moi'],
             ],
@@ -226,14 +567,15 @@ class ProductSeeder extends Seeder
                 'slug'        => 'ao-so-mi-nam-oxford-hm',
                 'description' => 'Áo sơ mi nam H&M chất liệu Oxford dày dặn, bề mặt vải dệt kiểu rổ đặc trưng. Cổ button-down, túi ngực trái, form regular fit. Một chiếc áo đa năng phù hợp từ công sở đến casual khi xắn tay áo lên.',
                 'price'       => 390000,
-                'thumbnail'   => 'https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=800&h=1000&fit=crop&q=80',
+                'thumbnail'   => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRuKZDNGcIF5gsOMn76oWP7dEImIGu5s5qrpam0w7FRoQ&s=10',
                 'category'    => 'nam-ao-so-mi',
                 'brand'       => 'H&M',
                 'gender'      => 'men',
                 'is_featured' => false,
                 'views_count' => 213,
                 'images'      => [
-                    'https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=800&h=1000&fit=crop&q=80',
+                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRdqScHJE1u2SXLiSxVqF4tZSxI83g0ppyxogNNPV7Dyw&s=10',
+                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR8eTFEcIuAalzA4W6nX3pd2T60wiPQaLb2tu66jVqWsw&s',
                 ],
                 'colors' => ['Xanh dương', 'Trắng', 'Hồng'],
                 'sizes'  => ['S', 'M', 'L', 'XL'],
@@ -277,7 +619,7 @@ class ProductSeeder extends Seeder
                 'images'      => [
                     'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQOp5vy4vuI4DdX33x21bEGREApqGJFkgVbCB2bfF5_1Q&s',
                 ],
-                'colors' => ['Xanh navy', 'Đen', 'Xám'],
+                'colors' => ['Xanh navy', 'Đen'],
                 'sizes'  => ['M', 'L', 'XL'],
                 'tags'   => ['the-thao', 'giam-gia'],
             ],
@@ -297,8 +639,8 @@ class ProductSeeder extends Seeder
                 'is_featured' => true,
                 'views_count' => 412,
                 'images'      => [
-                    'https://images.unsplash.com/photo-1503341455253-b2e723bb3dbb?w=800&h=1000&fit=crop&q=80',
-                    'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=800&h=1000&fit=crop&q=80',
+                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSC9TyCtG5ocXsK9XgN1ur7M8yO1f1VHgNu97P9qnzNrg&s=10',
+                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQfywIjonK44_1-70FO1050l7UVXgPqMy4_GK8URH6t_A&s=10',
                 ],
                 'colors' => ['Xám', 'Đen', 'Xanh navy'],
                 'sizes'  => ['S', 'M', 'L', 'XL'],
@@ -342,7 +684,7 @@ class ProductSeeder extends Seeder
                     'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRatK6kX1qjo-uRoJjOHNJm7bI4AVl3cZk51VRNcLoZ6g&s=10',
                     'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRRxDINO6gfwbwZNeZD-vdFUA5-nCYS04u2bf0QMJAvzA&s=10',
                 ],
-                'colors' => ['Đen', 'Xanh navy', 'Xám'],
+                'colors' => ['Đen', 'Xám'],
                 'sizes'  => ['M', 'L', 'XL'],
                 'tags'   => ['xu-huong', 'the-thao'],
             ],
@@ -351,7 +693,7 @@ class ProductSeeder extends Seeder
                 'slug'        => 'ao-khoac-gio-chong-nuoc-tnf',
                 'description' => 'Áo khoác gió The North Face Resolve với công nghệ DryVent™ chống nước hoàn toàn. Trọng lượng siêu nhẹ gấp gọn vào túi. Mũ đính liền điều chỉnh được. Lý tưởng cho leo núi, trekking và du lịch ngoài trời.',
                 'price'       => 2490000,
-                'thumbnail'   => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRUuq-rhBsm5PlnDLYq0xmMY3Jn-8LGeH241gTddfVhag&s=10',
+                'thumbnail'   => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSYEMiCCYcNNgbCKR2K_-UsJzN6IiLr2E4rlcPSOnq_RA&s=10',
                 'category'    => 'nam-ao-khoac',
                 'brand'       => 'The North Face',
                 'gender'      => 'unisex',
@@ -359,9 +701,9 @@ class ProductSeeder extends Seeder
                 'views_count' => 398,
                 'images'      => [
                     'https://images.unsplash.com/photo-1551698618-1dfe5d97d256?w=800&h=1000&fit=crop&q=80',
-                    'https://images.unsplash.com/photo-1521150932951-303a95503ed3?w=800&h=1000&fit=crop&q=80',
+                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTGT10Kj0UcquWpv8VX7aOc8qojCq3vhdyIR3-9ojVDZQ&s=10',
                 ],
-                'colors' => ['Đen', 'Xanh dương', 'Cam'],
+                'colors' => ['Đen', 'Trắng', 'Đỏ'],
                 'sizes'  => ['S', 'M', 'L', 'XL'],
                 'tags'   => ['da-ngoai', 'cao-cap'],
             ],
@@ -393,19 +735,18 @@ class ProductSeeder extends Seeder
             // NAM — QUẦN JEANS
             // ═══════════════════════════════════════════════════════════════════
             [
-                'name'        => 'Quần Jeans Nam Slim Fit 511',
+                'name'        => 'Quần Jeans Nam Slim Fit',
                 'slug'        => 'quan-jeans-nam-slim-511-levis',
                 'description' => "Quần jeans Levi's 511 Slim Fit kinh điển với form ôm vừa vặn. Chất liệu denim cao cấp 99% cotton pha 1% elastane, đường may nổi màu vàng đặc trưng, khóa kéo YKK chắc chắn. Phù hợp mọi dịp từ đi học, đi làm đến dạo phố.",
                 'price'       => 990000,
-                'thumbnail'   => 'https://images.unsplash.com/photo-1542272604-787c3835535d?w=800&h=1000&fit=crop&q=80',
+                'thumbnail'   => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRZnjzKj_YViSj5p1nh8grb54KPsHju9Da9WWStK0x7-g&s=10',
                 'category'    => 'nam-quan-jeans',
                 'brand'       => "Levi's",
                 'gender'      => 'men',
                 'is_featured' => false,
                 'views_count' => 289,
                 'images'      => [
-                    'https://images.unsplash.com/photo-1542272604-787c3835535d?w=800&h=1000&fit=crop&q=80',
-                    'https://images.unsplash.com/photo-1543087903-1ac2ec7aa8c5?w=800&h=1000&fit=crop&q=80',
+                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSDxst4IB73F3d9rQOL2nu13REnoaf3wMV_gW1c3FjK4g&s=10',
                 ],
                 'colors' => ['Xanh navy', 'Đen'],
                 'sizes'  => ['S', 'M', 'L', 'XL'],
@@ -423,10 +764,9 @@ class ProductSeeder extends Seeder
                 'is_featured' => false,
                 'views_count' => 167,
                 'images'      => [
-                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRgEWid4cdxlvEZmND6GD9469zdLAs2vWTG2f3w6n75YA&s',
                     'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTIoIoDGsz-aja5Ho6mFjh04fD9wVnwMdFhWB02VIcU3g&s=10',
                 ],
-                'colors' => ['Xanh dương', 'Đen', 'Xám'],
+                'colors' => ['Xanh dương', 'Đen'],
                 'sizes'  => ['S', 'M', 'L', 'XL'],
                 'tags'   => ['casual', 'dao-pho'],
             ],
@@ -492,10 +832,10 @@ class ProductSeeder extends Seeder
                 'is_featured' => true,
                 'views_count' => 412,
                 'images'      => [
-                    'https://images.unsplash.com/photo-1552902865-b72c031ac5ea?w=800&h=1000&fit=crop&q=80',
-                    'https://images.unsplash.com/photo-1618354691438-25bc04584c23?w=800&h=1000&fit=crop&q=80',
+                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSmLPp_TD3Th_DzSooLt6G36BBV2fcwoqt_2nsNFaym4g&s=10',
+                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSk1Q4mOgvMpMmhy-6eX4Qi4Fqf5mYc7JR4wdjrh26LHA&s=10',
                 ],
-                'colors' => ['Đen', 'Xám', 'Xanh navy'],
+                'colors' => ['Đen', 'Xám', 'Xanh dương'],
                 'sizes'  => ['S', 'M', 'L', 'XL'],
                 'tags'   => ['the-thao', 'best-seller'],
             ],
@@ -536,7 +876,7 @@ class ProductSeeder extends Seeder
                 'images'      => [
                     'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTgTxwAcSkqYHlLTapsMiyvr6wd5_LwyX8UXoF-jTSqHA&s',
                 ],
-                'colors' => ['Trắng', 'Đen', 'Hồng'],
+                'colors' => ['Trắng', 'Đen'],
                 'sizes'  => ['XS', 'S', 'M'],
                 'tags'   => ['xu-huong', 'mua-he'],
             ],
@@ -556,10 +896,10 @@ class ProductSeeder extends Seeder
                 'is_featured' => false,
                 'views_count' => 195,
                 'images'      => [
-                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQKMAjlJ4k-FsyS6WEKd0Ioc8VazNE-M74xFL-cWc05QA&s',
+                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSbgQO-P6REgVQqO3Ib0ZjCzPZnJ0_Szzt-Yb310aFQnA&s=10',
                     'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT33wLT40E2YQdqV1_RMv9Y7Q0a7SG-hFE9X9NkysozmQ&s=10',
                 ],
-                'colors' => ['Trắng', 'Be', 'Hồng'],
+                'colors' => ['Trắng', 'Vàng', 'Hồng'],
                 'sizes'  => ['S', 'M', 'L'],
                 'tags'   => ['cong-so', 'cao-cap'],
             ],
@@ -579,9 +919,10 @@ class ProductSeeder extends Seeder
                 'is_featured' => false,
                 'views_count' => 187,
                 'images'      => [
-                    'https://images.unsplash.com/photo-1586363104862-3a5e2ab60d99?w=800&h=1000&fit=crop&q=80',
+                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRlv0w5eC8nKA8bHoxMyP_ShqGISIJdSxAJ9IaGHbL3yw&s',
+                    'https://cdn.hstatic.net/products/1000373601/clothing_poses_outdoor_resort_4k_202607101443_3f8a4f9c1096410495b951e2a5434b04_master.jpeg',
                 ],
-                'colors' => ['Trắng', 'Hồng', 'Xanh dương'],
+                'colors' => ['Trắng', 'Hồng', 'Đen'],
                 'sizes'  => ['XS', 'S', 'M', 'L'],
                 'tags'   => ['casual', 'cong-so'],
             ],
@@ -594,16 +935,17 @@ class ProductSeeder extends Seeder
                 'slug'        => 'ao-hoodie-nu-crop-zip-hm',
                 'description' => 'Áo hoodie nữ H&M dáng crop ngắn eo với khóa zip phía trước, phong cách năng động trẻ trung. Chất nỉ bông French Terry mềm mại, giữ ấm nhẹ. Phối cùng quần jogger hoặc chân váy tennis cho set đồ hoàn hảo.',
                 'price'       => 450000,
-                'thumbnail'   => 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=800&h=1000&fit=crop&q=80',
+                'thumbnail'   => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSfEZpLxW_OnNUaQBb9kbQh34bgT0CaMeizdl8eGysnhA&s=10',
                 'category'    => 'nu-ao-hoodie',
                 'brand'       => 'H&M',
                 'gender'      => 'women',
                 'is_featured' => false,
                 'views_count' => 287,
                 'images'      => [
-                    'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=800&h=1000&fit=crop&q=80',
+                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQBWB3aC-uwg3AC4R1atc6TggH5PZND7iPnOyeEEEEfwA&s=10',
+                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQN7qL6vbNrmwiJyv6q-u71OGBQF70dNDt3W20vB7_q0g&s',
                 ],
-                'colors' => ['Hồng', 'Trắng', 'Tím'],
+                'colors' => ['Trắng', 'Đen', 'Nâu'],
                 'sizes'  => ['XS', 'S', 'M', 'L'],
                 'tags'   => ['xu-huong', 'dao-pho'],
             ],
@@ -616,19 +958,73 @@ class ProductSeeder extends Seeder
                 'slug'        => 'ao-phao-nu-ultra-light-uniqlo',
                 'description' => 'Áo phao Uniqlo Ultra Light Down trọng lượng cực nhẹ chỉ 200g nhưng giữ ấm vượt trội nhờ lông vũ 90% white goose down. Gấp gọn vào túi kèm theo, lớp vỏ nylon siêu mỏng chống gió và kháng nước nhẹ.',
                 'price'       => 990000,
-                'thumbnail'   => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQcSQ7OSviGym9iRMBmwzL6xvaI2hj30-fk8CaiPVoVQA&s=10',
+                'thumbnail'   => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTqS2y92M1nC2H2W48oMmpBe_ld_ydjsJHA7vbo5R15uw&s=10',
                 'category'    => 'nu-ao-khoac',
                 'brand'       => 'Uniqlo',
                 'gender'      => 'women',
                 'is_featured' => true,
                 'views_count' => 489,
                 'images'      => [
-                    'https://images.unsplash.com/photo-1547721064-da6cfb341d50?w=800&h=1000&fit=crop&q=80',
-                    'https://images.unsplash.com/photo-1512436991641-6745cdb1723f?w=800&h=1000&fit=crop&q=80',
+                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQCceLFzMNQaSvaIUK0ksSxF0-m-j3p0YOAPn4L96NT5w&s=10',
+                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQUijFxN-ZIAhZS5Xa2T-ym6aE5SaO3NvNCtotb1wd0jg&s=10',
                 ],
                 'colors' => ['Đen', 'Hồng', 'Be'],
                 'sizes'  => ['S', 'M', 'L'],
                 'tags'   => ['mua-dong', 'cao-cap', 'best-seller'],
+            ],
+            [
+                'name'        => 'Áo Khoác Cardigan Nữ Dệt Kim Mỏng',
+                'slug'        => 'ao-khoac-cardigan-nu-det-kim-mong-hm',
+                'description' => 'Áo khoác cardigan H&M dệt kim mỏng nhẹ, form suông thoải mái không bó sát. Chất liệu cotton pha thoáng mát, phù hợp khoác ngoài đầm/áo hai dây khi trời se lạnh nhẹ mùa Xuân - Hè. Cúc gỗ điểm nhấn tinh tế phía trước.',
+                'price'       => 550000,
+                'thumbnail'   => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQubjDhMyCopK5LY7WkjQBHwQDSCpqtPHrChj4RcpNzaA&s=10',
+                'category'    => 'nu-ao-khoac',
+                'brand'       => 'H&M',
+                'gender'      => 'women',
+                'is_featured' => false,
+                'views_count' => 134,
+                'images'      => [
+                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRqigpnWjaiF_XiUHTnBlN4ldmYNP7XiRHB-j4baznrIQ&s=10',
+                ],
+                'colors' => ['Be', 'Trắng'],
+                'sizes'  => ['S', 'M', 'L'],
+                'tags'   => ['mua-xuan', 'mua-he', 'casual'],
+            ],
+            [
+                'name'        => 'Áo Cardigan Nữ Len Cotton Cổ Tim',
+                'slug'        => 'ao-cardigan-nu-len-cotton-co-tim-zara',
+                'description' => 'Áo cardigan Zara chất len cotton mềm mại, cổ tim nữ tính, cúc bọc vải đồng bộ. Form ôm nhẹ tôn dáng, độ dày vừa phải không quá nóng. Khoác ngoài đầm hai dây hoặc áo croptop cho set đồ nhẹ nhàng mùa Xuân.',
+                'price'       => 480000,
+                'thumbnail'   => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT47wxbOA1PfFlcdemO4FZaQbrQtojVcPZeQ3wSo68n8g&s=10',
+                'category'    => 'nu-ao-khoac',
+                'brand'       => 'Zara',
+                'gender'      => 'women',
+                'is_featured' => false,
+                'views_count' => 118,
+                'images'      => [
+                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRl3ymLZ_ZaoyRuBdrJCgLFEbGMY5EACwSwQmJWFC59lw&s=10',
+                ],
+                'colors' => ['Xanh dương', 'Trắng'],
+                'sizes'  => ['S', 'M', 'L'],
+                'tags'   => ['mua-xuan', 'casual'],
+            ],
+            [
+                'name'        => 'Áo Cardigan Nữ Kimono Voan Mỏng',
+                'slug'        => 'ao-cardigan-nu-kimono-voan-hm',
+                'description' => 'Áo cardigan kimono H&M chất voan mỏng nhẹ bay bổng, dáng dài qua hông, không cúc cài. Phù hợp khoác ngoài đầm hai dây hoặc áo tank top cho set đồ dạo biển, du lịch mùa Hè phóng khoáng.',
+                'price'       => 420000,
+                'thumbnail'   => 'https://down-vn.img.susercontent.com/file/vn-11134207-81ztc-mkvpkzn90l517b',
+                'category'    => 'nu-ao-khoac',
+                'brand'       => 'H&M',
+                'gender'      => 'women',
+                'is_featured' => false,
+                'views_count' => 96,
+                'images'      => [
+                    'https://down-vn.img.susercontent.com/file/vn-11134207-81ztc-mkvpkug4bqpsa6',
+                ],
+                'colors' => ['Trắng', 'Đen'],
+                'sizes'  => ['S', 'M', 'L'],
+                'tags'   => ['mua-he', 'xu-huong', 'casual'],
             ],
             [
                 'name'        => 'Áo Blazer Nữ Oversize Thanh Lịch',
@@ -636,7 +1032,7 @@ class ProductSeeder extends Seeder
                 'description' => 'Áo blazer nữ Zara dáng oversize hiện đại, vai suông tạo silhouette thời thượng. Chất vải tweed pha len mềm, lót bên trong. Hai túi bên ngoài, một nút cài phía trước. Phối cùng quần ống rộng hoặc đầm cho phong cách thanh lịch.',
                 'price'       => 1090000,
                 'thumbnail'   => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSiCTcAHOy0IKQYzM2p-Q9tE5tgzPcywlRRy0zZ5QqpSA&s',
-                'category'    => 'nu-ao-khoac',
+                'category'    => 'nu-ao-blazer',
                 'brand'       => 'Zara',
                 'gender'      => 'women',
                 'is_featured' => true,
@@ -668,7 +1064,7 @@ class ProductSeeder extends Seeder
                     'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQYBXtnbquxhdfc0YsL5R88Kj5t9sH0WMKBNifKiYgQlA&s',
                     'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTK1QOxTVZH5y1MS5-wuOr769g33sMi7lRmNhzJVVs4oQ&s=10',
                 ],
-                'colors' => ['Be', 'Trắng', 'Xám', 'Hồng'],
+                'colors' => ['Trắng', 'Xám', 'Hồng'],
                 'sizes'  => ['S', 'M', 'L'],
                 'tags'   => ['mua-dong', 'cao-cap'],
             ],
@@ -687,7 +1083,7 @@ class ProductSeeder extends Seeder
                     'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRu3xojSfEcUdLBkEAchzBeNkxumfzwuQ11R3Wa07olew&s=10',
                     'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRHjwYAXrQDo7b6jBRmyu4JB1b6v6MwTDODoh4MNzKX1g&s',
                 ],
-                'colors' => ['Xám', 'Đen', 'Xanh navy', 'Nâu'],
+                'colors' => ['Xám', 'Xanh navy', 'Nâu'],
                 'sizes'  => ['S', 'M', 'L', 'XL'],
                 'tags'   => ['mua-dong', 'cong-so'],
             ],
@@ -700,15 +1096,14 @@ class ProductSeeder extends Seeder
                 'slug'        => 'quan-jeans-nu-skinny-721-levis',
                 'description' => "Quần jeans Levi's 721 form skinny ôm sát cùng cạp cao tôn vóc dáng, kéo dài đôi chân. Chất denim co giãn 4 chiều đảm bảo thoải mái. Đường wash vintage tạo độ phai màu tự nhiên thời trang.",
                 'price'       => 850000,
-                'thumbnail'   => 'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?w=800&h=1000&fit=crop&q=80',
+                'thumbnail'   => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSXXnmeewffBuMyETJBMZX_7P7Sa2vbhjB6ZZiCRIxBSg&s=10',
                 'category'    => 'nu-quan-jeans',
                 'brand'       => "Levi's",
                 'gender'      => 'women',
                 'is_featured' => false,
                 'views_count' => 387,
                 'images'      => [
-                    'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?w=800&h=1000&fit=crop&q=80',
-                    'https://images.unsplash.com/photo-1544441893-675973e31985?w=800&h=1000&fit=crop&q=80',
+                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQXkErsZy4vvLgyM0-_e700rMXuOVU2eX3NfXKWlrrR9A&s=10',
                 ],
                 'colors' => ['Xanh navy', 'Đen'],
                 'sizes'  => ['XS', 'S', 'M', 'L'],
@@ -731,7 +1126,7 @@ class ProductSeeder extends Seeder
                 'views_count' => 143,
                 'images'      => [
                     'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQim9Z4h7to7YVnkgeZ9S3q9vK4bXaF-E9ZIukTVEJufA&s=10',
-                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT51hMVbDlOkW-LSR_8KPmS5cBLDhrPJuPHrtGELoEhbA&s=10',
+                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTgnAs-xCD0QbtkDEJTmNSnOJejqqG2j7344t4Dohuoeg&s=10',
                 ],
                 'colors' => ['Đen', 'Be', 'Xám'],
                 'sizes'  => ['XS', 'S', 'M', 'L'],
@@ -773,8 +1168,8 @@ class ProductSeeder extends Seeder
                 'is_featured' => true,
                 'views_count' => 474,
                 'images'      => [
-                    'https://images.unsplash.com/photo-1487222477894-8943e31ef7b2?w=800&h=1000&fit=crop&q=80',
-                    'https://images.unsplash.com/photo-1572804013427-4d7ca7268217?w=800&h=1000&fit=crop&q=80',
+                    'https://mdufashion.com/wp-content/uploads/2025/04/vay-maxi-hoa-nhi-di-bien-13.jpg',
+                    'https://maxi.vn/wp-content/uploads/2025/06/ee6dcaae1067a739fe76-1.jpg',
                 ],
                 'colors' => ['Hồng', 'Be', 'Trắng'],
                 'sizes'  => ['S', 'M', 'L'],
@@ -785,17 +1180,16 @@ class ProductSeeder extends Seeder
                 'slug'        => 'dam-body-midi-nu-zara',
                 'description' => 'Đầm body midi Zara ôm sát cơ thể tôn đường cong, chất liệu jersey co giãn cao cấp. Dài qua đầu gối, phù hợp cho dạ tiệc, sự kiện trang trọng hoặc đi chơi buổi tối. Có thể phối cùng blazer cho phong cách công sở.',
                 'price'       => 790000,
-                'thumbnail'   => 'https://images.unsplash.com/photo-1617922001439-4a2e6562f328?w=800&h=1000&fit=crop&q=80',
+                'thumbnail'   => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ200XIqXvAL57nNSKCGktwmz7IdKPl33IYo_XHSZTBUQ&s=10',
                 'category'    => 'nu-dam',
                 'brand'       => 'Zara',
                 'gender'      => 'women',
                 'is_featured' => true,
                 'views_count' => 456,
                 'images'      => [
-                    'https://images.unsplash.com/photo-1617922001439-4a2e6562f328?w=800&h=1000&fit=crop&q=80',
-                    'https://images.unsplash.com/photo-1572804013427-4d7ca7268217?w=800&h=1000&fit=crop&q=80',
+                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT4LW-auWiULSCgq5V71vCaC-Dc_Gi6OGVQaBqZJWz51w&s=10',
                 ],
-                'colors' => ['Đen', 'Đỏ', 'Be'],
+                'colors' => ['Đen', 'Đỏ'],
                 'sizes'  => ['XS', 'S', 'M', 'L'],
                 'tags'   => ['dao-pho', 'xu-huong', 'cao-cap'],
             ],
@@ -804,16 +1198,16 @@ class ProductSeeder extends Seeder
                 'slug'        => 'dam-wrap-nu-hoa-vintage-hm',
                 'description' => 'Đầm wrap nữ H&M kiểu đắp chéo tôn eo, họa tiết hoa vintage lãng mạn. Chất viscose mềm rũ thoáng mát, tay dài nhún nhẹ. Thắt đai eo bên hông tạo điểm nhấn. Phù hợp cho buổi hẹn hò, tiệc trà hay dạo phố mùa thu.',
                 'price'       => 490000,
-                'thumbnail'   => 'https://images.unsplash.com/photo-1572804013427-4d7ca7268217?w=800&h=1000&fit=crop&q=80',
+                'thumbnail'   => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcReeH-9PwPgTCtNT9fdwxeQ7mqSaVoto3jpej0_Aixvtg&s=10',
                 'category'    => 'nu-dam',
                 'brand'       => 'H&M',
                 'gender'      => 'women',
                 'is_featured' => false,
                 'views_count' => 267,
                 'images'      => [
-                    'https://images.unsplash.com/photo-1572804013427-4d7ca7268217?w=800&h=1000&fit=crop&q=80',
+                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQIJ6VA0-qjMaFO72PFMiBSXEsW2vxEjzL8-0xUvAS56A&s=10',
                 ],
-                'colors' => ['Đỏ', 'Xanh rêu', 'Nâu'],
+                'colors' => ['Đỏ', 'Xanh rêu'],
                 'sizes'  => ['S', 'M', 'L'],
                 'tags'   => ['dao-pho', 'xu-huong'],
             ],
@@ -852,10 +1246,10 @@ class ProductSeeder extends Seeder
                 'is_featured' => true,
                 'views_count' => 334,
                 'images'      => [
-                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRYsSk8HppFktfIitS_HPoPXQqWtBGtNyq6R4ZgDUbUSg&s=10',
-                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSjhhFY_j3azR9SpxaYCgYZWtHaaNzQ0qYIsrtRNeNWng&s=10',
+                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ4-8n2CIKdPT2XbBB5wY397yK0dx98eCd22q_Cw79pug&s=10',
+                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTLFK6eQAHJn5MPQJ_H-KtRnPqp9_OISSXHgwWd6QSo_A&s=10',
                 ],
-                'colors' => ['Be', 'Đen', 'Xanh rêu'],
+                'colors' => ['Trắng', 'Đen', 'Xanh dương'],
                 'sizes'  => ['S', 'M', 'L'],
                 'tags'   => ['cong-so', 'xu-huong'],
             ],
@@ -875,65 +1269,6 @@ class ProductSeeder extends Seeder
                 ],
                 'colors' => ['Xanh dương', 'Đen'],
                 'sizes'  => ['XS', 'S', 'M', 'L'],
-                'tags'   => ['casual', 'dao-pho'],
-            ],
-
-            // ═══════════════════════════════════════════════════════════════════
-            // PHỤ KIỆN
-            // ═══════════════════════════════════════════════════════════════════
-            [
-                'name'        => 'Mũ Lưỡi Trai MLB Logo Classic',
-                'slug'        => 'mu-luoi-trai-mlb-logo-classic',
-                'description' => 'Mũ lưỡi trai MLB với logo NY thêu nổi kinh điển, chất cotton twill dày dặn giữ form tốt. Khóa điều chỉnh phía sau phù hợp mọi kích cỡ đầu. Lưỡi trai cong che nắng hiệu quả. Item phụ kiện streetwear không thể thiếu.',
-                'price'       => 450000,
-                'thumbnail'   => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQqf85NLeJoaFwujF78NK35-sS2rViNJv8COyD7bLJUZg&s',
-                'category'    => 'mu-non',
-                'brand'       => 'MLB',
-                'gender'      => 'unisex',
-                'is_featured' => true,
-                'views_count' => 398,
-                'images'      => [
-                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTSlfvgUfYZP2qnvD_rY4zKV44PP-GKsdxUle5kPTtMYA&s',
-                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRwH77uWnwL7OumyRpESlZty3E3-hdGnuEqdZ8atjFJ5A&s=10',
-                ],
-                'colors' => ['Đen', 'Trắng', 'Xanh navy'],
-                'sizes'  => ['M', 'L'],
-                'tags'   => ['xu-huong', 'best-seller'],
-            ],
-            [
-                'name'        => 'Nón Bucket Nike Sportswear',
-                'slug'        => 'non-bucket-nike-sportswear',
-                'description' => 'Nón bucket Nike Sportswear dáng rộng vành che nắng tốt, chất nylon nhẹ chống nước nhẹ. Logo Swoosh thêu tinh tế phía trước. Thiết kế gọn gàng có thể gấp lại khi không sử dụng.',
-                'price'       => 390000,
-                'thumbnail'   => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTlyncdK_Onm0-HLUf6ggoIiS_Wl7hq1WB9Qyr9eOd1eg&s=10',
-                'category'    => 'mu-non',
-                'brand'       => 'Nike',
-                'gender'      => 'unisex',
-                'is_featured' => false,
-                'views_count' => 167,
-                'images'      => [
-                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRMDexEITAHc0IWKcUEzIeNQyeeoFrFZt3U8-O8IRbFzg&s=10',
-                ],
-                'colors' => ['Đen', 'Be', 'Xanh rêu'],
-                'sizes'  => ['M', 'L'],
-                'tags'   => ['mua-he', 'casual'],
-            ],
-            [
-                'name'        => 'Túi Tote Vải Canvas Unisex',
-                'slug'        => 'tui-tote-vai-canvas-converse',
-                'description' => 'Túi tote Converse chất liệu canvas dày bền, logo All Star in nổi bật. Dung tích lớn đủ chứa laptop, sách vở và đồ cá nhân. Quai xách dài có thể đeo vai thoải mái. Phong cách casual phù hợp đi học, đi làm hay dạo phố.',
-                'price'       => 350000,
-                'thumbnail'   => 'https://images.unsplash.com/photo-1544816155-12df9643f363?w=800&h=1000&fit=crop&q=80',
-                'category'    => 'tui-xach',
-                'brand'       => 'Converse',
-                'gender'      => 'unisex',
-                'is_featured' => false,
-                'views_count' => 231,
-                'images'      => [
-                    'https://images.unsplash.com/photo-1544816155-12df9643f363?w=800&h=1000&fit=crop&q=80',
-                ],
-                'colors' => ['Đen', 'Trắng', 'Be'],
-                'sizes'  => ['M'],
                 'tags'   => ['casual', 'dao-pho'],
             ],
 
@@ -991,8 +1326,11 @@ class ProductSeeder extends Seeder
                 'views_count' => 208,
                 'images'      => [
                     'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRtfBAErL28FT6785_KxhopajtJ7KHUJvwtGPK8_lMoeg&s=10',
+                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTG7eAH0Yjjz1fYzmk7Jr0a_yukb8nakBok3lyFuCUROw&s=10',
+                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT8yZGvC1apy2wEOjiy6uu6UJslyIsNrrVxmOfRjq9-lQ&s=10',
+                    
                 ],
-                'colors' => ['Be', 'Hồng', 'Trắng', 'Xám'],
+                'colors' => ['Be', 'Đen', 'Trắng', 'Xám'],
                 'sizes'  => ['S', 'M', 'L'],
                 'tags'   => ['mua-xuan', 'cong-so'],
             ],
@@ -1013,8 +1351,9 @@ class ProductSeeder extends Seeder
                 'views_count' => 233,
                 'images'      => [
                     'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSwmPQPfmXuRT1OozGpXiTXafU7RiFw1dKXUjPVucRe6Q&s',
+                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSLGoFc6XOHn1BXp9oEcqGYaDubnzd7hGSxBPiTnls8NQ&s',
                 ],
-                'colors' => ['Trắng', 'Xanh dương', 'Vàng'],
+                'colors' => ['Trắng', 'Xanh dương', 'Xanh rêu'],
                 'sizes'  => ['S', 'M', 'L', 'XL'],
                 'tags'   => ['mua-he', 'casual'],
             ],
@@ -1023,16 +1362,17 @@ class ProductSeeder extends Seeder
                 'slug'        => 'vay-midi-chiffon-mua-he-zara',
                 'description' => 'Váy midi Zara chất chiffon nhẹ bay bổng, tông màu tươi sáng đúng chất mùa hạ. Cạp chun co giãn thoải mái, độ dài qua gối thanh lịch. Phối cùng áo croptop hoặc sơ mi buộc vạt cho phong cách nghỉ dưỡng.',
                 'price'       => 560000,
-                'thumbnail'   => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTFOHovDl3MZ6KuahYaMEeGCT2uWe3Mz8DTE1A8NVMUfg&s=10',
+                'thumbnail'   => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRbt-iinRhmGd1_g07p5S3LA8gSNDh_nAxd_z4QpMtzLw&s=10',
                 'category'    => 'nu-vay',
                 'brand'       => 'Zara',
                 'gender'      => 'women',
                 'is_featured' => false,
                 'views_count' => 219,
                 'images'      => [
-                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTFOHovDl3MZ6KuahYaMEeGCT2uWe3Mz8DTE1A8NVMUfg&s=10',
+                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRJwzRGfNQy2jqn0_G4NsbYYWEQwcYG6ucnE4QHBrKLSQ&s=10',
+                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT9VV0leACDlKDqHgAlgjK78m0vQgk7EMkclGWVV2GOww&s=10',
                 ],
-                'colors' => ['Vàng', 'Be', 'Xanh dương'],
+                'colors' => ['Đen', 'Be', 'Xanh dương'],
                 'sizes'  => ['XS', 'S', 'M', 'L'],
                 'tags'   => ['mua-he', 'xu-huong'],
             ],
@@ -1045,16 +1385,17 @@ class ProductSeeder extends Seeder
                 'slug'        => 'ao-blazer-nam-tweed-mua-thu-zara',
                 'description' => 'Áo blazer Zara Man chất tweed pha len ấm áp, tông nâu đất trầm ấm đặc trưng mùa thu. Form slim fit lịch lãm, ve áo bản vừa. Khoác cùng áo len cổ tròn và quần tây cho set đồ thu thanh lịch, ấm áp.',
                 'price'       => 1290000,
-                'thumbnail'   => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRHBkrgF-bFN-dIf0DNd1rp2OX6s3-nriimxNVBqnbdhQ&s=10',
+                'thumbnail'   => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS4AyMmFJ9TG8o2Sq0m5Hu2rFvDIc1vMMf_NBYYpwsH-g&s=10',
                 'category'    => 'nam-ao-blazer',
                 'brand'       => 'Zara',
                 'gender'      => 'men',
                 'is_featured' => true,
                 'views_count' => 287,
                 'images'      => [
-                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSAbnQVQv3VkcOrO7ngKphxWazZFkTDeBJMABIZ9PIXQw&s',
+                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQO7pBsPt0sfLxpFXedHpgXtdHL2hKwdiZXctBgrGEEIQ&s=10',
+                    'https://krik.vn/wp-content/uploads/2025/10/20250428_PTZLFzaZ.webp',
                 ],
-                'colors' => ['Nâu', 'Xám', 'Xanh rêu'],
+                'colors' => ['Nâu', 'Xám', 'Be'],
                 'sizes'  => ['M', 'L', 'XL'],
                 'tags'   => ['mua-thu', 'cong-so', 'cao-cap'],
             ],
@@ -1071,7 +1412,7 @@ class ProductSeeder extends Seeder
                 'views_count' => 176,
                 'images'      => [
                     'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTRGvh2CtXWpFVKCNP9qYH2P9f_RvNRfHkUZVQr8krOIA&s=10',
-                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRgJuhaol_OIaFw7GJGhclE4P7JoJCRU2H3vFgyfb5Q8Q&s=10',
+                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTYo-tQx-dwotHyj6FLbAG_j5J1twKC_L5dFQG2MrnMbg&s',
                 ],
                 'colors' => ['Nâu', 'Xanh rêu', 'Be'],
                 'sizes'  => ['S', 'M', 'L', 'XL'],
@@ -1083,7 +1424,7 @@ class ProductSeeder extends Seeder
                 'description' => 'Áo blazer nữ Zara chất dạ tweed dệt cổ điển, tông trung tính ấm áp cho mùa thu. Dáng vừa vặn tôn eo, cúc bọc tinh tế. Diện cùng quần ống rộng hoặc chân váy midi cho set đồ công sở thời thượng.',
                 'price'       => 1150000,
                 'thumbnail'   => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQKbjxVxyyf4a8FXDP-_OlZiQpi4aBH0Rr_TabvsI7Amw&s=10',
-                'category'    => 'nu-ao-khoac',
+                'category'    => 'nu-ao-blazer',
                 'brand'       => 'Zara',
                 'gender'      => 'women',
                 'is_featured' => true,
@@ -1096,6 +1437,25 @@ class ProductSeeder extends Seeder
                 'sizes'  => ['S', 'M', 'L'],
                 'tags'   => ['mua-thu', 'cong-so', 'cao-cap'],
             ],
+            [
+                'name'        => 'Áo Blazer Nữ Linen Mỏng Mùa Hè',
+                'slug'        => 'ao-blazer-nu-linen-mong-zara',
+                'description' => 'Áo blazer nữ Zara chất linen pha cotton mỏng nhẹ, thoáng khí phù hợp thời tiết nóng. Dáng suông vừa vặn, không lót trong nên mặc mát mẻ cả ngày. Khoác ngoài đầm hoặc áo sơ mi cho set đồ công sở/dạo phố thanh lịch mùa Xuân - Hè.',
+                'price'       => 890000,
+                'thumbnail'   => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS0_8Bc25AB5u570chfQCCG-eWqsl8TVccVNfshkVa6dw&s',
+                'category'    => 'nu-ao-blazer',
+                'brand'       => 'Zara',
+                'gender'      => 'women',
+                'is_featured' => true,
+                'views_count' => 176,
+                'images'      => [
+                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ4qx9VwLw-Kkmqb4WvzVp-fIlnEo_DPM2ukT9apFKf_A&s=10',
+                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRd1ucOI20JWe0BGc0WYmZsFxhmgsUd2Fr8ydFq0NkLIQ&s=10',
+                ],
+                'colors' => ['Trắng', 'Be', 'Xanh dương'],
+                'sizes'  => ['S', 'M', 'L'],
+                'tags'   => ['mua-xuan', 'mua-he', 'cong-so'],
+            ],
 
             // ═══════════════════════════════════════════════════════════════════
             // BỘ SƯU TẬP MÙA ĐÔNG — giữ ấm, dày dặn, cá tính
@@ -1105,15 +1465,15 @@ class ProductSeeder extends Seeder
                 'slug'        => 'ao-mang-to-da-nam-oversize-zara',
                 'description' => 'Áo măng tô Zara Man chất dạ dày dặn giữ ấm vượt trội cho mùa đông giá lạnh. Dáng oversize hiện đại, dài qua gối sang trọng. Lớp lót mềm mịn bên trong. Khoác ngoài áo len và sơ mi cho phong cách quý ông ấm áp.',
                 'price'       => 1990000,
-                'thumbnail'   => 'https://images.unsplash.com/photo-1551537482-f2075a1d41f2?w=800&h=1000&fit=crop&q=80',
+                'thumbnail'   => 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQg7c7e4tN9gF4AnBN2nQ-FiZVQjgyG7MJkFgrdCd5jPA&s=10',
                 'category'    => 'nam-ao-khoac',
                 'brand'       => 'Zara',
                 'gender'      => 'men',
                 'is_featured' => true,
                 'views_count' => 368,
                 'images'      => [
-                    'https://images.unsplash.com/photo-1551537482-f2075a1d41f2?w=800&h=1000&fit=crop&q=80',
-                    'https://images.unsplash.com/photo-1547949003-9792a18a2601?w=800&h=1000&fit=crop&q=80',
+                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRqfCXnaRO8MJ1eH066iWFzFvvW6Y9cyaw4uaYhostfLA&s=10',
+                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRCnDqiazPYSKNlEpaJoxIdkaXZ4MHUCDPB_zD9jk30sg&s',
                 ],
                 'colors' => ['Đen', 'Nâu', 'Xám'],
                 'sizes'  => ['M', 'L', 'XL'],
@@ -1131,10 +1491,9 @@ class ProductSeeder extends Seeder
                 'is_featured' => true,
                 'views_count' => 421,
                 'images'      => [
-                    'https://images.unsplash.com/photo-1547721064-da6cfb341d50?w=800&h=1000&fit=crop&q=80',
-                    'https://images.unsplash.com/photo-1512436991641-6745cdb1723f?w=800&h=1000&fit=crop&q=80',
+                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSYgjG_N0w-mmwIN3f04ol1DqzoJWjwH6R1TpDaylE3Bg&s=10',
                 ],
-                'colors' => ['Đen', 'Be', 'Xanh navy'],
+                'colors' => ['Đen', 'Trắng'],
                 'sizes'  => ['S', 'M', 'L', 'XL'],
                 'tags'   => ['mua-dong', 'cao-cap', 'best-seller'],
             ],

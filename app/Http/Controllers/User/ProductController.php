@@ -88,6 +88,47 @@ class ProductController extends Controller
         // Biến thể mặc định (đầu tiên) để hiển thị SKU và giá ban đầu
         $defaultVariant = $product->productVariants->first();
 
+        // ============================================================
+        //  GALLERY ẢNH THEO MÀU
+        // ============================================================
+        // Ảnh riêng của từng màu lấy từ product_variants.image
+        // (các size cùng một màu thường dùng chung một ảnh -> khử trùng lặp theo URL).
+        $imagesByColor = [];
+        foreach ($product->productVariants as $variant) {
+            if (blank($variant->image)) {
+                continue;
+            }
+
+            $imagesByColor[$variant->color_id][$variant->image] = true;
+        }
+        $imagesByColor = array_map('array_keys', $imagesByColor);
+
+        // Dữ liệu cũ gán CÙNG một ảnh cho mọi biến thể. Khi đó coi như sản phẩm
+        // chưa có ảnh riêng theo màu -> gallery giữ nguyên hành vi cũ (luôn hiện đủ ảnh).
+        $hasPerColorImages = count(array_unique(array_map(
+            fn (array $urls) => implode('|', $urls),
+            $imagesByColor
+        ))) > 1;
+
+        // Danh sách ảnh của gallery theo thứ tự: ảnh chính -> ảnh phụ -> ảnh riêng theo màu.
+        // Key là URL ảnh (khử trùng lặp), value là các color_id mà ảnh đó thuộc về
+        // ([] = ảnh dùng chung, không gắn với màu nào).
+        $galleryImages = [];
+        $baseImages = array_merge([$product->thumbnail], $product->productImages->pluck('image')->all());
+        foreach ($baseImages as $url) {
+            if (filled($url)) {
+                $galleryImages[$url] ??= [];
+            }
+        }
+
+        if ($hasPerColorImages) {
+            foreach ($imagesByColor as $colorId => $urls) {
+                foreach ($urls as $url) {
+                    $galleryImages[$url][] = $colorId;
+                }
+            }
+        }
+
         // Lấy 4 sản phẩm TƯƠNG TỰ (cùng danh mục) bằng thuật toán Content-based filtering.
         $relatedProducts = \App\Services\RecommendationService::getSimilarProducts($product, 4);
 
@@ -143,6 +184,7 @@ class ProductController extends Controller
             'colors',
             'sizes',
             'defaultVariant',
+            'galleryImages',
             'relatedProducts',
             'mixAndMatchProducts',
             'isInWishlist',
