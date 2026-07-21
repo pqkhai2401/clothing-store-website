@@ -85,7 +85,7 @@ class InventorySeeder extends Seeder
                     'phone' => '0987654321',
                     'email' => 'saigongold@gmail.com',
                     'address' => 'Đường Số 4, Tân Bình, TP. HCM',
-                    'note' => 'Nhà cung cấp quần Jeans và phụ kiện.',
+                    'note' => 'Nhà cung cấp quần Jeans và quần tây.',
                     'status' => true,
                 ],
                 [
@@ -224,7 +224,7 @@ class InventorySeeder extends Seeder
             [
                 'code' => $this->sequence->generateGoodsReceiptCode(),
                 'supplier_id' => $supplierIds[2] ?? $supplierIds[0],
-                'note' => 'Đơn nhập nháp thử nghiệm nguyên liệu phụ kiện.',
+                'note' => 'Đơn nhập nháp thử nghiệm vải may áo sơ mi.',
                 'status' => GoodsReceipt::STATUS_DRAFT,
                 'total_amount' => 0.00,
                 'created_by' => $userId,
