@@ -181,7 +181,7 @@
                         <div class="edit-field mb-0 @error('description') is-invalid @enderror">
                             <label for="descriptionEditor">Mô tả <span class="text-danger">*</span></label>
                             <div id="descriptionEditor">{!! old('description') !!}</div>
-                            <textarea id="description" name="description" class="d-none" required>{{ old('description') }}</textarea>
+                            <textarea id="description" name="description" class="d-none">{{ old('description') }}</textarea>
                             @error('description') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                         </div>
                     </div>

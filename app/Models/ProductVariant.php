@@ -77,6 +77,30 @@ class ProductVariant extends Model
         return $this->hasMany(ProductBatch::class);
     }
 
+    /**
+     * Dòng phiếu nhập kho từng chọn biến thể này (lịch sử nhập).
+     */
+    public function goodsReceiptItems(): HasMany
+    {
+        return $this->hasMany(GoodsReceiptItem::class);
+    }
+
+    /**
+     * Dòng phiếu xuất kho từng chọn biến thể này (lịch sử xuất).
+     */
+    public function stockIssueItems(): HasMany
+    {
+        return $this->hasMany(StockIssueItem::class);
+    }
+
+    /**
+     * Sổ cái biến động kho (nhập/xuất) của biến thể này.
+     */
+    public function stockMovements(): HasMany
+    {
+        return $this->hasMany(StockMovement::class);
+    }
+
     public function getFinalPriceAttribute(): float
     {
         return $this->product

@@ -221,6 +221,51 @@
         }
     };
 
+    /**
+     * Hiện toast từ JavaScript (dùng cho các thao tác AJAX ở admin) — thay cho alert() của
+     * trình duyệt. Dùng lại đúng bộ CSS .custom-toast ở trên nên hình thức đồng nhất với
+     * toast do server flash ra.
+     *
+     *   showAdminToast('Đã lưu thành công');            // mặc định: success
+     *   showAdminToast('Không thể kết nối', 'error');
+     */
+    window.showAdminToast = function (message, type = 'success') {
+        const container = document.getElementById('toast-container');
+        if (!container) {
+            return;
+        }
+
+        const icons = {
+            success: '<path d="M8 12l2.5 2.5L16 9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>',
+            error:   '<path d="M9 9l6 6M15 9l-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>',
+        };
+
+        const toast = document.createElement('div');
+        toast.className = 'custom-toast server-toast toast-' + (type === 'error' ? 'error' : 'success');
+        toast.innerHTML =
+            '<div class="toast-content">'
+          +   '<div class="toast-icon">'
+          +     '<svg style="flex-shrink:0;min-width:22px;min-height:22px;display:block;" viewBox="0 0 24 24" width="22" height="22">'
+          +       (icons[type] || icons.success)
+          +     '</svg>'
+          +   '</div>'
+          +   '<div class="toast-message"></div>'
+          + '</div>'
+          + '<span class="toast-close" onclick="closeServerToast(this)">&times;</span>';
+
+        // Gán bằng textContent để nội dung lỗi trả về từ server không thể chèn HTML.
+        toast.querySelector('.toast-message').textContent = message;
+
+        container.appendChild(toast);
+
+        setTimeout(function () {
+            if (document.body.contains(toast)) {
+                toast.classList.add('hiding');
+                setTimeout(() => toast.remove(), 300);
+            }
+        }, 5000);
+    };
+
     document.addEventListener('DOMContentLoaded', function () {
         const serverToasts = document.querySelectorAll('.server-toast');
 

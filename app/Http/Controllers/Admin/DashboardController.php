@@ -7,13 +7,13 @@ use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\OrderItem;
-use App\Models\PaymentMethod;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\Review;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
@@ -44,45 +44,25 @@ class DashboardController extends Controller
         'year'  => 'Năm',
     ];
 
-    public const CHART_TYPE_LABELS = [
-        'line' => 'Biểu đồ đường',
-        'bar'  => 'Biểu đồ cột',
-        'area' => 'Biểu đồ vùng',
-    ];
-
     public function index(Request $request)
     {
-        $metric    = array_key_exists($request->input('metric'), self::METRIC_LABELS) ? $request->input('metric') : 'revenue';
-        $range     = array_key_exists($request->input('range'), self::RANGE_LABELS) ? $request->input('range') : '30d';
-        $groupBy   = array_key_exists($request->input('group_by'), self::GROUP_BY_LABELS) ? $request->input('group_by') : 'day';
-        $chartType = array_key_exists($request->input('chart_type'), self::CHART_TYPE_LABELS) ? $request->input('chart_type') : 'line';
-        $dateFrom  = (string) $request->input('date_from', '');
-        $dateTo    = (string) $request->input('date_to', '');
+        // Dashboard chỉ xem nhanh: chỉ lọc theo Thời gian (kỳ). Các thao tác phân tích
+        // (đổi chỉ số, độ chi tiết, kiểu biểu đồ, so sánh) dành cho trang Thống kê doanh thu.
+        $range    = array_key_exists($request->input('range'), self::RANGE_LABELS) ? $request->input('range') : '30d';
+        $dateFrom = (string) $request->input('date_from', '');
+        $dateTo   = (string) $request->input('date_to', '');
 
-        $statusFilter  = (string) $request->input('status', '');
-        $paymentFilter = (string) $request->input('payment_status', '');
-        $methodFilter  = (string) $request->input('payment_method_id', '');
-
-        $filters = [
-            'status'            => $statusFilter !== '' ? $statusFilter : null,
-            'payment_status'    => $paymentFilter !== '' ? $paymentFilter : null,
-            'payment_method_id' => $methodFilter !== '' ? $methodFilter : null,
-        ];
+        $filters = []; // không lọc nâng cao ⇒ các query bỏ qua điều kiện trạng thái/thanh toán/phương thức
 
         [$from, $to] = $this->resolveRange($range, $dateFrom, $dateTo);
-        $prevTo   = $from->copy()->subSecond();
-        $prevFrom = $prevTo->copy()->subSeconds($from->diffInSeconds($to));
+        $groupBy = $this->autoGroupBy($from, $to); // độ chi tiết trục thời gian tự suy theo độ dài kỳ
 
-        // KPI theo kỳ đang chọn (áp dụng bộ lọc nâng cao)
+        // KPI theo kỳ đang chọn
         $periodRevenue      = $this->metricValue('revenue', $from, $to, $filters);
-        $prevPeriodRevenue  = $this->metricValue('revenue', $prevFrom, $prevTo, $filters);
         $periodOrders       = $this->metricValue('orders', $from, $to, $filters);
-        $prevPeriodOrders   = $this->metricValue('orders', $prevFrom, $prevTo, $filters);
-        $periodPending      = $this->orderFilterQuery($from, $to, $filters)->where('status', 'pending')->count();
-        $prevPeriodPending  = $this->orderFilterQuery($prevFrom, $prevTo, $filters)->where('status', 'pending')->count();
         $newCustomersPeriod = (int) $this->metricValue('new_customers', $from, $to, $filters);
 
-        // Số liệu tức thời (không phụ thuộc kỳ/bộ lọc) — snapshot hiện tại của hệ thống
+        // Số liệu tức thời (không phụ thuộc kỳ) — snapshot hiện tại của hệ thống
         $pending   = Order::where('status', 'pending')->count();
         $shipping  = Order::where('status', 'shipping')->count();
         $completed = Order::where('status', 'completed')->count();
@@ -99,11 +79,8 @@ class DashboardController extends Controller
 
         $stats = [
             'revenue'         => $periodRevenue,
-            'revenueDelta'    => $this->percentChange($periodRevenue, $prevPeriodRevenue),
             'orders'          => $periodOrders,
-            'ordersDelta'     => $this->percentChange($periodOrders, $prevPeriodOrders),
             'pending'         => $pending,
-            'pendingDelta'    => $this->percentChange($periodPending, $prevPeriodPending),
             'sellingProducts' => $sellingProducts,
             'totalProducts'   => $totalProducts,
             'totalCustomers'  => $totalCustomers,
@@ -115,14 +92,32 @@ class DashboardController extends Controller
             'lowStock'        => $lowStock,
         ];
 
-        $revenueChart = $this->buildMetricChart($metric, $from, $to, $prevFrom, $prevTo, $groupBy, $filters);
+        // Biểu đồ cố định là Doanh thu, không so sánh (prev = null).
+        $revenueChart = $this->buildMetricChart('revenue', $from, $to, null, null, $groupBy, $filters);
 
-        $statusRatio = [
-            ['label' => 'Hoàn thành', 'value' => $completed, 'color' => '#16A34A'],
-            ['label' => 'Đang giao',  'value' => $shipping,  'color' => '#2563EB'],
-            ['label' => 'Chờ xử lý',  'value' => $pending,   'color' => '#D97706'],
-            ['label' => 'Đã hủy',     'value' => $cancelled, 'color' => '#DC2626'],
+        // Tỷ lệ trạng thái đơn THEO KỲ đang chọn (đơn đặt trong [from, to]) — nhất quán với biểu đồ.
+        // Không áp bộ lọc "Trạng thái đơn" (nếu áp sẽ chỉ còn 1 lát 100%), chỉ honor thanh toán/phương thức.
+        $periodStatusCounts = $this->orderFilterQuery($from, $to, array_merge($filters, ['status' => null]))
+            ->selectRaw('status, COUNT(*) as c')
+            ->groupBy('status')
+            ->pluck('c', 'status');
+
+        $statusColors = [
+            'pending'    => '#D97706',
+            'processing' => '#7C3AED',
+            'shipping'   => '#2563EB',
+            'completed'  => '#16A34A',
+            'cancelled'  => '#DC2626',
         ];
+
+        $statusRatio = collect(OrderController::STATUS_LABELS)
+            ->map(fn ($label, $key) => [
+                'label' => $label,
+                'value' => (int) ($periodStatusCounts[$key] ?? 0),
+                'color' => $statusColors[$key] ?? '#94A3B8',
+            ])
+            ->values()
+            ->all();
 
         return view('admin.dashboard', [
             'stats'            => $stats,
@@ -132,25 +127,12 @@ class DashboardController extends Controller
             'topProducts'      => $this->buildTopProducts(),
             'lowStockProducts' => $this->buildLowStockProducts(),
             'latestReviews'    => $this->buildLatestReviews(),
-            'paymentMethods'   => PaymentMethod::where('status', true)->orderBy('id')->get(),
 
-            'metric'    => $metric,
-            'range'     => $range,
-            'groupBy'   => $groupBy,
-            'chartType' => $chartType,
-            'dateFrom'  => $dateFrom,
-            'dateTo'    => $dateTo,
+            'range'    => $range,
+            'dateFrom' => $dateFrom,
+            'dateTo'   => $dateTo,
 
-            'statusFilter'  => $statusFilter,
-            'paymentFilter' => $paymentFilter,
-            'methodFilter'  => $methodFilter,
-
-            'metricLabels'    => self::METRIC_LABELS,
-            'rangeLabels'     => self::RANGE_LABELS,
-            'groupByLabels'   => self::GROUP_BY_LABELS,
-            'chartTypeLabels' => self::CHART_TYPE_LABELS,
-            'statusLabels'        => OrderController::STATUS_LABELS,
-            'paymentStatusLabels' => OrderController::PAYMENT_STATUS_LABELS,
+            'rangeLabels' => self::RANGE_LABELS,
 
             'periodLabel' => $from->format('d/m/Y') . ' – ' . $to->format('d/m/Y'),
         ]);
@@ -188,15 +170,18 @@ class DashboardController extends Controller
     }
 
     /**
-     * % thay đổi so với kỳ trước. Tránh chia cho 0 khi kỳ trước không có dữ liệu.
+     * Tự chọn độ chi tiết trục thời gian cho biểu đồ theo độ dài kỳ, để dashboard xem nhanh
+     * không cần người dùng chỉnh: tới ~3 tháng → theo ngày, tới ~2 năm → theo tháng, dài hơn → theo năm.
      */
-    private function percentChange(float $current, float $previous): float
+    private function autoGroupBy(Carbon $from, Carbon $to): string
     {
-        if ($previous == 0.0) {
-            return $current > 0 ? 100.0 : 0.0;
-        }
+        $days = $from->diffInDays($to);
 
-        return round((($current - $previous) / $previous) * 100, 1);
+        return match (true) {
+            $days <= 92  => 'day',
+            $days <= 731 => 'month',
+            default      => 'year',
+        };
     }
 
     /**
@@ -211,14 +196,36 @@ class DashboardController extends Controller
     }
 
     /**
+     * Query doanh thu trong khoảng [from, to] — cùng nguyên tắc ghi nhận doanh thu với trang
+     * Thống kê doanh thu (RevenueController): chỉ đơn đã "completed" (Pending/Processing/Shipping
+     * chưa chuyển giao rủi ro/lợi ích, dù đã payment_status=paid do thanh toán trước qua PayOS/MoMo),
+     * mốc thời gian là completed_at (fallback updated_at cho dữ liệu cũ). Tránh 2 định nghĩa doanh
+     * thu khác nhau giữa Dashboard và trang Thống kê doanh thu.
+     */
+    private function revenueQuery(Carbon $from, Carbon $to, array $filters)
+    {
+        // Doanh thu theo định nghĩa là đơn ĐÃ HOÀN THÀNH nên KHÔNG áp bộ lọc "Trạng thái đơn"
+        // (nếu áp sẽ thành status=completed AND status=X → luôn rỗng). Chỉ honor thanh toán/phương thức.
+        return Order::where('status', 'completed')
+            ->whereBetween(DB::raw('COALESCE(completed_at, updated_at)'), [$from, $to])
+            ->when($filters['payment_status'] ?? null, fn ($q, $v) => $q->where('payment_status', $v))
+            ->when($filters['payment_method_id'] ?? null, fn ($q, $v) => $q->where('payment_method_id', $v));
+    }
+
+    /**
      * Giá trị 1 chỉ số trong khoảng [from, to], áp dụng bộ lọc nâng cao.
      */
     private function metricValue(string $metric, Carbon $from, Carbon $to, array $filters): float
     {
+        if ($metric === 'revenue') {
+            return (float) $this->revenueQuery($from, $to, $filters)->sum('total_money');
+        }
+
         if ($metric === 'sold') {
             return (float) OrderItem::query()
                 ->join('orders', 'orders.id', '=', 'order_items.order_id')
                 ->whereBetween('orders.created_at', [$from, $to])
+                ->where('orders.status', '!=', 'cancelled') // không tính sản phẩm của đơn đã hủy
                 ->when($filters['status'] ?? null, fn ($q, $v) => $q->where('orders.status', $v))
                 ->when($filters['payment_status'] ?? null, fn ($q, $v) => $q->where('orders.payment_status', $v))
                 ->when($filters['payment_method_id'] ?? null, fn ($q, $v) => $q->where('orders.payment_method_id', $v))
@@ -235,15 +242,8 @@ class DashboardController extends Controller
             return (float) $this->orderFilterQuery($from, $to, $filters)->where('status', 'cancelled')->count();
         }
 
-        if ($metric === 'orders') {
-            return (float) $this->orderFilterQuery($from, $to, $filters)->count();
-        }
-
-        // revenue (mặc định) — loại đơn đã hủy, chỉ tính đơn đã hoàn thành hoặc đã thanh toán
-        return (float) $this->orderFilterQuery($from, $to, $filters)
-            ->where('status', '!=', 'cancelled')
-            ->where(fn ($q) => $q->where('status', 'completed')->orWhere('payment_status', 'paid'))
-            ->sum('total_money');
+        // orders (mặc định)
+        return (float) $this->orderFilterQuery($from, $to, $filters)->count();
     }
 
     /**
@@ -289,10 +289,19 @@ class DashboardController extends Controller
             default => '%Y-%m-%d',
         };
 
+        if ($metric === 'revenue') {
+            return $this->revenueQuery($from, $to, $filters)
+                ->selectRaw("DATE_FORMAT(COALESCE(completed_at, updated_at), '{$dateFormat}') as period_key, SUM(total_money) as val")
+                ->groupBy('period_key')
+                ->pluck('val', 'period_key')
+                ->toArray();
+        }
+
         if ($metric === 'sold') {
             return OrderItem::query()
                 ->join('orders', 'orders.id', '=', 'order_items.order_id')
                 ->whereBetween('orders.created_at', [$from, $to])
+                ->where('orders.status', '!=', 'cancelled') // không tính sản phẩm của đơn đã hủy
                 ->when($filters['status'] ?? null, fn ($q, $v) => $q->where('orders.status', $v))
                 ->when($filters['payment_status'] ?? null, fn ($q, $v) => $q->where('orders.payment_status', $v))
                 ->when($filters['payment_method_id'] ?? null, fn ($q, $v) => $q->where('orders.payment_method_id', $v))
@@ -315,27 +324,24 @@ class DashboardController extends Controller
 
         if ($metric === 'cancelled') {
             $query->where('status', 'cancelled');
-        } elseif ($metric === 'revenue') {
-            $query->where('status', '!=', 'cancelled')
-                ->where(fn ($q) => $q->where('status', 'completed')->orWhere('payment_status', 'paid'));
         }
 
-        $valueExpr = $metric === 'revenue' ? 'SUM(total_money)' : 'COUNT(*)';
-
         return $query
-            ->selectRaw("DATE_FORMAT(created_at, '{$dateFormat}') as period_key, {$valueExpr} as val")
+            ->selectRaw("DATE_FORMAT(created_at, '{$dateFormat}') as period_key, COUNT(*) as val")
             ->groupBy('period_key')
             ->pluck('val', 'period_key')
             ->toArray();
     }
 
-    private function buildMetricChart(string $metric, Carbon $from, Carbon $to, Carbon $prevFrom, Carbon $prevTo, string $groupBy, array $filters): array
+    private function buildMetricChart(string $metric, Carbon $from, Carbon $to, ?Carbon $prevFrom, ?Carbon $prevTo, string $groupBy, array $filters): array
     {
-        $keys     = $this->periodKeys($from, $to, $groupBy);
-        $prevKeys = $this->periodKeys($prevFrom, $prevTo, $groupBy);
+        $hasCompare = $prevFrom !== null && $prevTo !== null;
 
-        $currentMap  = $this->bucketedMetricSeries($metric, $from, $to, $groupBy, $filters);
-        $previousMap = $this->bucketedMetricSeries($metric, $prevFrom, $prevTo, $groupBy, $filters);
+        $keys       = $this->periodKeys($from, $to, $groupBy);
+        $currentMap = $this->bucketedMetricSeries($metric, $from, $to, $groupBy, $filters);
+
+        $prevKeys    = $hasCompare ? $this->periodKeys($prevFrom, $prevTo, $groupBy) : [];
+        $previousMap = $hasCompare ? $this->bucketedMetricSeries($metric, $prevFrom, $prevTo, $groupBy, $filters) : [];
 
         $isMoney = $metric === 'revenue';
 
@@ -344,19 +350,21 @@ class DashboardController extends Controller
         $previous = [];
 
         foreach ($keys as $i => [$key, $label]) {
-            $labels[] = $label;
-            $value    = (float) ($currentMap[$key] ?? 0);
+            $labels[]  = $label;
+            $value     = (float) ($currentMap[$key] ?? 0);
             $current[] = $isMoney ? round($value / 1_000_000, 2) : (int) $value;
 
-            $prevKey   = $prevKeys[$i][0] ?? null;
-            $prevValue = $prevKey !== null ? (float) ($previousMap[$prevKey] ?? 0) : 0.0;
-            $previous[] = $isMoney ? round($prevValue / 1_000_000, 2) : (int) $prevValue;
+            if ($hasCompare) {
+                $prevKey    = $prevKeys[$i][0] ?? null;
+                $prevValue  = $prevKey !== null ? (float) ($previousMap[$prevKey] ?? 0) : 0.0;
+                $previous[] = $isMoney ? round($prevValue / 1_000_000, 2) : (int) $prevValue;
+            }
         }
 
         return [
             'labels'   => $labels,
             'current'  => $current,
-            'previous' => $previous,
+            'previous' => $hasCompare ? $previous : null,
             'title'    => self::METRIC_LABELS[$metric] . ' theo ' . mb_strtolower(self::GROUP_BY_LABELS[$groupBy]),
             'isMoney'  => $isMoney,
         ];

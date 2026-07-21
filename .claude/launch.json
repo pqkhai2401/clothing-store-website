@@ -4,7 +4,7 @@
     {
       "name": "laravel",
       "runtimeExecutable": "php",
-      "runtimeArgs": ["artisan", "serve", "--port=8001"],
+      "runtimeArgs": ["-S", "127.0.0.1:8001", "-t", "public", ".claude/router.php"],
       "port": 8001
     }
   ]

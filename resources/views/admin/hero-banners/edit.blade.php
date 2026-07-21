@@ -107,6 +107,32 @@
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
+
+                        <div class="mb-3">
+                            <label for="start_date" class="form-label fw-bold">Bắt đầu hiển thị</label>
+                            <input type="datetime-local" id="start_date" name="start_date"
+                                   class="form-control @error('start_date') is-invalid @enderror"
+                                   value="{{ old('start_date', optional($heroBanner->start_date)->format('Y-m-d\TH:i')) }}">
+                            @error('start_date')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="end_date" class="form-label fw-bold">Kết thúc hiển thị</label>
+                            <input type="datetime-local" id="end_date" name="end_date"
+                                   class="form-control @error('end_date') is-invalid @enderror"
+                                   value="{{ old('end_date', optional($heroBanner->end_date)->format('Y-m-d\TH:i')) }}">
+                            <div class="form-text">Để trống nếu banner hiển thị vô thời hạn (đến khi tự tắt).</div>
+                            @if($heroBanner->isExpired())
+                                <div class="form-text text-danger fw-bold mt-1">
+                                    <i class="fa-solid fa-triangle-exclamation me-1"></i>Banner đã hết hạn hiển thị{{ $heroBanner->is_active ? ' nhưng vẫn đang bật — trang chủ sẽ tự ẩn banner này.' : '.' }}
+                                </div>
+                            @endif
+                            @error('end_date')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
                     </div>
                     <div class="card-footer bg-white py-3 d-flex justify-content-end gap-2 border-top mt-auto">
                         <a href="{{ route('admin.hero-banners.list') }}" class="btn btn-light border fw-bold" style="min-height: 40px;">

@@ -341,7 +341,7 @@
                     });
                     dropdown.closest('tr')?.querySelector('[data-edit-status]')?.setAttribute('data-edit-status', newValue);
                 } catch {
-                    alert('Không thể cập nhật trạng thái. Vui lòng thử lại.');
+                    window.showAlert('Không thể cập nhật trạng thái. Vui lòng thử lại.', 'Lỗi', 'danger');
                     btn.className = 'status-badge size-status-trigger ' + (previousCss ?? '');
                     btn.dataset.value = previousValue;
                 } finally {

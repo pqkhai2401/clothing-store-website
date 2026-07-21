@@ -70,6 +70,19 @@
                         </td>
                         <td data-sort-value="{{ $order->order_code ?? '' }}">
                             <span class="order-code">{{ $order->order_code ?? '—' }}</span>
+                            @if($order->source === 'admin')
+                                <div class="mt-1">
+                                    <span class="order-badge order-badge--manual" title="Đơn được nhân sự tạo thủ công, không phải khách tự đặt trên website">Tạo thủ công</span>
+                                </div>
+                            @endif
+                            @if($order->pendingCancelRequest)
+                                <div class="mt-1">
+                                    <span class="order-badge order-badge--cancelreq"
+                                        title="Lý do khách đưa ra: {{ $order->pendingCancelRequest->reason }}">
+                                        <i class="fa-regular fa-hand"></i> Khách xin hủy
+                                    </span>
+                                </div>
+                            @endif
                         </td>
                         <td>
                             <div class="fw-bold text-dark">{{ $order->user?->username ?? 'Khách vãng lai' }}</div>
@@ -126,16 +139,24 @@
                                 </span>
                             @endif
                         </td>
+                        @php
+                            // 3 trạng thái thanh toán: chưa trả (đỏ) / đã trả (xanh) / đã hoàn tiền (xanh dương).
+                            $payBadgeCss = fn ($v) => match ($v) {
+                                'paid'     => 'payment-badge--paid',
+                                'refunded' => 'payment-badge--refunded',
+                                default    => 'payment-badge--unpaid',
+                            };
+                        @endphp
                         <td data-sort-value="{{ $order->payment_status }}">
                             @if($isOnlineGateway)
-                                <span class="payment-badge {{ $order->payment_status === 'paid' ? 'payment-badge--paid' : 'payment-badge--unpaid' }}"
+                                <span class="payment-badge {{ $payBadgeCss($order->payment_status) }}"
                                     data-field="payment_status" data-value="{{ $order->payment_status }}"
                                     title="Đồng bộ tự động từ cổng thanh toán online, không thể sửa tay">
                                     {{ $paymentStatusLabels[$order->payment_status] ?? $order->payment_status }}
                                 </span>
                             @else
                                 <div class="hk-cat-filter oc-row-dropdown" data-order-id="{{ $order->id }}" data-field="payment_status" data-value="{{ $order->payment_status }}">
-                                    <button type="button" class="payment-badge oc-row-trigger {{ $order->payment_status === 'paid' ? 'payment-badge--paid' : 'payment-badge--unpaid' }}"
+                                    <button type="button" class="payment-badge oc-row-trigger {{ $payBadgeCss($order->payment_status) }}"
                                         data-value="{{ $order->payment_status }}" aria-haspopup="listbox" aria-expanded="false">
                                         <span class="oc-row-trigger-label">{{ $paymentStatusLabels[$order->payment_status] ?? $order->payment_status }}</span>
                                         <i class="fa-solid fa-chevron-down oc-row-caret"></i>
@@ -144,7 +165,7 @@
                                         <div class="hk-cat-list" role="listbox">
                                             @foreach($paymentStatusLabels as $val => $label)
                                                 <button type="button" class="hk-cat-item {{ $order->payment_status === $val ? 'is-active' : '' }}"
-                                                    data-value="{{ $val }}" data-css="{{ $val === 'paid' ? 'payment-badge--paid' : 'payment-badge--unpaid' }}">{{ $label }}</button>
+                                                    data-value="{{ $val }}" data-css="{{ $payBadgeCss($val) }}">{{ $label }}</button>
                                             @endforeach
                                         </div>
                                     </div>

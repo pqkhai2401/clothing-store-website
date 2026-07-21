@@ -72,11 +72,11 @@ class RevenueController extends Controller
             ->whereIn('order_id', $orderIds)
             ->get(['id', 'order_id', 'total_cost_amount', 'created_by']);
 
-        $issueIds = $issues->pluck('id');
-
-        $cogsByIssueId = StockMovement::query()
-            ->where('reference_type', 'stock_issue')
-            ->whereIn('reference_id', $issueIds)
+        // Từ khi áp dụng "Hold & Release", kho bị trừ FIFO ngay lúc checkout và bút toán ghi với
+        // reference_type='order' (phiếu xuất kho chỉ còn là chứng từ, không sinh bút toán).
+        $cogsByOrderRef = StockMovement::query()
+            ->where('reference_type', 'order')
+            ->whereIn('reference_id', $orderIds)
             ->where('movement_type', 'export')
             ->selectRaw('reference_id, SUM(ABS(quantity) * unit_cost) as cogs')
             ->groupBy('reference_id')
@@ -85,9 +85,10 @@ class RevenueController extends Controller
         $cogsByOrderId = [];
         $staffIdByOrderId = [];
         foreach ($issues as $issue) {
-            $cogs = (float) ($cogsByIssueId[$issue->id] ?? 0);
+            $cogs = (float) ($cogsByOrderRef[$issue->order_id] ?? 0);
             if ($cogs <= 0) {
-                // Phiếu cũ trước khi quản lý theo lô → fallback giá vốn đã chốt lúc tạo phiếu.
+                // Đơn cũ (trừ kho theo reference_type='stock_issue' trước Hold & Release, hoặc
+                // phát sinh trước khi quản lý theo lô) → fallback giá vốn đã chốt lúc tạo phiếu.
                 $cogs = (float) $issue->total_cost_amount;
             }
             $cogsByOrderId[$issue->order_id] = ($cogsByOrderId[$issue->order_id] ?? 0) + $cogs;
@@ -158,21 +159,18 @@ class RevenueController extends Controller
             ->sortKeys()
             ->values();
 
-        // Doanh thu theo danh mục / top sản phẩm — truy vấn cấp order_item, cùng bộ lọc thời gian
-        // + phương thức thanh toán + tìm kiếm (không áp lại category/brand vì đây chính là bảng
-        // breakdown theo 2 chiều đó).
+        // Doanh thu theo danh mục / top sản phẩm — truy vấn cấp order_item, giới hạn đúng theo
+        // $orderIds đã lọc ở trên (đảm bảo status/thời gian/phương thức/tìm kiếm luôn khớp với
+        // thẻ tổng hợp + bảng chi tiết), đồng thời áp lại category/brand ở cấp item để loại các
+        // sản phẩm khác danh mục/thương hiệu lẫn trong cùng đơn hàng.
         $itemRows = DB::table('order_items')
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
             ->join('product_variants', 'product_variants.id', '=', 'order_items.product_variant_id')
             ->join('products', 'products.id', '=', 'product_variants.product_id')
             ->leftJoin('categories', 'categories.id', '=', 'products.category_id')
-            ->where('orders.status', 'completed')
-            ->whereBetween(DB::raw('COALESCE(orders.completed_at, orders.updated_at)'), [$from, $to])
-            ->when($paymentMethodId !== '', fn ($q) => $q->where('orders.payment_method_id', $paymentMethodId))
-            ->when($search !== '', fn ($q) => $q->where(function ($qq) use ($search) {
-                $qq->where('orders.order_code', 'like', "%{$search}%")
-                    ->orWhere('orders.phone', 'like', "%{$search}%");
-            }))
+            ->whereIn('orders.id', $orderIds)
+            ->when($categoryId !== '', fn ($q) => $q->where('products.category_id', $categoryId))
+            ->when($brandId !== '', fn ($q) => $q->where('products.brand_id', $brandId))
             ->select(
                 'products.id as product_id',
                 'products.name as product_name',

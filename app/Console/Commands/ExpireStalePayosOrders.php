@@ -6,6 +6,7 @@ use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
 use App\Models\Order;
 use App\Models\PaymentMethod;
+use App\Services\OrderCancellationService;
 use App\Services\PayosService;
 use Illuminate\Console\Command;
 
@@ -20,6 +21,12 @@ class ExpireStalePayosOrders extends Command
 
     protected $description = 'Tự hủy các đơn thanh toán online (PayOS/MoMo) pending/unpaid đã quá hạn (30 phút).';
 
+    public function __construct(
+        private readonly OrderCancellationService $cancellationService
+    ) {
+        parent::__construct();
+    }
+
     public function handle(): int
     {
         $onlineIds = PaymentMethod::all()
@@ -33,14 +40,23 @@ class ExpireStalePayosOrders extends Command
             return self::SUCCESS;
         }
 
-        // Đơn pending/unpaid chưa từng bị trừ kho (kho chỉ trừ khi admin xử lý),
-        // nên chỉ đổi status='cancelled', KHÔNG hoàn kho — xem OrderController::cancelOrder.
-        $count = Order::query()
+        // LƯỚI AN TOÀN cho CancelUnpaidOrderJob (phòng khi queue worker chết/job fail hẳn).
+        // Dưới mô hình "Hold & Release", đơn pending ĐANG GIỮ KHO nên phải hủy qua service để
+        // nhả kho về đúng lô + nhả voucher — không dùng bulk update như trước.
+        // Service là atomic + idempotent nên chạy song song với job vẫn KHÔNG hoàn kho 2 lần.
+        $staleOrders = Order::query()
             ->where('status', OrderStatus::PENDING->value)
             ->where('payment_status', PaymentStatus::UNPAID->value)
             ->whereIn('payment_method_id', $onlineIds)
             ->where('created_at', '<', now()->subMinutes(self::EXPIRE_MINUTES))
-            ->update(['status' => OrderStatus::CANCELLED->value]);
+            ->get();
+
+        $count = 0;
+        foreach ($staleOrders as $order) {
+            if ($this->cancellationService->cancelPendingUnpaid($order, 'Quá hạn thanh toán online (cron dọn)')) {
+                $count++;
+            }
+        }
 
         $this->info("Đã hủy {$count} đơn thanh toán online quá hạn.");
 

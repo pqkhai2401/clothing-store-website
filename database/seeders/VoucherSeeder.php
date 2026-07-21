@@ -294,7 +294,10 @@ class VoucherSeeder extends Seeder
         ];
 
         foreach ($vouchers as $voucherData) {
-            Voucher::create($voucherData);
+            Voucher::updateOrCreate(
+                ['code' => $voucherData['code']],
+                collect($voucherData)->except('code')->all()
+            );
         }
     }
 }

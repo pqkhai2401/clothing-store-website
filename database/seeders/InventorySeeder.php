@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Enums\UserRole;
 use App\Models\GoodsReceipt;
 use App\Models\GoodsReceiptItem;
 use App\Models\ProductVariant;
@@ -11,11 +12,31 @@ use App\Models\Stocktake;
 use App\Models\StocktakeItem;
 use App\Models\Supplier;
 use App\Models\User;
+use App\Models\Warehouse;
+use App\Services\DocumentSequenceService;
+use App\Services\InventoryBatchService;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Str;
 
+/**
+ * QUAN TRỌNG: mọi thay đổi tồn kho trong seeder này PHẢI đi qua
+ * InventoryBatchService (receive/consumeFifo), giống hệt các Controller thật.
+ * Không bao giờ được gán/tăng/giảm product_variants.stock trực tiếp — nếu không,
+ * hệ thống sẽ phải tự sinh lô "AUTO-BACKFILL" để vá khi có người xuất/bán hàng
+ * (vì tồn kho tồn tại mà không có Lô/Batch nào đứng sau nó).
+ */
 class InventorySeeder extends Seeder
 {
+    private InventoryBatchService $batchService;
+    private DocumentSequenceService $sequence;
+
+    public function __construct()
+    {
+        $this->batchService = app(InventoryBatchService::class);
+        $this->sequence = app(DocumentSequenceService::class);
+    }
+
     /**
      * Run the database seeds.
      */
@@ -29,14 +50,23 @@ class InventorySeeder extends Seeder
         })->first() ?? User::first();
 
         if (!$adminUser) {
+            // Chỉ xảy ra khi UserSeeder chưa chạy — tạo tài khoản dự phòng với mật
+            // khẩu ngẫu nhiên mạnh (không hardcode) và gán role admin đầy đủ,
+            // is_protected để tránh bị xoá nhầm như tài khoản admin thật.
             $adminUser = User::create([
-                'name' => 'Quản trị viên kho',
+                'username' => 'Quản trị viên kho',
                 'email' => 'admin.kho@gmail.com',
-                'password' => bcrypt('password'),
+                'password' => bcrypt(Str::password(20)),
+                'phone_number' => '0900000000',
+                'is_active' => true,
+                'is_protected' => true,
+                'email_verified_at' => $now,
             ]);
+            $adminUser->assignRole(UserRole::ADMIN->value);
         }
 
         $userId = $adminUser->id;
+        $warehouseId = Warehouse::getDefault()?->id;
 
         // 2. Get or create suppliers
         $suppliersCount = Supplier::count();
@@ -66,6 +96,22 @@ class InventorySeeder extends Seeder
                     'note' => 'Đối tác cung cấp áo sơ mi công sở cao cấp.',
                     'status' => true,
                 ],
+                [
+                    'name' => 'Công Ty TNHH May Mặc Đà Nẵng Xanh',
+                    'phone' => '0236384720',
+                    'email' => 'danangxanh@garment.vn',
+                    'address' => '120 Nguyễn Tất Thành, Đà Nẵng',
+                    'note' => 'Nhà cung cấp đồ thể thao, áo khoác gió.',
+                    'status' => true,
+                ],
+                [
+                    'name' => 'Xưởng Da Giày & Phụ Kiện Bình Dương',
+                    'phone' => '0274385291',
+                    'email' => 'binhduongaccessories@gmail.com',
+                    'address' => 'KCN Sóng Thần 2, Dĩ An, Bình Dương',
+                    'note' => 'Từng có lô hàng giao trễ hẹn, cần theo dõi tiến độ.',
+                    'status' => false,
+                ],
             ];
             foreach ($suppliers as $supplierData) {
                 Supplier::create($supplierData);
@@ -81,52 +127,110 @@ class InventorySeeder extends Seeder
             return;
         }
 
-        // Keep 4-5 variants for item associations
+        // Keep 4-5 variants for item associations (đơn nhập/xuất/kiểm kê demo)
         $variantList = $variants->take(5);
 
         // ─────────────────────────────────────────────────────────
-        // A. SEED GOODS RECEIPTS (Đơn nhập hàng - 4 dòng)
+        // 0. NHẬP TỒN ĐẦU KỲ THẬT cho MỌI biến thể chưa có tồn (stock=0)
+        //    Thay thế hoàn toàn việc gán thẳng stock/cost_price ở ProductSeeder —
+        //    mỗi đơn vị tồn kho ở đây đều có 1 Lô (ProductBatch) + StockMovement
+        //    thật đứng sau, y hệt khi Admin tự tay tạo phiếu nhập trên giao diện.
+        // ─────────────────────────────────────────────────────────
+        $openingVariants = ProductVariant::where('stock', 0)->get();
+
+        foreach ($openingVariants->chunk(60) as $chunkIndex => $chunk) {
+            $receipt = GoodsReceipt::create([
+                'code' => $this->sequence->generateGoodsReceiptCode(),
+                'receipt_type' => GoodsReceipt::RECEIPT_TYPE_INITIAL,
+                'source_type' => GoodsReceipt::SOURCE_TYPE_INTERNAL,
+                'receipt_reason' => 'Nhập tồn kho đầu kỳ khi khởi tạo hệ thống.',
+                'supplier_id' => null,
+                'warehouse_id' => $warehouseId,
+                'note' => 'Phiếu nhập tồn đầu kỳ tự động (đợt ' . ($chunkIndex + 1) . ').',
+                'status' => GoodsReceipt::STATUS_COMPLETED,
+                'total_amount' => 0,
+                'total_quantity' => 0,
+                'received_at' => $now->copy()->subDays(30),
+                'completed_at' => $now->copy()->subDays(30),
+                'created_by' => $userId,
+                'confirmed_by' => $userId,
+                'confirmed_at' => $now->copy()->subDays(30),
+            ]);
+
+            $totalAmount = 0.0;
+            $totalQuantity = 0;
+
+            foreach ($chunk as $variant) {
+                $qty = rand(5, 80);
+                $cost = round((float) $variant->price * 0.6, 2);
+
+                $item = GoodsReceiptItem::create([
+                    'goods_receipt_id' => $receipt->id,
+                    'product_variant_id' => $variant->id,
+                    'quantity' => $qty,
+                    'cost_price' => $cost,
+                ]);
+
+                $this->batchService->receive(
+                    $variant,
+                    $qty,
+                    $cost,
+                    'goods_receipt',
+                    $receipt->id,
+                    $item->id,
+                    $userId,
+                    $receipt->received_at
+                );
+
+                $totalAmount += $qty * $cost;
+                $totalQuantity += $qty;
+            }
+
+            $receipt->update([
+                'total_amount' => $totalAmount,
+                'total_quantity' => $totalQuantity,
+            ]);
+        }
+
+        // Nạp lại để có stock/cost_price mới nhất cho các bước demo bên dưới.
+        $variantList = ProductVariant::whereIn('id', $variantList->pluck('id'))->get();
+
+        // ─────────────────────────────────────────────────────────
+        // A. SEED GOODS RECEIPTS (Đơn nhập hàng demo - 4 dòng)
         // ─────────────────────────────────────────────────────────
         $receipts = [
             [
-                'code' => 'NH26070101',
+                'code' => $this->sequence->generateGoodsReceiptCode(),
                 'supplier_id' => $supplierIds[0],
                 'note' => 'Đợt nhập hàng áo thun basic chuẩn bị cho mùa hè.',
                 'status' => GoodsReceipt::STATUS_COMPLETED,
                 'total_amount' => 0.00, // will calculate below
                 'created_by' => $userId,
+                'warehouse_id' => $warehouseId,
+                'received_at' => $now->copy()->subDays(10),
                 'completed_at' => $now->copy()->subDays(10),
             ],
             [
-                'code' => 'NH26070502',
+                'code' => $this->sequence->generateGoodsReceiptCode(),
                 'supplier_id' => $supplierIds[1] ?? $supplierIds[0],
                 'note' => 'Nhập kho bổ sung quần Jeans nam size M và L.',
                 'status' => GoodsReceipt::STATUS_COMPLETED,
                 'total_amount' => 0.00,
                 'created_by' => $userId,
+                'warehouse_id' => $warehouseId,
+                'received_at' => $now->copy()->subDays(5),
                 'completed_at' => $now->copy()->subDays(5),
             ],
             [
-                'code' => 'NH26070901',
+                'code' => $this->sequence->generateGoodsReceiptCode(),
                 'supplier_id' => $supplierIds[2] ?? $supplierIds[0],
                 'note' => 'Đơn nhập nháp thử nghiệm vải may áo sơ mi.',
                 'status' => GoodsReceipt::STATUS_DRAFT,
                 'total_amount' => 0.00,
                 'created_by' => $userId,
+                'warehouse_id' => $warehouseId,
                 'completed_at' => null,
             ],
-            [
-                'code' => 'NH26070902',
-                'supplier_id' => $supplierIds[0],
-                'note' => 'Đơn nhập hàng lỗi đã qua điều chỉnh.',
-                'status' => GoodsReceipt::STATUS_ADJUSTED,
-                'total_amount' => 0.00,
-                'created_by' => $userId,
-                'completed_at' => $now->copy()->subDays(2),
-                'adjusted_by' => $userId,
-                'adjusted_at' => $now->copy()->subDays(1),
-                'adjustment_reason' => 'Điều chỉnh số lượng thực tế do nhà sản xuất giao thiếu 2 cái.',
-            ]
         ];
 
         foreach ($receipts as $receiptData) {
@@ -134,37 +238,46 @@ class InventorySeeder extends Seeder
 
             // Create 2-3 items for each receipt
             $totalAmount = 0.00;
+            $totalQuantity = 0;
             $itemsCount = rand(2, 3);
             for ($i = 0; $i < $itemsCount; $i++) {
                 $variant = $variantList->random();
                 $qty = rand(20, 50);
                 $cost = rand(100, 250) * 1000; // e.g. 100k to 250k
                 $totalAmount += $qty * $cost;
+                $totalQuantity += $qty;
 
-                GoodsReceiptItem::create([
+                $item = GoodsReceiptItem::create([
                     'goods_receipt_id' => $receipt->id,
                     'product_variant_id' => $variant->id,
                     'quantity' => $qty,
                     'cost_price' => $cost,
                 ]);
 
-                // Update variant inventory if completed
+                // Chỉ phiếu ĐÃ HOÀN TẤT mới sinh Lô + cộng tồn thật (giống nghiệp vụ thật).
                 if ($receipt->status === GoodsReceipt::STATUS_COMPLETED) {
-                    $variant->increment('stock', $qty);
+                    $this->batchService->receive(
+                        $variant,
+                        $qty,
+                        $cost,
+                        'goods_receipt',
+                        $receipt->id,
+                        $item->id,
+                        $userId,
+                        $receipt->received_at
+                    );
                 }
             }
 
-            $receipt->update(['total_amount' => $totalAmount]);
+            $receipt->update(['total_amount' => $totalAmount, 'total_quantity' => $totalQuantity]);
         }
 
         // ─────────────────────────────────────────────────────────
-        // B. SEED STOCK ISSUES (Đơn xuất kho - 4 dòng)
+        // B. SEED STOCK ISSUES (Đơn xuất kho demo - 4 dòng)
         // ─────────────────────────────────────────────────────────
-        $warehouseId = \App\Models\Warehouse::getDefault()?->id;
-
         $issues = [
             [
-                'code' => 'XK26070201',
+                'code' => $this->sequence->generateStockIssueCode(),
                 'issue_type' => StockIssue::ISSUE_TYPE_DAMAGED,
                 'warehouse_id' => $warehouseId,
                 'reason' => 'Xuất hủy sản phẩm bị ẩm mốc do ngập nước.',
@@ -174,7 +287,7 @@ class InventorySeeder extends Seeder
                 'issued_at' => $now->copy()->subDays(8),
             ],
             [
-                'code' => 'XK26070601',
+                'code' => $this->sequence->generateStockIssueCode(),
                 'issue_type' => StockIssue::ISSUE_TYPE_RETURN_SUPPLIER,
                 'warehouse_id' => $warehouseId,
                 'reason' => 'Xuất trả 10 áo thun bị lỗi may/rách chỉ cho nhà cung cấp.',
@@ -184,7 +297,7 @@ class InventorySeeder extends Seeder
                 'issued_at' => $now->copy()->subDays(4),
             ],
             [
-                'code' => 'XK26070901',
+                'code' => $this->sequence->generateStockIssueCode(),
                 'issue_type' => StockIssue::ISSUE_TYPE_DAMAGED,
                 'warehouse_id' => $warehouseId,
                 'reason' => 'Xuất mẫu để làm chương trình chụp ảnh lookbook.',
@@ -193,16 +306,6 @@ class InventorySeeder extends Seeder
                 'created_by' => $userId,
                 'issued_at' => null,
             ],
-            [
-                'code' => 'XK26070902',
-                'issue_type' => StockIssue::ISSUE_TYPE_ADJUSTMENT,
-                'warehouse_id' => $warehouseId,
-                'reason' => 'Xuất cân bằng hàng thừa thiếu sau kiểm kê.',
-                'note' => 'Liên quan đến phiếu kiểm kê cuối tháng 6.',
-                'status' => StockIssue::STATUS_COMPLETED,
-                'created_by' => $userId,
-                'issued_at' => $now->copy()->subDays(1),
-            ]
         ];
 
         foreach ($issues as $issueData) {
@@ -213,8 +316,13 @@ class InventorySeeder extends Seeder
             $totalSale = 0.00;
             $itemsCount = rand(2, 3);
             for ($i = 0; $i < $itemsCount; $i++) {
-                $variant = $variantList->random();
-                $qty = rand(2, 8);
+                $variant = $variantList->random()->fresh();
+                $qty = min(rand(2, 8), (int) $variant->stock);
+
+                if ($qty <= 0) {
+                    continue; // Biến thể hiện không còn tồn — bỏ qua, không tạo xuất khống.
+                }
+
                 $costPrice = $variant->cost_price > 0 ? (float) $variant->cost_price : 120000.00;
                 $salePrice = $variant->price > 0 ? (float) $variant->price : $costPrice;
 
@@ -233,9 +341,9 @@ class InventorySeeder extends Seeder
                     'total_sale' => $qty * $salePrice,
                 ]);
 
-                // Update variant inventory if completed
+                // Chỉ phiếu ĐÃ HOÀN TẤT mới trừ tồn thật — theo đúng FIFO qua các Lô.
                 if ($issue->status === StockIssue::STATUS_COMPLETED) {
-                    $variant->decrement('stock', min($variant->stock, $qty));
+                    $this->batchService->consumeFifo($variant, $qty, 'stock_issue', $issue->id, $userId);
                 }
             }
 
@@ -248,7 +356,7 @@ class InventorySeeder extends Seeder
         }
 
         // ─────────────────────────────────────────────────────────
-        // C. SEED STOCKTAKES (Phiếu kiểm kê - 4 dòng)
+        // C. SEED STOCKTAKES (Phiếu kiểm kê demo - 4 dòng)
         // ─────────────────────────────────────────────────────────
         $stocktakes = [
             [
@@ -290,12 +398,13 @@ class InventorySeeder extends Seeder
 
             $itemsCount = rand(2, 3);
             for ($i = 0; $i < $itemsCount; $i++) {
-                $variant = $variantList->random();
-                $systemStock = $variant->stock > 0 ? $variant->stock : 30;
+                $variant = $variantList->random()->fresh();
+                $systemStock = (int) $variant->stock;
                 // actual stock is slightly different (e.g. -2 or +1)
                 $diff = rand(-3, 2);
                 $actualStock = max(0, $systemStock + $diff);
                 $cost = $variant->cost_price > 0 ? (float) $variant->cost_price : 115000.00;
+                $realDiff = $actualStock - $systemStock;
 
                 StocktakeItem::create([
                     'stocktake_id' => $stocktake->id,
@@ -305,12 +414,19 @@ class InventorySeeder extends Seeder
                     'unit_cost' => $cost,
                 ]);
 
-                // Update variant inventory to match actual stock if approved
-                if ($stocktake->status === Stocktake::STATUS_APPROVED) {
-                    $variant->update(['stock' => $actualStock]);
+                // Chỉ phiếu ĐÃ DUYỆT mới điều chỉnh tồn thật, đúng như StocktakeController thật:
+                // thiếu -> trừ FIFO qua các Lô; thừa -> sinh Lô điều chỉnh mới.
+                if ($stocktake->status === Stocktake::STATUS_APPROVED && $realDiff !== 0) {
+                    if ($realDiff < 0) {
+                        $shortage = min(abs($realDiff), $systemStock);
+                        if ($shortage > 0) {
+                            $this->batchService->consumeFifo($variant, $shortage, 'stocktake', $stocktake->id, $userId);
+                        }
+                    } else {
+                        $this->batchService->receive($variant, $realDiff, $cost, 'stocktake', $stocktake->id, null, $userId);
+                    }
                 }
             }
         }
     }
 }
-

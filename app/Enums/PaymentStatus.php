@@ -8,6 +8,8 @@ enum PaymentStatus: string
 {
     case UNPAID = 'unpaid';
     case PAID = 'paid';
+    /** Đơn đã thu tiền nhưng bị hủy và admin ĐÃ hoàn tiền lại cho khách. */
+    case REFUNDED = 'refunded';
 
     /**
      * Get all raw values.
@@ -29,6 +31,7 @@ enum PaymentStatus: string
         return [
             self::UNPAID->value => 'Unpaid',
             self::PAID->value => 'Paid',
+            self::REFUNDED->value => 'Refunded',
         ];
     }
 }

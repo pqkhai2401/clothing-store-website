@@ -37,24 +37,27 @@ class InventoryReportController extends Controller
             ->orderByDesc('issued_at')
             ->get();
 
-        // COGS theo phiếu: gom bút toán export theo reference_id (= stock_issue_id).
-        $issueIds = $issues->pluck('id');
-        $cogsByIssue = StockMovement::query()
-            ->where('reference_type', 'stock_issue')
-            ->whereIn('reference_id', $issueIds)
+        // COGS theo ĐƠN: từ khi áp dụng "Hold & Release", kho bị trừ FIFO ngay lúc checkout và
+        // bút toán được ghi với reference_type='order' (phiếu xuất kho chỉ còn là chứng từ,
+        // không sinh bút toán). Vì vậy gom export theo reference_id = orders.id.
+        $orderIds = $issues->pluck('order_id')->filter()->unique();
+        $cogsByOrder = StockMovement::query()
+            ->where('reference_type', 'order')
+            ->whereIn('reference_id', $orderIds)
             ->where('movement_type', 'export')
             ->selectRaw('reference_id, SUM(ABS(quantity) * unit_cost) as cogs, SUM(ABS(quantity)) as qty')
             ->groupBy('reference_id')
             ->get()
             ->keyBy('reference_id');
 
-        $rows = $issues->map(function (StockIssue $issue) use ($cogsByIssue) {
-            $agg = $cogsByIssue->get($issue->id);
+        $rows = $issues->map(function (StockIssue $issue) use ($cogsByOrder) {
+            $agg = $issue->order_id ? $cogsByOrder->get($issue->order_id) : null;
             $revenue = (float) $issue->total_sale_amount;
 
-            // Giá vốn ưu tiên theo LÔ (FIFO) từ sổ cái. Với phiếu cũ (phát sinh trước khi
-            // quản lý theo lô) bút toán export không gắn lô/unit_cost = 0 → fallback về
-            // total_cost_amount đã chốt lúc tạo phiếu, để không khai khống lãi.
+            // Giá vốn ưu tiên theo LÔ (FIFO) từ sổ cái của đơn. Với phiếu cũ (trừ kho theo
+            // reference_type='stock_issue' trước khi có Hold & Release, hoặc phát sinh trước
+            // khi quản lý theo lô) sẽ không tìm thấy bút toán → fallback về total_cost_amount
+            // đã chốt lúc tạo phiếu, để không khai khống lãi.
             $cogs = (float) ($agg->cogs ?? 0);
             if ($cogs <= 0) {
                 $cogs = (float) $issue->total_cost_amount;

@@ -947,7 +947,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
                 recalcSelected();
                 if (data.cart_count !== undefined) window.updateCartBadge?.(data.cart_count);
-            } catch (err) { alert(err.message); }
+            } catch (err) { window.showAlert(err.message, 'Lỗi', 'danger'); }
             return;
         }
 
@@ -961,7 +961,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 showEmptyIfNeeded();
                 if (data.cart_count !== undefined) window.updateCartBadge?.(data.cart_count);
             } catch (err) {
-                alert(err.message);
+                window.showAlert(err.message, 'Lỗi', 'danger');
                 removeBtn.disabled = false;
             }
         }
@@ -970,8 +970,9 @@ document.addEventListener('DOMContentLoaded', function () {
     /* ── Bar: delete selected ── */
     document.getElementById('barDeleteBtn')?.addEventListener('click', async function () {
         const rows = checkedItemRows();
-        if (rows.length === 0) { alert('Bạn chưa chọn sản phẩm nào.'); return; }
-        if (!confirm(`Xóa ${rows.length} sản phẩm đã chọn?`)) return;
+        if (rows.length === 0) { window.showAlert('Bạn chưa chọn sản phẩm nào.', 'Thông báo', 'info'); return; }
+        const ok = await window.showConfirm({ title: 'Xóa sản phẩm', message: `Xóa ${rows.length} sản phẩm đã chọn?`, type: 'danger', confirmText: 'Xóa' });
+        if (!ok) return;
 
         this.disabled = true;
         let lastData = null;
@@ -1150,7 +1151,7 @@ document.addEventListener('DOMContentLoaded', function () {
             })
             .then(r => r.json().then(data => ({ ok: r.ok, data })))
             .then(({ ok, data }) => {
-                if (!ok) { alert(data.message || 'Không thể đổi variant.'); return; }
+                if (!ok) { window.showAlert(data.message || 'Không thể đổi variant.', 'Lỗi', 'danger'); return; }
 
                 // If merged into another row, remove this row and update the other
                 if (data.merged) {
@@ -1198,7 +1199,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 recalcSelected();
             })
-            .catch(() => alert('Đã có lỗi. Vui lòng thử lại.'))
+            .catch(() => window.showAlert('Đã có lỗi. Vui lòng thử lại.', 'Lỗi', 'danger'))
             .finally(() => btn.classList.remove('is-loading'));
 
             return;

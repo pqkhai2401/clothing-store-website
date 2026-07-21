@@ -26,19 +26,19 @@
     --hk-accent-hover:  #1d5a7a;
     --hk-radius:        10px;
 
-    /* Sidebar tokens (always dark, same in both modes) */
-    --hk-sb-bg:         #1e293b;
-    --hk-sb-bg-brand:   #172233;
-    --hk-sb-border:     rgba(255,255,255,0.08);
-    --hk-sb-text:       #f1f5f9;
-    --hk-sb-text-hi:    #ffffff;
+    /* Sidebar tokens — theme sáng: nền trắng, chữ đậm (accent xanh lá đồng bộ nút admin) */
+    --hk-sb-bg:         #ffffff;
+    --hk-sb-bg-brand:   #ffffff;
+    --hk-sb-border:     #e5e7eb;
+    --hk-sb-text:       #475569;
+    --hk-sb-text-hi:    #0f172a;
     --hk-sb-muted:      #94a3b8;
-    --hk-sb-icon:       #cbd5e1;
-    --hk-sb-hover:      rgba(255,255,255,0.07);
-    --hk-sb-active-bg:  rgba(56,189,248,0.15);
-    --hk-sb-active:     #38bdf8;
-    --hk-sb-dot:        #38bdf8;
-    --hk-sb-acct-bg:    rgba(255,255,255,0.05);
+    --hk-sb-icon:       #64748b;
+    --hk-sb-hover:      #f1f5f9;
+    --hk-sb-active-bg:  rgba(22,163,74,0.12);
+    --hk-sb-active:     #16a34a;
+    --hk-sb-dot:        #16a34a;
+    --hk-sb-acct-bg:    #f8fafc;
 }
 
 /* Dark mode */
