@@ -905,26 +905,27 @@
         const mainImage = document.getElementById('mainProductImage');
         const galleryThumbs = Array.from(document.querySelectorAll('.gallery-thumb'));
 
-        // ===== Lọc gallery ảnh theo màu đang chọn =====
-        // - Màu có ảnh riêng  -> dải thumbnail chỉ còn ảnh của màu đó, ảnh lớn nhảy sang ảnh đầu tiên.
-        // - Màu chưa có ảnh riêng -> hiện lại toàn bộ ảnh và quay về ảnh chính của sản phẩm.
+        // ===== Chọn ảnh chính theo màu đang chọn =====
+        // KHÔNG ẩn thumbnail của các màu khác — toàn bộ dải ảnh luôn hiển thị.
+        // Chỉ đổi ảnh lớn sang ảnh của màu vừa chọn và highlight thumbnail tương ứng.
         function filterGalleryByColor(colorId) {
             const matched = galleryThumbs.filter(function (thumb) {
                 const ids = (thumb.dataset.colorIds || '').split(',').filter(Boolean);
                 return colorId !== null && ids.includes(String(colorId));
             });
 
-            // Không khớp ảnh nào -> fallback về toàn bộ gallery (ảnh đầu tiên là thumbnail sản phẩm)
-            const visibleThumbs = matched.length > 0 ? matched : galleryThumbs;
-
+            // Luôn giữ mọi thumbnail hiển thị, chỉ bỏ highlight cũ
             galleryThumbs.forEach(function (thumb) {
-                thumb.classList.toggle('d-none', !visibleThumbs.includes(thumb));
                 thumb.classList.remove('active');
             });
 
-            if (visibleThumbs.length > 0) {
-                visibleThumbs[0].classList.add('active');
-                mainImage.src = visibleThumbs[0].src;
+            // Có ảnh riêng cho màu -> nhảy ảnh lớn sang ảnh đầu tiên của màu đó.
+            // Không có ảnh riêng -> quay về ảnh chính (thumbnail đầu tiên của sản phẩm).
+            const targetThumb = matched.length > 0 ? matched[0] : galleryThumbs[0];
+
+            if (targetThumb) {
+                targetThumb.classList.add('active');
+                mainImage.src = targetThumb.src;
             }
         }
 
