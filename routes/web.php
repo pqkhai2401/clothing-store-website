@@ -129,6 +129,10 @@ Route::get('/auth/google/redirect', [AuthController::class, 'redirectToGoogle'])
     ->name('auth.google.redirect')
     ->middleware('redirect.authenticated');
 Route::get('/auth/google/callback', [AuthController::class, 'handleGoogleCallback'])->name('auth.google.callback');
+// Xác nhận liên kết Google với tài khoản email/mật khẩu đã tồn tại (chưa từng liên kết Google).
+Route::get('/auth/google/lien-ket', [AuthController::class, 'showGoogleLinkForm'])->name('auth.google.link.form');
+Route::post('/auth/google/lien-ket', [AuthController::class, 'confirmGoogleLink'])->name('auth.google.link.submit')
+    ->middleware('throttle:5,1');
 // Quên mật khẩu (Forgot Password) - quy trình: Nhập Email -> Gửi OTP -> Xác thực OTP -> Đặt lại mật khẩu
 Route::middleware('redirect.authenticated')->group(function () {
     Route::get('/quen-mat-khau', [ForgotPasswordController::class, 'showForgotForm'])->name('auth.password.request');

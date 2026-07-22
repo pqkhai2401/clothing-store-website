@@ -297,11 +297,20 @@ class AuthController extends AppBaseController
             // Google trước đây — không được tự động merge+login chỉ vì email trùng khớp. Đăng ký
             // thường không xác thực quyền sở hữu email, nên tài khoản này có thể do người khác
             // đăng ký giùm email của chủ thật ("dangling account") để chờ chủ thật tự đăng nhập
-            // Google vào rồi âm thầm truy cập lại bằng mật khẩu đã biết trước — bắt buộc xác thực
-            // qua mật khẩu (hoặc luồng "Quên mật khẩu" xác thực qua OTP) trước khi cho liên kết.
-            return redirect()
-                ->route('auth.loginpage')
-                ->with('error', 'Email này đã có tài khoản trên hệ thống. Vui lòng đăng nhập bằng mật khẩu. Nếu đây không phải tài khoản bạn tạo, hãy dùng "Quên mật khẩu" để xác thực lại quyền sở hữu email.');
+            // Google vào rồi âm thầm truy cập lại bằng mật khẩu đã biết trước.
+            //
+            // Thay vì chặn cứng, lưu tạm thông tin Google vào session và bắt xác nhận bằng MẬT
+            // KHẨU HIỆN TẠI của tài khoản (chứng minh chính chủ) trước khi gán google_id — không
+            // ghi gì vào DB ở bước này.
+            $request->session()->put('google_link_pending', [
+                'user_id' => $user->id,
+                'email' => $email,
+                'google_id' => $googleUser->getId(),
+                'avatar_url' => $googleUser->getAvatar(),
+                'expires_at' => now()->addMinutes(10)->timestamp,
+            ]);
+
+            return redirect()->route('auth.google.link.form');
         } else {
             $user->forceFill([
                 'google_id' => $googleUser->getId() ?: $user->google_id,
@@ -316,6 +325,77 @@ class AuthController extends AppBaseController
         return redirect()
             ->intended($user->isAdmin() ? route('admin.dashboard') : url('/'))
             ->with('success', 'Đăng nhập bằng Google thành công.');
+    }
+
+    /**
+     * Hiện form yêu cầu nhập mật khẩu để xác nhận liên kết tài khoản Google với
+     * tài khoản email/mật khẩu đã tồn tại (xem giải thích ở handleGoogleCallback()).
+     */
+    public function showGoogleLinkForm(Request $request)
+    {
+        $pending = $request->session()->get('google_link_pending');
+
+        if (! $pending || now()->timestamp > $pending['expires_at']) {
+            $request->session()->forget('google_link_pending');
+
+            return redirect()
+                ->route('auth.loginpage')
+                ->with('error', 'Phiên liên kết Google đã hết hạn. Vui lòng thử lại.');
+        }
+
+        return view('auth.google-link', ['email' => $pending['email']]);
+    }
+
+    /**
+     * Xác nhận mật khẩu để chứng minh chính chủ, rồi gán google_id vào tài khoản
+     * và đăng nhập luôn.
+     */
+    public function confirmGoogleLink(Request $request)
+    {
+        $pending = $request->session()->get('google_link_pending');
+
+        if (! $pending || now()->timestamp > $pending['expires_at']) {
+            $request->session()->forget('google_link_pending');
+
+            return redirect()
+                ->route('auth.loginpage')
+                ->with('error', 'Phiên liên kết Google đã hết hạn. Vui lòng thử lại.');
+        }
+
+        $request->validate([
+            'password' => ['required', 'string'],
+        ], [
+            'password.required' => 'Vui lòng nhập mật khẩu.',
+        ]);
+
+        $user = User::find($pending['user_id']);
+
+        if (! $user || $user->email !== $pending['email'] || ! Hash::check($request->input('password'), $user->password)) {
+            return back()->withErrors(['password' => 'Mật khẩu không chính xác.']);
+        }
+
+        if (! $user->is_active) {
+            $request->session()->forget('google_link_pending');
+
+            return redirect()
+                ->route('auth.loginpage')
+                ->with('error', 'Tài khoản của bạn đã ngưng hoạt động.');
+        }
+
+        $user->forceFill([
+            'google_id' => $pending['google_id'],
+            'avatar_url' => $pending['avatar_url'] ?: $user->avatar_url,
+            'email_verified_at' => $user->email_verified_at ?: now(),
+        ])->save();
+
+        $request->session()->forget('google_link_pending');
+
+        Auth::login($user, true);
+        $request->session()->regenerate();
+
+        return redirect()
+            ->intended($user->isAdmin() ? route('admin.dashboard') : url('/'))
+            ->with('success', 'Đã liên kết và đăng nhập bằng Google thành công.');
     }
 
     private function makeUniqueUsername(string $email, ?string $fullName = null): string
