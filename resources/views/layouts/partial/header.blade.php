@@ -54,6 +54,7 @@
         'admin.customers.edit'   => route('admin.customers.list'),
         'admin.users.create'     => route('admin.users.list'),
         'admin.products.create'  => route('admin.products.list'),
+        'admin.goods-receipts.trash' => route('admin.goods-receipts.list'),
         'admin.products.trash'   => route('admin.products.list'),
         'admin.categories.trash' => route('admin.categories.list'),
         'admin.brands.trash'     => route('admin.brands.list'),

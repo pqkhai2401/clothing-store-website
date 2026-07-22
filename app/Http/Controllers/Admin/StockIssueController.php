@@ -158,11 +158,11 @@ class StockIssueController extends Controller
 
         if ($request->expectsJson() || $request->ajax()) {
             return response()->json([
-                'html' => view('admin.stock-issues.partials.show-content', compact('stockIssue'))->render(),
+                'html' => view('admin.inventory.stock-issues.partials.show-content', compact('stockIssue'))->render(),
             ]);
         }
 
-        return view('admin.stock-issues.show', compact('stockIssue'));
+        return view('admin.inventory.stock-issues.show', compact('stockIssue'));
     }
 
     /**
@@ -178,7 +178,7 @@ class StockIssueController extends Controller
             'items.productVariant.size:id,name',
         ])->findOrFail($id);
 
-        return view('admin.stock-issues.print', compact('stockIssue'));
+        return view('admin.inventory.stock-issues.print', compact('stockIssue'));
     }
 
     public function edit(Request $request, string $id)
@@ -224,11 +224,11 @@ class StockIssueController extends Controller
 
         if ($request->expectsJson() || $request->ajax()) {
             return response()->json([
-                'html' => view('admin.stock-issues.partials.edit-content', compact('stockIssue', 'variants', 'warehouses', 'selectedItems'))->render(),
+                'html' => view('admin.inventory.stock-issues.partials.edit-content', compact('stockIssue', 'variants', 'warehouses', 'selectedItems'))->render(),
             ]);
         }
 
-        return view('admin.stock-issues.edit', compact('stockIssue', 'variants', 'warehouses', 'selectedItems'));
+        return view('admin.inventory.stock-issues.edit', compact('stockIssue', 'variants', 'warehouses', 'selectedItems'));
     }
 
     public function update(Request $request, string $id)
@@ -445,11 +445,11 @@ class StockIssueController extends Controller
 
         if ($request->ajax()) {
             return response()->json([
-                'html' => view('admin.stock-issues.partials.trash-table', compact('stockIssues'))->render(),
+                'html' => view('admin.inventory.stock-issues.partials.trash-table', compact('stockIssues'))->render(),
             ]);
         }
 
-        return view('admin.stock-issues.trash', compact('stockIssues', 'keyword', 'perPage'));
+        return view('admin.inventory.stock-issues.trash', compact('stockIssues', 'keyword', 'perPage'));
     }
 
     public function restore(string $id)
