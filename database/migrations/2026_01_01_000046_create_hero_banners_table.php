@@ -15,6 +15,8 @@ return new class extends Migration
             $table->string('button_text')->nullable();
             $table->string('button_link')->nullable();
             $table->string('image_path');
+            $table->timestamp('start_date')->nullable();
+            $table->timestamp('end_date')->nullable();
             $table->boolean('is_active')->default(false);
             $table->unsignedInteger('sort_order')->default(0);
             $table->timestamps();

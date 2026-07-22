@@ -34,6 +34,10 @@ return new class extends Migration
             $table->decimal('discount_amount', 15, 2)->default(0);
             $table->enum('status', OrderStatus::values())->default(OrderStatus::PENDING->value);
             $table->enum('payment_status', PaymentStatus::values())->default(PaymentStatus::UNPAID->value);
+            // Số tiền hoàn thực tế + thời điểm hoàn cho đơn ĐÃ HỦY & ĐÃ THU TIỀN. Tách riêng để tra
+            // nhanh (thay vì đọc log audits) và hỗ trợ hoàn 1 phần (khác total_money, vd. trừ phí GD).
+            $table->decimal('refund_amount', 12, 2)->nullable();
+            $table->timestamp('refunded_at')->nullable();
             $table->timestamp('completed_at')->nullable();
             $table->timestamps();
             $table->softDeletes();

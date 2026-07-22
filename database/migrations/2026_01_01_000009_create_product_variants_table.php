@@ -13,7 +13,10 @@ return new class extends Migration
             $table->foreignId('product_id')->constrained('products')->cascadeOnDelete();
             $table->foreignId('color_id')->constrained('colors')->restrictOnDelete();
             $table->foreignId('size_id')->constrained('sizes')->restrictOnDelete();
-            $table->integer('stock')->default(0);
+            // Tồn kho không bao giờ được âm về nghiệp vụ. Dùng unsigned để có lưới an toàn ở
+            // tầng DB: mọi thao tác trực tiếp (seeder/phpMyAdmin/code quên đi qua service) ghi
+            // số âm sẽ bị MySQL từ chối, không âm thầm làm hỏng dữ liệu tồn kho.
+            $table->unsignedInteger('stock')->default(0);
             $table->string('status', 20)->default('Active');
             $table->string('image')->nullable();
             $table->string('sku')->unique();
