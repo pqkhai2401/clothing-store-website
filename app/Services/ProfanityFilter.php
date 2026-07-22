@@ -25,7 +25,7 @@ class ProfanityFilter
         // Tục tĩu / chửi thề
         'đm', 'dm', 'đmm', 'dmm', 'đéo', 'deo', 'vl', 'vcl', 'vkl', 'clm', 'cmm',
         'cc', 'cứt', 'cut', 'lồn', 'lon', 'buồi', 'buoi', 'địt', 'dit', 'đụ', 'du má',
-        'đù', 'đĩ', 'điếm', 'phò', 'cặc', 'cak','cl'
+        'đù', 'đĩ', 'điếm', 'phò', 'cặc', 'cak',
         // Chửi rủa / xúc phạm bằng lời tục
         'óc chó', 'oc cho', 'thằng chó', 'con chó', 'chó chết',
         'rác rưởi', 'khốn nạn', 'khon nan', 'súc vật', 'suc vat', 'mẹ mày',
