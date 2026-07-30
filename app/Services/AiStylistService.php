@@ -218,44 +218,56 @@ class AiStylistService
      */
     protected function buildMixMatchPrompt(Product $anchor, Collection $candidates, int $limit): string
     {
-        $anchorSeasons = $anchor->collections->pluck('name')->implode(', ') ?: 'Không rõ';
+        $anchorSeasons = $anchor->collections->pluck('name')->implode(', ') ?: 'Quanh năm';
+        $anchorColors  = $anchor->productVariants->pluck('color.name')->unique()->filter()->implode(', ') ?: 'Chưa rõ';
+        $anchorTags    = $anchor->tags->pluck('name')->implode(', ') ?: 'Basic/Casual';
         $anchorInfo = sprintf(
-            "SẢN PHẨM KHÁCH ĐANG CHỌN:\n- ID: %d\n- Tên: %s\n- Danh mục: %s\n- Giới tính: %s\n- Giá: %s\n- Bộ sưu tập/Mùa: %s\n- Mô tả: %s",
+            "SẢN PHẨM KHÁCH ĐANG CHỌN (SẢN PHẨM NEO):\n" .
+            "- ID: %d\n" .
+            "- Tên: %s\n" .
+            "- Danh mục: %s\n" .
+            "- Màu sắc: %s\n" .
+            "- Phong cách/Tag: %s\n" .
+            "- Giới tính: %s\n" .
+            "- Giá: %sđ\n" .
+            "- Bộ sưu tập/Mùa: %s\n" .
+            "- Mô tả: %s",
             $anchor->id,
             $anchor->name,
             $anchor->category->name ?? 'N/A',
+            $anchorColors,
+            $anchorTags,
             $anchor->gender,
-            number_format((float) $anchor->price, 0, ',', '.') . 'đ',
+            number_format((float) $anchor->price, 0, ',', '.'),
             $anchorSeasons,
             $this->shorten($anchor->description)
         );
-
         return <<<PROMPT
-        Bạn là một STYLIST (chuyên gia phối đồ) thời trang chuyên nghiệp cho một shop quần áo tại Việt Nam.
-        Nhiệm vụ: từ sản phẩm khách đang chọn, hãy chọn ra tối đa {$limit} sản phẩm trong DANH SÁCH ỨNG VIÊN
-        để phối cùng tạo thành MỘT BỘ TRANG PHỤC HOÀN CHỈNH, hài hòa, có gu.
-
+        Bạn là một CHUYÊN GIA STYLIST THỜI TRANG hàng đầu tại Việt Nam.
+        Nhiệm vụ của bạn là từ SẢN PHẨM NEO khách hàng đang xem, hãy chọn ra từ 2 đến {$limit} sản phẩm trong DANH SÁCH ỨNG VIÊN để ghép thành MỘT BỘ TRANG PHỤC (OUTFIT) HOÀN CHỈNH, chuẩn gu thời trang, có tính thẩm mỹ cao.
         {$anchorInfo}
-
-        BẠN PHẢI TUÂN THỦ NGHIÊM NGẶT CÁC LUẬT SAU:
-        1. LUẬT BỔ TRỢ (Mix & Match): Chọn các món KHÁC CÔNG NĂNG để ghép thành bộ.
-           Ví dụ: áo thun -> phối quần short / quần jeans / áo khoác.
-        2. LUẬT LOẠI TRỪ (Style Conflict):
-           - TUYỆT ĐỐI KHÔNG chọn món trùng công năng với sản phẩm khách đã chọn
-             (khách đã có quần dài thì KHÔNG gợi thêm một quần dài khác).
-           - KHÔNG trộn lẫn phong cách xung đột (đồ casual/năng động KHÔNG ghép với
-             đồ công sở đứng dáng, và ngược lại).
-        3. LUẬT ĐỒNG BỘ MÙA (Seasonal Sync): Ưu tiên tối đa các sản phẩm cùng Bộ sưu tập/Mùa
-           với sản phẩm khách chọn ("{$anchorSeasons}"). Ví dụ đồ Mùa hè phải phối với item mát mẻ cùng Mùa hè.
-        4. Ưu tiên các món có mức giá tương đồng để bộ đồ cân đối.
-
-        DANH SÁCH ỨNG VIÊN (chỉ được chọn ID trong danh sách này):
+        QUY TẮC PHỐI ĐỒ CHUYÊN NGHIỆP BẮT BUỘC TUYỆT ĐỐI TUÂN THỦ:
+        1. CẤU TRÚC BỘ TRANG PHỤC (OUTFIT SLOTS):
+        - Tạo thành một bộ đồ hoàn chỉnh gồm các món KHÁC LOẠI CÔNG NĂNG.
+        - Ví dụ: Món neo là ÁO -> Phối cùng 1 QUẦN/VÁY (Bottom) + 1 GIÀY (Footwear) + 1 ÁO KHOÁC/PHỤ KIỆN (Outerwear/Accessory).
+        - KHÔNG chọn 2 sản phẩm có cùng công năng (VD: xem Áo thun tuyệt đối KHÔNG chọn thêm Áo sơ mi thay thế, xem Quần dài KHÔNG chọn thêm Quần short).
+        2. HÀI HÒA MÀU SẮC (COLOR HARMONY):
+        - Áp dụng nguyên tắc phối màu thời trang (VD: Phối tương phản Nổi bật - Trung tính như Áo Trắng + Quần Đen/Beige; hoặc phối cùng tông màu Monochromatic).
+        - Tránh chọn các màu chọi nhau thiếu tinh tế (như Đỏ tươi phối Xanh lá chói).
+        3. ĐỒNG NHẤT PHONG CÁCH (STYLE CONSISTENCY):
+        - Phong cách Năng động/Streetwear chỉ đi cùng item năng động (Sneaker, Quần Jeans/Shorts).
+        - Phong cách Công sở/Smart Casual chỉ đi với item chỉn chu (Blazer, Quần Tây, Giày Loafer/Túi da).
+        - KHÔNG trộn lẫn item xung đột phong cách.
+        4. ĐỒNG BỘ MÙA & TẦM GIÁ:
+        - Ưu tiên các item phù hợp cùng mùa ("{$anchorSeasons}") và có tầm giá tương xứng để bộ outfit cân đối.
+        DANH SÁCH ỨNG VIÊN ĐỂ CHỌN (Chỉ được chọn ID có trong danh sách này):
         {$this->serializeCandidates($candidates)}
-
-        ĐỊNH DẠNG ĐẦU RA — BẮT BUỘC TUYỆT ĐỐI:
-        - CHỈ trả về DUY NHẤT một mảng JSON gồm các số ID đã chọn, ví dụ: [12, 4, 27].
-        - KHÔNG kèm chữ giải thích, KHÔNG markdown, KHÔNG dấu backtick.
-        - Nếu không có món nào phù hợp, trả về [].
+        ĐỊNH DẠNG ĐẦU RA — CHỈ TRẢ VỀ DUY NHẤT 1 OBJECT JSON (KHÔNG MARKDOWN, KHÔNG GIẢI THÍCH THÊM):
+        {
+        "chosen_ids": [12, 45, 8],
+        "outfit_title": "Tên phong cách ngắn gọn cho bộ đồ (dưới 10 từ)",
+        "styling_tip": "Lời khuyên phối đồ ngắn gọn từ Stylist giải thích lý do phối bộ này (2-3 câu, giọng văn tinh tế, truyền cảm hứng)."
+        }
         PROMPT;
     }
 
@@ -318,15 +330,21 @@ class AiStylistService
     protected function serializeCandidates(Collection $candidates): string
     {
         return $candidates->map(function (Product $p) {
-            return sprintf(
-                'ID:%d | %s | Danh mục:%s | Giới tính:%s | Giá:%sđ | Mùa:%s',
-                $p->id,
-                $p->name,
-                $p->category->name ?? 'N/A',
-                $p->gender,
-                number_format((float) $p->price, 0, ',', '.'),
-                $p->collections->pluck('name')->implode('/') ?: 'N/A'
-            );
+        // Lấy danh sách màu sắc và tag phong cách (nếu có mối quan hệ)
+        $colors = $p->productVariants->pluck('color.name')->unique()->filter()->implode(', ') ?: 'Trung tính';
+        $tags   = $p->tags->pluck('name')->implode(', ') ?: 'Basic/Casual';
+        
+        return sprintf(
+            'ID:%d | Tên: %s | Loai: %s | Màu: %s | PhongCách: %s | GiớiTính: %s | Giá: %sđ | Mùa: %s',
+            $p->id,
+            $p->name,
+            $p->category->name ?? 'N/A',
+            $colors,
+            $tags,
+            $p->gender,
+            number_format((float) $p->price, 0, ',', '.'),
+            $p->collections->pluck('name')->implode('/') ?: 'Quanh năm'
+        );
         })->implode("\n");
     }
 
@@ -380,7 +398,7 @@ class AiStylistService
 
             // ĐÈN BÁO: ghi log khi Gemini phản hồi hợp lệ -> chứng minh AI thật sự chạy
             // (khác với nhánh fallback SQL). Xem trong storage/logs/laravel.log.
-            Log::info('[AI-RECO]  GEMINI CHẠY THẬT — AI đã trả về danh sách ID', [
+            Log::info('[AI-RECO] 🌟 GEMINI CHẠY THẬT — AI đã trả về danh sách ID', [
                 'raw_text'   => trim($rawText),
                 'parsed_ids' => $ids,
             ]);
@@ -388,14 +406,14 @@ class AiStylistService
             return $ids;
         } catch (\Throwable $e) {
             // Bất kỳ lỗi mạng/timeout/exception nào cũng nuốt lại và fallback.
-            Log::error('[AI-RECO]  Ngoại lệ khi gọi Gemini -> DÙNG FALLBACK SQL', ['message' => $e->getMessage()]);
+            Log::error('[AI-RECO] ❌ Ngoại lệ khi gọi Gemini -> DÙNG FALLBACK SQL', ['message' => $e->getMessage()]);
             return null;
         }
     }
 
     /**
-     * Bóc mảng ID từ chuỗi text AI trả về, xử lý an toàn mọi trường hợp bẩn:
-     * dính ```json, kèm chữ giải thích, xuống dòng thừa...
+     * Bóc mảng ID từ chuỗi text AI trả về, xử lý an toàn mọi trường hợp:
+     * dính ```json, mảng JSON [1,2,3] hoặc Object JSON {"chosen_ids": [1,2,3]}
      *
      * @return int[]|null
      */
@@ -403,7 +421,26 @@ class AiStylistService
     {
         $clean = str_replace(['```json', '```JSON', '```'], '', trim($raw));
 
-        // Cắt lấy đúng đoạn từ '[' đầu tiên đến ']' cuối cùng.
+        // Hỗ trợ nếu Gemini trả về JSON Object {"chosen_ids": [1, 2, 3], ...}
+        if (str_contains($clean, '{')) {
+            $start = strpos($clean, '{');
+            $end   = strrpos($clean, '}');
+            if ($start !== false && $end !== false && $end > $start) {
+                $jsonObject = substr($clean, $start, $end - $start + 1);
+                $decodedObject = json_decode($jsonObject, true);
+                if (is_array($decodedObject) && !empty($decodedObject['chosen_ids']) && is_array($decodedObject['chosen_ids'])) {
+                    $ids = [];
+                    foreach ($decodedObject['chosen_ids'] as $val) {
+                        if (is_numeric($val) && (int) $val > 0) {
+                            $ids[(int) $val] = true;
+                        }
+                    }
+                    return array_keys($ids);
+                }
+            }
+        }
+
+        // Cắt lấy đúng đoạn từ '[' đầu tiên đến ']' cuối cùng (nếu Gemini trả mảng thuần).
         $start = strpos($clean, '[');
         $end   = strrpos($clean, ']');
         if ($start === false || $end === false || $end < $start) {

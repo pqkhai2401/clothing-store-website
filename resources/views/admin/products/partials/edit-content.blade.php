@@ -716,6 +716,10 @@
 
             bootstrap.Offcanvas.getOrCreateInstance(offcanvasEl).hide();
             window.reloadAdminTable?.();
+            // Cảnh báo giá bán thấp hơn giá vốn (soft-warning từ backend) — hiện toast vàng để
+            // admin biết đã lưu nhưng đang bán dưới giá vốn. Trước đây chỉ đọc data.message nên
+            // cảnh báo backend trả về bị bỏ qua, không hiển thị.
+            if (data.warning) window.showProductToast?.(data.warning, 'warning');
             window.showProductToast?.(data.message || 'Cập nhật sản phẩm thành công.');
         } catch (err) {
             window.showProductToast?.('Không thể kết nối tới máy chủ. Vui lòng kiểm tra kết nối mạng và thử lại.', 'error');

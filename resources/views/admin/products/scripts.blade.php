@@ -366,9 +366,11 @@ document.addEventListener('click', function (e) {
 /* ── Toast thông báo (đồng bộ với component thông báo chung của trang) ── */
 function showProductToast(message, type = 'success') {
     const container = document.getElementById('toast-container');
-    if (!container) { window.showAlert(message, 'Thông báo', type === 'error' ? 'danger' : 'success'); return; }
+    const fallbackLevel = type === 'error' ? 'danger' : (type === 'warning' ? 'warning' : 'success');
+    if (!container) { window.showAlert(message, 'Thông báo', fallbackLevel); return; }
     const toast = document.createElement('div');
-    toast.className = `custom-toast server-toast ${type === 'error' ? 'toast-error' : 'toast-success'}`;
+    const typeClass = type === 'error' ? 'toast-error' : (type === 'warning' ? 'toast-warning' : 'toast-success');
+    toast.className = `custom-toast server-toast ${typeClass}`;
     toast.style.pointerEvents = 'auto';
     toast.innerHTML = `
         <div class="toast-content">
